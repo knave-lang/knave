@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/negative_count_printed.knv
+---
+stderr:
+
+thread 'main' panicked at main.rs:3:38:
+a duration cannot be negative: (seconds -1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+exit code: 101

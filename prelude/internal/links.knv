@@ -1,0 +1,130 @@
+(use code bool-not concat empty? first list number-add rest
+          string string-contains? string-drop string-length
+          string-lines string-strip-prefix
+          string-strip-suffix string? value-eq)
+
+(use prelude/macros document)
+
+(export first-character line-pieces link-names)
+
+(def link-names
+  (fn (texts)
+    (local names-of
+      (fn (names texts)
+        (if (empty? texts)
+          names
+          (recur (concat names (text-link-names (first texts)))
+                 (rest texts)))))
+    (names-of (list) texts)))
+
+(document (link-names texts)
+  "Returns the names that the links of the docstring texts in `texts`
+  name, in the order the texts give them.
+
+  (link-names (list \"Unlike [helper].\" \"See [area] and [shape/circle].\"))
+  => (\"helper\" \"area\" \"shape/circle\")")
+
+(def text-link-names
+  (fn (text)
+    (local names-of
+      (fn (names lines)
+        (if (empty? lines)
+          names
+          (recur (if (string-contains? (first lines) "[")
+                   (concat names
+                           (piece-names (line-pieces (first lines))))
+                   names)
+                 (rest lines)))))
+    (names-of (list) (string-lines text))))
+
+(document (text-link-names text)
+  "Returns the names that the links of one docstring text name.
+
+  A link is a name in brackets outside a code span, with no space, backtick
+  or bracket in it, that no `(` or `[` follows.
+
+  (text-link-names \"Like [area], not `[width]` or [a page](page.md).\")
+  => (\"area\")")
+
+(def piece-names
+  (fn (pieces)
+    (local names-of
+      (fn (names pieces)
+        (if (empty? pieces)
+          names
+          (recur (if (string? (first pieces))
+                   names
+                   (concat names
+                           (list (first (first pieces)))))
+                 (rest pieces)))))
+    (names-of (list) pieces)))
+
+(def line-pieces
+  (fn (line)
+    (local pieces-of
+      (fn (pieces run remaining code?)
+        (if (value-eq remaining "")
+          (with-run pieces run remaining)
+          (if (value-eq (first-character remaining) "`")
+            (recur pieces run
+                   (string-drop remaining 1)
+                   (bool-not code?))
+            (if (if code? false (bracket-start? remaining))
+              (do
+                (local after
+                  (string-drop remaining (bracket-length remaining)))
+                (recur (concat (with-run pieces run remaining)
+                               (list (list (bracketed-name remaining))))
+                       after after false))
+              (recur pieces run (string-drop remaining 1) code?))))))
+    (pieces-of (list) line line false)))
+
+(def with-run
+  (fn (pieces run remaining)
+    (concat pieces (list (string-strip-suffix run remaining)))))
+
+(def bracket-start?
+  (fn (text)
+    (if (value-eq (first-character text) "[")
+      (link-name? (bracketed-name text)
+                  (string-drop text (bracket-length text)))
+      false)))
+
+(def link-name?
+  (fn (name after)
+    (if (value-eq name "")
+      false
+      (if (starts-with? after "(")
+        false
+        (bool-not (starts-with? after "["))))))
+
+(def starts-with?
+  (fn (text prefix)
+    (bool-not (value-eq (string-strip-prefix text prefix) text))))
+
+(def bracketed-name
+  (fn (text)
+    (local collected
+      (fn (remaining name)
+        (if (value-eq remaining "")
+          ""
+          (if (value-eq (first-character remaining) "]")
+            name
+            (if (string-contains? name-breaks (first-character remaining))
+              ""
+              (recur (string-drop remaining 1)
+                     (string name (first-character remaining))))))))
+    (collected (string-drop text 1) "")))
+
+(def name-breaks " `[\t")
+
+(def bracket-length
+  (fn (text)
+    (local name (bracketed-name text))
+    (if (value-eq name "")
+      1
+      (number-add (string-length name) 2))))
+
+(def first-character
+  (fn (text)
+    (string-strip-suffix text (string-drop text 1))))

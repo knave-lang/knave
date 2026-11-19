@@ -13,6 +13,9 @@
 (use prelude/internal/docstrings arrow-line? closes-fence?
                                  fence-run opening-fence)
 
+(use prelude/internal/links first-character line-pieces
+                            link-names)
+
 (use prelude/lint rule-names)
 
 (use prelude/macros defmacro doc-body doc-header docstring
@@ -630,10 +633,6 @@
         true
         (recur (rest lines))))))
 
-(def starts-with?
-  (fn (text prefix)
-    (bool-not (value-eq (string-strip-prefix text prefix) text))))
-
 (def linked-line
   (fn (page links placed)
     (local text (placed-text placed))
@@ -678,30 +677,6 @@
       piece
       (bracket-link page links spot (first piece)))))
 
-(def line-pieces
-  (fn (line)
-    (local pieces-of
-      (fn (pieces run remaining code?)
-        (if (value-eq remaining "")
-          (with-run pieces run remaining)
-          (if (value-eq (first-character remaining) "`")
-            (recur pieces run
-                   (string-drop remaining 1)
-                   (bool-not code?))
-            (if (if code? false (bracket-start? remaining))
-              (do
-                (local after
-                  (string-drop remaining (bracket-length remaining)))
-                (recur (concat (with-run pieces run remaining)
-                               (list (list (bracketed-name remaining))))
-                       after after false))
-              (recur pieces run (string-drop remaining 1) code?))))))
-    (pieces-of (list) line line false)))
-
-(def with-run
-  (fn (pieces run remaining)
-    (concat pieces (list (string-strip-suffix run remaining)))))
-
 (def link-table
   (fn (page texts)
     (local terms (link-terms page texts))
@@ -713,35 +688,6 @@
     (sorted-names (map-list (link-names texts)
                     (fn (name) (symbol module name))))))
 
-(def link-names
-  (fn (texts)
-    (local names-of
-      (fn (names texts)
-        (if (empty? texts)
-          names
-          (recur (concat names (text-link-names (first texts)))
-                 (rest texts)))))
-    (names-of (list) texts)))
-
-(def text-link-names
-  (fn (text)
-    (local names-of
-      (fn (names lines)
-        (if (empty? lines)
-          names
-          (recur (if (string-contains? (first lines) "[")
-                   (concat names
-                           (piece-names (line-pieces (first lines))))
-                   names)
-                 (rest lines)))))
-    (names-of (list) (string-lines text))))
-
-(def piece-names
-  (fn (pieces)
-    (map-list (items-where (fn (piece) (bool-not (string? piece)))
-                           pieces)
-              first)))
-
 (def link-home
   (fn (links name)
     (if (empty? links)
@@ -750,44 +696,6 @@
                     name)
         (paired-home (first links))
         (recur (rest links) name)))))
-
-(def bracket-start?
-  (fn (text)
-    (if (value-eq (first-character text) "[")
-      (link-name? (bracketed-name text)
-                  (string-drop text (bracket-length text)))
-      false)))
-
-(def link-name?
-  (fn (name after)
-    (if (value-eq name "")
-      false
-      (if (starts-with? after "(")
-        false
-        (bool-not (starts-with? after "["))))))
-
-(def bracketed-name
-  (fn (text)
-    (local collected
-      (fn (remaining name)
-        (if (value-eq remaining "")
-          ""
-          (if (value-eq (first-character remaining) "]")
-            name
-            (if (string-contains? name-breaks (first-character remaining))
-              ""
-              (recur (string-drop remaining 1)
-                     (string name (first-character remaining))))))))
-    (collected (string-drop text 1) "")))
-
-(def name-breaks " `[\t")
-
-(def bracket-length
-  (fn (text)
-    (local name (bracketed-name text))
-    (if (value-eq name "")
-      1
-      (number-add (string-length name) 2))))
 
 (def bracket-link
   (fn (page links spot name)
@@ -976,10 +884,6 @@
                              (number-add (string-length (first lines)) 1))
                  (rest lines)))))
     (summed 0 lines)))
-
-(def first-character
-  (fn (text)
-    (string-strip-suffix text (string-drop text 1))))
 
 (def items-where
   (fn (matches? items)

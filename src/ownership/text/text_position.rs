@@ -102,6 +102,15 @@ mod tests {
     }
 
     #[test]
+    fn unsized_text_inside_a_type_is_owned() {
+        let boxed = Type::Named(
+            crate::core::BindingId::from_index(0),
+            vec![Types::text(PrimitiveType::Str)],
+        );
+        assert_eq!(TextPositions::of(&boxed)[0].written, Representation::Owned);
+    }
+
+    #[test]
     fn a_function_type_holds_no_text_position() {
         let function = Type::Function(
             crate::core::ClosureKind::Fn,

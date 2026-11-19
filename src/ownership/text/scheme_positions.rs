@@ -3,6 +3,7 @@ use super::representation::Representation;
 use super::scheme_position::SchemePosition;
 use super::text_position::TextPositions;
 use super::type_path::TypePath;
+use crate::core::PrimitiveType;
 use crate::types::{GenericId, Type};
 
 #[derive(Clone)]
@@ -49,7 +50,7 @@ impl SchemePositions {
                 self.visit(inner, Self::referent(instantiated), place.referenced())
             }
             (_, Type::Ref(_, inner) | Type::Mut(_, inner)) => self.visit(declared, inner, place),
-            (Type::Primitive(_), _) => self.visit_written(declared, place),
+            (Type::Primitive(primitive), _) => self.visit_written(*primitive, place),
             (Type::Named(_, declared_parts), Type::Named(_, parts)) => {
                 for (part, (declared, instantiated)) in declared_parts.iter().zip(parts).enumerate()
                 {
@@ -78,14 +79,10 @@ impl SchemePositions {
         }
     }
 
-    fn visit_written(&mut self, declared: &Type, place: Place) {
-        for position in TextPositions::of(declared) {
-            let written = match (place.access, position.written) {
-                (Access::Referenced, Representation::Owned) => Representation::Lent,
-                (_, written) => written,
-            };
+    fn visit_written(&mut self, primitive: PrimitiveType, place: Place) {
+        if let Some(written) = Representation::written(primitive, place.access) {
             self.found.push(SchemePosition::Written {
-                path: place.path.clone(),
+                path: place.path,
                 written,
             });
         }

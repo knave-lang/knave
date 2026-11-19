@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/boxed_text_is_owned.knv
+---
+struct tag
+  name[0]: owned

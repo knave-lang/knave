@@ -1,6 +1,6 @@
-use super::flow::Flow;
 use super::listed_section::ListedSection;
 use super::listed_slot::ListedSlot;
+use super::refusal::{Refusal, RefusalCause};
 use super::slot_listing::SlotListing;
 use super::text_decision_table::TextDecisionTable;
 use super::text_program::TextProgram;
@@ -9,18 +9,21 @@ use crate::source::{SourceMap, Span};
 pub struct TextReport<'r, 'p> {
     program: &'r TextProgram<'p>,
     table: &'r TextDecisionTable<'r>,
-    refused: Vec<Span>,
+    refused: Vec<(Span, RefusalCause)>,
 }
 
 impl<'r, 'p> TextReport<'r, 'p> {
     pub fn new(
         program: &'r TextProgram<'p>,
         table: &'r TextDecisionTable<'r>,
-        refusals: &[&Flow],
+        refusals: &[Refusal<'_>],
     ) -> Self {
-        let mut refused: Vec<Span> = refusals.iter().map(|flow| flow.span).collect();
-        refused.sort_by_key(|span| (span.source().index(), span.range().start));
-        refused.dedup();
+        let mut refused: Vec<(Span, RefusalCause)> = refusals
+            .iter()
+            .map(|refusal| (refusal.flow.span, refusal.cause))
+            .collect();
+        refused.sort_by_key(|(span, cause)| (span.source().index(), span.range().start, *cause));
+        refused.dedup_by_key(|(span, _)| *span);
         Self {
             program,
             table,
@@ -63,15 +66,23 @@ impl<'r, 'p> TextReport<'r, 'p> {
         let lines: String = self
             .refused
             .iter()
-            .map(|span| {
+            .map(|(span, cause)| {
                 let file = sources.file(span.source()).name();
-                format!("  {file}:{}\n", sources.start_position(*span))
+                let position = sources.start_position(*span);
+                format!("  {file}:{position}{}\n", Self::cause_note(*cause))
             })
             .collect();
         if lines.is_empty() {
             String::new()
         } else {
             format!("needs owned text\n{lines}")
+        }
+    }
+
+    fn cause_note(cause: RefusalCause) -> &'static str {
+        match cause {
+            RefusalCause::Rfc => "",
+            RefusalCause::StatedLimit => ", by a stated limit",
         }
     }
 }

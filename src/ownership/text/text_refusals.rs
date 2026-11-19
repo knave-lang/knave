@@ -2,6 +2,7 @@ use super::flow::Flow;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
+use super::refusal::{Refusal, RefusalCause};
 use super::slot_classes::SlotClasses;
 use super::source::Source;
 use super::text_decision_table::TextDecisionTable;
@@ -27,26 +28,37 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
         }
     }
 
-    pub fn found(&self) -> Vec<&'g Flow> {
+    pub fn found(&self) -> Vec<Refusal<'g>> {
         self.classes
             .flows()
             .iter()
-            .filter(|flow| self.refuses(flow))
+            .filter_map(|flow| self.refusal(flow))
             .collect()
     }
 
-    fn refuses(&self, flow: &Flow) -> bool {
-        let target = self.classes.class(flow.target);
+    fn refusal(&self, flow: &'g Flow) -> Option<Refusal<'g>> {
         let arriving = self.facts.arriving(flow);
+        if !self.refuses(flow, arriving) {
+            return None;
+        }
+        let cause = if self.refuses(flow, arriving.without(ReachingText::ASSUMED)) {
+            RefusalCause::Rfc
+        } else {
+            RefusalCause::StatedLimit
+        };
+        Some(Refusal { flow, cause })
+    }
+
+    fn refuses(&self, flow: &Flow, arriving: ReachingText) -> bool {
+        let target = self.classes.class(flow.target);
         let lends = flow.transfer.lends() && self.classes.is_variable(target);
-        self.need_refuses(flow, target)
+        self.need_refuses(flow, (target, arriving))
             || !lends
                 && !self.reported_upstream(flow)
                 && self.table.of_class(target).refuses(arriving)
     }
 
-    fn need_refuses(&self, flow: &Flow, target: NodeId) -> bool {
-        let arriving = self.facts.arriving(flow);
+    fn need_refuses(&self, flow: &Flow, (target, arriving): (NodeId, ReachingText)) -> bool {
         match self.classes.need(target) {
             Some(Need::Owned) => arriving.holds(ReachingText::STATIC),
             Some(Need::View) | None => false,
@@ -135,6 +147,17 @@ mod tests {
             .required(owned.clone(), Need::Owned)
             .text(ReachingText::BORROWED, (owned, 4));
         assert_eq!(flows.refused_at(), vec![4]);
+    }
+
+    #[test]
+    fn an_assumed_view_given_to_an_owned_argument_is_refused_by_a_stated_limit() {
+        let owned = SlotOwner::Argument(FlowFixture::span(80));
+        let flows = FlowFixture::default()
+            .required(owned.clone(), Need::Owned)
+            .text(ReachingText::ASSUMED, (owned.clone(), 4))
+            .text(ReachingText::BORROWED, (owned, 5));
+        assert_eq!(flows.refused_at(), vec![4, 5]);
+        assert_eq!(flows.refused_by_a_stated_limit_at(), vec![4]);
     }
 
     #[test]

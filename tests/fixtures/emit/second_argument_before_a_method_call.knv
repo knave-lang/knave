@@ -1,0 +1,9 @@
+(def total-length
+  (rust "{1}.len() + {0}.len()"
+    (fn ((ref str) (ref str)) usize)))
+
+(defn main ()
+  (local s (str "ab"))
+  (local t (str "cde"))
+  (println (total-length (ref s) (ref t)))
+  (println t))

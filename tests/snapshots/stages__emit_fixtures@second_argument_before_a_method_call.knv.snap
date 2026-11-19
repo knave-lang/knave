@@ -1,0 +1,33 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/second_argument_before_a_method_call.knv
+---
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let s = "ab".to_string();
+    let t = "cde".to_string();
+    println!("{}", {
+        let template_argument_0 = &s;
+        let template_argument_1 = &t;
+        template_argument_1.len() + template_argument_0.len()
+    });
+    println!("{}", t)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

@@ -208,39 +208,40 @@
             }
 
             stop_if_running() {
-              local tree identities
-              [[ -n $(survivors "$1" "$(identify "$1")") ]] || return 1
-              trap "" TERM HUP INT QUIT
-              tree=$(freeze_process_tree "$1")
-              identities=$(identify "$tree")
-              signal_survivors TERM "$tree" "$identities"
-              thaw "$tree"
-              trap - TERM HUP INT QUIT
-              wait_for_survivors_to_stop
-              signal_survivors KILL "$tree" "$identities"
+              local identities
+              [[ -n $(survivors "$(identify "$1")") ]] || return 1
+              trap "" TERM HUP PIPE
+              identities=$(freeze_process_tree "$1")
+              signal_survivors TERM "$identities"
+              thaw "$identities"
+              wait_for_survivors_to_stop "$identities"
+              signal_survivors KILL "$identities"
             }
 
             freeze_process_tree() {
-              local tree frozen=""
+              local tree frozen="" identities=""
               tree=$(process_tree "$1")
               until [[ $tree == "$frozen" ]]; do
                 frozen=$tree
-                signal_survivors STOP "$tree" "$(identify "$tree")"
+                identities+=$(identify "$tree")$'\n'
+                signal_survivors STOP "$identities"
                 tree=$(process_tree "$1")
               done
-              echo "$tree"
+              echo "$identities"
             }
 
             thaw() {
-              local frozen
-              IFS=, read -ra frozen <<<"$1"
+              local process frozen=()
+              while read -r process _; do
+                frozen+=("$process")
+              done <<<"$1"
               kill -CONT "''${frozen[@]}" 2>/dev/null || true
             }
 
             wait_for_survivors_to_stop() {
               local waited
               for ((waited = 0; waited < seconds_before_kill; waited++)); do
-                [[ -n $(survivors "$tree" "$identities") ]] || return 0
+                [[ -n $(survivors "$1") ]] || return 0
                 sleep 1
               done
             }
@@ -250,16 +251,16 @@
             }
 
             identify() {
-              "$ps" -o pid= -o lstart= -p "$1" || true
+              "$ps" -o pid= -o lstart= -p "$1"
             }
 
             survivors() {
-              "$ps" -o pid= -o lstart= -o stat= -p "$1" | "$awk" -v identities="$2" -f "$survivors_program"
+              "$ps" -A -o pid= -o lstart= -o stat= | "$awk" -v identities="$1" -f "$survivors_program"
             }
 
             signal_survivors() {
               local processes
-              mapfile -t processes < <(survivors "$2" "$3")
+              mapfile -t processes < <(survivors "$2")
               if ((''${#processes[@]} > 0)); then
                 kill "-$1" "''${processes[@]}" 2>/dev/null || true
               fi
@@ -406,6 +407,12 @@
                   sleep 0.002
                 done
                 ;;
+              orphans-on-stop)
+                sleep 300 &
+                echo $! >"$calls/orphaned-child"
+                (timeout 20 bash -c 'while read -r _ _ state _ </proc/'$$'/stat; do [[ $state != T ]] || exec kill -KILL '$$'; done' >/dev/null 2>&1 &)
+                wait
+                ;;
               die-by) exec env --default-signal kill -s "$2" $$ ;;
               ready-sleep)
                 touch "$calls/ready"
@@ -444,7 +451,14 @@
           setsid = pkgs.lib.getExe' pkgs.util-linux "setsid";
           python = pkgs.lib.getExe pkgs.python3Minimal;
           waitStatus = ./xtask/build-slots/wait-status.py;
-          terminalChecks = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+          linuxChecks = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+            for _ in {1..3}; do
+              status=0
+              KNAVE_BUILD_TIME_LIMIT=1 timeout --signal KILL 20 ${cargo} orphans-on-stop 2>/dev/null || status=$?
+              [[ $status == 124 ]] || fail "a run whose cargo died while the limit stopped it exited $status, not 124"
+              expect_stopped "$(<"$calls/orphaned-child")" "a child that the limit stopped stayed stopped after its parent died"
+            done
+
             on_terminal() {
               timeout 20 ${script} --quiet --return --command "env KNAVE_BUILD_SLOTS=1 KNAVE_BUILD_TIME_LIMIT=60 ${cargo} $1" /dev/null >/dev/null
             }
@@ -596,7 +610,7 @@
           kill "$(<"$calls/daemon-process")"
 
           for signal in TERM HUP; do
-            for delay in 1.0{0..9}{0,5} 1.1{0..9}{0,5} 1.2{0..5}; do
+            for delay in 1.{0..2}{0..9}{0,5} 1.300; do
               (
                 trap - INT QUIT
                 exec ${setsid} env KNAVE_BUILD_TIME_LIMIT=1 ${cargo} forker 2>/dev/null
@@ -653,6 +667,10 @@
             ! running "$forked" || fail "a process that cargo forked as the limit fired outlived the limit"
           done <"$calls/forked"
 
+          KNAVE_BUILD_TIME_LIMIT=1 timeout 10 env --default-signal=PIPE bash -c "${cargo} sleep 30 2>&1; echo \$? >broken-pipe-status" | true
+          [[ $(<broken-pipe-status) == 124 ]] ||
+            fail "a run past KNAVE_BUILD_TIME_LIMIT with standard error on a broken pipe exited $(<broken-pipe-status), not 124"
+
           status=0
           KNAVE_BUILD_TIME_LIMIT=1 timeout 20 ${cargo} stubborn 2>/dev/null || status=$?
           [[ $status == 124 ]] || fail "a run with a child that ignores SIGTERM exited $status, not 124"
@@ -667,6 +685,16 @@
           kill -INT -- "-$stopping"
           expect_stopped "$(<"$calls/stubborn-child")" "SIGINT during the grace before SIGKILL spared a child of cargo"
           wait "$stopping" || true
+
+          (
+            trap - INT QUIT
+            exec ${setsid} env KNAVE_BUILD_TIME_LIMIT=1 ${cargo} stubborn 2>/dev/null
+          ) &
+          stopping=$!
+          sleep 2.5
+          kill -TERM -- "-$stopping"
+          expect_stopped "$(<"$calls/stubborn-child")" "SIGTERM during the grace before SIGKILL spared a child of cargo"
+          { wait "$stopping" || true; } 2>/dev/null
 
           status=0
           KNAVE_BUILD_TIME_LIMIT=10 ${cargo} exit-124 2>own-124 || status=$?
@@ -711,7 +739,7 @@
           kill -TERM -- "-$ignoring"
           wait "$ignoring" || true
 
-          ${terminalChecks}
+          ${linuxChecks}
           limited_run_in_own_group catch-int
           catching=$!
           wait_for_call catch-int-ready

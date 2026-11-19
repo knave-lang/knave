@@ -1,4 +1,5 @@
 mod argument_role;
+mod argument_start;
 mod assigned_in_place;
 mod bound_before;
 mod callee_definitions;
@@ -12,6 +13,7 @@ mod emitted_types;
 mod emitted_value;
 mod expressions;
 mod format_arguments;
+mod format_string;
 mod fragment;
 mod fresh_lifetimes;
 mod function_borrow;

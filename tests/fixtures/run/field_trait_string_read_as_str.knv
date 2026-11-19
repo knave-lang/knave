@@ -1,0 +1,17 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(type shout-title
+  (fn ((ref str)) string))
+
+(defn shout-title (title) (upper-case title))
+
+(defn shout (x)
+  (shout-title (:title x)))
+
+(defn main ()
+  (println (shout (->book (str "dune"))))
+  (println (shout (->film (str "jaws")))))

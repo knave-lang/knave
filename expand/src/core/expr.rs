@@ -25,10 +25,10 @@ pub enum ExprKind {
     Struct(StructExpr),
     Variant(BindingId, Vec<Expr>),
     LabeledVariant(BindingId, Vec<(FieldLabel, Expr)>),
-    Assoc(Box<Expr>, Vec<Expr>, Box<Expr>),
+    Assoc(KeyedPath),
     MapAt(MapOperation, Box<Expr>, Vec<Expr>),
     PushAt(Box<Expr>, Box<Expr>),
-    SetAt(Box<Expr>, Vec<Expr>, Box<Expr>),
+    SetAt(KeyedPath),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -339,12 +339,7 @@ impl ExprKind {
 
     fn collection_children(&self) -> Vec<&Expr> {
         match self {
-            ExprKind::Assoc(value, keys, item) | ExprKind::SetAt(value, keys, item) => {
-                std::iter::once(value.as_ref())
-                    .chain(keys)
-                    .chain(std::iter::once(item.as_ref()))
-                    .collect()
-            }
+            ExprKind::Assoc(path) | ExprKind::SetAt(path) => path.children(),
             ExprKind::MapAt(_, value, arguments) => {
                 std::iter::once(value.as_ref()).chain(arguments).collect()
             }
@@ -375,6 +370,22 @@ impl StructExpr {
                 .collect(),
             StructExpr::Field(value, _) => vec![value],
         }
+    }
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct KeyedPath {
+    pub value: Box<Expr>,
+    pub keys: Vec<Expr>,
+    pub item: Box<Expr>,
+}
+
+impl KeyedPath {
+    pub fn children(&self) -> Vec<&Expr> {
+        std::iter::once(self.value.as_ref())
+            .chain(&self.keys)
+            .chain(std::iter::once(self.item.as_ref()))
+            .collect()
     }
 }
 

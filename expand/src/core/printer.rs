@@ -2,8 +2,8 @@ use rustc_hash::FxHashMap;
 
 use super::{
     Arm, Binder, BindingArena, BindingId, Block, BodyItem, ClosureKind, Control, CoreModule, Expr,
-    ExprKind, FieldLabel, Item, ItemKind, KernelConstants, KernelForm, Lambda, Leaf, Literal,
-    MapOperation, ParsedTemplate, Pattern, PatternArguments, PatternKind, PatternPart,
+    ExprKind, FieldLabel, Item, ItemKind, KernelConstants, KernelForm, KeyedPath, Lambda, Leaf,
+    Literal, MapOperation, ParsedTemplate, Pattern, PatternArguments, PatternKind, PatternPart,
     RustTemplate, RustTraitImplementor, StructExpr, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
     VariantDeclaration, VariantPayload,
 };
@@ -161,14 +161,14 @@ impl<'a> CorePrinter<'a> {
 
     fn collection_form(&mut self, kind: &ExprKind) -> String {
         match kind {
-            ExprKind::Assoc(value, keys, item) => self.keyed("assoc-at", (value, keys, item)),
+            ExprKind::Assoc(path) => self.keyed("assoc-at", path),
             ExprKind::MapAt(operation, value, arguments) => {
                 self.map_at(*operation, value, arguments)
             }
             ExprKind::PushAt(target, item) => {
                 Self::list("push-at!", vec![self.expr(target), self.expr(item)])
             }
-            ExprKind::SetAt(value, keys, item) => self.keyed("set-at!", (value, keys, item)),
+            ExprKind::SetAt(path) => self.keyed("set-at!", path),
             _ => self.written_or_recur(kind),
         }
     }
@@ -189,11 +189,13 @@ impl<'a> CorePrinter<'a> {
         }
     }
 
-    fn keyed(&mut self, head: &str, keyed: (&Expr, &[Expr], &Expr)) -> String {
-        let (value, keys, item) = keyed;
-        let keys: Vec<String> = keys.iter().map(|key| self.expr(key)).collect();
+    fn keyed(&mut self, head: &str, path: &KeyedPath) -> String {
+        let keys: Vec<String> = path.keys.iter().map(|key| self.expr(key)).collect();
         let keys = format!("({})", keys.join(" "));
-        Self::list(head, vec![self.expr(value), keys, self.expr(item)])
+        Self::list(
+            head,
+            vec![self.expr(&path.value), keys, self.expr(&path.item)],
+        )
     }
 
     fn map_at(&mut self, operation: MapOperation, value: &Expr, arguments: &[Expr]) -> String {

@@ -1,15 +1,15 @@
 use super::form_reader::FormReader;
 use super::spanned_forms::SpannedForms;
 use crate::core::{
-    BindingId, CollectionForm, Expr, ExprKind, ExpressionForm, FieldLabel, KernelForm, StructExpr,
-    StructForm,
+    BindingId, CollectionForm, Expr, ExprKind, ExpressionForm, FieldLabel, KernelForm, KeyedPath,
+    StructExpr, StructForm,
 };
 use crate::reader::Form;
 use crate::source::Span;
 
 pub struct CompositeForms;
 
-type KeyedUpdate<'e> = (CollectionForm, &'e Expr, &'e [Expr], &'e Expr);
+type KeyedUpdate<'e> = (CollectionForm, &'e KeyedPath);
 
 impl CompositeForms {
     const UPDATED_STRUCT: &'static str = "_";
@@ -30,12 +30,8 @@ impl CompositeForms {
 
     fn collection_form(forms: &mut dyn FormReader<'_>, kind: &ExprKind, span: Span) -> Form {
         match kind {
-            ExprKind::Assoc(value, keys, item) => {
-                Self::keyed(forms, (CollectionForm::Assoc, value, keys, item), span)
-            }
-            ExprKind::SetAt(value, keys, item) => {
-                Self::keyed(forms, (CollectionForm::SetAt, value, keys, item), span)
-            }
+            ExprKind::Assoc(path) => Self::keyed(forms, (CollectionForm::Assoc, path), span),
+            ExprKind::SetAt(path) => Self::keyed(forms, (CollectionForm::SetAt, path), span),
             ExprKind::PushAt(target, item) => Self::push_at(forms, (target, item), span),
             other => Self::map_at(forms, other, span),
         }
@@ -156,17 +152,17 @@ impl CompositeForms {
     }
 
     fn keyed(forms: &mut dyn FormReader<'_>, update: KeyedUpdate<'_>, span: Span) -> Form {
-        let (form, value, keys, item) = update;
+        let (form, path) = update;
         let row = forms.writer().open();
         let head = forms.kernel_head(
             KernelForm::Expression(ExpressionForm::Collection(form)),
             span,
         );
-        let value = forms.expr(value);
+        let value = forms.expr(&path.value);
         let keys_row = forms.writer().open();
-        let keys = keys.iter().map(|key| forms.expr(key)).collect();
+        let keys = path.keys.iter().map(|key| forms.expr(key)).collect();
         let keys = forms.writer().close(keys_row, keys, span);
-        let parts = vec![head, value, keys, forms.expr(item)];
+        let parts = vec![head, value, keys, forms.expr(&path.item)];
         forms.writer().close(row, parts, span)
     }
 }

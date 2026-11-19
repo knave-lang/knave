@@ -1,5 +1,5 @@
 use super::problems::ExpandProblems;
-use crate::core::{Block, BodyItem, Control, Expr, ExprKind, StructExpr};
+use crate::core::{Block, BodyItem, Control, Expr, ExprKind, KeyedPath, StructExpr};
 use crate::diagnostic::Diagnostic;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -63,9 +63,7 @@ impl RecurCheck {
     ) -> Result<(), Diagnostic> {
         match kind {
             ExprKind::Recur(arguments) => self.recur(expr, arguments, position),
-            ExprKind::Assoc(value, keys, item) | ExprKind::SetAt(value, keys, item) => {
-                self.assoc(value, keys, item)
-            }
+            ExprKind::Assoc(path) | ExprKind::SetAt(path) => self.keyed(path),
             ExprKind::MapAt(_, value, arguments) => {
                 self.expr(value, TailPosition::NotTail)?;
                 self.arguments(arguments.iter())
@@ -99,10 +97,10 @@ impl RecurCheck {
         }
     }
 
-    fn assoc(&self, value: &Expr, keys: &[Expr], item: &Expr) -> Result<(), Diagnostic> {
-        self.expr(value, TailPosition::NotTail)?;
-        self.arguments(keys.iter())?;
-        self.expr(item, TailPosition::NotTail)
+    fn keyed(&self, path: &KeyedPath) -> Result<(), Diagnostic> {
+        self.expr(&path.value, TailPosition::NotTail)?;
+        self.arguments(path.keys.iter())?;
+        self.expr(&path.item, TailPosition::NotTail)
     }
 
     fn control(&self, control: &Control, position: TailPosition) -> Result<(), Diagnostic> {

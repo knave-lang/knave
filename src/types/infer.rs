@@ -33,9 +33,9 @@ use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
 use super::{synthetic_template::SyntheticTemplate, templates::TemplateName};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, BorrowTrait, Control, EqualityTrait,
-    Expr, ExprKind, FieldLabel, HashTrait, Lambda, Leaf, Literal, MapOperation, OrderTrait,
-    Pattern, PatternArguments, PatternKind, PrimitiveType, ReferenceKind, RustTemplate, StructExpr,
-    TypeExpr, TypeExprKind, VariantInfo,
+    Expr, ExprKind, FieldLabel, HashTrait, KeyedPath, Lambda, Leaf, Literal, MapOperation,
+    OrderTrait, Pattern, PatternArguments, PatternKind, PrimitiveType, ReferenceKind, RustTemplate,
+    StructExpr, TypeExpr, TypeExprKind, VariantInfo,
 };
 use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName};
 use crate::reader::NumberValue;
@@ -158,12 +158,12 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         match kind {
-            ExprKind::Assoc(value, keys, item) => self.infer_assoc(value, keys, item, span),
+            ExprKind::Assoc(path) => self.infer_assoc(path, span),
             ExprKind::MapAt(operation, value, arguments) => {
                 self.infer_map_at(*operation, value, arguments, span)
             }
             ExprKind::PushAt(target, item) => self.infer_push(target, item, span),
-            ExprKind::SetAt(value, keys, item) => self.infer_set_at(value, keys, item, span),
+            ExprKind::SetAt(path) => self.infer_set_at(path, span),
             _ => unreachable!("the caller matches a nested expression"),
         }
     }
@@ -2239,13 +2239,8 @@ impl TypeChecker {
         ))
     }
 
-    fn infer_assoc(
-        &mut self,
-        value: &Expr,
-        keys: &[Expr],
-        item: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
+    fn infer_assoc(&mut self, path: &KeyedPath, span: Span) -> Result<TypedExpr, Diagnostic> {
+        let KeyedPath { value, keys, item } = path;
         let value = self.infer(value)?;
         let value = self.moved_field_base(value);
         let resolved = self.unifier.resolve(&value.ty);
@@ -2680,13 +2675,8 @@ impl TypeChecker {
         self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
-    fn infer_set_at(
-        &mut self,
-        value: &Expr,
-        keys: &[Expr],
-        item: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
+    fn infer_set_at(&mut self, path: &KeyedPath, span: Span) -> Result<TypedExpr, Diagnostic> {
+        let KeyedPath { value, keys, item } = path;
         let value = self.infer(value)?;
         if self.is_open_collection(&value, keys.len()) {
             return self.infer_open_set_at(value, keys, item, span);

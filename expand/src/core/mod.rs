@@ -54,9 +54,9 @@ pub use consulted_traits::{
 pub use conversion::Conversion;
 pub use dropped_borrows::DroppedBorrows;
 pub use expr::{
-    Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, Lambda, Leaf,
-    Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, RustClause,
-    RustTemplate, StructExpr,
+    Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, KeyedPath,
+    Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart,
+    RustClause, RustTemplate, StructExpr,
 };
 pub use implementor_rows::{ImplementorRow, ImplementorRows};
 pub use imported_bindings::ImportedBindings;

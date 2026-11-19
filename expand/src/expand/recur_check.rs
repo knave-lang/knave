@@ -65,13 +65,9 @@ impl RecurCheck {
             ExprKind::Recur(arguments) => self.recur(expr, arguments, position),
             ExprKind::Assoc(path) | ExprKind::SetAt(path) => self.keyed(path),
             ExprKind::MapAt(_, value, arguments) => {
-                self.expr(value, TailPosition::NotTail)?;
-                self.arguments(arguments.iter())
+                self.arguments(std::iter::once(value.as_ref()).chain(arguments))
             }
-            ExprKind::PushAt(target, item) => {
-                self.expr(target, TailPosition::NotTail)?;
-                self.arguments(std::iter::once(item.as_ref()))
-            }
+            ExprKind::PushAt(target, item) => self.arguments([target.as_ref(), item.as_ref()]),
             _ => self.constructed_value(kind),
         }
     }

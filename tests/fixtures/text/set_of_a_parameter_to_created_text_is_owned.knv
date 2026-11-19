@@ -1,0 +1,6 @@
+(defn append (s)
+  (set! s (str s "x"))
+  s)
+
+(defn main ()
+  (println (append (str "box"))))

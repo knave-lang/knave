@@ -4,6 +4,6 @@ expression: report
 input_file: tests/fixtures/text/mutable_parameter_is_written_mutable.knv
 ---
 defn reset!
-  name: a view, written mutable
+  name: owned, written mutable
 defn main
   local n: owned

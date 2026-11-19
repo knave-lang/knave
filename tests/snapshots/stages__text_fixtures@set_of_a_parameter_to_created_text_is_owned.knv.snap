@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/set_of_a_parameter_to_created_text_is_owned.knv
+---
+defn append
+  s: owned
+  result: owned

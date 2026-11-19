@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/set_of_a_local_stores_the_parameter_it_takes.knv
+---
+defn keep
+  name: owned
+  local word: owned

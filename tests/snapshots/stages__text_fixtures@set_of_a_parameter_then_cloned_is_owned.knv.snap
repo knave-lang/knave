@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/set_of_a_parameter_then_cloned_is_owned.knv
+---
+defn greeter!
+  name: owned, written mutable
+  local value: owned
+defn main
+  local n: owned

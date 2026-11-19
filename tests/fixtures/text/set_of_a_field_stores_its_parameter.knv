@@ -1,0 +1,10 @@
+(defstruct cell
+  :label string)
+
+(defn rename! (cell label)
+  (set! (field cell label) label))
+
+(defn main ()
+  (local c (->cell (str "seed")))
+  (rename! c (str "grown"))
+  (println (:label c)))

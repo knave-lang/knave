@@ -1,0 +1,30 @@
+(enum label-error (text str))
+
+(defn checked (count)
+  (if (> count 0)
+    (ok count)
+    (err (str "bad " count))))
+
+(defn guarded (count)
+  (local attempt
+    (fn ()
+      (do
+        (local value (try (checked count)))
+        (ok value))))
+  (match (attempt)
+    ((ok value) (ok value))
+    ((err _reason) (err "failed"))))
+
+(defn parsed (count)
+  (if (> count 0) (ok count) (err "bad")))
+
+(type relabeled
+  (fn (int) (result int label-error)))
+
+(defn relabeled (count)
+  (local value (try (parsed count)))
+  (ok value))
+
+(defn main ()
+  (println (ok? (guarded 2))
+           (ok? (relabeled 2))))

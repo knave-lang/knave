@@ -14,6 +14,13 @@ impl TypePath {
         Self(parts)
     }
 
+    pub fn below(&self, part: usize) -> Option<Self> {
+        match self.0.split_first() {
+            Some((first, rest)) if *first == part => Some(Self(rest.to_vec())),
+            _ => None,
+        }
+    }
+
     pub fn joined(&self, inner: &Self) -> Self {
         Self(self.0.iter().chain(&inner.0).copied().collect())
     }
@@ -36,6 +43,14 @@ mod tests {
         let outer = TypePath::default().child(1);
         let inner = TypePath::default().child(0);
         assert_eq!(outer.joined(&inner).to_string(), "[1][0]");
+    }
+
+    #[test]
+    fn a_path_below_its_first_part_drops_that_part() {
+        let path = TypePath::default().child(1).child(0);
+        assert_eq!(path.below(1), Some(TypePath::default().child(0)));
+        assert_eq!(path.below(0), None);
+        assert_eq!(TypePath::default().below(0), None);
     }
 
     #[test]

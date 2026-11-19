@@ -1,0 +1,20 @@
+(type read-name
+  (fn ((ref str))
+    (result string io-error)))
+
+(defn read-name (path)
+  (local text (try (slurp path)))
+  (ok text))
+
+(defn checked (count)
+  (if (> count 0)
+    (ok count)
+    (err (str "bad " count))))
+
+(defn doubled (count)
+  (local value (try (checked count)))
+  (ok (* value 2)))
+
+(defn main ()
+  (println (ok? (read-name "name.txt"))
+           (ok? (doubled 2))))

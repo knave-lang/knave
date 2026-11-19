@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/assoc_stores_its_key_and_item.knv
+---
+defn main
+  local counts[0]: mixed, written a view
+  local counted[0]: mixed, written a view
+  local labels[1]: mixed, written a view
+  local relabeled[1]: mixed, written a view
+  local names[0]: mixed, written a view
+  local renamed[0]: mixed, written a view

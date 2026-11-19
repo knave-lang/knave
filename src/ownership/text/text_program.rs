@@ -5,7 +5,7 @@ use super::text_traits::TextTraits;
 use crate::core::{BindingId, BindingKind};
 use crate::modules::ModuleSources;
 use crate::types::{
-    StructDefinition, Type, TypedDefinition, TypedModule, TypedProgram, VariantPayload,
+    Collection, StructDefinition, Type, TypedDefinition, TypedModule, TypedProgram, VariantPayload,
 };
 
 pub struct TextProgram<'p> {
@@ -69,6 +69,10 @@ impl<'p> TextProgram<'p> {
                 .position(|param| param.id == *generic),
             _ => None,
         }
+    }
+
+    pub fn collection_of(&self, ty: &Type) -> Option<Collection> {
+        Collection::of(ty, self.program.declarations.types().rust_types())
     }
 
     pub fn traits(&self) -> TextTraits<'p> {

@@ -1,5 +1,6 @@
 use rustc_hash::FxHashSet;
 
+use super::assoc_flows::AssocFlows;
 use super::call_flows::CallFlows;
 use super::reaching_text::ReachingText;
 use super::slot::Slot;
@@ -10,12 +11,13 @@ use super::text_position::TextPositions;
 use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
+use super::try_flows::TryFlows;
 use super::type_path::TypePath;
 use super::walk_context::WalkContext;
 use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
-    FieldOrder, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
+    FieldOrder, TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 pub struct BodyFlows<'b, 'p> {
@@ -24,6 +26,7 @@ pub struct BodyFlows<'b, 'p> {
     function: BindingId,
     parameters: Vec<BindingId>,
     opaque: FxHashSet<BindingId>,
+    closures: usize,
 }
 
 impl<'b, 'p> BodyFlows<'b, 'p> {
@@ -38,6 +41,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             function,
             parameters: Vec::new(),
             opaque: FxHashSet::default(),
+            closures: 0,
         }
     }
 
@@ -71,7 +75,12 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             TypedExprKind::Variant(binding, payloads, order) => {
                 self.variant((*binding, order), payloads, expr)
             }
-            _ => self.discarded(expr.children()),
+            TypedExprKind::Try { value, conversion } => self.tried(value, *conversion, expr),
+            TypedExprKind::Infer(_) => {
+                TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
+            }
+            TypedExprKind::Assoc(base, keys, item) => self.associated(base, (keys, item), expr),
+            TypedExprKind::TraitObject(inner, _) => self.discarded(inner),
         }
     }
 
@@ -145,7 +154,9 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     fn closure(&mut self, lambda: &TypedLambda) -> TextValue {
         self.opaque
             .extend(lambda.params.iter().map(|parameter| parameter.binding));
+        self.closures += 1;
         self.block(&lambda.body);
+        self.closures -= 1;
         TextValue::default()
     }
 
@@ -252,10 +263,34 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         self.slot_value(&SlotOwner::Value(expr.span), expr, Transfer::Move)
     }
 
-    fn discarded(&mut self, children: Vec<&TypedExpr>) -> TextValue {
-        for child in children {
-            self.value(child);
+    fn tried(
+        &mut self,
+        value: &TypedExpr,
+        conversion: TryErrorConversion,
+        expr: &TypedExpr,
+    ) -> TextValue {
+        let tried = self.value(value);
+        let mut flows = TryFlows::new(&mut self.context, expr.span);
+        if conversion == TryErrorConversion::Identity && self.closures == 0 {
+            flows.propagate(&tried, &SlotOwner::Result(self.function));
         }
+        flows.payload(&tried)
+    }
+
+    fn associated(
+        &mut self,
+        base: &TypedExpr,
+        (keys, item): (&[TypedExpr], &TypedExpr),
+        expr: &TypedExpr,
+    ) -> TextValue {
+        let base = self.value(base);
+        let keys: Vec<TextValue> = keys.iter().map(|key| self.value(key)).collect();
+        let item = self.value(item);
+        AssocFlows::new(&mut self.context, expr).value(&base, (&keys, &item))
+    }
+
+    fn discarded(&mut self, inner: &TypedExpr) -> TextValue {
+        self.value(inner);
         TextValue::default()
     }
 }

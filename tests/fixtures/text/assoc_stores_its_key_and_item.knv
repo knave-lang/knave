@@ -1,0 +1,13 @@
+(defn main ()
+  (local counts (sorted-map "A" 0))
+  (local counted
+    (assoc counts (as-str (str "B" 1)) 1))
+  (local labels (sorted-map 1 "one"))
+  (local relabeled
+    (assoc labels 2 (as-str (str "two" 1))))
+  (local names (vec "a"))
+  (local renamed
+    (assoc names 0 (as-str (str "b" 1))))
+  (println (len counted)
+           (len relabeled)
+           (len renamed)))

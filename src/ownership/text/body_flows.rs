@@ -17,8 +17,8 @@ use super::type_path::TypePath;
 use super::walk_context::WalkContext;
 use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
-    Borrow, FieldOrder, TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem,
-    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
+    FieldOrder, TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 pub struct BodyFlows<'b, 'p> {
@@ -93,20 +93,15 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     ) -> TextValue {
         let values: Vec<TextValue> = arguments
             .iter()
-            .map(|argument| self.argument(argument))
+            .map(|argument| {
+                self.value(&argument.value)
+                    .transferred(Transfer::passing(&argument.borrow))
+            })
             .collect();
         if !matches!(callee.kind, TypedExprKind::Leaf(_)) {
             self.value(callee);
         }
         CallFlows::new(&mut self.context, expr, &values).value(callee)
-    }
-
-    fn argument(&mut self, argument: &TypedArgument) -> TextValue {
-        let value = self.value(&argument.value);
-        match argument.borrow {
-            Borrow::Deref(_) => value.transferred(Transfer::Lend),
-            _ => value,
-        }
     }
 
     fn result_type(&self) -> Option<Type> {
@@ -231,7 +226,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             }
             TypedStructExpr::Field(owner, label) => {
                 self.value(owner);
-                match self.context.program().structure_of(&owner.ty) {
+                match self.context.program().types().structure_of(&owner.ty) {
                     Some((binding, _)) => {
                         let field = SlotOwner::Field(binding, label.name.clone());
                         self.slot_value(&field, expr, Transfer::Refer)
@@ -260,7 +255,12 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         for (written, payload) in payloads.iter().enumerate() {
             let field = order.field_of(written);
             let value = self.value(payload);
-            let slot = match self.context.program().payload_argument(binding, field) {
+            let slot = match self
+                .context
+                .program()
+                .types()
+                .payload_argument(binding, field)
+            {
                 Some(argument) => Slot::new(
                     SlotOwner::Value(expr.span),
                     TypePath::default().child(argument),

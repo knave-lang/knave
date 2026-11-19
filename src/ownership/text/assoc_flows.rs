@@ -56,6 +56,7 @@ impl<'c, 'w, 'p> AssocFlows<'c, 'w, 'p> {
     fn is_map(&self) -> bool {
         self.context
             .program()
+            .types()
             .collection_of(&self.assoc.ty)
             .is_some_and(|collection| collection.is_map())
     }

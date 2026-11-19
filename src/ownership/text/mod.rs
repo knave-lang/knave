@@ -41,6 +41,7 @@ mod text_read;
 mod text_refusals;
 mod text_report;
 mod text_traits;
+mod text_types;
 mod text_value;
 mod text_walk;
 mod transfer;

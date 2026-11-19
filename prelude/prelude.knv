@@ -90,7 +90,7 @@
         println prn push! quote range read-line recur reduce
         ref rem remove-at! result reverse reverse! run-tests
         rust rust-trait rust-type second sequence set!
-        set-at show signed slice slurp some some? sort!
+        set-at! show signed slice slurp some some? sort!
         sort-by! sorted-map source split sqrt starts-with?
         stdin str str string struct subs sum take take-while
         template the then-ok then-some trait trim true try
@@ -277,13 +277,13 @@
   (map-at get (vec 1 2) 1)
   => (some (ref 2))")
 
-(document (set-at value (key ...) item)
+(document (set-at! value (key ...) item)
   "Assigns the item at a path of keys inside a place.
 
   It emits an assignment. [set!] expands to it.
 
   (let (items (vec 1 2))
-    (set-at items (0) 9)
+    (set-at! items (0) 9)
     items)
   => (vec 9 2)")
 

@@ -23,10 +23,7 @@ pub enum ExpressionForm {
     Control(ControlForm),
     Struct(StructForm),
     Match,
-    Assoc,
-    MapAt,
-    PushAt,
-    SetAt,
+    Collection(CollectionForm),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -39,6 +36,14 @@ pub enum LeafForm {
 pub enum ControlForm {
     Do,
     If,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CollectionForm {
+    Assoc,
+    MapAt,
+    PushAt,
+    SetAt,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -121,22 +126,22 @@ impl KernelForm {
             shape: "(match value (pattern body ...) ...)",
         },
         KernelFormRow {
-            form: KernelForm::Expression(ExpressionForm::Assoc),
+            form: KernelForm::Expression(ExpressionForm::Collection(CollectionForm::Assoc)),
             name: "assoc-at",
             shape: "(assoc-at value (key ...) item)",
         },
         KernelFormRow {
-            form: KernelForm::Expression(ExpressionForm::MapAt),
+            form: KernelForm::Expression(ExpressionForm::Collection(CollectionForm::MapAt)),
             name: "map-at",
             shape: "(map-at operation value argument ...)",
         },
         KernelFormRow {
-            form: KernelForm::Expression(ExpressionForm::PushAt),
+            form: KernelForm::Expression(ExpressionForm::Collection(CollectionForm::PushAt)),
             name: "push-at!",
             shape: "(push-at! target item)",
         },
         KernelFormRow {
-            form: KernelForm::Expression(ExpressionForm::SetAt),
+            form: KernelForm::Expression(ExpressionForm::Collection(CollectionForm::SetAt)),
             name: "set-at!",
             shape: "(set-at! value (key ...) item)",
         },

@@ -61,8 +61,8 @@ pub use expr::{
 pub use implementor_rows::{ImplementorRow, ImplementorRows};
 pub use imported_bindings::ImportedBindings;
 pub use kernel::{
-    ControlForm, DefinitionForm, ExpressionForm, FunctionFieldTraits, KernelConstants, KernelForm,
-    KernelType, LeafForm, ReferenceKind, StructDerives, StructForm,
+    CollectionForm, ControlForm, DefinitionForm, ExpressionForm, FunctionFieldTraits,
+    KernelConstants, KernelForm, KernelType, LeafForm, ReferenceKind, StructDerives, StructForm,
 };
 pub use keyword::Keyword;
 pub use lint_facts::{Import, ImportedName, LintFacts, Provenance, WrittenName, WrittenUse};

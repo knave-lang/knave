@@ -9000,6 +9000,22 @@ fn new_writes_a_workflow_that_skips_a_commented_version() {
 }
 
 #[test]
+fn new_writes_a_workflow_that_skips_a_comment_after_the_version() {
+    let sandbox = Sandbox::new("new_workflow_trailing_comment");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let sandbox = sandbox.with_file(
+        "demo-app/project.knv",
+        "(defproject demo-app :knave \"0.19.0\") ; was :knave \"0.18.0\"\n",
+    );
+    assert_eq!(
+        sandbox.run_version_step("demo-app"),
+        (true, "KNAVE_VERSION=0.19.0\n".to_string(), String::new())
+    );
+}
+
+#[test]
 fn new_writes_a_workflow_that_fails_on_two_recorded_versions() {
     let sandbox = Sandbox::new("new_workflow_two_versions");
     sandbox

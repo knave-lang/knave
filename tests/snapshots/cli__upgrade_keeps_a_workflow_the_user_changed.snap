@@ -31,7 +31,7 @@ Knave's changes since <version>
        - uses: actions/checkout@v4
 +      - name: Read the Knave version from project.knv
 +        run: |
-+          versions=$(grep -v '^[[:space:]]*;' project.knv | grep -o ':knave "[^"]*"' | cut -d '"' -f 2 || true)
++          versions=$(grep -v '^[[:space:]]*;' project.knv | grep -o ':knave "[^"]*".*' | cut -d '"' -f 2 || true)
 +          test -n "$versions" || { echo "::error file=project.knv::project.knv records no :knave version"; exit 1; }
 +          test "$(echo "$versions" | wc -l)" -eq 1 || { echo "::error file=project.knv::project.knv records more than one :knave version"; exit 1; }
 +          echo "KNAVE_VERSION=$versions" >> "$GITHUB_ENV"

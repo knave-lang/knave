@@ -13,4 +13,5 @@ pub enum SlotOwner {
     Variable(Span, GenericId),
     Value(Span),
     Argument(Span),
+    Written(Span),
 }

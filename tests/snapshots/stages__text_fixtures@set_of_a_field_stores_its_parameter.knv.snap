@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/set_of_a_field_stores_its_parameter.knv
+---
+struct cell
+  label: owned
+defn rename!
+  label: owned

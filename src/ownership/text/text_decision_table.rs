@@ -148,6 +148,18 @@ mod tests {
     }
 
     #[test]
+    fn a_parameter_a_write_changes_takes_its_callers_text() {
+        let written = SlotOwner::Written(FlowFixture::span(60));
+        let flows = FlowFixture::default()
+            .text(ReachingText::STATIC, (FlowFixture::PARAMETER, 0))
+            .united(FlowFixture::PARAMETER, written);
+        assert_eq!(
+            flows.representation(FlowFixture::PARAMETER),
+            Representation::StaticView
+        );
+    }
+
+    #[test]
     fn a_read_only_parameter_passes_on_a_view_not_its_callers_text() {
         let flows = FlowFixture::default()
             .text(ReachingText::OWNED, (FlowFixture::PARAMETER, 0))

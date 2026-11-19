@@ -35,6 +35,9 @@ impl<'t> Instantiation<'t> {
             Type::Ref(_, inner) => {
                 Self::whole_generic_of(inner).map(|(generic, _)| (generic, Access::Referenced))
             }
+            Type::Mut(_, inner) => {
+                Self::whole_generic_of(inner).map(|(generic, _)| (generic, Access::Mutable))
+            }
             _ => None,
         }
     }

@@ -102,10 +102,30 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         if !value.sources().is_empty() && target.scheme().needs_owned_text(generic, traits) {
             self.context.require(variable.clone(), Need::OwnedOrMixed);
         }
-        self.pour(
-            &variable,
-            &value.clone().transferred(Transfer::lending(access)),
-        );
+        match access {
+            Access::Mutable => self.write(variable, value),
+            Access::Direct | Access::Referenced => self.pour(
+                &variable,
+                &value.clone().transferred(Transfer::lending(access)),
+            ),
+        }
+    }
+
+    fn write(&mut self, variable: Slot, place: &TextValue) {
+        let written = self
+            .context
+            .node(Slot::from(SlotOwner::Written(self.call.span)));
+        let changed = self.context.node(variable.clone());
+        self.context.unite(written, changed);
+        for (source, _, _) in place.sources() {
+            if let Source::Slot(node) = source {
+                self.context.unite(changed, *node);
+            }
+        }
+        for (path, nested) in place.nested() {
+            let inner = self.context.node(variable.nested(path));
+            self.context.unite(inner, *nested);
+        }
     }
 
     fn argument_position(

@@ -1,0 +1,9 @@
+(defn greeter! (name)
+  (set! name (str "pear"))
+  (local value (clone name))
+  (println value))
+
+(defn main ()
+  (local n (str "a" 1))
+  (greeter! n)
+  (println n))

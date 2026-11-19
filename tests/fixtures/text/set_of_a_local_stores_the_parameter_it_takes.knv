@@ -1,0 +1,6 @@
+(defn keep (name)
+  (local word (str "x" 1))
+  (set! word name)
+  (println word))
+
+(defn main () (keep (str "y" 1)))

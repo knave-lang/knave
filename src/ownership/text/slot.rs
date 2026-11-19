@@ -29,7 +29,7 @@ impl Slot {
     }
 
     pub fn is_stored_place(&self) -> bool {
-        matches!(self.owner, SlotOwner::Field(..))
+        matches!(self.owner, SlotOwner::Field(..) | SlotOwner::Written(_))
     }
 
     pub fn is_variable(&self) -> bool {
@@ -53,7 +53,10 @@ impl Slot {
             SlotOwner::Result(_) => "result".to_string(),
             SlotOwner::Local(binding) => format!("local {}", names.name(*binding)),
             SlotOwner::Field(_, name) => name.to_string(),
-            SlotOwner::Variable(..) | SlotOwner::Value(_) | SlotOwner::Argument(_) => String::new(),
+            SlotOwner::Variable(..)
+            | SlotOwner::Value(_)
+            | SlotOwner::Argument(_)
+            | SlotOwner::Written(_) => String::new(),
         }
     }
 }

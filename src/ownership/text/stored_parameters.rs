@@ -62,7 +62,7 @@ impl<'g> StoredParameters<'g> {
 
     fn reaches_storage(&self, start: NodeId, stored: &FxHashSet<BindingId>) -> bool {
         let mut seen = FxHashSet::default();
-        let mut pending: Vec<NodeId> = self.moves.get(&start).cloned().unwrap_or_default();
+        let mut pending = vec![start];
         while let Some(class) = pending.pop() {
             if self.stores(class, stored) {
                 return true;

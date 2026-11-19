@@ -41,6 +41,8 @@ const VERSION_CHECKED_COMMANDS: [&[&str]; 4] =
     [&["fmt"], &["lint"], &["build"], &["task", "hello"]];
 const OLDER_COMPILER_ERROR: &str = "error[L0736]";
 const NEWER_COMPILER_WARNING: &str = "warning[L0737]";
+const RELEASED_TEXTS_VERSION: &str = "0.18.0";
+const VERSION_MASK: &str = "<version>";
 const RELEASED_SKILL: &str =
     include_str!("../src/cli/earlier_texts/skills/writing-knave/SKILL.md/0.18.0");
 const RELEASED_WORKFLOW: &str =
@@ -506,7 +508,11 @@ exit 101
     }
 
     fn without_version(text: &str) -> String {
-        text.replace(env!("CARGO_PKG_VERSION"), "<version>")
+        [env!("CARGO_PKG_VERSION"), RELEASED_TEXTS_VERSION]
+            .into_iter()
+            .fold(text.to_string(), |text, version| {
+                text.replace(version, VERSION_MASK)
+            })
     }
 
     fn files_with_contents(&self, directory: &str) -> Vec<(String, String)> {

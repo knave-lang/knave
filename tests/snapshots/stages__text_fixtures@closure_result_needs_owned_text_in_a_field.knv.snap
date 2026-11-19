@@ -1,9 +1,9 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/text/closure_result_needs_owned_text_in_a_field.knv
 ---
 struct user
   name: owned
 needs owned text
-  text/closure_result_needs_owned_text_in_a_field.knv:6:28
+  text/closure_result_needs_owned_text_in_a_field.knv:6:28, by a stated limit

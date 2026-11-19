@@ -76,8 +76,10 @@ impl Representation {
     pub fn refuses(self, arriving: ReachingText) -> bool {
         match self {
             Self::Owned | Self::Mixed => arriving.is_short_lived(),
-            Self::Lent => arriving.holds(ReachingText::STATIC.with(ReachingText::BORROWED)),
-            Self::LentMixed => arriving.holds(ReachingText::BORROWED),
+            Self::Lent => {
+                arriving.holds(ReachingText::STATIC.with(ReachingText::SHORT_LIVED_VIEWS))
+            }
+            Self::LentMixed => arriving.holds(ReachingText::SHORT_LIVED_VIEWS),
             Self::View | Self::StaticView => false,
         }
     }
@@ -239,6 +241,7 @@ mod tests {
     fn a_lent_mixed_parameter_refuses_only_borrowed_callers() {
         assert!(Representation::LentMixed.refuses(BORROWED));
         assert!(!Representation::LentMixed.refuses(STATIC));
+        assert!(Representation::LentMixed.refuses(ReachingText::ASSUMED));
     }
 
     #[test]

@@ -2,6 +2,7 @@ use super::flow_graph::FlowGraph;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
+use super::refusal::RefusalCause;
 use super::representation::Representation;
 use super::slot::Slot;
 use super::slot_classes::SlotClasses;
@@ -75,13 +76,22 @@ impl FlowFixture {
     }
 
     pub fn refused_at(&self) -> Vec<usize> {
+        self.refusals_where(|_| true)
+    }
+
+    pub fn refused_by_a_stated_limit_at(&self) -> Vec<usize> {
+        self.refusals_where(|cause| cause == RefusalCause::StatedLimit)
+    }
+
+    fn refusals_where(&self, wanted: impl Fn(RefusalCause) -> bool) -> Vec<usize> {
         let classes = SlotClasses::of(&self.graph);
         let facts = TextFacts::spread(&classes);
         let table = TextDecisionTable::decide(&self.graph, &classes, &facts);
         TextRefusals::new(&classes, &facts, &table)
             .found()
             .into_iter()
-            .map(|flow| flow.span.range().start)
+            .filter(|refusal| wanted(refusal.cause))
+            .map(|refusal| refusal.flow.span.range().start)
             .collect()
     }
 

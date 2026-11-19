@@ -7,6 +7,8 @@ impl ReachingText {
     pub const STATIC: Self = Self(1 << 1);
     pub const BORROWED: Self = Self(1 << 2);
     pub const LENT: Self = Self(1 << 3);
+    pub const ASSUMED: Self = Self(1 << 4);
+    pub const SHORT_LIVED_VIEWS: Self = Self(Self::BORROWED.0 | Self::ASSUMED.0);
 
     pub fn with(self, other: Self) -> Self {
         Self(self.0 | other.0)
@@ -21,7 +23,7 @@ impl ReachingText {
     }
 
     pub fn is_short_lived(self) -> bool {
-        self.holds(Self::BORROWED.with(Self::LENT))
+        self.holds(Self::SHORT_LIVED_VIEWS.with(Self::LENT))
     }
 
     pub fn is_only(self, kinds: Self) -> bool {
@@ -36,6 +38,11 @@ mod tests {
     #[test]
     fn a_lent_value_is_short_lived() {
         assert!(ReachingText::LENT.is_short_lived());
+    }
+
+    #[test]
+    fn an_assumed_view_is_short_lived() {
+        assert!(ReachingText::ASSUMED.is_short_lived());
     }
 
     #[test]

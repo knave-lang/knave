@@ -9,7 +9,7 @@ pub struct ShortLivedText;
 impl ShortLivedText {
     pub fn of(expr: &TypedExpr) -> TextValue {
         if TextPositions::holds_top_text(&expr.ty) {
-            TextValue::from(Source::Text(ReachingText::BORROWED), expr.span)
+            TextValue::from(Source::Text(ReachingText::ASSUMED), expr.span)
         } else {
             TextValue::default()
         }

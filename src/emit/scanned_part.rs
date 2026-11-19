@@ -103,3 +103,34 @@ impl MarkerSearch {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::ScannedPart;
+    use crate::emit::emitted_code::EmittedCode;
+    use crate::emit::runtime_part::RuntimePart;
+
+    struct SignalScan;
+
+    impl SignalScan {
+        fn finds(code: &str) -> bool {
+            ScannedPart::ALL
+                .iter()
+                .find(|scanned| scanned.part() == RuntimePart::Signal)
+                .expect("the signal part is scanned")
+                .found_in(&EmittedCode::new(code), &BTreeSet::new())
+        }
+    }
+
+    #[test]
+    fn a_stream_call_brings_the_signal_part() {
+        assert!(SignalScan::finds("print!(\"a\")"));
+    }
+
+    #[test]
+    fn a_stream_marker_inside_a_longer_name_brings_nothing() {
+        assert!(!SignalScan::finds("sprint!(\"a\")"));
+    }
+}

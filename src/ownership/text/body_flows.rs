@@ -2,6 +2,7 @@ use rustc_hash::FxHashSet;
 
 use super::assoc_flows::AssocFlows;
 use super::call_flows::CallFlows;
+use super::construction_flows::ConstructionFlows;
 use super::reaching_text::ReachingText;
 use super::short_lived_text::ShortLivedText;
 use super::slot::Slot;
@@ -13,7 +14,6 @@ use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::try_flows::TryFlows;
-use super::type_path::TypePath;
 use super::walk_context::WalkContext;
 use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
@@ -49,12 +49,13 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     pub fn walk(mut self, lambda: &TypedLambda) {
         for parameter in &lambda.params {
             self.parameters.push(parameter.binding);
-            self.list(&SlotOwner::Parameter(parameter.binding), &parameter.ty);
+            self.listing
+                .list(&SlotOwner::Parameter(parameter.binding), &parameter.ty);
         }
         let value = self.block(&lambda.body);
         if let Some(result) = self.result_type() {
             let owner = SlotOwner::Result(self.function);
-            self.list(&owner, &result);
+            self.listing.list(&owner, &result);
             self.context.receive(&Slot::from(owner), &value);
         }
     }
@@ -122,10 +123,6 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         }
     }
 
-    fn list(&mut self, owner: &SlotOwner, ty: &Type) {
-        self.listing.list(owner, ty);
-    }
-
     fn leaf(&mut self, leaf: &TypedLeaf, expr: &TypedExpr) -> TextValue {
         match leaf {
             TypedLeaf::Literal(Literal::String(_)) => {
@@ -151,16 +148,12 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         } else {
             SlotOwner::Local(binding)
         };
-        self.slot_value(&owner, expr, Transfer::Move)
-    }
-
-    fn slot_value(&mut self, owner: &SlotOwner, expr: &TypedExpr, transfer: Transfer) -> TextValue {
         let read = TextRead {
             ty: &expr.ty,
             span: expr.span,
-            transfer,
+            transfer: Transfer::Move,
         };
-        self.context.read(owner, read)
+        self.context.read(&owner, read)
     }
 
     fn closure(&mut self, lambda: &TypedLambda) -> TextValue {
@@ -197,7 +190,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         let value = self.value(init);
         if TextPositions::holds_text(ty) {
             let owner = SlotOwner::Local(binding);
-            self.list(&owner, ty);
+            self.listing.list(&owner, ty);
             self.context.receive(&Slot::from(owner), &value);
         }
         TextValue::default()
@@ -227,31 +220,29 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
 
     fn structure(&mut self, structure: &TypedStructExpr, expr: &TypedExpr) -> TextValue {
         match structure {
-            TypedStructExpr::New(binding, fields) => self.fields(*binding, fields),
+            TypedStructExpr::New(binding, fields) => self.fields(*binding, fields, expr),
             TypedStructExpr::Update(binding, base, fields) => {
                 self.value(base);
-                self.fields(*binding, fields)
+                self.fields(*binding, fields, expr)
             }
             TypedStructExpr::Field(owner, label) => {
                 self.value(owner);
-                match self.context.program().types().structure_of(&owner.ty) {
-                    Some((binding, _)) => {
-                        let field = SlotOwner::Field(binding, label.name.clone());
-                        self.slot_value(&field, expr, Transfer::Refer)
-                    }
-                    None => TextValue::default(),
-                }
+                ConstructionFlows::new(&mut self.context, expr).field_read(&owner.ty, label)
             }
         }
     }
 
-    fn fields(&mut self, binding: BindingId, fields: &[(FieldLabel, TypedExpr)]) -> TextValue {
-        for (label, value) in fields {
-            let value = self.value(value);
-            let owner = SlotOwner::Field(binding, label.name.clone());
-            self.context.receive(&Slot::from(owner), &value);
-        }
-        TextValue::default()
+    fn fields(
+        &mut self,
+        binding: BindingId,
+        fields: &[(FieldLabel, TypedExpr)],
+        expr: &TypedExpr,
+    ) -> TextValue {
+        let values: Vec<(&FieldLabel, TextValue)> = fields
+            .iter()
+            .map(|(label, value)| (label, self.value(value)))
+            .collect();
+        ConstructionFlows::new(&mut self.context, expr).fields(binding, &values)
     }
 
     fn variant(
@@ -260,24 +251,12 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         payloads: &[TypedExpr],
         expr: &TypedExpr,
     ) -> TextValue {
-        for (written, payload) in payloads.iter().enumerate() {
-            let field = order.field_of(written);
-            let value = self.value(payload);
-            let slot = match self
-                .context
-                .program()
-                .types()
-                .payload_argument(binding, field)
-            {
-                Some(argument) => Slot::new(
-                    SlotOwner::Value(expr.span),
-                    TypePath::default().child(argument),
-                ),
-                None => Slot::from(SlotOwner::Field(binding, field.to_string().into())),
-            };
-            self.context.receive(&slot, &value);
-        }
-        self.slot_value(&SlotOwner::Value(expr.span), expr, Transfer::Move)
+        let values: Vec<(usize, TextValue)> = payloads
+            .iter()
+            .enumerate()
+            .map(|(written, payload)| (order.field_of(written), self.value(payload)))
+            .collect();
+        ConstructionFlows::new(&mut self.context, expr).variant(binding, &values)
     }
 
     fn tried(

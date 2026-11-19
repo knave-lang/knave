@@ -30,7 +30,7 @@ The workflow holds no version. Its first step reads `:knave` from `project.knv`,
     echo "KNAVE_VERSION=$versions" >> "$GITHUB_ENV"
 ```
 
-`knave upgrade` records the running compiler in `:knave`, then visits each owned file. A missing file stays missing. A file that holds a text some Knave release wrote, for any version, is rewritten. Any other text is the user's change: the command keeps it and prints a unified diff. The compiler embeds the earlier texts of its templates, so it tells the two cases apart with no state on the user's machine.
+`knave upgrade` records the running compiler in `:knave`, then visits each owned file. A missing file stays missing. A file that holds a text some Knave release wrote, for any version, is rewritten. Any other text is the user's change: the command keeps it and prints two diffs. The compiler embeds the earlier texts of its templates, so it tells the two cases apart with no state on the user's machine.
 
 ### B: a `.knave-version` file, and `knave update` that overwrites under git
 
@@ -51,10 +51,12 @@ The project owner decided on 2026-11-18:
 - **D125.** The workflow reads the Knave version from one project file, and a command rewrites the files Knave owns. The command is not `init`.
 - **D126.** The version is `:knave "0.18.0"` in `defproject`. A compiler older than `:knave` is an error with a `cargo install knave --version <v> --locked` help. A newer compiler is a warning with a `knave upgrade` help. Every command that finds the project reports it, and only `knave upgrade` clears the warning.
 - **D127.** The command is `knave upgrade`. It records the running compiler in `:knave`. It rewrites each owned file that holds a text some Knave release wrote. It keeps a changed file with a warning and a unified diff, and exits 0. It never creates a missing file, and it touches nothing else.
+- When `knave upgrade` keeps a file, it prints two diffs from the released text closest to the user's file: the user's changes, then Knave's changes since that release.
+- A kept file's base is named by the version that its filled slot holds.
 - A project without `:knave` gets no version check, and `knave upgrade` adds the key.
 - A compiler older than `:knave` refuses to lower it in `knave upgrade`, with the same install help.
+- A well-formed `:knave` above the running compiler reports `L0736` alone, in place of every other problem of the root project file.
 - The template history holds only texts that a release wrote. `cargo xtask prepush` checks each kept text against the template at its release's tag, and takes the latest `v*` tag reachable from `HEAD` as the release a change must keep.
-- A kept file prints two diffs from the closest text a release wrote: the user's changes, then Knave's changes since.
 - `knave upgrade` takes no flag. Adding a skipped component later and a `setup-knave` action are out of scope.
 
 ## Rejected options and why

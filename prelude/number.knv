@@ -394,7 +394,7 @@
   (neg 5)
   => -5
 
-  (collect (map (iter (vec 1 2)) neg))
+  (-> (vec 1 2) iter (map neg) collect)
   => (vec -1 -2)")
 
 (document (sqrt value)
@@ -546,7 +546,7 @@
   (inc 1.5)
   => 2.5
 
-  (collect (map (iter (vec 1 2)) inc))
+  (-> (vec 1 2) iter (map inc) collect)
   => (vec 2 3)")
 
 (document (dec number)
@@ -558,7 +558,7 @@
   (dec 3)
   => 2
 
-  (collect (map (iter (vec 1 2)) dec))
+  (-> (vec 1 2) iter (map dec) collect)
   => (vec 0 1)")
 
 (document (zero? number)
@@ -624,5 +624,5 @@
   (odd? -3)
   => true
 
-  (count (filter (iter (vec 1 2 3)) odd?))
+  (-> (vec 1 2 3) iter (filter odd?) count)
   => 2")

@@ -149,11 +149,11 @@
   A [sorted-map] yields them in key order, and the order of a [hash-map] is
   not fixed. The map stays usable.
 
-  (collect (map (keys (sorted-map \"pear\" 3 \"fig\" 1)) str))
+  (-> (sorted-map \"pear\" 3 \"fig\" 1) keys (map str) collect)
   => (vec (str \"fig\") (str \"pear\"))
 
   (let (prices (sorted-map \"pear\" 3 \"fig\" 1))
-    (collect (map (keys prices) str))
+    (-> prices keys (map str) collect)
     (len prices))
   => 2")
 
@@ -164,7 +164,7 @@
   not fixed. The map stays usable. Each item is a borrow, so
   `(sum (vals map))` is an error, and `(reduce (vals map) 0 +)` adds them.
 
-  (collect (map (vals (sorted-map \"pear\" 3 \"fig\" 1)) str))
+  (-> (sorted-map \"pear\" 3 \"fig\" 1) vals (map str) collect)
   => (vec (str 1) (str 3))
 
   (reduce (vals (sorted-map \"pear\" 3 \"fig\" 1)) 0 +)
@@ -176,8 +176,9 @@
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
   [ord], and the last pair of a repeated key wins.
 
-  (get (into-sorted-map (vec (pair \"pear\" 3) (pair \"pear\" 5)))
-       \"pear\")
+  (-> (vec (pair \"pear\" 3) (pair \"pear\" 5))
+      into-sorted-map
+      (get \"pear\"))
   => (some (ref 5))")
 
 (document (into-hash-map pairs)
@@ -186,6 +187,7 @@
   `pairs` is a `(vec (pair key value))`, and the call moves it. Keys implement
   [hash] and [eq], and the last pair of a repeated key wins.
 
-  (get (into-hash-map (vec (pair \"pear\" 3) (pair \"pear\" 5)))
-       \"pear\")
+  (-> (vec (pair \"pear\" 3) (pair \"pear\" 5))
+      into-hash-map
+      (get \"pear\"))
   => (some (ref 5))")

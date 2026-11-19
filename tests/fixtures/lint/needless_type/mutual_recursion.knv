@@ -1,0 +1,11 @@
+(type ping (fn (int) int))
+
+(defn ping (count)
+  (if (= count 0) 0 (pong (dec count))))
+
+(type pong (fn (int) int))
+
+(defn pong (count)
+  (if (= count 0) 1 (ping (dec count))))
+
+(defn main () (println (ping 4)))

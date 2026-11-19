@@ -1,0 +1,10 @@
+(type factorial (fn (int) int))
+
+(defn factorial (count)
+  (if (= count 0)
+    1
+    (* count (factorial (dec count)))))
+
+(def nothing none)
+
+(export factorial nothing)

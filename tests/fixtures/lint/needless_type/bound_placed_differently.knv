@@ -1,0 +1,10 @@
+(type shout
+  (where ((a display)) (fn (a) unit)))
+
+(defn shout (value)
+  (println value)
+  (println value))
+
+(defn main ()
+  (shout 1)
+  (shout "pear"))

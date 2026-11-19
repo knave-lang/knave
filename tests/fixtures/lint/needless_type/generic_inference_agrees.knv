@@ -1,0 +1,7 @@
+(type identity (where (a) (fn (a) a)))
+
+(defn identity (value) value)
+
+(defn main ()
+  (println (identity 1))
+  (println (identity "pear")))

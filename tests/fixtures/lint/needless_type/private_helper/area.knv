@@ -1,0 +1,7 @@
+(type square (fn (int) int))
+
+(defn square (side) (* side side))
+
+(defn area (side) (square side))
+
+(export area)

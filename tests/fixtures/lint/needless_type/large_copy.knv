@@ -1,0 +1,17 @@
+(defstruct crate
+  :length int
+  :width int
+  :height int
+  :weight int)
+
+(derive crate clone copy)
+
+(type volume (fn ((ref crate)) int))
+
+(defn volume (box)
+  (* (:length box)
+     (:width box)
+     (:height box)))
+
+(defn main ()
+  (println (volume (->crate :length 2 :width 3 :height 4 :weight 9))))

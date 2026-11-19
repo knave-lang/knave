@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/docstring_example.knv
+---
+warning[L0809]: `thrice` does not need its `type` declaration
+  --> lint/needless_type/docstring_example.knv:13:1
+   |
+13 | (type thrice (fn (int) int))
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+   |
+help: remove the declaration
+   |
+13 - (type thrice (fn (int) int))
+   |
+   = note: run `knave doc L0809` for an explanation

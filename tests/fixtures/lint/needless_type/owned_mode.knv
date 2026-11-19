@@ -1,0 +1,10 @@
+(defstruct grid
+  :width int
+  :cells (vec bool))
+
+(type width-of (fn (grid) int))
+
+(defn width-of (field) (:width field))
+
+(defn main ()
+  (println (width-of (->grid :width 3 :cells (vec)))))

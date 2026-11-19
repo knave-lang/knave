@@ -1,9 +1,41 @@
-use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
+use crate::diagnostic::{Diagnostic, DiagnosticCode, Label, Suggestion};
 use crate::source::Span;
 
 pub struct LintProblems;
 
 impl LintProblems {
+    pub fn needless_type(function: &str, span: Span) -> Diagnostic {
+        Self::needless_declaration(function, span, "inference gives this type")
+            .with_suggestion("remove the declaration", Suggestion::new(span, ""))
+    }
+
+    pub fn needless_type_by_value(function: &str, parameters: &[String], span: Span) -> Diagnostic {
+        let named = parameters
+            .iter()
+            .map(|name| format!("`{name}`"))
+            .collect::<Vec<_>>()
+            .join(" and ");
+        let (passes, small) = match parameters {
+            [_] => ("passes", "it is"),
+            _ => ("pass", "they are"),
+        };
+        let label = format!("inference gives this type, except that {named} {passes} by value");
+        Self::needless_declaration(function, span, &label).with_suggestion(
+            format!(
+                "remove the declaration, and {named} {passes} by value, because {small} small enough to copy"
+            ),
+            Suggestion::new(span, ""),
+        )
+    }
+
+    fn needless_declaration(function: &str, span: Span, label: &str) -> Diagnostic {
+        Diagnostic::warning(
+            DiagnosticCode::NEEDLESS_TYPE,
+            format!("`{function}` does not need its `type` declaration"),
+            Label::new(span, label),
+        )
+    }
+
     pub fn outside_rules(name: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::COMPILE_TIME_ERROR,

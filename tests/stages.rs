@@ -3,7 +3,7 @@ mod support;
 use std::collections::BTreeSet;
 use std::fs;
 use std::panic::{self, AssertUnwindSafe};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use knave::cli::ReferencePages;
 use knave::core::KernelForm;
+use knave::language::Language;
 use knave::stack::FreshStack;
 use knave_agree::LeftOutFixtures;
 
@@ -188,6 +189,25 @@ fn lint_fixtures() {
     let reports = FixtureReports::compute(paths, |path| LintFixture::load(path).report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
+            insta::assert_snapshot!(report);
+        }
+    });
+}
+
+#[test]
+fn needless_type_lint_fixtures() {
+    let fixtures = "fixtures/lint/needless_type/*.knv";
+    let project_file = Language::project_file_name();
+    let is_fixture = |path: &Path| path.file_name() != Some(project_file.as_ref());
+    let mut paths = Vec::new();
+    insta::glob!(fixtures, |path| if is_fixture(path) {
+        paths.push(PathBuf::from(path))
+    });
+    let reports = FixtureReports::compute(paths, |path| LintFixture::load(path).report());
+    insta::glob!(fixtures, |path| {
+        if is_fixture(path)
+            && let Some(report) = reports.report(path)
+        {
             insta::assert_snapshot!(report);
         }
     });

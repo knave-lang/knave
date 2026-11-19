@@ -1,0 +1,3 @@
+(use private_helper/area area)
+
+(defn main () (println (area 3)))

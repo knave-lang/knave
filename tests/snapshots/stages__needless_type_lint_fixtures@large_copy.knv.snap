@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/large_copy.knv
+---
+warning[L0809]: `volume` does not need its `type` declaration
+ --> lint/needless_type/large_copy.knv:9:1
+  |
+9 | (type volume (fn ((ref crate)) int))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+  |
+help: remove the declaration
+  |
+9 - (type volume (fn ((ref crate)) int))
+  |
+  = note: run `knave doc L0809` for an explanation

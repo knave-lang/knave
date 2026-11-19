@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/exported_warns.knv
+---
+warning[L0809]: `factorial` does not need its `type` declaration
+ --> lint/needless_type/exported_warns/maths.knv:1:1
+  |
+1 | (type factorial (fn (int) int))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+  |
+help: remove the declaration
+  |
+1 - (type factorial (fn (int) int))
+  |
+  = note: run `knave doc L0809` for an explanation

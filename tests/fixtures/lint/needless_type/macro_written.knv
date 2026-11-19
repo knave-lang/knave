@@ -1,0 +1,8 @@
+(defrule int-function
+  ((name) (type name (fn (int) int))))
+
+(int-function double)
+
+(defn double (x) (* 2 x))
+
+(defn main () (println (double 4)))

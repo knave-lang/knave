@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/needless_type/unused_function.knv
+---
+warning[L0807]: `add` is never used
+ --> lint/needless_type/unused_function.knv:3:7
+  |
+3 | (defn add (left right) (+ left right))
+  |       ^^^ never used
+  |
+  = help: remove the definition, or export it if another module needs it
+  = note: run `knave doc L0807` for an explanation

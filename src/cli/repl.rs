@@ -238,7 +238,7 @@ impl PromptSession {
     }
 
     fn accept(&mut self, terminal: &Terminal, accepted: AcceptedDefinition) {
-        if let Some(denied) = terminal.source_report().denied_lints(&accepted.report) {
+        if let Some(denied) = terminal.source_report().lints().denied(&accepted.report) {
             return self.reject(terminal, &denied, accepted.records);
         }
         self.annotations

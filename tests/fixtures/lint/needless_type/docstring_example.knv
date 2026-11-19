@@ -1,0 +1,26 @@
+(defn twice (x)
+  "Doubles a number.
+
+  (type helper (fn (int) int))
+  (defn helper (n) (* 2 n))
+  (helper 4)
+  => 8
+
+  (twice 3)
+  => 6"
+  (* 2 x))
+
+(type thrice (fn (int) int))
+
+(defn thrice (x)
+  "Triples a number.
+
+  ```
+  (type quad (fn (int) int))
+
+  (defn quad (n) (* 4 n))
+  ```"
+  (* 3 x))
+
+(defn main ()
+  (println (twice (thrice 1))))

@@ -1,0 +1,2 @@
+(defproject needless-type-fixtures
+  (lints (needless-type warn)))

@@ -2,8 +2,8 @@ use crate::project::LintLevel;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum LintSetting {
-    Unwritten,
-    Written(LintLevel),
+    Unset,
+    Level(LintLevel),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -16,22 +16,22 @@ pub struct LintBehavior {
 impl LintSetting {
     pub fn behavior(self) -> LintBehavior {
         match self {
-            Self::Unwritten => LintBehavior {
+            Self::Unset => LintBehavior {
                 shown: true,
                 denied: false,
                 fails_lint: true,
             },
-            Self::Written(LintLevel::Warn) => LintBehavior {
+            Self::Level(LintLevel::Warn) => LintBehavior {
                 shown: true,
                 denied: false,
                 fails_lint: false,
             },
-            Self::Written(LintLevel::Allow) => LintBehavior {
+            Self::Level(LintLevel::Allow) => LintBehavior {
                 shown: false,
                 denied: false,
                 fails_lint: false,
             },
-            Self::Written(LintLevel::Deny) => LintBehavior {
+            Self::Level(LintLevel::Deny) => LintBehavior {
                 shown: true,
                 denied: true,
                 fails_lint: true,

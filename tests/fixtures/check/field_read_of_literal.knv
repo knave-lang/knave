@@ -1,0 +1,14 @@
+(defstruct point
+  :x int)
+
+(defstruct spot
+  :x float)
+
+(defn int-read () (let (n 5) (:x n)))
+
+(defn float-read ()
+  (let (f 2.5) (:x f)))
+
+(defn main ()
+  (println (int-read))
+  (println (float-read)))

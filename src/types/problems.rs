@@ -898,7 +898,7 @@ impl TypeProblems {
         )
     }
 
-    fn with_similar_field(
+    pub(super) fn with_similar_field(
         diagnostic: Diagnostic,
         label: &FieldLabel,
         similar: Option<Rc<str>>,
@@ -1050,18 +1050,6 @@ impl TypeProblems {
             "a struct is not a collection, so update a field with a keyword key, such as `{}field`",
             Keyword::MARKER
         )
-    }
-
-    pub fn ambiguous_field(field: &str, span: Span) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::CANNOT_INFER,
-            "type annotations needed",
-            Label::new(
-                span,
-                format!("cannot tell which struct's `{field}` this is"),
-            ),
-        )
-        .with_help("name the struct in a signature, as in `(fn ((ref point)) _)`")
     }
 
     pub fn compile_time_only(name: &str, span: Span) -> Diagnostic {

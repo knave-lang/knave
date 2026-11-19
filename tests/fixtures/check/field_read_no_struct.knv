@@ -1,0 +1,8 @@
+(defstruct point
+  :x int
+  :side int)
+
+(defn size-of (x) (:size x))
+
+(defn main ()
+  (println (size-of (->point 1 2))))

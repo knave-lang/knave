@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::ty::{GenericId, GenericParam, Type};
 use crate::core::BindingId;
+use crate::diagnostic::SimilarName;
 use crate::source::Span;
 
 #[derive(Clone)]
@@ -20,6 +21,14 @@ pub struct StructDefinition {
 }
 
 impl StructDefinition {
+    pub fn closest_field(&self, name: &str) -> Option<Rc<str>> {
+        SimilarName::closest(name, &self.field_names().collect::<Vec<_>>())
+    }
+
+    fn field_names(&self) -> impl Iterator<Item = Rc<str>> + '_ {
+        self.fields.iter().map(|(name, _)| name.clone())
+    }
+
     pub fn field(&self, name: &str) -> Option<&Type> {
         self.fields
             .iter()
@@ -82,6 +91,15 @@ impl StructTable {
         self.structs
             .iter()
             .map(|(binding, definition)| (*binding, definition))
+    }
+
+    pub fn closest_field(&self, name: &str) -> Option<Rc<str>> {
+        let names: Vec<Rc<str>> = self
+            .structs
+            .values()
+            .flat_map(StructDefinition::field_names)
+            .collect();
+        SimilarName::closest(name, &names)
     }
 
     pub fn with_field(&self, name: &str) -> Vec<BindingId> {

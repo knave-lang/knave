@@ -15,6 +15,7 @@ use super::checker::{TypeChecker, VariantArmReference};
 use super::collection::{Collection, CollectionKind};
 use super::enums::VariantPayload;
 use super::expectation::Expectation;
+use super::field_read_problems::FieldReadProblems;
 use super::parameter_call_request::ParameterCallRequest;
 use super::pending::{DecidedBorrows, PendingBorrow};
 use super::positional_read::PositionalRead;
@@ -3420,7 +3421,7 @@ impl TypeChecker {
             })
             .collect();
         let [binding] = candidates.as_slice() else {
-            return Err(TypeProblems::ambiguous_field(&first.0.name, first.0.span));
+            return Err(FieldReadProblems::ambiguous(&first.0.name, first.0.span));
         };
         let arguments = self.fresh_arguments(*binding);
         let expected = Type::Named(*binding, arguments.clone());
@@ -3518,24 +3519,11 @@ impl TypeChecker {
             .and_then(|definition| definition.instantiated_field(&label.name, &arguments));
         let Some(ty) = declared else {
             let struct_name = self.bindings.get(owner).name().to_string();
-            let names: Vec<Rc<str>> = self
-                .declarations
-                .types()
-                .structs
+            let structs = &self.declarations.types().structs;
+            let similar = structs
                 .get(owner)
-                .map(|definition| {
-                    definition
-                        .fields
-                        .iter()
-                        .map(|(name, _)| name.clone())
-                        .collect()
-                })
-                .unwrap_or_default();
-            return Err(TypeProblems::unknown_field(
-                &struct_name,
-                label,
-                SimilarName::closest(&label.name, &names),
-            ));
+                .and_then(|found| found.closest_field(&label.name));
+            return Err(TypeProblems::unknown_field(&struct_name, label, similar));
         };
         let ty = if self.reads_field_by_copy(owner, &label.name, &ty) {
             ty
@@ -3579,7 +3567,10 @@ impl TypeChecker {
             Type::Named(binding, arguments) if self.declared_types().is_struct(binding) => {
                 Ok((binding, arguments))
             }
-            Type::Var(_) => self.unique_owner(&owner, label),
+            Type::Var(var) => match self.unifier.literal_kind(var) {
+                Some(literal) => Err(FieldReadProblems::literal_owner(literal, value.span)),
+                None => self.unique_owner(&owner, label),
+            },
             other => Err(TypeProblems::no_fields(
                 &self.display().show(&other),
                 value.span,
@@ -3606,7 +3597,11 @@ impl TypeChecker {
                     .expect(Expectation::plain(&expected), owner, label.span)?;
                 Ok((*binding, arguments))
             }
-            _ => Err(TypeProblems::ambiguous_field(&label.name, label.span)),
+            [] => Err(FieldReadProblems::undeclared(
+                label,
+                self.declarations.types().structs.closest_field(&label.name),
+            )),
+            _ => Err(FieldReadProblems::ambiguous(&label.name, label.span)),
         }
     }
 

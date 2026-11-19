@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/field_read_of_literal.knv
+---
+error[L0410]: `int` has no fields
+ --> check/field_read_of_literal.knv:7:34
+  |
+7 | (defn int-read () (let (n 5) (:x n)))
+  |                                  ^ only structs have fields
+  |
+  = note: run `knave doc L0410` for an explanation
+
+error[L0410]: `float` has no fields
+  --> check/field_read_of_literal.knv:10:20
+   |
+10 |   (let (f 2.5) (:x f)))
+   |                    ^ only structs have fields
+   |
+   = note: run `knave doc L0410` for an explanation

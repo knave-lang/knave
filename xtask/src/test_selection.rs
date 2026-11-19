@@ -24,9 +24,16 @@ impl TestRun {
         &self.arguments
     }
 
-    pub fn runs_stage_fixtures(&self) -> bool {
-        self.arguments
-            .starts_with(&StageTests::STAGES_TARGET.map(String::from))
+    pub fn selects_stage_test(&self, test: &str) -> bool {
+        let Some(filters) = self
+            .arguments
+            .strip_prefix(&StageTests::STAGES_TARGET.map(String::from))
+        else {
+            return false;
+        };
+        filters
+            .first()
+            .is_none_or(|filter| test.contains(filter.as_str()))
     }
 }
 
@@ -163,6 +170,24 @@ mod tests {
                 .map(TestRun::to_string)
                 .collect()
         }
+    }
+
+    #[test]
+    fn a_stage_run_selects_each_stage_test_its_filter_names() {
+        let run = TestRun::parse("--test stages check_fixtures");
+        assert!(run.selects_stage_test("check_fixtures"));
+        assert!(run.selects_stage_test("saved_prelude_check_fixtures"));
+        assert!(!run.selects_stage_test("emit_fixtures"));
+    }
+
+    #[test]
+    fn a_stage_run_without_a_filter_selects_every_stage_test() {
+        assert!(TestRun::parse("--test stages").selects_stage_test("check_fixtures"));
+    }
+
+    #[test]
+    fn another_target_selects_no_stage_test() {
+        assert!(!TestRun::parse("--test cli check_fixtures").selects_stage_test("check_fixtures"));
     }
 
     #[test]

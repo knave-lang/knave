@@ -1,0 +1,35 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/emit/chained_shared_bounds.knv
+---
+fn is_chain<A: PartialEq<B>, B: PartialEq<C>, C>(a: A, b: B, c: C) -> bool {
+    a == b && b == c
+}
+
+fn is_all_equal(x: &i64, y: &i64, z: &i64) -> bool {
+    is_chain(x, y, z)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let three: i64 = 3;
+    println!("{}", is_all_equal(&three, &three, &three))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

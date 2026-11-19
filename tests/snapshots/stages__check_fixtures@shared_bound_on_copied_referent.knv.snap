@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/shared_bound_on_copied_referent.knv
+---
+error[L0404]: `(ref int)` does not implement `floating`
+ --> check/shared_bound_on_copied_referent.knv:7:13
+  |
+7 |   (first-of x y))
+  |             ^ this needs `floating`
+  |
+  = note: `floating` is implemented for: f32, float
+  = note: run `knave doc L0404` for an explanation

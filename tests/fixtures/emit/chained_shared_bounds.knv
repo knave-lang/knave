@@ -1,0 +1,19 @@
+(type chain?
+  (where ((a (partial-eq b))
+          (b (partial-eq c))
+          c)
+    (fn (a b c) bool)))
+
+(defn chain? (a b c)
+  (and (= a b) (= b c)))
+
+(defn all-equal? ((x (ref i64))
+                  (y (ref i64))
+                  (z (ref i64)))
+  (chain? x y z))
+
+(defn main ()
+  (local three 3)
+  (println (all-equal? (ref three)
+                       (ref three)
+                       (ref three))))

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/shared_literal_beside_known_type.knv
+---
+error[L0401]: mismatched types
+  --> check/shared_literal_beside_known_type.knv:10:11
+   |
+10 |   (pick 1 name (answer) unknown))
+   |           ^^^^ expected an integer, found `string`
+   |
+   = note: run `knave doc L0401` for an explanation

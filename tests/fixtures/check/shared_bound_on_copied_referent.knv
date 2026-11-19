@@ -1,0 +1,7 @@
+(type first-of
+  (where ((a floating)) (fn (a a) a)))
+
+(defn first-of (x y) x)
+
+(defn pick ((x (ref i64)) (y (ref i64)))
+  (first-of x y))

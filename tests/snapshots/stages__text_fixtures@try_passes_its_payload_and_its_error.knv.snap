@@ -3,6 +3,8 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/text/try_passes_its_payload_and_its_error.knv
 ---
+struct label
+  text: owned, written a view
 defn read-name
   path: a view
   local text: owned
@@ -11,3 +13,12 @@ defn checked
   result[1]: owned
 defn doubled
   result[1]: owned
+defn shortened
+  text: a view
+  result[0]: a view
+  result[1]: owned
+defn labeled
+  text: a view
+  result[1]: owned
+needs owned text
+  text/try_passes_its_payload_and_its_error.knv:27:22

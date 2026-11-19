@@ -6,6 +6,14 @@ use crate::source::Span;
 pub struct CompilerVersionProblems;
 
 impl CompilerVersionProblems {
+    pub const EXPECTED_VERSION: &str = "a release version such as `\"0.18.0\"`";
+    const VERSION_SHAPE_HELP: &str =
+        "write it as three numbers without leading zeros, such as `\"0.18.0\"`";
+
+    pub fn malformed_version(mismatch: Diagnostic) -> Diagnostic {
+        mismatch.with_help(Self::VERSION_SHAPE_HELP)
+    }
+
     pub fn older_compiler(
         recorded: ReleaseVersion,
         running: ReleaseVersion,

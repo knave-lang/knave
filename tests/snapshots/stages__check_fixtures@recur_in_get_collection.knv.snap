@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/recur_in_get_collection.knv
+---
+error[L0214]: `recur` is not in tail position
+ --> check/recur_in_get_collection.knv:2:8
+  |
+2 |   (get (recur items) 0))
+  |        ^^^^^^^^^^^^^ this `recur` is not the last thing the function does
+  |
+  = help: make `recur` the last form of the function, or call the function by name
+  = note: run `knave doc L0214` for an explanation

@@ -1,0 +1,4 @@
+(defn look (items)
+  (get (recur items) 0))
+
+(defn main () (println "unused"))

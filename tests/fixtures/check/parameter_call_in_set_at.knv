@@ -1,0 +1,7 @@
+(defn fill! (items make)
+  (set! (at items 0) (make)))
+
+(defn main ()
+  (local items (vec 1))
+  (fill! (mut items) 2)
+  (println (len items)))

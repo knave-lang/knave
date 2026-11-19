@@ -170,8 +170,8 @@
   an owned path stays usable. Reading [stdin] flushes standard output first.
 
   ```
-  (unwrap-ok (slurp \"notes.txt\"))
-  => \"first line\\n\"
+  (slurp \"notes.txt\")
+  => (ok \"first line\\n\")
   ```")
 
 (document (line-seq stdin)
@@ -196,8 +196,8 @@
   With `first` on standard input:
 
   ```
-  (unwrap-ok (read-line))
-  => (some \"first\")
+  (read-line)
+  => (ok (some \"first\"))
   ```")
 
 (document (command-line-args)

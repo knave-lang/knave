@@ -67,7 +67,7 @@ impl RecurCheck {
             ExprKind::MapAt(_, value, arguments) => {
                 self.arguments(std::iter::once(value.as_ref()).chain(arguments))
             }
-            ExprKind::PushAt(target, item) => self.arguments([target.as_ref(), item.as_ref()]),
+            ExprKind::PushAt(push) => self.arguments([push.target.as_ref(), push.item.as_ref()]),
             _ => self.constructed_value(kind),
         }
     }

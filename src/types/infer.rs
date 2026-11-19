@@ -34,8 +34,8 @@ use super::{synthetic_template::SyntheticTemplate, templates::TemplateName};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, Block, BodyItem, BorrowTrait, Control, EqualityTrait,
     Expr, ExprKind, FieldLabel, HashTrait, KeyedPath, Lambda, Leaf, Literal, MapOperation,
-    OrderTrait, Pattern, PatternArguments, PatternKind, PrimitiveType, ReferenceKind, RustTemplate,
-    StructExpr, TypeExpr, TypeExprKind, VariantInfo,
+    OrderTrait, Pattern, PatternArguments, PatternKind, PrimitiveType, Push, ReferenceKind,
+    RustTemplate, StructExpr, TypeExpr, TypeExprKind, VariantInfo,
 };
 use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName};
 use crate::reader::NumberValue;
@@ -162,7 +162,7 @@ impl TypeChecker {
             ExprKind::MapAt(operation, value, arguments) => {
                 self.infer_map_at(*operation, value, arguments, span)
             }
-            ExprKind::PushAt(target, item) => self.infer_push(target, item, span),
+            ExprKind::PushAt(push) => self.infer_push(push, span),
             ExprKind::SetAt(path) => self.infer_set_at(path, span),
             _ => unreachable!("the caller matches a nested expression"),
         }
@@ -2425,18 +2425,18 @@ impl TypeChecker {
         Ok(TypedExpr { kind, ty, span })
     }
 
-    fn infer_push(
-        &mut self,
-        target: &Expr,
-        item: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
+    fn infer_push(&mut self, push: &Push, span: Span) -> Result<TypedExpr, Diagnostic> {
+        let Push {
+            target,
+            item,
+            written_by,
+        } = push;
         let value = self.infer(target)?;
         if self.is_string_target(&value.ty) {
             let item = self.infer(item)?;
             return self.infer_string_push(value, item, span);
         }
-        let assumption = CollectionAssumption::push_target(self.macro_name(span));
+        let assumption = CollectionAssumption::push_target(written_by.clone());
         self.note_unknown_collection(&value, assumption);
         let element = self.unifier.fresh();
         let parameters = vec![

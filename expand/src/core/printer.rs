@@ -165,9 +165,10 @@ impl<'a> CorePrinter<'a> {
             ExprKind::MapAt(operation, value, arguments) => {
                 self.map_at(*operation, value, arguments)
             }
-            ExprKind::PushAt(target, item) => {
-                Self::list("push-at!", vec![self.expr(target), self.expr(item)])
-            }
+            ExprKind::PushAt(push) => Self::list(
+                "push-at!",
+                vec![self.expr(&push.target), self.expr(&push.item)],
+            ),
             ExprKind::SetAt(path) => self.keyed("set-at!", path),
             _ => self.written_or_recur(kind),
         }

@@ -55,7 +55,7 @@ pub use conversion::Conversion;
 pub use dropped_borrows::DroppedBorrows;
 pub use expr::{
     Arm, Binder, Block, BodyItem, Control, Expr, ExprKind, FieldLabel, FieldSpelling, KeyedPath,
-    Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart,
+    Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, Push,
     RustClause, RustTemplate, StructExpr,
 };
 pub use implementor_rows::{ImplementorRow, ImplementorRows};

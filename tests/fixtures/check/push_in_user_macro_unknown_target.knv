@@ -1,0 +1,9 @@
+(defmacro defadder (name)
+  (template (defn (unquote name) (items)
+              (push! items 1))))
+
+(defadder add-one!)
+
+(defn main ()
+  (local text (str "a"))
+  (add-one! (mut text)))

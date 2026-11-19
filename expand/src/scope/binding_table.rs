@@ -502,39 +502,6 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn a_larger_entry_visited_before_a_smaller_macro_hides_it() {
-        let mut world = World::new();
-        let (left, right, module) = (world.scope(), world.scope(), world.scope());
-        world.define("x", &[left, right], Phase::Runtime);
-        let hidden = world.define("x", &[module], Phase::Runtime);
-        let written = World::symbol("x", &[left, right, module]);
-        let names = world.table.visible_names();
-        assert!(names.hides_a_macro(&written, Phase::Runtime, |binding| binding == hidden));
-    }
-
-    #[test]
-    fn a_larger_entry_visited_after_a_smaller_macro_hides_it() {
-        let mut world = World::new();
-        let (module, inner) = (world.scope(), world.scope());
-        let hidden = world.define("x", &[module], Phase::Runtime);
-        world.define("x", &[module, inner], Phase::Runtime);
-        let written = World::symbol("x", &[module, inner]);
-        let names = world.table.visible_names();
-        assert!(names.hides_a_macro(&written, Phase::Runtime, |binding| binding == hidden));
-    }
-
-    #[test]
-    fn a_hidden_entry_that_binds_no_macro_hides_no_macro() {
-        let mut world = World::new();
-        let (module, inner) = (world.scope(), world.scope());
-        let hidden = world.define("x", &[module], Phase::Runtime);
-        world.define("x", &[module, inner], Phase::Runtime);
-        let written = World::symbol("x", &[module, inner]);
-        let names = world.table.visible_names();
-        assert!(!names.hides_a_macro(&written, Phase::Runtime, |binding| binding != hidden));
-    }
-
-    #[test]
     fn a_larger_binding_settles_two_smaller_bindings_of_equal_size() {
         let mut world = World::new();
         let (module, left, right) = (world.scope(), world.scope(), world.scope());

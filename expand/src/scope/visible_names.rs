@@ -102,19 +102,19 @@ impl<'t> VisibleNames<'t> {
         phase: Phase,
         is_macro: impl Fn(BindingId) -> bool,
     ) -> bool {
-        let mut visible = Vec::new();
+        let mut largest = 0;
+        let mut smallest_macro = None;
         let key = (symbol.shared_name(), Namespace::Value);
         self.visit_entries_named(symbol.scopes(), &key, &mut |entries| {
             entries.visit_visible(symbol.scopes(), phase, |entry| {
-                visible.push((entry.scopes().len(), entry.binding()));
+                let size = entry.scopes().len();
+                largest = largest.max(size);
+                if is_macro(entry.binding()) {
+                    smallest_macro = Some(smallest_macro.unwrap_or(usize::MAX).min(size));
+                }
             });
         });
-        let Some(&(largest, winner)) = visible.iter().max_by_key(|(size, _)| *size) else {
-            return false;
-        };
-        visible
-            .iter()
-            .any(|&(size, binding)| size < largest && binding != winner && is_macro(binding))
+        smallest_macro.is_some_and(|size| size < largest)
     }
 
     pub fn use_of(&self, name: Rc<str>, scopes: &ScopeSet, binding: BindingId) -> Option<bool> {
@@ -437,5 +437,38 @@ mod tests {
                 holds_own.push(entries.holds(own));
             });
         assert_eq!(holds_own, [true, false]);
+    }
+
+    #[test]
+    fn a_larger_entry_visited_before_a_smaller_macro_hides_it() {
+        let mut world = World::new();
+        let (left, right, module) = (world.scope(), world.scope(), world.scope());
+        world.define("x", &[left, right], Phase::Runtime);
+        let hidden = world.define("x", &[module], Phase::Runtime);
+        let written = World::symbol("x", &[left, right, module]);
+        let names = world.table.visible_names();
+        assert!(names.hides_a_macro(&written, Phase::Runtime, |binding| binding == hidden));
+    }
+
+    #[test]
+    fn a_larger_entry_visited_after_a_smaller_macro_hides_it() {
+        let mut world = World::new();
+        let (module, inner) = (world.scope(), world.scope());
+        let hidden = world.define("x", &[module], Phase::Runtime);
+        world.define("x", &[module, inner], Phase::Runtime);
+        let written = World::symbol("x", &[module, inner]);
+        let names = world.table.visible_names();
+        assert!(names.hides_a_macro(&written, Phase::Runtime, |binding| binding == hidden));
+    }
+
+    #[test]
+    fn a_hidden_entry_that_binds_no_macro_hides_no_macro() {
+        let mut world = World::new();
+        let (module, inner) = (world.scope(), world.scope());
+        let hidden = world.define("x", &[module], Phase::Runtime);
+        world.define("x", &[module, inner], Phase::Runtime);
+        let written = World::symbol("x", &[module, inner]);
+        let names = world.table.visible_names();
+        assert!(!names.hides_a_macro(&written, Phase::Runtime, |binding| binding != hidden));
     }
 }

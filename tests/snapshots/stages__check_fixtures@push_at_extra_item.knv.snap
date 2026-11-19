@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/push_at_extra_item.knv
+---
+error[L0210]: malformed `push-at!`
+ --> check/push_at_extra_item.knv:1:15
+  |
+1 | (defn main () (push-at! (vec 1) 2 3))
+  |               ^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `push-at!`
+  |
+  = help: write it as `(push-at! target item)`
+  = note: run `knave doc L0210` for an explanation

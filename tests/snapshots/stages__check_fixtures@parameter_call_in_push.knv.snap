@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/parameter_call_in_push.knv
+---
+error[L0401]: mismatched types
+ --> check/parameter_call_in_push.knv:6:22
+  |
+2 |   (push! items (make)))
+  |                ------ `fill!` calls its parameter `make` here, so it expects a function
+...
+6 |   (fill! (mut items) 2)
+  |                      ^ expected `(fn () _)`, found an integer
+  |
+  = note: run `knave doc L0401` for an explanation

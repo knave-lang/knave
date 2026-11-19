@@ -11,6 +11,7 @@ pub struct ReleaseVersion {
 
 impl ReleaseVersion {
     const SEPARATOR: char = '.';
+    const ZERO: char = '0';
 
     pub fn running() -> Self {
         Self::parse(Language::VERSION).expect("the compiler's version is a release version")
@@ -33,7 +34,10 @@ impl ReleaseVersion {
 
     fn number(text: &str) -> Option<u64> {
         let digits_only = !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit());
-        digits_only.then(|| text.parse().ok()).flatten()
+        let leading_zero = text.len() > 1 && text.starts_with(Self::ZERO);
+        (digits_only && !leading_zero)
+            .then(|| text.parse().ok())
+            .flatten()
     }
 }
 
@@ -55,7 +59,7 @@ mod tests {
 
     #[test]
     fn a_release_version_compares_each_number_in_turn() {
-        let ordered = ["0.9.9", "0.18.0", "0.18.1", "1.0.0"].map(ReleaseVersion::parse);
+        let ordered = ["0.0.9", "0.9.9", "0.18.0", "0.18.1", "1.0.0"].map(ReleaseVersion::parse);
         assert!(ordered.windows(2).all(|pair| pair[0] < pair[1]));
     }
 
@@ -70,6 +74,9 @@ mod tests {
             "0..1",
             "v0.18.0",
             "0.18.0-rc.1",
+            "01.18.0",
+            "0.018.0",
+            "0.18.00",
         ] {
             assert_eq!(ReleaseVersion::parse(text), None, "`{text}` reads");
         }

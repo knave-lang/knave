@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::compiler_version_problems::CompilerVersionProblems;
 use super::dependency_reader::DependencyReader;
 use super::fields::{FieldScanner, Fields};
 use super::lint_reader::LintReader;
@@ -28,7 +29,6 @@ struct ProjectForm<'f> {
 impl<'v> ProjectReader<'v> {
     const KEYS: &'static [&'static str] = &["version", "entry", "lib", "edition", Language::NAME];
     const DEFAULT_VERSION: &'static str = "0.1.0";
-    const RELEASE_VERSION: &'static str = "a release version such as `\"0.18.0\"`";
     const DEFAULT_ENTRY: &'static str = "src/main";
     const DEFAULT_LIBRARY_ROOT: &'static str = "src/lib";
 
@@ -181,11 +181,13 @@ impl<'v> ProjectReader<'v> {
     fn compiler_version(&mut self, fields: &Fields<'_>) -> Option<CompilerVersion> {
         let (text, span) = fields.located_string(Language::NAME, &mut self.problems)?;
         let Some(version) = ReleaseVersion::parse(&text) else {
-            self.problems.push(ProjectProblems::mismatched_value(
+            let mismatch = ProjectProblems::mismatched_value(
                 Language::NAME,
-                Self::RELEASE_VERSION,
+                CompilerVersionProblems::EXPECTED_VERSION,
                 span,
-            ));
+            );
+            self.problems
+                .push(CompilerVersionProblems::malformed_version(mismatch));
             return None;
         };
         Some(CompilerVersion { version, span })

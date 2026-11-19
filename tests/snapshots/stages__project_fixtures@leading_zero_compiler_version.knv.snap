@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/project/leading_zero_compiler_version.knv
+---
+error[L0706]: `:knave` takes a release version such as `"0.18.0"`
+ --> project/leading_zero_compiler_version.knv:1:28
+  |
+1 | (defproject browser :knave "01.18.0")
+  |                            ^^^^^^^^^ expected a release version such as `"0.18.0"`
+  |
+  = help: write it as three numbers without leading zeros, such as `"0.18.0"`
+  = note: run `knave doc L0706` for an explanation

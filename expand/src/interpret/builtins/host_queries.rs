@@ -30,11 +30,14 @@ impl<'a> SourceOperations<'a> {
         )))
     }
 
-    pub fn in_tasks_directory(&self, sources: &dyn SourceQueries) -> Result<Value, Diagnostic> {
+    pub fn project_folders(&self, sources: &dyn SourceQueries) -> Result<Value, Diagnostic> {
         self.arguments.expect_count(1)?;
-        Ok(Value::Bool(
-            sources.in_tasks_directory(&self.arguments.form(0)?),
-        ))
+        let folders = sources.project_folders(&self.arguments.form(0)?);
+        let items = folders
+            .into_iter()
+            .map(|folder| self.symbol_form(folder.name().into()))
+            .collect();
+        Forms::list(items, self.call_site, self.arguments)
     }
 
     pub fn introducing_macro(&self, sources: &dyn SourceQueries) -> Result<Value, Diagnostic> {
@@ -151,6 +154,7 @@ mod tests {
     use super::SourceOperations;
     use crate::interpret::arguments::{Arguments, BuiltinSite};
     use crate::interpret::{SourceQueries, StepBudget, Value, WorkMeter};
+    use crate::modules::ProjectFolder;
     use crate::reader::{Form, FormKind, Symbol};
     use crate::source::{SourceId, Span};
 
@@ -163,8 +167,8 @@ mod tests {
             String::new()
         }
 
-        fn in_tasks_directory(&self, _form: &Form) -> bool {
-            false
+        fn project_folders(&self, _form: &Form) -> Vec<ProjectFolder> {
+            Vec::new()
         }
 
         fn introducing_macro(&self, _form: &Form) -> Option<Rc<str>> {

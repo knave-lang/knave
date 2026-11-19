@@ -12,7 +12,7 @@ use crate::interpret::{
     DefinitionQueries, ExpansionCallbacks, GlobalValues, Host, ModuleNotes, ModuleQueries,
     NameComparison, NotesTooLarge, SourceQueries, Value, Warnings,
 };
-use crate::modules::{ModuleOrigin, ModuleRecord, ModuleSources};
+use crate::modules::{ModuleOrigin, ModuleRecord, ModuleSources, ProjectFolder};
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{LargestCandidates, Phase, Resolution, ScopeSet, VisibleNames};
 use crate::source::Span;
@@ -250,9 +250,9 @@ impl SourceQueries for Expander<'_> {
         )
     }
 
-    fn in_tasks_directory(&self, form: &Form) -> bool {
+    fn project_folders(&self, form: &Form) -> Vec<ProjectFolder> {
         let file = self.sources.file(form.span().source());
-        self.module_sources.holds_task(file.name())
+        self.module_sources.project_folders(file.name())
     }
 
     fn introducing_macro(&self, form: &Form) -> Option<Rc<str>> {

@@ -4,9 +4,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/check/macro_helper_called_from_impl_method.knv
 ---
 error[L0412]: `empty?` only exists at compile time
-  --> prelude/internal/macros.knv:21:10
+  --> prelude/internal/macros.knv:22:10
    |
-21 |     (if (empty? items)
+22 |     (if (empty? items)
    |          ^^^^^^ used in code that runs in the program
    |
    = note: definitions that use the `code` module or `quote` can only be used by macros

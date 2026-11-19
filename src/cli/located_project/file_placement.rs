@@ -53,7 +53,7 @@ impl<'p> FilePlacement<'p> {
             let file = ProgramFile::within(path, tasks_directory.to_path_buf());
             return self.trees().task_file(file);
         }
-        let scope = SearchScope::in_project(tasks_directory);
+        let scope = SearchScope::in_project(self.folders.root());
         ProgramFile::inside_or_beside(path, self.folders.source_root().to_path_buf())
             .with_libraries(self.libraries.clone())
             .within_scope(scope)

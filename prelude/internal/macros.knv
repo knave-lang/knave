@@ -6,11 +6,12 @@
 (export add-docstring-note docstring-before-body?
         docstring-before-parameters docstring-notes-of
         docstrings-key doctests-key documented-body?
-        documented-terms-key head-of joined-chunks
-        kernel-definition map-list module-docstring-notes
-        module-docstrings-key note-docstring noted-term
-        term-docstrings-key text-chunk-pieces type-doc-key
-        value-doc-key value-docstring-note whole-pairs?)
+        documented-terms-key head-of holds-folder?
+        joined-chunks kernel-definition map-list
+        module-docstring-notes module-docstrings-key
+        note-docstring noted-term term-docstrings-key
+        text-chunk-pieces type-doc-key value-doc-key
+        value-docstring-note whole-pairs?)
 
 (def map-list
   (fn (items function)
@@ -24,6 +25,14 @@
                      (list (function (first items))))
              function
              (rest items)))))
+
+(def holds-folder?
+  (fn (folders folder)
+    (if (empty? folders)
+      false
+      (if (value-eq (first folders) folder)
+        true
+        (recur (rest folders) folder)))))
 
 (def documented-body?
   (fn (body)

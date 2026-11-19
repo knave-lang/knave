@@ -219,9 +219,9 @@ impl<'m> BuiltinCall<'m> {
             let group = host.granted(|host| host.source_queries())?;
             operations.sources.form_location(group)
         }),
-        (Builtin::InTasksDirectory, |operations, host| {
+        (Builtin::ProjectFolders, |operations, host| {
             let group = host.granted(|host| host.source_queries())?;
-            operations.sources.in_tasks_directory(group)
+            operations.sources.project_folders(group)
         }),
         (Builtin::PinnedAt, |operations, _| {
             operations.placement.pinned_at()

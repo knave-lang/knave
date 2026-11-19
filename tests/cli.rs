@@ -8944,6 +8944,20 @@ fn new_writes_a_workflow_that_reads_the_version_from_the_project_file() {
 }
 
 #[test]
+fn new_writes_a_workflow_that_builds_between_lint_and_test() {
+    let sandbox = Sandbox::new("new_workflow_build_step");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let workflow = sandbox.contents(&format!("demo-app/{WORKFLOW_FILE}"));
+    let commands: Vec<&str> = workflow
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("run: knave "))
+        .collect();
+    assert_eq!(commands, ["fmt --check", "lint", "build", "test"]);
+}
+
+#[test]
 fn new_writes_a_workflow_that_fails_without_a_recorded_version() {
     let sandbox = Sandbox::new("new_workflow_without_version");
     sandbox

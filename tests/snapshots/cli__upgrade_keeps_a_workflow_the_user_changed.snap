@@ -38,6 +38,14 @@ Knave's changes since <version>
        - id: knave-cache
          uses: actions/cache/restore@v4
          with:
+@@ -34,5 +37,7 @@
+         run: knave fmt --check
+       - name: Lint
+         run: knave lint
++      - name: Build
++        run: knave build
+       - name: Test
+         run: knave test
 
 rewrote `.agents/skills/writing-knave/SKILL.md`
 rewrote `.claude/skills/writing-knave/SKILL.md`

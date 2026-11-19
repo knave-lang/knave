@@ -37,5 +37,7 @@ jobs:
         run: knave fmt --check
       - name: Lint
         run: knave lint
+      - name: Build
+        run: knave build
       - name: Test
         run: knave test

@@ -20,6 +20,7 @@ mod function_borrow;
 mod generic_callees;
 mod generic_positions;
 mod held_borrows;
+mod identifier;
 mod item_visibilities;
 mod items;
 mod lending_expression;

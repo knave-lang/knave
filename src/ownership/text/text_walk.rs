@@ -12,18 +12,22 @@ use crate::core::BindingId;
 use crate::types::{Type, TypedExprKind, TypedLambda, TypedModule};
 
 pub struct TextWalk<'w, 'p> {
-    context: WalkContext<'w, 'p>,
+    program: &'w TextProgram<'p>,
+    graph: FlowGraph,
+    listing: SlotListing,
 }
 
 impl<'w, 'p> TextWalk<'w, 'p> {
     pub fn of(program: &'w TextProgram<'p>) -> (FlowGraph, SlotListing) {
         let mut walk = Self {
-            context: WalkContext::new(program),
+            program,
+            graph: FlowGraph::default(),
+            listing: SlotListing::default(),
         };
         for module in program.written_modules() {
             walk.walk_module(module);
         }
-        walk.context.finished()
+        (walk.graph, walk.listing)
     }
 
     fn walk_module(&mut self, module: &TypedModule) {
@@ -38,18 +42,15 @@ impl<'w, 'p> TextWalk<'w, 'p> {
     }
 
     fn list_struct(&mut self, binding: BindingId) {
-        let Some((_, structure)) = self
-            .context
-            .program()
-            .structure_of(&Type::Named(binding, Vec::new()))
+        let Some((_, structure)) = self.program.structure_of(&Type::Named(binding, Vec::new()))
         else {
             return;
         };
-        let heading = format!("struct {}", self.context.program().names().name(binding));
-        self.context.listing().open(Some(heading));
+        let heading = format!("struct {}", self.program.names().name(binding));
+        self.listing.open(Some(heading));
         for (name, ty) in &structure.fields {
             let field = SlotOwner::Field(binding, name.clone());
-            self.context.listing().list(&field, ty);
+            self.listing.list(&field, ty);
             if !structure.bare_text_fields.contains(name) {
                 self.keep_written_view(&field, ty);
             }
@@ -61,16 +62,17 @@ impl<'w, 'p> TextWalk<'w, 'p> {
             .into_iter()
             .filter(|position| position.written == Representation::View);
         for position in views {
-            self.context
-                .graph()
+            self.graph
                 .require(Slot::new(field.clone(), position.path), Need::View);
         }
     }
 
     fn walk_function(&mut self, binding: BindingId, lambda: &TypedLambda) {
-        let heading = (!self.context.program().names().is_generated(binding))
-            .then(|| format!("defn {}", self.context.program().names().name(binding)));
-        self.context.listing().open(heading);
-        BodyFlows::new(&mut self.context, binding).walk(lambda);
+        let names = self.program.names();
+        let heading =
+            (!names.is_generated(binding)).then(|| format!("defn {}", names.name(binding)));
+        self.listing.open(heading);
+        let context = WalkContext::new(self.program, &mut self.graph);
+        BodyFlows::new(context, &mut self.listing, binding).walk(lambda);
     }
 }

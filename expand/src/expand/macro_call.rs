@@ -12,6 +12,7 @@ use super::macro_origin::MacroOrigin;
 use super::problems::ExpandProblems;
 use super::returned_arguments::ReturnedArguments;
 use super::shape::{Shape, WrittenDefiner};
+use super::spliced_forms::SplicedForm;
 use crate::core::{
     BindingId, BindingKind, DefinitionForm, Expr, KernelForm, Lambda, ModulePath, Namespace,
 };
@@ -97,11 +98,14 @@ impl Expander<'_> {
 
     pub(super) fn expand_top_level_head(
         &mut self,
-        form: Form,
+        top_level: SplicedForm,
         context: &mut DefinitionContext,
-    ) -> Result<Form, Diagnostic> {
-        self.expand_head_with(form, |expander, binding, form| {
-            expander.apply_definer(binding, form, context)
+    ) -> Result<SplicedForm, Diagnostic> {
+        top_level.expanded_by(|form, macro_applied| {
+            self.expand_head_with(form, |expander, binding, form| {
+                macro_applied();
+                expander.apply_definer(binding, form, context)
+            })
         })
     }
 

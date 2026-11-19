@@ -1,0 +1,10 @@
+(use code list nth)
+
+(defmacro u (form)
+  (list (nth form 0)
+        (nth form 1)
+        (nth form 2)))
+
+(u (use modules/format shout))
+
+(defn main () (println 1))

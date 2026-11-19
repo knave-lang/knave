@@ -77,6 +77,13 @@ pub struct WrittenUse {
     pub module: ModuleId,
     pub names: Box<[WrittenName]>,
     pub listed: usize,
+    pub provenance: Provenance,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Provenance {
+    Written,
+    ThroughMacroCall,
 }
 
 #[derive(Clone, Debug)]
@@ -97,6 +104,7 @@ pub struct Import {
     pub names: Box<[ImportedName]>,
     pub listed: usize,
     pub module_read: bool,
+    pub provenance: Provenance,
     pub unread_members: Box<[(usize, Rc<str>)]>,
 }
 

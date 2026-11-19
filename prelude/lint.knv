@@ -196,8 +196,13 @@
   out, and so is a name that brings in only a macro, a name that starts with
   `_`, a `use` whose head or path a macro's expansion wrote, a name that
   expansion wrote, and a name written outside the `use` form. A `use` that a
-  macro rebuilt from a written form is reported name by name, and a left-out
-  name it lists keeps it from counting as wholly unused.
+  macro rebuilt from a written form is reported name by name, unless the
+  macro places it at the written form with `located`, which counts it as
+  written. A left-out name it lists keeps it from counting as wholly unused.
+  A `use` that reached expansion through a macro call, passed through,
+  rebuilt or placed with `located`, gets no help, because its fix belongs in
+  that call. Two `use`s of one binding count as used together, since a
+  lookup marks the binding, not the `use`.
 
   Only `knave lint` runs the rule, and it exits with status 1 when the rule
   reports a name, unless the project's `lints` section gives the rule
@@ -554,8 +559,8 @@
     (if (empty? names)
       (do)
       (if (whole-use-unused? entry names)
-        (warn-unused-use (first entry) names)
-        (warn-each-unused-name names)))))
+        (warn-unused-use entry names)
+        (warn-each-unused-name entry names)))))
 
 (def whole-use-unused?
   (fn (entry names)
@@ -628,30 +633,40 @@
         (recur name (rest linked))))))
 
 (def warn-unused-use
-  (fn (form names)
-    (if (written-name? form)
-      (warn "nothing this `use` brings in is used"
-        form "remove the `use`"
+  (fn (entry names)
+    (if (written-name? (first entry))
+      (warn-unused-import
+        entry "nothing this `use` brings in is used"
+        (first entry)
+        "remove the `use`"
         (quote (:code unused-import
                       :label "nothing this brings in is used")))
-      (warn-each-unused-name names))))
+      (warn-each-unused-name entry names))))
 
 (def warn-each-unused-name
-  (fn (names)
+  (fn (entry names)
     (if (empty? names)
       (do)
       (do
-        (warn-unused-name (first names))
-        (recur (rest names))))))
+        (warn-unused-name entry (first names))
+        (recur entry (rest names))))))
 
 (def warn-unused-name
-  (fn (name)
-    (warn (string "`"
-                  (symbol-name name)
-                  "` is imported but never used")
+  (fn (entry name)
+    (warn-unused-import
+      entry
+      (string "`"
+              (symbol-name name)
+              "` is imported but never used")
       name
       (string "remove `" (symbol-name name) "` from this `use`")
       (quote (:code unused-import :label "never used")))))
+
+(def warn-unused-import
+  (fn (entry message culprit help description)
+    (if (holds-marker? entry (quote macro-call))
+      (warn message culprit description)
+      (warn message culprit help description))))
 
 (def written-name?
   (fn (form)

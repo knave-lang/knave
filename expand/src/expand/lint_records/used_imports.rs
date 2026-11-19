@@ -78,6 +78,7 @@ impl ImportReader<'_, '_> {
             names: names.into_boxed_slice(),
             listed: written.listed,
             module_read: target.status().is_read_by_path(&self.scopes),
+            provenance: written.provenance,
             unread_members: unread_members.into_boxed_slice(),
         }
     }

@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/lint/use_a_written_do_holds_a_written_use_and_a_passed_through_one.knv
+---
+warning[L0808]: nothing this `use` brings in is used
+ --> lint/use_a_written_do_holds_a_written_use_and_a_passed_through_one.knv:4:3
+  |
+4 |   (use modules/format shout)
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^ nothing this brings in is used
+  |
+  = help: remove the `use`
+  = note: run `knave doc L0808` for an explanation
+
+warning[L0808]: nothing this `use` brings in is used
+ --> lint/use_a_written_do_holds_a_written_use_and_a_passed_through_one.knv:5:6
+  |
+5 |   (w (use modules/format pad-left)))
+  |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nothing this brings in is used
+  |
+  = note: run `knave doc L0808` for an explanation

@@ -1,0 +1,7 @@
+(use code list)
+
+(defmacro u (h p n) (list h p n))
+
+(u use modules/format shout)
+
+(defn main () (println 1))

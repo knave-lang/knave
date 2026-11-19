@@ -2,4 +2,5 @@
 
 (defn main ()
   (let (owned (str "bo"))
-    (println (shout (as-str owned)) (shout "lit"))))
+    (println (shout (as-str owned))
+             (shout "lit"))))

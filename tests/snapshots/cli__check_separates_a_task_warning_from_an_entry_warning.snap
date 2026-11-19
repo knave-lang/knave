@@ -1,0 +1,23 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(0).stderr()
+---
+warning[L0803]: unreachable `match` arm
+ --> src/main.knv:1:32
+  |
+1 | (defn pick (x) (match x (_ 1) (_ 2)))
+  |                          -     ^ this arm can never match
+  |                          |
+  |                          this arm covers it
+  |
+  = note: run `knave doc L0803` for an explanation
+
+warning[L0803]: unreachable `match` arm
+ --> tasks/pick.knv:2:28
+  |
+2 |   (println (match 3 (_ 1) (_ 2))))
+  |                      -     ^ this arm can never match
+  |                      |
+  |                      this arm covers it
+  |
+  = note: run `knave doc L0803` for an explanation

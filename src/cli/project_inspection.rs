@@ -1,3 +1,7 @@
+use std::cell::Cell;
+use std::rc::Rc;
+
+use super::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use super::entry_argument::EntryArgument;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
@@ -8,6 +12,7 @@ use super::task_catalog::TaskCatalog;
 use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
 use crate::diagnostic::Diagnostics;
+use crate::source::SourceMap;
 
 pub type WarningPrinter = dyn Fn(&SourceReport<'_>, &Diagnostics) -> ExitStatus;
 
@@ -33,7 +38,8 @@ impl ProjectInspection {
         let defaults_to_project_entry = self.entry.defaults_to_project_entry();
         let program = self.entry.locate(terminal)?;
         let checks_tasks = defaults_to_project_entry || Self::names_a_task_file(&program);
-        let output = TaskCatalog::user_output(terminal.diagnostic_output());
+        let separated = Rc::new(SeparatedBatches::new(terminal.diagnostic_output()));
+        let output = TaskCatalog::user_output(separated);
         terminal.configure(|settings| settings.rerouted_to(output));
         let entry = inspect_entry(terminal, program.file(), print_warnings);
         let tasks = match program.into_project().filter(|_| checks_tasks) {
@@ -63,5 +69,34 @@ impl ProjectInspection {
         let catalog = TaskCatalog::load(&tree, terminal)?;
         let warnings = TaskRunners::new(&catalog).check(terminal)?;
         print_warnings(&terminal.source_report(), &warnings).passed()
+    }
+}
+
+struct SeparatedBatches {
+    inner: Rc<dyn DiagnosticOutput>,
+    wrote_a_batch: Cell<bool>,
+}
+
+impl SeparatedBatches {
+    fn new(inner: Rc<dyn DiagnosticOutput>) -> Self {
+        Self {
+            inner,
+            wrote_a_batch: Cell::new(false),
+        }
+    }
+}
+
+impl MessageOutput for SeparatedBatches {}
+
+impl DiagnosticOutput for SeparatedBatches {
+    fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {
+        match self.wrote_a_batch.replace(true) {
+            true => self.inner.write_after_earlier(sources, diagnostics),
+            false => self.inner.write(sources, diagnostics),
+        }
+    }
+
+    fn write_note(&self, sources: &SourceMap, message: &str) {
+        self.inner.write_note(sources, message);
     }
 }

@@ -11738,6 +11738,21 @@ fn task_file_may_still_import_deftask_from_prelude_task() {
 }
 
 #[test]
+fn check_separates_a_task_warning_from_an_entry_warning() {
+    let sandbox = Sandbox::new("check_task_and_entry_warnings")
+        .with_file(&Language::project_file_name(), PROJECT)
+        .with_file("src/main.knv", LintsFixture::PICKS)
+        .with_file(
+            "tasks/pick.knv",
+            "(deftask pick-again ()\n  (println (match 3 (_ 1) (_ 2))))\n",
+        );
+    let check = sandbox.compiler(&["check"]);
+    let stderr = check.assert_exit_code(0).stderr();
+    assert!(!stderr.starts_with('\n'), "{stderr}");
+    insta::assert_snapshot!(stderr);
+}
+
+#[test]
 fn deftask_in_an_entry_module_is_an_error_beside_a_tasks_directory() {
     let check = Sandbox::with_tasks("deftask_in_main_beside_tasks")
         .with_file(

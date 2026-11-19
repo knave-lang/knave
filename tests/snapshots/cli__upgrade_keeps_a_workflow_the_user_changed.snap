@@ -4,9 +4,9 @@ expression: "Sandbox::without_version(&upgrade.assert_exit_code(0).stderr())"
 ---
 recorded Knave <version> in `project.knv`
 warning: kept `.github/workflows/knave.yml`, because it differs from every text Knave wrote
-help: below are your changes to the text Knave <version> wrote, then Knave's changes since <version>: merge Knave's changes into your file by hand
+help: below are your changes to the text Knave 0.0.1 wrote, then Knave's changes since 0.0.1: merge Knave's changes into your file by hand
 your changes to .github/workflows/knave.yml
---- .github/workflows/knave.yml (Knave <version>)
+--- .github/workflows/knave.yml (Knave 0.0.1)
 +++ .github/workflows/knave.yml
 @@ -36,3 +36,5 @@
          run: knave lint
@@ -14,8 +14,8 @@ your changes to .github/workflows/knave.yml
          run: knave test
 +      - name: Build
 +        run: knave task build
-Knave's changes since <version>
---- .github/workflows/knave.yml (Knave <version>)
+Knave's changes since 0.0.1
+--- .github/workflows/knave.yml (Knave 0.0.1)
 +++ .github/workflows/knave.yml (Knave <version>)
 @@ -7,14 +7,17 @@
  permissions:

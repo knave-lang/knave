@@ -50,6 +50,11 @@ impl<'v> ProjectReader<'v> {
         }
     }
 
+    pub fn refusal(mut self, forms: &[Form], file: Span) -> Option<Diagnostic> {
+        self.project(forms, file);
+        self.refusal
+    }
+
     fn problems_to_report(self) -> Diagnostics {
         match self.refusal {
             Some(refusal) if self.problems.has_errors() => Diagnostics::from_iter([refusal]),

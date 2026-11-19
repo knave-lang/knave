@@ -1,15 +1,14 @@
 use std::fmt::Display;
 use std::path::Path;
 
+use super::ProjectLoader;
 use crate::cli::diagnostic_output::DiagnosticOutput;
-use crate::cli::embedded_prelude::EmbeddedPrelude;
 use crate::cli::exit_status::ExitStatus;
 use crate::cli::unreadable_file::UnreadableFile;
 use crate::diagnostic::Diagnostics;
 use crate::modules::ModuleSources;
-use crate::project::{Project, ProjectReader};
 use crate::reader::{Form, Reader};
-use crate::source::{SourceId, SourceMap, Span, TextPosition};
+use crate::source::{SourceId, SourceMap, TextPosition};
 
 pub struct SourceLoader<'a> {
     sources: &'a mut SourceMap,
@@ -28,9 +27,8 @@ impl<'a> SourceLoader<'a> {
         }
     }
 
-    pub fn load_project(&mut self, path: &Path) -> Result<Project, ExitStatus> {
-        let source = self.load(path)?;
-        self.read_project(source)
+    pub fn projects(self) -> ProjectLoader<'a> {
+        ProjectLoader::new(self.sources, self.output)
     }
 
     pub fn add(&mut self, name: impl Display, text: impl Into<String>) -> SourceId {
@@ -49,14 +47,6 @@ impl<'a> SourceLoader<'a> {
     pub fn read(&self, source: SourceId) -> Result<Vec<Form>, ExitStatus> {
         Reader::new(self.sources.file(source))
             .read()
-            .map_err(|diagnostics| self.report(&diagnostics))
-    }
-
-    pub fn read_project(&self, source: SourceId) -> Result<Project, ExitStatus> {
-        let forms = self.read(source)?;
-        let whole_file = Span::new(source, 0..self.sources.file(source).text().len());
-        ProjectReader::new(EmbeddedPrelude::project_vocabulary())
-            .read(&forms, whole_file)
             .map_err(|diagnostics| self.report(&diagnostics))
     }
 
@@ -153,7 +143,8 @@ mod tests {
         let mut fixture = LoaderFixture::default();
         let project = fixture
             .loader()
-            .load_project(&path)
+            .projects()
+            .load(&path)
             .expect("the project loads");
         assert_eq!(project.name, "app");
     }
@@ -163,7 +154,8 @@ mod tests {
         let mut fixture = LoaderFixture::default();
         let status = fixture
             .loader()
-            .load_project(Path::new(LoaderFixture::MISSING));
+            .projects()
+            .load(Path::new(LoaderFixture::MISSING));
         assert_eq!(status.err(), Some(ExitStatus::UsageError));
         assert_eq!(fixture.reports().len(), 1);
     }
@@ -195,7 +187,8 @@ mod tests {
         let source = fixture.added("(defproject app)");
         let project = fixture
             .loader()
-            .read_project(source)
+            .projects()
+            .read(source)
             .expect("the project reads");
         assert_eq!(project.name, "app");
     }
@@ -204,7 +197,7 @@ mod tests {
     fn reports_a_project_file_without_a_project_form() {
         let mut fixture = LoaderFixture::default();
         let source = fixture.added("(area 2 3)");
-        let status = fixture.loader().read_project(source);
+        let status = fixture.loader().projects().read(source);
         assert_eq!(status.err(), Some(ExitStatus::ProgramErrors));
         assert_eq!(fixture.reports(), ["1 diagnostics"]);
     }

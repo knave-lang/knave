@@ -21,7 +21,7 @@ impl CompilerCheck {
 
     pub fn report(&self, project_file: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
         let mut scratch = terminal.scratch();
-        let project = scratch.sources().load_project(project_file)?;
+        let project = scratch.sources().projects().load(project_file)?;
         self.report_located(&project, project_file, terminal)
     }
 
@@ -35,7 +35,7 @@ impl CompilerCheck {
             return Ok(());
         }
         let mut scratch = terminal.scratch();
-        let located_project = scratch.sources().load_project(project_file)?;
+        let located_project = scratch.sources().projects().load(project_file)?;
         let Some(problem) = self.problem_in(&located_project) else {
             return Ok(());
         };

@@ -4,12 +4,14 @@ pub struct SyntheticTemplate {
     text: &'static str,
     lifetime: &'static [usize],
     held: &'static [usize],
+    queries: &'static [usize],
 }
 
 impl SyntheticTemplate {
+    const LOOK_UP_QUERY: &'static [usize] = &[1];
     pub const ITERATE: Self = Self::borrowing("{0}.iter()");
     pub const ITERATE_COPIED: Self = Self::borrowing("{0}.iter().copied()");
-    pub const LOOK_UP: Self = Self::borrowing("{0}.get({1})");
+    pub const LOOK_UP: Self = Self::borrowing("{0}.get({1})").querying(Self::LOOK_UP_QUERY);
     pub const KEYS: Self = Self::borrowing("{0}.keys()");
     pub const VALUES: Self = Self::borrowing("{0}.values()");
     pub const PUSH: Self = Self::untied("{0}.push({1})");
@@ -18,6 +20,7 @@ impl SyntheticTemplate {
         text: "@map-update",
         lifetime: &[],
         held: &[0, 1, 3],
+        queries: &[],
     };
 
     pub const ALL: [&'static Self; 8] = [
@@ -36,6 +39,7 @@ impl SyntheticTemplate {
             text,
             lifetime: &[0],
             held: &[],
+            queries: &[],
         }
     }
 
@@ -44,6 +48,16 @@ impl SyntheticTemplate {
             text,
             lifetime: &[],
             held: &[],
+            queries: &[],
+        }
+    }
+
+    const fn querying(self, queries: &'static [usize]) -> Self {
+        Self {
+            text: self.text,
+            lifetime: self.lifetime,
+            held: self.held,
+            queries,
         }
     }
 
@@ -53,6 +67,10 @@ impl SyntheticTemplate {
 
     pub fn text(&self) -> &'static str {
         self.text
+    }
+
+    pub fn queries(&self) -> &'static [usize] {
+        self.queries
     }
 
     pub fn ties(&self) -> TemplateTies {

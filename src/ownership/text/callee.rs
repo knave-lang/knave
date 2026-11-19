@@ -4,7 +4,7 @@ use super::inline_rust::InlineRust;
 use super::template_call::TemplateCall;
 use super::text_program::TextProgram;
 use super::user_function::UserFunction;
-use crate::types::{TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf};
+use crate::types::{SyntheticTemplate, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf};
 
 pub struct Callee;
 
@@ -17,8 +17,10 @@ impl Callee {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
                 program.definition(*binding).map(Self::defined)
             }
-            TypedExprKind::Leaf(TypedLeaf::Rust(_)) => Some(Box::new(InlineRust::new(
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => Some(Box::new(InlineRust::new(
                 CalleeScheme::new(&callee.ty, &[]),
+                SyntheticTemplate::named(&template.template)
+                    .map_or(&[], SyntheticTemplate::queries),
             ))),
             _ => None,
         }

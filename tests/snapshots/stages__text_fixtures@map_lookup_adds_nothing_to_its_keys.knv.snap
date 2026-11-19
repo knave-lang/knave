@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/map_lookup_adds_nothing_to_its_keys.knv
+---
+defn main
+  local word: owned
+  local counts[0]: owned

@@ -3,10 +3,13 @@
 
 (defn main ()
   (local first (->label false))
+  (local second (->label true))
   (local labels (vec (ref first)))
   (local r (at labels 0))
   (local v
     ((rust "{0}.blank.then_some({0})"
        (fn ((ref label)) (option (ref label))))
      r))
-  (println (none? v)))
+  (push! labels (ref second))
+  (println (none? v))
+  (println (len labels)))

@@ -7,41 +7,50 @@ use crate::git::Git;
 
 pub struct TemplateHistory {
     templates: Vec<String>,
-    forgotten: Vec<String>,
     release: Option<String>,
+    forgotten: Vec<String>,
+    altered: Vec<KeptText>,
+}
+
+struct KeptText {
+    template: String,
+    version: String,
+    text: String,
 }
 
 impl TemplateHistory {
     pub const HISTORY_ROOT: &str = "src/cli/earlier_texts";
-    const RELEASE_TAGS: [&str; 4] = ["tag", "--list", "v*", "--sort=-v:refname"];
+    const LATEST_REACHABLE_RELEASE: [&str; 5] =
+        ["describe", "--tags", "--match", "v*", "--abbrev=0"];
+    const RELEASE_PREFIX: &str = "v";
 
     pub fn check(root: &Path) -> Result<Self, TaskFailure> {
         let templates = Self::templates(&root.join(Self::HISTORY_ROOT))?;
         let release = Self::latest_release(root)?;
         let mut forgotten = Vec::new();
+        let mut altered = Vec::new();
         if let Some(release) = &release {
             for template in &templates {
                 if Self::forgets_its_released_text(root, release, template)? {
                     forgotten.push(template.clone());
                 }
+                altered.extend(Self::altered_texts(root, template)?);
             }
         }
         Ok(Self {
             templates,
-            forgotten,
             release,
+            forgotten,
+            altered,
         })
     }
 
     fn latest_release(root: &Path) -> Result<Option<String>, TaskFailure> {
-        let output = Git::new(root).run(&Self::RELEASE_TAGS)?;
-        if !output.status.success() {
-            return Err(TaskFailure::tool_failed(Git::PROGRAM, &output.stderr));
-        }
-        Ok(String::from_utf8_lossy(&output.stdout)
-            .lines()
-            .next()
-            .map(str::to_string))
+        let output = Git::new(root).run(&Self::LATEST_REACHABLE_RELEASE)?;
+        Ok(output
+            .status
+            .success()
+            .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string()))
     }
 
     fn templates(history_root: &Path) -> Result<Vec<String>, TaskFailure> {
@@ -95,7 +104,18 @@ impl TemplateHistory {
         if current == earlier {
             return Ok(false);
         }
-        Ok(!Self::kept_texts(root, template)?.contains(&earlier))
+        let kept = Self::kept_texts(root, template)?;
+        Ok(!kept.iter().any(|kept| kept.text == earlier))
+    }
+
+    fn altered_texts(root: &Path, template: &str) -> Result<Vec<KeptText>, TaskFailure> {
+        let mut altered = Vec::new();
+        for kept in Self::kept_texts(root, template)? {
+            if !kept.matches_its_release(root)? {
+                altered.push(kept);
+            }
+        }
+        Ok(altered)
     }
 
     fn text_at(root: &Path, revision: &str, template: &str) -> Result<Option<String>, TaskFailure> {
@@ -106,22 +126,66 @@ impl TemplateHistory {
             .then(|| String::from_utf8_lossy(&output.stdout).into_owned()))
     }
 
-    fn kept_texts(root: &Path, template: &str) -> Result<Vec<String>, TaskFailure> {
+    fn kept_texts(root: &Path, template: &str) -> Result<Vec<KeptText>, TaskFailure> {
         let folder = root.join(Self::HISTORY_ROOT).join(template);
         let unreadable = |error| TaskFailure::unreadable(&folder, error);
         fs::read_dir(&folder)
             .map_err(unreadable)?
-            .map(|entry| {
-                let path = entry.map_err(unreadable)?.path();
-                fs::read_to_string(&path).map_err(|error| TaskFailure::unreadable(&path, error))
-            })
+            .map(|entry| KeptText::read(template, &entry.map_err(unreadable)?.path()))
             .collect()
+    }
+
+    fn forgotten_line(&self, template: &str) -> String {
+        let release = self.release.as_deref().unwrap_or_default();
+        format!(
+            "  {template} differs from its text at {release}, and that text is missing: copy it to `{}/{template}/{}`\n",
+            Self::HISTORY_ROOT,
+            release.trim_start_matches(Self::RELEASE_PREFIX)
+        )
+    }
+}
+
+impl KeptText {
+    fn read(template: &str, path: &Path) -> Result<Self, TaskFailure> {
+        let text =
+            fs::read_to_string(path).map_err(|error| TaskFailure::unreadable(path, error))?;
+        let version = path
+            .file_name()
+            .expect("a kept text has a file name")
+            .to_string_lossy()
+            .into_owned();
+        Ok(Self {
+            template: template.to_string(),
+            version,
+            text,
+        })
+    }
+
+    fn matches_its_release(&self, root: &Path) -> Result<bool, TaskFailure> {
+        let released = TemplateHistory::text_at(root, &self.release(), &self.template)?;
+        Ok(released.as_deref() == Some(self.text.as_str()))
+    }
+
+    fn release(&self) -> String {
+        format!("{}{}", TemplateHistory::RELEASE_PREFIX, self.version)
+    }
+
+    fn mismatch_line(&self) -> String {
+        format!(
+            "  `{}/{}/{}` differs from the text {} released: replace it with the output of `git show {}:{}`\n",
+            TemplateHistory::HISTORY_ROOT,
+            self.template,
+            self.version,
+            self.release(),
+            self.release(),
+            self.template
+        )
     }
 }
 
 impl Check for TemplateHistory {
     fn passes(&self) -> bool {
-        self.forgotten.is_empty()
+        self.release.is_some() && self.forgotten.is_empty() && self.altered.is_empty()
     }
 
     fn summary(&self) -> String {
@@ -133,17 +197,15 @@ impl Check for TemplateHistory {
     }
 
     fn details(&self) -> String {
-        self.forgotten
+        if self.release.is_none() {
+            return "  no `v*` tag is reachable from HEAD: run `git fetch --tags`\n".to_string();
+        }
+        let forgotten = self
+            .forgotten
             .iter()
-            .map(|template| {
-                let release = self.release.as_deref().unwrap_or_default();
-                format!(
-                    "  {template} differs from its text at {release}, and that text is missing: copy it to `{}/{template}/{}`\n",
-                    Self::HISTORY_ROOT,
-                    release.trim_start_matches('v')
-                )
-            })
-            .collect()
+            .map(|template| self.forgotten_line(template));
+        let altered = self.altered.iter().map(KeptText::mismatch_line);
+        forgotten.chain(altered).collect()
     }
 }
 
@@ -154,8 +216,11 @@ mod tests {
     use crate::temporary_repository::TemporaryRepository;
 
     const WORKFLOW: &str = "src/cli/github_workflow.yml";
+    const FIRST_WORKFLOW: &str = "steps: []\n";
     const EARLIER_WORKFLOW: &str = "steps:\n  - run: knave test\n";
-    const KEPT_WORKFLOW: &str = "src/cli/earlier_texts/src/cli/github_workflow.yml/0.18.0";
+    const CHANGED_WORKFLOW: &str = "steps:\n  - run: knave lint\n";
+    const KEPT_AT_FIRST_RELEASE: &str = "src/cli/earlier_texts/src/cli/github_workflow.yml/0.17.0";
+    const KEPT_AT_LATEST_RELEASE: &str = "src/cli/earlier_texts/src/cli/github_workflow.yml/0.18.0";
 
     struct HistoryCase {
         repository: TemporaryRepository,
@@ -164,10 +229,12 @@ mod tests {
     impl HistoryCase {
         fn released(name: &str) -> Self {
             let repository = TemporaryRepository::initialized(name);
-            repository.write(WORKFLOW, EARLIER_WORKFLOW);
-            repository.write(KEPT_WORKFLOW, "steps: []\n");
+            repository.write(WORKFLOW, FIRST_WORKFLOW);
             repository.commit_all();
-            repository.git(&["tag", "v0.9.0"]);
+            repository.git(&["tag", "v0.17.0"]);
+            repository.write(WORKFLOW, EARLIER_WORKFLOW);
+            repository.write(KEPT_AT_FIRST_RELEASE, FIRST_WORKFLOW);
+            repository.commit_all();
             repository.git(&["tag", "v0.18.0"]);
             Self { repository }
         }
@@ -180,14 +247,13 @@ mod tests {
     #[test]
     fn a_changed_template_without_its_earlier_text_fails() {
         let case = HistoryCase::released("history-forgotten");
-        case.repository
-            .write(WORKFLOW, "steps:\n  - run: knave lint\n");
+        case.repository.write(WORKFLOW, CHANGED_WORKFLOW);
         let history = case.checked();
         assert!(!history.passes());
         assert_eq!(
             history.details(),
             format!(
-                "  {WORKFLOW} differs from its text at v0.18.0, and that text is missing: copy it to `src/cli/earlier_texts/{WORKFLOW}/0.18.0`\n"
+                "  {WORKFLOW} differs from its text at v0.18.0, and that text is missing: copy it to `{KEPT_AT_LATEST_RELEASE}`\n"
             )
         );
     }
@@ -195,8 +261,7 @@ mod tests {
     #[test]
     fn a_template_changed_and_committed_after_the_release_still_needs_its_released_text() {
         let case = HistoryCase::released("history-after-release");
-        case.repository
-            .write(WORKFLOW, "steps:\n  - run: knave lint\n");
+        case.repository.write(WORKFLOW, CHANGED_WORKFLOW);
         case.repository.commit_all();
         assert!(!case.checked().passes());
     }
@@ -204,12 +269,9 @@ mod tests {
     #[test]
     fn a_template_changed_between_releases_needs_no_entry_for_its_unreleased_text() {
         let case = HistoryCase::released("history-between-releases");
-        case.repository.write(
-            "src/cli/earlier_texts/src/cli/github_workflow.yml/0.18.0",
-            EARLIER_WORKFLOW,
-        );
         case.repository
-            .write(WORKFLOW, "steps:\n  - run: knave lint\n");
+            .write(KEPT_AT_LATEST_RELEASE, EARLIER_WORKFLOW);
+        case.repository.write(WORKFLOW, CHANGED_WORKFLOW);
         case.repository.commit_all();
         case.repository
             .write(WORKFLOW, "steps:\n  - run: knave fmt --check\n");
@@ -217,26 +279,52 @@ mod tests {
     }
 
     #[test]
-    fn a_repository_without_a_release_passes() {
+    fn a_release_unreachable_from_head_is_not_compared() {
+        let case = HistoryCase::released("history-unreachable");
+        case.repository.git(&["checkout", "--quiet", "-b", "later"]);
+        case.repository.write(WORKFLOW, CHANGED_WORKFLOW);
+        case.repository.commit_all();
+        case.repository.git(&["tag", "v0.19.0"]);
+        case.repository.git(&["checkout", "--quiet", "-"]);
+        assert!(case.checked().passes());
+    }
+
+    #[test]
+    fn a_repository_without_a_release_fails_and_says_to_fetch_the_tags() {
         let repository = TemporaryRepository::initialized("history-unreleased");
         repository.write(WORKFLOW, EARLIER_WORKFLOW);
-        repository.write(KEPT_WORKFLOW, "steps: []\n");
+        repository.write(KEPT_AT_FIRST_RELEASE, FIRST_WORKFLOW);
         repository.commit_all();
-        repository.write(WORKFLOW, "steps:\n  - run: knave lint\n");
         let history = TemplateHistory::check(repository.root()).expect("the history reads");
-        assert!(history.passes());
+        assert!(!history.passes());
+        assert_eq!(
+            history.details(),
+            "  no `v*` tag is reachable from HEAD: run `git fetch --tags`\n"
+        );
     }
 
     #[test]
     fn a_changed_template_that_keeps_its_earlier_text_passes() {
         let case = HistoryCase::released("history-kept");
+        case.repository.write(WORKFLOW, CHANGED_WORKFLOW);
         case.repository
-            .write(WORKFLOW, "steps:\n  - run: knave lint\n");
-        case.repository.write(
-            "src/cli/earlier_texts/src/cli/github_workflow.yml/0.18.0",
-            EARLIER_WORKFLOW,
-        );
+            .write(KEPT_AT_LATEST_RELEASE, EARLIER_WORKFLOW);
         assert!(case.checked().passes());
+    }
+
+    #[test]
+    fn a_kept_text_that_differs_from_its_release_fails() {
+        let case = HistoryCase::released("history-altered");
+        case.repository
+            .write(KEPT_AT_FIRST_RELEASE, "steps: [edited]\n");
+        let history = case.checked();
+        assert!(!history.passes());
+        assert_eq!(
+            history.details(),
+            format!(
+                "  `{KEPT_AT_FIRST_RELEASE}` differs from the text v0.17.0 released: replace it with the output of `git show v0.17.0:{WORKFLOW}`\n"
+            )
+        );
     }
 
     #[test]
@@ -250,13 +338,12 @@ mod tests {
     }
 
     #[test]
-    fn a_template_new_since_the_release_passes() {
-        let case = HistoryCase::released("history-new");
-        case.repository.write("skills/fresh/SKILL.md", "fresh\n");
-        case.repository.write(
-            "src/cli/earlier_texts/skills/fresh/SKILL.md/0.18.0",
-            "older\n",
-        );
+    fn a_template_missing_from_the_latest_release_needs_no_kept_text_of_it() {
+        let case = HistoryCase::released("history-missing");
+        case.repository.remove(WORKFLOW);
+        case.repository.commit_all();
+        case.repository.git(&["tag", "v0.18.1"]);
+        case.repository.write(WORKFLOW, CHANGED_WORKFLOW);
         assert!(case.checked().passes());
     }
 }

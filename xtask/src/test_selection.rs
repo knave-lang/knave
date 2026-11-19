@@ -23,6 +23,11 @@ impl TestRun {
     pub fn arguments(&self) -> &[String] {
         &self.arguments
     }
+
+    pub fn runs_stage_fixtures(&self) -> bool {
+        self.arguments
+            .starts_with(&StageTests::STAGES_TARGET.map(String::from))
+    }
 }
 
 impl fmt::Display for TestRun {

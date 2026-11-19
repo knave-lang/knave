@@ -1,0 +1,5 @@
+(defn add-one! (items) (push-at! items 1))
+
+(defn main ()
+  (local text (str "a"))
+  (add-one! (mut text)))

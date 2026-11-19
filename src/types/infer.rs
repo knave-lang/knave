@@ -2436,7 +2436,8 @@ impl TypeChecker {
             let item = self.infer(item)?;
             return self.infer_string_push(value, item, span);
         }
-        self.note_unknown_collection(&value, CollectionAssumption::PushTarget);
+        let assumption = CollectionAssumption::push_target(self.macro_name(span));
+        self.note_unknown_collection(&value, assumption);
         let element = self.unifier.fresh();
         let parameters = vec![
             Type::mutable(self.prelude_types().nested_vector_of(1, &element)),

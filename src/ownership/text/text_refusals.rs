@@ -117,6 +117,15 @@ mod tests {
     }
 
     #[test]
+    fn a_short_lived_view_given_to_an_owned_argument_is_refused() {
+        let owned = SlotOwner::Argument(Flows::span(80));
+        let flows = Flows::default()
+            .required(owned.clone(), Need::Owned)
+            .text(ReachingText::BORROWED, (owned, 4));
+        assert_eq!(flows.refused_at(), vec![4]);
+    }
+
+    #[test]
     fn an_owned_need_outranks_a_written_view() {
         let owned = SlotOwner::Argument(Flows::span(80));
         let flows = Flows::default()

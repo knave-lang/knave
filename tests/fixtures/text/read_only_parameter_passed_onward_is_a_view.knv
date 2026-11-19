@@ -1,0 +1,8 @@
+(defn shout (text) (upper-case text))
+
+(defn relay (text)
+  (local kept text)
+  (shout kept))
+
+(defn main ()
+  (println (relay (as-str (str "a" 1)))))

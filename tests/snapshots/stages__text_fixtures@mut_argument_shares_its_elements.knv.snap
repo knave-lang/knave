@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/mut_argument_shares_its_elements.knv
+---
+defn grow!
+  names[0]: mixed, written a view
+defn main
+  local names[0]: mixed, written a view

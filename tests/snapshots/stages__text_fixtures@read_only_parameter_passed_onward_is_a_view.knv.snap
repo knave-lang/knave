@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/text/read_only_parameter_passed_onward_is_a_view.knv
+---
+defn shout
+  text: a view
+  result: owned
+defn relay
+  text: a view
+  local kept: a view
+  result: owned

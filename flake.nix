@@ -202,22 +202,21 @@
               read -r cargo_process || return 0
               read -r -t "$time_limit" || waited=$?
               if ((waited >= read_timed_out_status)) && stop_if_running "$cargo_process"; then
-                echo "cargo: stopped by KNAVE_BUILD_TIME_LIMIT=$time_limit, which counts seconds from when the command took a build slot" >&2
+                echo "cargo: stopped by KNAVE_BUILD_TIME_LIMIT=$time_limit, which counts seconds from when the command took a build slot" >&2 || true
                 return "$timed_out_status"
               fi
             }
 
             stop_if_running() {
-              local tree identities waited
+              local tree identities
               [[ -n $(survivors "$1" "$(identify "$1")") ]] || return 1
+              trap "" TERM HUP INT QUIT
               tree=$(freeze_process_tree "$1")
               identities=$(identify "$tree")
               signal_survivors TERM "$tree" "$identities"
-              signal_survivors CONT "$tree" "$identities"
-              for ((waited = 0; waited < seconds_before_kill; waited++)); do
-                [[ -n $(survivors "$tree" "$identities") ]] || return 0
-                sleep 1
-              done
+              thaw "$tree"
+              trap - TERM HUP INT QUIT
+              wait_for_survivors_to_stop
               signal_survivors KILL "$tree" "$identities"
             }
 
@@ -232,12 +231,26 @@
               echo "$tree"
             }
 
+            thaw() {
+              local frozen
+              IFS=, read -ra frozen <<<"$1"
+              kill -CONT "''${frozen[@]}" 2>/dev/null || true
+            }
+
+            wait_for_survivors_to_stop() {
+              local waited
+              for ((waited = 0; waited < seconds_before_kill; waited++)); do
+                [[ -n $(survivors "$tree" "$identities") ]] || return 0
+                sleep 1
+              done
+            }
+
             process_tree() {
               "$ps" -A -o pid= -o ppid= | "$awk" -v root="$1" -f "$process_tree_program"
             }
 
             identify() {
-              "$ps" -o pid= -o lstart= -p "$1"
+              "$ps" -o pid= -o lstart= -p "$1" || true
             }
 
             survivors() {
@@ -578,6 +591,27 @@
           kill "$(<"$calls/daemon-process")"
           KNAVE_BUILD_TIME_LIMIT=60 timeout 10 ${cargo} daemon || fail "a limited cargo waited for a daemon it started"
           kill "$(<"$calls/daemon-process")"
+          KNAVE_BUILD_TIME_LIMIT=60 timeout 10 bash -c "${cargo} daemon 2>&1 | cat" ||
+            fail "a daemon that a limited cargo started held the caller's standard error open"
+          kill "$(<"$calls/daemon-process")"
+
+          for signal in TERM HUP; do
+            for delay in 1.0{0..9}{0,5} 1.1{0..9}{0,5} 1.2{0..5}; do
+              (
+                trap - INT QUIT
+                exec ${setsid} env KNAVE_BUILD_TIME_LIMIT=1 ${cargo} forker 2>/dev/null
+              ) &
+              signalled=$!
+              sleep "$delay"
+              kill "-$signal" -- "-$signalled" 2>/dev/null || true
+              { wait "$signalled" || true; } 2>/dev/null
+              sleep 0.5
+              ! ${ps} -A -o stat= | grep --quiet '^T' ||
+                fail "a group SIG$signal $delay s into a limited run left processes stopped"
+              xargs kill -KILL <"$calls/forked" 2>/dev/null || true
+              rm -f "$calls/forked"
+            done
+          done
 
           KNAVE_BUILD_SLOTS=1 ${cargo} build limit-holder &
           wait_for_call build-limit-holder
@@ -595,6 +629,10 @@
             fail "a stopped run printed '$(<stopped)', not only the limit line"
 
           status=0
+          KNAVE_BUILD_TIME_LIMIT=1 timeout 10 ${cargo} sleep 30 2>&- || status=$?
+          [[ $status == 124 ]] || fail "a run past KNAVE_BUILD_TIME_LIMIT with standard error closed exited $status, not 124"
+
+          status=0
           KNAVE_BUILD_TIME_LIMIT=1 timeout 10 ${cargo} hang 2>/dev/null || status=$?
           [[ $status == 124 ]] || fail "a run with a hung child exited $status, not 124"
           expect_stopped "$(<"$calls/hung-child")" "a child of cargo outlived KNAVE_BUILD_TIME_LIMIT"
@@ -608,8 +646,9 @@
           [[ $(<said) == "cargo error" ]] || fail "a limited cargo's standard error read '$(<said)', not its own message"
 
           status=0
-          KNAVE_BUILD_TIME_LIMIT=1 timeout 20 ${cargo} forker 2>/dev/null || status=$?
+          KNAVE_BUILD_TIME_LIMIT=1 timeout --signal KILL 20 ${cargo} forker 2>forker-stopped || status=$?
           [[ $status == 124 ]] || fail "a run that keeps forking exited $status, not 124"
+          grep --quiet 'stopped by KNAVE_BUILD_TIME_LIMIT=1,' forker-stopped || fail "a run that keeps forking was not stopped by the limit"
           while read -r forked; do
             ! running "$forked" || fail "a process that cargo forked as the limit fired outlived the limit"
           done <"$calls/forked"

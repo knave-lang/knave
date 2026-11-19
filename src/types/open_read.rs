@@ -20,7 +20,6 @@ impl<'a> OpenRead<'a> {
         let declared = definition.field(field)?.without_written_lifetimes();
         Some(match declared {
             Type::Ref(..) => (declared, ReadKind::StoredBorrow),
-            _ if declared.is_unsized() => (Type::shared(declared), ReadKind::StoredBorrow),
             Type::Function(..) => (declared, ReadKind::Value),
             _ if self.copy.is_small_copy(&declared) => (declared, ReadKind::Value),
             _ => (Type::shared(declared), ReadKind::BorrowOfStruct),

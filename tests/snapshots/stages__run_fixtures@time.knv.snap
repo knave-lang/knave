@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/time.knv
+---
+true
+(seconds 2) (millis 1500) (micros 3) (nanos 1000000001) (seconds 0)
+true
+true
+(vec (seconds 1) (seconds 2))

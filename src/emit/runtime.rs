@@ -17,6 +17,7 @@ enum RuntimePart {
     MapSequence,
     Io,
     Exit,
+    Duration,
     Source,
     Separator,
     Lines,
@@ -51,7 +52,7 @@ impl RuntimePart {
         "eprintln!(",
         "std::io::stderr(",
     ];
-    const NAMED: [(&'static str, RuntimePart); 31] = [
+    const NAMED: [(&'static str, RuntimePart); 35] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
         ("Float", RuntimePart::Float),
@@ -62,6 +63,10 @@ impl RuntimePart {
         ("StartsWith", RuntimePart::StartsWith),
         ("read_line", RuntimePart::Io),
         ("exit", RuntimePart::Exit),
+        ("seconds", RuntimePart::Duration),
+        ("millis", RuntimePart::Duration),
+        ("micros", RuntimePart::Duration),
+        ("nanos", RuntimePart::Duration),
         ("Source", RuntimePart::Source),
         ("Separator", RuntimePart::Separator),
         ("lines", RuntimePart::Lines),
@@ -252,6 +257,7 @@ impl RuntimeModule {
     const MAP_SEQUENCE: &'static str = include_str!("../../prelude/runtime/map_sequence.rs");
     const IO: &'static str = include_str!("../../prelude/runtime/io.rs");
     const EXIT: &'static str = include_str!("../../prelude/runtime/exit.rs");
+    const DURATION: &'static str = include_str!("../../prelude/runtime/duration.rs");
     const SOURCE: &'static str = include_str!("../../prelude/runtime/source.rs");
     const SEPARATOR: &'static str = include_str!("../../prelude/runtime/separator.rs");
     const LINES: &'static str = include_str!("../../prelude/runtime/lines.rs");
@@ -277,7 +283,7 @@ impl RuntimeModule {
     const INDEX: &'static str = include_str!("../../prelude/runtime/index.rs");
     const CONVERT: &'static str = include_str!("../../prelude/runtime/convert.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 33] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 34] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -288,6 +294,7 @@ impl RuntimeModule {
         (RuntimePart::MapSequence, Self::MAP_SEQUENCE),
         (RuntimePart::Io, Self::IO),
         (RuntimePart::Exit, Self::EXIT),
+        (RuntimePart::Duration, Self::DURATION),
         (RuntimePart::Source, Self::SOURCE),
         (RuntimePart::Separator, Self::SEPARATOR),
         (RuntimePart::Lines, Self::LINES),

@@ -17,7 +17,7 @@
 (use prelude/types box hash-map iterator option result slice
                    sorted-map vec)
 
-(use prelude/io io-error)
+(use prelude/io duration instant io-error)
 
 (module
   "Builds, prints, parses and splits strings.
@@ -67,7 +67,7 @@
 
 (rust-trait debug "std::fmt::Debug"
   bool char str string io-error i8 i16 i32 i64 i128 isize u8
-  u16 u32 u64 u128 usize f32 f64
+  u16 u32 u64 u128 usize f32 f64 duration instant
   (parse-error bool)
   (parse-error char)
   (parse-error string)
@@ -105,7 +105,7 @@
     :bare "{1}.write_str(\"{name}\")")
   (help "a closure, an iterator or a function has no printed form")
   bool char str string unit io-error i8 i16 i32 i64 i128
-  isize u8 u16 u32 u64 u128 usize f32 f64
+  isize u8 u16 u32 u64 u128 usize f32 f64 duration
   (parse-error bool)
   (parse-error char)
   (parse-error string)

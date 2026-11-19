@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/negative_duration.knv
+---
+error[L0365]: a duration cannot be negative
+ --> expand/negative_duration.knv:1:30
+  |
+1 | (defn main () (sleep (millis -250)))
+  |                              ^^^^ this count is below zero
+  |
+  = help: write a count of zero or more
+  = note: run `knave doc L0365` for an explanation

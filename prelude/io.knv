@@ -1,11 +1,16 @@
-(use prelude/macros document module)
+(use prelude/macros document module template)
 (use prelude/types iterator option result vec)
 
-(module
-  "Reads standard input, files and the command line, and ends the process.")
+(use code bool-not fail len list nth number? prepend rest
+          string string-strip-prefix symbol? value-eq)
 
-(export command-line-args exit io-error line-seq read-line
-        slurp source stdin)
+(module
+  "Reads standard input, files, the command line and the clock, sleeps, and
+  ends the process.")
+
+(export command-line-args duration elapsed exit instant
+        io-error line-seq micros millis nanos now read-line
+        seconds sleep slurp source stdin)
 
 (rust-type io-error "std::io::Error")
 
@@ -40,6 +45,95 @@
 
 (def exit
   (rust "crate::rt::exit({0})" (fn (i32) unit)))
+
+(rust-type duration "std::time::Duration")
+
+(rust-type instant "std::time::Instant")
+
+(def sleep
+  (rust "std::thread::sleep({0})" (fn (duration) unit)))
+
+(def now
+  (rust "std::time::Instant::now()" (fn () instant)))
+
+(def elapsed
+  (rust "{0}.elapsed()" (fn (instant) duration)))
+
+(def literal-seconds
+  (rust "std::time::Duration::from_secs({0})"
+    (fn (u64) duration)))
+
+(def literal-millis
+  (rust "std::time::Duration::from_millis({0})"
+    (fn (u64) duration)))
+
+(def literal-micros
+  (rust "std::time::Duration::from_micros({0})"
+    (fn (u64) duration)))
+
+(def literal-nanos
+  (rust "std::time::Duration::from_nanos({0})"
+    (fn (u64) duration)))
+
+(def counted-seconds
+  (rust "crate::rt::seconds({0})" (fn (int) duration)))
+
+(def counted-millis
+  (rust "crate::rt::millis({0})" (fn (int) duration)))
+
+(def counted-micros
+  (rust "crate::rt::micros({0})" (fn (int) duration)))
+
+(def counted-nanos
+  (rust "crate::rt::nanos({0})" (fn (int) duration)))
+
+(def duration-call
+  (fn (form literal counted)
+    (if (symbol? form)
+      counted
+      (if (value-eq (len form) 2)
+        (duration-of-count (nth form 1) literal counted)
+        (prepend counted (rest form))))))
+
+(def duration-of-count
+  (fn (count literal counted)
+    (if (number? count)
+      (if (negative-literal? count)
+        (fail "a duration cannot be negative"
+          count "write a count of zero or more"
+          (template (:code negative-duration
+                           :label "this count is below zero")))
+        (list literal count))
+      (list counted count))))
+
+(def negative-literal?
+  (fn (number)
+    (local text (string number))
+    (bool-not (value-eq (string-strip-prefix text "-") text))))
+
+(def seconds
+  (macro (form)
+    (duration-call form
+                   (quote literal-seconds)
+                   (quote counted-seconds))))
+
+(def millis
+  (macro (form)
+    (duration-call form
+                   (quote literal-millis)
+                   (quote counted-millis))))
+
+(def micros
+  (macro (form)
+    (duration-call form
+                   (quote literal-micros)
+                   (quote counted-micros))))
+
+(def nanos
+  (macro (form)
+    (duration-call form
+                   (quote literal-nanos)
+                   (quote counted-nanos))))
 
 (document io-error
   "Names the error of an input or output call, Rust's `std::io::Error`.
@@ -116,3 +210,83 @@
   ```
   (exit 3)
   ```")
+
+(document duration
+  "Names a span of time, Rust's `std::time::Duration`.
+
+  [seconds], [millis], [micros] and [nanos] build one, and [elapsed] returns
+  one. Durations compare with `=`, `<` and the other comparisons. A duration
+  prints with [prn] as the call that builds it, in its largest whole unit.
+
+  (pr-str (millis 1500))
+  => \"(millis 1500)\"")
+
+(document instant
+  "Names a moment of the clock, Rust's `std::time::Instant`.
+
+  [now] returns one, and [elapsed] measures the time since it.
+
+  (infer (now))
+  => \"instant\"")
+
+(document (seconds count)
+  "Builds a [duration] of `count` seconds.
+
+  The count is an `int` of zero or more. A negative literal is an error, and
+  a negative count that the program computes panics.
+
+  (= (seconds 2) (millis 2000))
+  => true")
+
+(document (millis count)
+  "Builds a [duration] of `count` milliseconds.
+
+  The count is an `int` of zero or more. A negative literal is an error, and
+  a negative count that the program computes panics.
+
+  (< (millis 250) (seconds 1))
+  => true")
+
+(document (micros count)
+  "Builds a [duration] of `count` microseconds.
+
+  The count is an `int` of zero or more. A negative literal is an error, and
+  a negative count that the program computes panics.
+
+  (= (micros 1000) (millis 1))
+  => true")
+
+(document (nanos count)
+  "Builds a [duration] of `count` nanoseconds.
+
+  The count is an `int` of zero or more. A negative literal is an error, and
+  a negative count that the program computes panics.
+
+  (= (nanos 1000) (micros 1))
+  => true")
+
+(document (sleep duration)
+  "Pauses the current thread for at least the [duration].
+
+  (let (start (now))
+    (sleep (millis 1))
+    (>= (elapsed start) (millis 1)))
+  => true")
+
+(document (now)
+  "Returns the [instant] of the clock at the call.
+
+  The clock never goes back, so it measures time between two points of one
+  run. It does not tell the time of day.
+
+  (let (start (now))
+    (<= (elapsed start) (elapsed start)))
+  => true")
+
+(document (elapsed start)
+  "Returns the [duration] since the [instant] `start`.
+
+  (let (start (now))
+    (sleep (millis 5))
+    (>= (elapsed start) (millis 5)))
+  => true")

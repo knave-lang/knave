@@ -173,6 +173,7 @@ impl Expander<'_> {
             span: form.span(),
             module: target,
             names: names.collect(),
+            listed: items.len() - 2,
         }))
     }
 
@@ -481,7 +482,8 @@ mod tests {
                 .iter()
                 .filter(|module| ModuleSources::is_embedded_prelude(&module.path))
                 .all(|module| module.lint_facts.written_uses().is_empty()
-                    && module.lint_facts.imports().is_empty())
+                    && module.lint_facts.imports().is_empty()
+                    && module.lint_facts.notes().is_empty())
         );
     }
 }

@@ -407,7 +407,7 @@ impl<'s> Expander<'s> {
         let members = MemberTables::new(&self.tables.bindings, &self.tables.trait_methods);
         let read_out = UsedImports::new(self.tables.table.visible_names(), members, &self.modules);
         let hand_off = LintHandOff::new(references, read_out, self.tables.macros.ready());
-        let named = hand_off.hand_to(&mut modules, self.sources);
+        let named = hand_off.hand_to(&mut modules, &mut self.tables.module_notes, self.sources);
         let mut program = Program {
             modules,
             entry: ProgramEntry {

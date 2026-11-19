@@ -1,0 +1,13 @@
+(use code list)
+(use modules/format pad-left)
+
+(export def-padder)
+
+(def call-form
+  (fn (x) (list (quote pad-left) x)))
+
+(defmacro def-padder (name)
+  (list (quote defmacro)
+        name
+        (quote (x))
+        (list (quote call-form) (quote x))))

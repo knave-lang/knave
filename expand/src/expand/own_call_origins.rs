@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use super::enclosing_index::EnclosingIndex;
 use super::macro_origin::MacroOrigin;
 use super::saved_origin_rows::SavedOriginRows;
-use crate::source::{SourceId, Span};
+use crate::source::Span;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct OwnCallOrigins {
@@ -24,13 +24,6 @@ impl OwnCallOrigins {
             .enclosing_index
             .get_or_init(|| EnclosingIndex::of(self.origins.keys().copied()));
         self.at(index.smallest_enclosing(span)?)
-    }
-
-    pub fn macros_called_in(&self, source: SourceId) -> impl Iterator<Item = Span> + '_ {
-        self.origins
-            .iter()
-            .filter(move |(call_site, _)| call_site.source() == source)
-            .map(|(_, origin)| origin.defined)
     }
 
     pub fn record(&mut self, call_site: Span, origin: MacroOrigin) {

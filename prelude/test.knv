@@ -2,7 +2,9 @@
                     template)
 
 (use prelude/internal/macros docstring-before-body?
-                             module-docstring-notes)
+                             doctests-key
+                             module-docstring-notes
+                             module-docstrings-key)
 
 (use prelude/internal/docstrings arrow-line? closes-fence?
                                  example-arrow
@@ -267,7 +269,7 @@
   (macro (form)
     (check-doctest-shape form)
     (module-symbol (nth form 1))
-    (add-module-note (quote doctests)
+    (add-module-note doctests-key
                      (list (first form) (nth form 1)))
     (template (do))))
 
@@ -305,7 +307,7 @@
 (def asked-doc-tests
   (fn (module)
     (mapped-concat asked-module-doc-tests
-                   (module-notes module (quote doctests)))))
+                   (module-notes module doctests-key))))
 
 (def asked-module-doc-tests
   (fn (asked)
@@ -333,7 +335,7 @@
 (def counted-module-docstring
   (fn (target)
     (local docstrings
-      (module-notes target (quote module-docstrings)))
+      (module-notes target module-docstrings-key))
     (if (empty? docstrings)
       docstrings
       (list (first docstrings)))))

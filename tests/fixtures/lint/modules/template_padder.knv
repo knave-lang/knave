@@ -1,0 +1,11 @@
+(use modules/format pad-left)
+
+(export def-padder)
+
+(def call-form
+  (fn (x)
+    (template (pad-left (unquote x)))))
+
+(defmacro def-padder (name)
+  (template (defmacro (unquote name) (x)
+              (call-form x))))

@@ -73,16 +73,6 @@ impl ExpandedSource {
         (definition, read_back.into_names())
     }
 
-    pub fn read_back_entry(&mut self) -> Vec<ReadBackDefinition> {
-        let entry = self.program.entry.module;
-        let entry_module = self
-            .program
-            .modules
-            .iter()
-            .filter(|module| module.id == entry);
-        ReadBack::new(&self.program.bindings, &mut self.program.scopes).definitions(entry_module)
-    }
-
     pub fn table_rows(&mut self, name: &str) -> Vec<String> {
         let (definition, _) = self.read_back_named(name);
         let span = definition.form.span();

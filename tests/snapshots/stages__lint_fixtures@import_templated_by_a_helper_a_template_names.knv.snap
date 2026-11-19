@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/lint/import_templated_by_a_helper_a_template_names.knv
+---
+

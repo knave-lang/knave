@@ -1,11 +1,15 @@
 (use prelude/macros document module template)
 
-(use code bool-not empty? first len list list? nth
+(use code bool-not concat empty? first len list list? nth
           number-sub prepend rest same-binding? string
-          string-strip-prefix symbol-name symbol? value-eq
-          warn)
+          string-strip-prefix string? symbol-name symbol?
+          value-eq warn)
 
 (use prelude/internal/code introducing-macro)
+(use prelude/internal/links link-names)
+
+(use prelude/internal/macros docstring-notes-of doctests-key
+                             module-docstrings-key)
 
 (module
   "Holds the lint rules that `knave lint` runs.")
@@ -124,8 +128,9 @@
   an `export` lists it, when it is `main` of the entry module, when a macro
   or the compiler wrote it, when the compiler ran it while expanding a
   macro, when another module reads it, or when a reachable definition reads
-  it. A definition that a macro's body names counts as reachable too, even
-  when no module calls the macro. A definition that only unreachable
+  it. A definition that a macro's body names, directly or through the
+  definitions it names in turn, counts as reachable too, even when no
+  module calls the macro. A definition that only unreachable
   definitions read is reported too, and its help names the definitions that
   read it, which are reported too. A name that starts with `_` is kept on
   purpose: it is never reported, and the definitions it reads are reached.
@@ -169,16 +174,30 @@
   ```")
 
 (document (unused-import module)
-  "Reports a name that a `use` brings in and the module never refers to.
+  "Reports a name that a `use` brings in and no lookup of the program
+  resolves to.
 
-  The rule reports each name of a `use` that no definition, signature,
-  type, pattern, macro call or `export` of the module refers to, at the
-  name, or the whole `use` when none of its names is used. A use of a
-  constructor, a variant or a method that a name brought in counts for the
-  name, and so does any name that a macro's body calls or writes in a
-  template. A `use` that lists no name is left out, and so is a name that
-  brings in only a macro, a name that starts with `_` and a `use` that a
-  macro's expansion wrote.
+  The rule reports each such name of a `use` at the name, or the whole `use`
+  when none of its names is used. A lookup whose answer can change the
+  expanded program uses the name it resolves to, and a lookup of a
+  constructor, a variant or a method that a name brought in uses the name. A
+  lookup that only asks, such as the one behind a \"did you mean\" help,
+  uses nothing. A macro's question about a name uses the name when the
+  import can change the answer: `pattern-head?` when it answers yes, and
+  `expand-call` when the name is a macro or the import hides a macro of that
+  name. A template in a written macro's body, or in a definition that body
+  reaches as `unreachable-definition` counts it, uses each name it holds,
+  whether or not anything calls the macro. A docstring link of the module
+  uses the name it names, and the name that brought in the constructor or
+  method it names. Every name a module brings in is used when the module
+  holds a `doctest`. A `use` whose module the module names by its path, in
+  its own forms or in a macro that another module runs, is reported name by
+  name, so that its fix keeps the `use`. A `use` that lists no name is left
+  out, and so is a name that brings in only a macro, a name that starts with
+  `_`, a `use` whose head or path a macro's expansion wrote, a name that
+  expansion wrote, and a name written outside the `use` form. A `use` that a
+  macro rebuilt from a written form is reported name by name, and a left-out
+  name it lists keeps it from counting as wholly unused.
 
   Only `knave lint` runs the rule, and it exits with status 1 when the rule
   reports a name, unless the project's `lints` section gives the rule
@@ -402,7 +421,7 @@
     (if (value-eq rule (quote unreachable-definition))
       (unreachable-definition (first module))
       (if (value-eq rule (quote unused-import))
-        (unused-import (nth module 1))
+        (unused-import (nth module 1) (nth module 2))
         (do)))))
 
 (document (kept-definition? name)
@@ -475,49 +494,147 @@
     (string "`" (symbol-name form) "`")))
 
 (def unused-import
-  (fn (entries)
+  (fn (entries notes)
+    (if (empty? (noted notes doctests-key))
+      (warn-unused-imports entries
+                           (link-names (docstring-texts notes)))
+      (do))))
+
+(def warn-unused-imports
+  (fn (entries linked)
     (if (empty? entries)
       (do)
       (do
-        (warn-unused-names (first entries))
-        (recur (rest entries))))))
+        (warn-unused-names (first entries) linked)
+        (recur (rest entries) linked)))))
+
+(def noted
+  (fn (notes key)
+    (if (empty? notes)
+      notes
+      (if (value-eq (symbol-name (first (first notes)))
+                    (symbol-name key))
+        (rest (first notes))
+        (recur (rest notes) key)))))
+
+(def docstring-texts
+  (fn (notes)
+    (local notes-of
+      (fn (key) (noted notes key)))
+    (note-texts (concat (notes-of module-docstrings-key)
+                        (docstring-notes-of notes-of))
+                (list))))
+
+(def note-texts
+  (fn (notes texts)
+    (if (empty? notes)
+      texts
+      (recur (rest notes)
+             (concat texts
+                     (if (string? (first notes))
+                       (list (first notes))
+                       (strings-in (first notes) (list))))))))
+
+(def strings-in
+  (fn (forms texts)
+    (if (empty? forms)
+      texts
+      (recur (rest forms)
+             (if (string? (first forms))
+               (concat texts (list (first forms)))
+               texts)))))
 
 (def warn-unused-names
-  (fn (entry)
+  (fn (entry linked)
     (warn-reported-names entry
-                         (written-names (nth entry 2) (list)))))
+                         (written-names (nth entry 2) linked (list)))))
 
 (def warn-reported-names
   (fn (entry names)
     (if (empty? names)
       (do)
-      (if (value-eq (len names) (nth entry 1))
-        (warn-unused-use (first entry))
+      (if (whole-use-unused? entry names)
+        (warn-unused-use (first entry) names)
         (warn-each-unused-name names)))))
 
+(def whole-use-unused?
+  (fn (entry names)
+    (if (value-eq (len names) (nth entry 1))
+      (bool-not (holds-marker? entry (quote module-read)))
+      false)))
+
+(def holds-marker?
+  (fn (forms marker)
+    (if (empty? forms)
+      false
+      (if (marker? (first forms) marker)
+        true
+        (recur (rest forms) marker)))))
+
+(def marker?
+  (fn (form marker)
+    (if (symbol? form)
+      (value-eq (symbol-name form) (symbol-name marker))
+      false)))
+
 (def written-names
-  (fn (names kept)
+  (fn (names linked kept)
     (if (empty? names)
       kept
       (recur (rest names)
-             (if (reported-name? (first names))
+             linked
+             (if (reported-name? (first names) linked)
                (prepend (first (first names)) kept)
                kept)))))
 
 (def reported-name?
-  (fn (entry)
-    (if (empty? (rest entry))
-      (written-name? (first entry))
+  (fn (entry linked)
+    (if (holds-marker? (rest entry) (quote macro))
+      false
+      (if (any-linked? (prepend (first entry)
+                                (members-of (rest entry)))
+                       linked)
+        false
+        (written-name? (first entry))))))
+
+(def members-of
+  (fn (parts)
+    (if (empty? parts)
+      parts
+      (if (members-list? (first parts))
+        (rest (first parts))
+        (recur (rest parts))))))
+
+(def members-list?
+  (fn (form)
+    (if (list? form)
+      (marker? (first form) (quote members))
       false)))
 
+(def any-linked?
+  (fn (names linked)
+    (if (empty? names)
+      false
+      (if (linked? (symbol-name (first names)) linked)
+        true
+        (recur (rest names) linked)))))
+
+(def linked?
+  (fn (name linked)
+    (if (empty? linked)
+      false
+      (if (value-eq name (first linked))
+        true
+        (recur name (rest linked))))))
+
 (def warn-unused-use
-  (fn (form)
+  (fn (form names)
     (if (written-name? form)
       (warn "nothing this `use` brings in is used"
         form "remove the `use`"
         (quote (:code unused-import
                       :label "nothing this brings in is used")))
-      (do))))
+      (warn-each-unused-name names))))
 
 (def warn-each-unused-name
   (fn (names)

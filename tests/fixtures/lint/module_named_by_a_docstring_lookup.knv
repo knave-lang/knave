@@ -1,0 +1,7 @@
+(use modules/shapes origin point)
+
+(export page)
+
+(def page (doc-page (module modules/shapes)))
+
+(defn main () (println (:x (origin))))

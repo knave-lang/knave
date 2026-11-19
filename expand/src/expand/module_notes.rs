@@ -4,7 +4,7 @@ use crate::reader::Form;
 
 mod notes_log;
 
-use super::saved_notes::{NoteTables, NotesTable, SavedNotes};
+use super::saved_notes::{NoteTables, NotesKey, NotesTable, SavedNotes};
 pub use notes_log::NotesCheckpoint;
 use notes_log::NotesLog;
 
@@ -89,6 +89,15 @@ impl ModuleNotes {
                 .expect("every added key holds its notes");
             self.held_bytes = self.held_bytes.saturating_sub(HeldBytes::of_form(&removed));
         }
+    }
+}
+
+impl IntoIterator for ModuleNotes {
+    type Item = (NotesKey, Vec<Form>);
+    type IntoIter = <NotesTable as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.notes.into_iter()
     }
 }
 

@@ -1,6 +1,8 @@
+use std::ops::Deref;
+
 use rustc_hash::FxHashMap;
 
-use super::trait_rows_reach::Implementor;
+use super::implementor::Implementor;
 use super::ty::{Scheme, Type};
 use crate::core::{BindingId, PrimitiveType};
 
@@ -51,10 +53,6 @@ impl IndexedImplementors {
         }
     }
 
-    pub fn as_slice(&self) -> &[Implementor] {
-        &self.implementors
-    }
-
     pub fn candidates(&self, target: &Type) -> impl Iterator<Item = &Implementor> {
         let positions = match TypeHead::of(target) {
             Some(head) => self.by_head.get(&head).unwrap_or(&self.open),
@@ -85,6 +83,14 @@ impl IndexedImplementors {
     }
 }
 
+impl Deref for IndexedImplementors {
+    type Target = [Implementor];
+
+    fn deref(&self) -> &[Implementor] {
+        &self.implementors
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum TypeHead {
     Primitive(PrimitiveType),
@@ -112,8 +118,8 @@ impl TypeHead {
 #[cfg(test)]
 mod tests {
     use super::IndexedImplementors;
-    use crate::core::PrimitiveType;
-    use crate::types::{GenericId, Implementor, Scheme, Type, TypeVar};
+    use crate::core::{BindingId, PrimitiveType};
+    use crate::types::{ClosureKind, GenericId, Implementor, Scheme, Type, TypeVar};
 
     struct IndexFixture;
 
@@ -160,6 +166,23 @@ mod tests {
             IndexFixture::candidates(&indexed, &IndexFixture::integer()),
             [IndexFixture::blanket(), IndexFixture::integer()]
         );
+    }
+
+    #[test]
+    fn each_kind_of_head_meets_only_its_own_rows() {
+        let named = BindingId::from_index(0);
+        let bodies = [
+            IndexFixture::integer(),
+            Type::Named(named, Vec::new()),
+            Type::TraitObject(named),
+            Type::Function(ClosureKind::Fn, Vec::new(), Box::new(Type::unit())),
+            Type::shared(IndexFixture::integer()),
+            Type::mutable(IndexFixture::integer()),
+        ];
+        let indexed = IndexFixture::indexed(&bodies);
+        for body in &bodies {
+            assert_eq!(IndexFixture::candidates(&indexed, body), [body.clone()]);
+        }
     }
 
     #[test]

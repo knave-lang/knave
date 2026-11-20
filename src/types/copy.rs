@@ -110,8 +110,9 @@ mod tests {
     use super::CopyRules;
     use crate::core::{BindingArena, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::types::Type;
+    use crate::types::implementor::Implementor;
     use crate::types::rust_trait::RustTrait;
-    use crate::types::trait_rows_reach::{Implementor, LoweredRows};
+    use crate::types::trait_rows_reach::LoweredRows;
     use crate::types::traits::TraitTable;
     use crate::types::ty::Scheme;
 

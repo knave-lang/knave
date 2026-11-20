@@ -1,11 +1,7 @@
+use super::implementor::Implementor;
 use super::indexed_implementors::IndexedImplementors;
 use super::ty::{Bound, Scheme, Type};
 use crate::core::BindingId;
-
-pub struct Implementor {
-    pub scheme: Scheme,
-    pub argument: Option<Type>,
-}
 
 pub struct TraitRowsReach(Lowering);
 
@@ -61,12 +57,8 @@ impl LoweredRows {
         }
     }
 
-    pub fn implementors(&self) -> &[Implementor] {
-        self.implementors.as_slice()
-    }
-
-    pub fn candidates(&self, target: &Type) -> impl Iterator<Item = &Implementor> {
-        self.implementors.candidates(target)
+    pub fn implementors(&self) -> &IndexedImplementors {
+        &self.implementors
     }
 
     pub fn add(&mut self, implementor: Implementor) {

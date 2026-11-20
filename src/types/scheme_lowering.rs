@@ -1,11 +1,11 @@
 use rustc_hash::FxHashMap;
 
+use super::implementor::Implementor;
 use super::lowered_associated_value::LoweredAssociatedValue;
 use super::lowered_binders::LoweredBinders;
 use super::lowered_impl::LoweredImpl;
 use super::problems::TypeProblems;
 use super::result_borrow_source::ResultBorrowSource;
-use super::trait_rows_reach::Implementor;
 use super::ty::{GenericId, Scheme, Type};
 use super::written_type_lowering::WrittenTypeLowering;
 use super::written_type_variables::WrittenTypeVariables;

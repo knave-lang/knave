@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
+use super::implementor::Implementor;
 use super::lowered_associated_value::LoweredAssociatedValue;
 use super::projection::{AssociatedType, ProjectionTable};
-use super::trait_rows_reach::Implementor;
 use super::traits::TraitTable;
 use crate::core::BindingId;
 

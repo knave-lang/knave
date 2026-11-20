@@ -2,11 +2,12 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::implementor::Implementor;
 use super::indexed_implementors::IndexedImplementors;
 use super::projection::ProjectionTable;
 use super::rust_trait::RustTrait;
 use super::selection::{ImplementorMatch, Selection};
-use super::trait_rows_reach::{Implementor, LoweredRows};
+use super::trait_rows_reach::LoweredRows;
 use super::ty::{Bound, GenericId, Scheme, Type};
 use crate::core::BindingId;
 
@@ -235,6 +236,7 @@ impl<'t> TraitRows<'t> {
         rust_trait
             .rows()
             .reached()
+            .implementors()
             .candidates(target)
             .chain(normalized.flat_map(move |rows| rows.candidates(target)))
     }

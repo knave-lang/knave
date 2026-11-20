@@ -1,4 +1,4 @@
-use crate::core::{BindingId, ReferenceKind};
+use crate::core::{BindingId, ParsedTemplate, Piece, ReferenceKind};
 use crate::types::{Borrow, TypedArgument, TypedExprKind};
 
 pub struct CallOrder<'a> {
@@ -27,19 +27,22 @@ impl<'a> CallOrder<'a> {
     }
 
     fn is_kept(&self) -> bool {
-        self.lent_and_read()
-            .all(|position| self.is_autoref_place(position))
+        let parsed =
+            ParsedTemplate::parse(self.template).expect("the expansion stage checked the template");
+        self.lent_and_read_later()
+            .all(|position| Self::is_autoref_place(parsed.pieces(), position))
     }
 
-    fn lent_and_read(&self) -> impl Iterator<Item = usize> + '_ {
+    fn lent_and_read_later(&self) -> impl Iterator<Item = usize> + '_ {
         self.arguments
             .iter()
             .enumerate()
             .filter_map(|(position, argument)| Some((position, Self::lent_mut(argument)?)))
             .filter(|(position, root)| {
-                self.arguments.iter().enumerate().any(|(other, argument)| {
-                    other != *position && argument.value.mentions_local(*root)
-                })
+                self.arguments
+                    .iter()
+                    .skip(position + 1)
+                    .any(|argument| argument.value.mentions_local(*root))
             })
             .map(|(position, _)| position)
     }
@@ -52,12 +55,21 @@ impl<'a> CallOrder<'a> {
         }
     }
 
-    fn is_autoref_place(&self, position: usize) -> bool {
-        let placeholder = format!("{{{position}}}");
-        self.template.match_indices(&placeholder).all(|(start, _)| {
-            let after = self.template[start + placeholder.len()..].trim_start();
-            after.starts_with(Self::AUTOREF_PLACES) || Self::assigns(after)
-        })
+    fn is_autoref_place(pieces: &[Piece], position: usize) -> bool {
+        pieces
+            .iter()
+            .enumerate()
+            .filter(|(_, piece)| {
+                matches!(piece, Piece::Placeholder { index, .. } if *index == position)
+            })
+            .all(|(at, _)| match pieces.get(at + 1) {
+                Some(Piece::Literal(after)) => Self::places(after.trim_start()),
+                _ => false,
+            })
+    }
+
+    fn places(after: &str) -> bool {
+        after.starts_with(Self::AUTOREF_PLACES) || Self::assigns(after)
     }
 
     fn assigns(after: &str) -> bool {
@@ -77,6 +89,7 @@ mod tests {
 
     impl OrderFixture {
         const READ_LATER: &'static str = "(def grow! (rust \"{0}.push({1})\" (fn ((mut (vec usize)) usize) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (mut v) (len v)))\n  (println (len v)))";
+        const READ_EARLIER: &'static str = "(def grow! (rust \"{1}.push({0})\" (fn (usize (mut (vec usize))) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (len v) (mut v)))\n  (println (len v)))";
         const READ_NOWHERE: &'static str = "(def grow! (rust \"{0}.push({1})\" (fn ((mut (vec usize)) usize) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (mut v) 3))\n  (println (len v)))";
 
         fn kept(source: &'static str, template: &str) -> bool {
@@ -123,6 +136,22 @@ mod tests {
         assert!(!OrderFixture::kept(
             OrderFixture::READ_LATER,
             "Vec::push({0}, {1})"
+        ));
+    }
+
+    #[test]
+    fn a_marked_placeholder_is_read_like_any_other() {
+        assert!(!OrderFixture::kept(
+            OrderFixture::READ_LATER,
+            "Vec::push({0}, {&1})"
+        ));
+    }
+
+    #[test]
+    fn a_reader_before_the_mut_argument_keeps_the_order() {
+        assert!(OrderFixture::kept(
+            OrderFixture::READ_EARLIER,
+            "Vec::push({1}, {0})"
         ));
     }
 

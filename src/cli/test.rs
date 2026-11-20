@@ -1,26 +1,24 @@
 use std::io;
 use std::path::PathBuf;
 
-use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
-use super::module_of_sources::ModuleOfSources;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
 use super::test_binary::TestBinary;
 use super::test_entries::TestEntries;
 use super::test_report::{TestOutcome, TestReport};
 use super::test_run::{TestRun, TestRunError};
+use super::test_runner_program::TestRunnerProgram;
 use super::value_marker::ValueMarker;
 use crate::build::BuildProfile;
 use crate::core::ModulePath;
 use crate::emit::EmittedCrate;
-use crate::expand::{ExpansionSession, Program};
 
 pub struct TestCommand {
     entries: TestEntries,
     selection: TestSelection,
-    untested: Option<ModulePath>,
+    runner: TestRunnerProgram,
     profile: BuildProfile,
 }
 
@@ -31,8 +29,6 @@ pub enum TestSelection {
 }
 
 impl TestCommand {
-    const RUNNER_SOURCE: &'static str = "<test runner>";
-
     pub fn new(
         path: Option<PathBuf>,
         selection: TestSelection,
@@ -42,7 +38,7 @@ impl TestCommand {
         Self {
             entries: TestEntries::new(path),
             selection,
-            untested: untested.map(ModulePath::new),
+            runner: TestRunnerProgram::new(untested.map(ModulePath::new)),
             profile,
         }
     }
@@ -55,56 +51,13 @@ impl TestCommand {
 
     fn test(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
         let loaded = self.entries.load(terminal)?;
-        let program = self.runner_program(terminal, loaded.module)?;
+        let program = self.runner.program(terminal, loaded.module)?;
         let checked = terminal.checking().check(&program)?;
         let emitted = terminal.emission()?.emit(&checked)?;
         let marker = ValueMarker::random();
         let outcome = self.build_and_run(terminal, &emitted, loaded.project.as_ref(), &marker)?;
         self.note_no_selected_test(terminal, &outcome);
         Ok(Self::status(&outcome))
-    }
-
-    fn runner_program(
-        &self,
-        terminal: &mut Terminal,
-        module: ModuleOfSources,
-    ) -> Result<Program, ExitStatus> {
-        let request = EvaluationRequest {
-            module,
-            evaluated: Vec::new(),
-        };
-        let runner = self.runner_text();
-        let program = terminal
-            .expansion()
-            .sessions()
-            .within_evaluation(&request, |session| self.entered_runner(session, &runner))?;
-        program.ok_or_else(|| self.report_unloaded_module())
-    }
-
-    fn entered_runner(
-        &self,
-        mut session: ExpansionSession<'_>,
-        runner: &str,
-    ) -> Result<Option<Program>, crate::diagnostic::Diagnostics> {
-        if let Some(module) = &self.untested
-            && !session.loads(module)
-        {
-            return Ok(None);
-        }
-        let source = session.add_source(Self::RUNNER_SOURCE, runner);
-        let entry = session.test_runner_entry(source)?;
-        let mut program = session.finish()?;
-        program.enter(&entry);
-        Ok(Some(program))
-    }
-
-    fn runner_text(&self) -> String {
-        let untested = self
-            .untested
-            .as_ref()
-            .map(|module| format!(" :untested {module}"))
-            .unwrap_or_default();
-        format!("(run-tests{untested})")
     }
 
     fn build_and_run(
@@ -136,17 +89,6 @@ impl TestCommand {
         } else {
             ExitStatus::ProgramErrors
         }
-    }
-
-    fn report_unloaded_module(&self) -> ExitStatus {
-        let module = self
-            .untested
-            .as_ref()
-            .expect("only `--untested` names a module");
-        StandardError::write_line(format_args!(
-            "error: the program does not load module `{module}`"
-        ));
-        ExitStatus::UsageError
     }
 
     fn report_run_error(error: TestRunError) -> ExitStatus {

@@ -46,11 +46,15 @@ impl TestEntries {
         let project =
             LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?
                 .ok_or_else(WorkingDirectory::report_no_project)?;
-        let path = project.placement().tests_directory().to_path_buf();
-        if !path.is_dir() {
+        if !project.placement().tests_directory().is_dir() {
             return Err(Self::report_no_tests_directory(&project));
         }
-        Ok(EntryTree::of_tests(path, Some(project)))
+        Ok(Self::project_tree(project))
+    }
+
+    pub fn project_tree(project: LocatedProject) -> EntryTree {
+        let path = project.placement().tests_directory().to_path_buf();
+        EntryTree::of_tests(path, Some(project))
     }
 
     fn report_no_tests_directory(project: &LocatedProject) -> ExitStatus {

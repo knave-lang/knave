@@ -127,8 +127,20 @@ impl ProjectTree {
     }
 
     fn loaded_folder(&self, loaded: &LexicalPath) -> Option<ProjectFolder> {
-        let loaded = loaded.as_path();
-        let root = self.root_holding(loaded)?;
+        let named = loaded.as_path();
+        match self.root_holding(named) {
+            Some(root) => Self::folder_under(named, root),
+            None => self.real_folder(named),
+        }
+    }
+
+    fn real_folder(&self, named: &Path) -> Option<ProjectFolder> {
+        let root = self.root.as_deref()?;
+        let real = Self::canonical(named)?;
+        Self::folder_under(&real, root)
+    }
+
+    fn folder_under(loaded: &Path, root: &Path) -> Option<ProjectFolder> {
         match loaded.strip_prefix(root).ok()?.components().next() {
             Some(Component::Normal(name)) if name == SearchScope::TESTS_DIRECTORY => {
                 Some(ProjectFolder::Tests)
@@ -174,6 +186,7 @@ mod tests {
     use crate::modules::ProjectFolder::{self, Source, Tasks, Tests};
 
     struct ProjectFixture {
+        folder: PathBuf,
         root: PathBuf,
     }
 
@@ -190,21 +203,44 @@ mod tests {
             "project.knv",
         ];
 
+        const REAL_ROOT: &str = "real";
+        const SHOWN_ROOT: &str = "shown";
+
         fn new(name: &str) -> Self {
-            let root = std::env::temp_dir()
+            let folder = Self::folder(name);
+            Self::write_files(&folder);
+            Self {
+                root: folder.clone(),
+                folder,
+            }
+        }
+
+        #[cfg(unix)]
+        fn reached_through_link(name: &str) -> Self {
+            let folder = Self::folder(name);
+            Self::write_files(&folder.join(Self::REAL_ROOT));
+            let root = folder.join(Self::SHOWN_ROOT);
+            std::os::unix::fs::symlink(Self::REAL_ROOT, &root).expect("the link is writable");
+            Self { folder, root }
+        }
+
+        fn folder(name: &str) -> PathBuf {
+            std::env::temp_dir()
                 .join(format!(
                     "{}-search-scope-{}",
                     Language::NAME,
                     std::process::id()
                 ))
-                .join(name);
+                .join(name)
+        }
+
+        fn write_files(root: &Path) {
             for file in Self::FILES {
                 let path = root.join(file);
                 fs::create_dir_all(path.parent().expect("a fixture file has a folder"))
                     .expect("the fixture folder is writable");
                 fs::write(path, "").expect("the fixture file is writable");
             }
-            Self { root }
         }
 
         fn folders(&self, scope: &SearchScope, file: &str) -> Vec<ProjectFolder> {
@@ -223,7 +259,7 @@ mod tests {
 
     impl Drop for ProjectFixture {
         fn drop(&mut self) {
-            let _ = fs::remove_dir_all(&self.root);
+            let _ = fs::remove_dir_all(&self.folder);
         }
     }
 
@@ -305,6 +341,16 @@ mod tests {
     #[test]
     fn a_file_named_under_the_real_folder_of_a_linked_root_holds_its_folder() {
         let fixture = ProjectFixture::new("linked-root");
+        fixture.link("linked", ".");
+        let scope = SearchScope::tests(&fixture.path("linked"));
+        assert_eq!(fixture.folders(&scope, "src/main.knv"), [Source]);
+        assert_eq!(fixture.folders(&scope, "tests/deep/counting.knv"), [Tests]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_named_under_a_project_reached_through_a_link_holds_its_folder() {
+        let fixture = ProjectFixture::reached_through_link("root-through-link");
         fixture.link("linked", ".");
         let scope = SearchScope::tests(&fixture.path("linked"));
         assert_eq!(fixture.folders(&scope, "src/main.knv"), [Source]);

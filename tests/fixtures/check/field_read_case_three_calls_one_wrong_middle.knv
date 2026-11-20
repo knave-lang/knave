@@ -1,0 +1,15 @@
+(defstruct user
+  :n (option int))
+
+(defstruct animal
+  :n (option int))
+
+(defstruct plant
+  :n (option int))
+
+(defn n-or (x d) (unwrap-or (:n x) d))
+
+(defn main ()
+  (println (n-or (->user (some 1)) 2))
+  (println (n-or (->animal none) true))
+  (println (n-or (->plant none) 4)))

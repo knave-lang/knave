@@ -1,0 +1,11 @@
+(defstruct user
+  :name string)
+
+(defstruct animal
+  :name string)
+
+(defn nm (x) (:name x))
+
+(defn main ()
+  (println (nm (->user (str "a"))))
+  (println (nm (->animal (str "b")))))

@@ -1,0 +1,15 @@
+(defstruct pet
+  :name str)
+
+(defstruct user
+  :pet pet)
+
+(defstruct animal
+  :pet pet)
+
+(defn pet-len (x)
+  (len (:name (:pet x))))
+
+(defn main ()
+  (println (pet-len (->user (->pet "ab"))))
+  (println (pet-len (->animal (->pet "b")))))

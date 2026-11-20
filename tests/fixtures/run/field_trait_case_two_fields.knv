@@ -1,0 +1,13 @@
+(defstruct user
+  :n int
+  :m int)
+
+(defstruct animal
+  :m int
+  :n int)
+
+(defn diff (x) (- (:n x) (:m x)))
+
+(defn main ()
+  (println (diff (->user 10 1)))
+  (println (diff (->animal 1 10))))

@@ -1,6 +1,4 @@
 use super::ty::Type;
-use super::unborrowed::Unborrowed;
-use crate::core::PrimitiveType;
 
 pub(super) struct ReadView<'t> {
     read: &'t Type,
@@ -11,34 +9,16 @@ impl<'t> ReadView<'t> {
         Self { read }
     }
 
-    pub(super) fn is_written_as(&self, written: &Type) -> bool {
-        self.views_as(written) && written.reference_depth() == self.read.reference_depth()
-    }
-
-    pub(super) fn is_reached_as(&self, reached: &Type) -> bool {
-        self.views_as(reached) && reached.reference_depth() <= self.read.reference_depth()
-    }
-
-    pub(super) fn at_depth_of(&self, reached: &Type) -> Type {
-        let open_depth = matches!(reached.innermost_referent(), Type::Var(_));
-        let mut read = self.read;
-        while !open_depth
-            && read.reference_depth() > reached.reference_depth()
-            && let Type::Ref(_, inner) | Type::Mut(_, inner) = read
-        {
-            read = inner;
-        }
-        read.clone()
-    }
-
     pub(super) fn is_used_as(&self, used: &Type) -> bool {
-        Self::fits(self.read, used) || self.is_borrowed_as_unsized(used)
+        Self::fits(self.read, used) || self.is_borrowed_place(used)
     }
 
-    fn is_borrowed_as_unsized(&self, used: &Type) -> bool {
-        let borrowed_place =
-            used.is_unsized() && used.reference_depth() < self.read.reference_depth();
-        borrowed_place && self.views_as(used)
+    fn is_borrowed_place(&self, used: &Type) -> bool {
+        let referent = match self.read {
+            Type::Ref(_, referent) => referent.as_ref(),
+            _ => return false,
+        };
+        used.is_unsized() && Self::fits(referent, used)
     }
 
     fn fits(read: &Type, used: &Type) -> bool {
@@ -53,17 +33,6 @@ impl<'t> ReadView<'t> {
                     && (reads.iter().zip(uses)).all(|(read, used)| Self::fits(read, used))
             }
             _ => read == used,
-        }
-    }
-
-    fn views_as(&self, expected: &Type) -> bool {
-        Self::viewed(Unborrowed::of(self.read)) == Self::viewed(Unborrowed::of(expected))
-    }
-
-    fn viewed(value: &Type) -> Type {
-        match value {
-            Type::Primitive(PrimitiveType::String) => Type::Primitive(PrimitiveType::Str),
-            other => other.clone(),
         }
     }
 }

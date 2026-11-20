@@ -29,6 +29,13 @@ impl<'a> OpenRead<'a> {
         Some(self.classified(declared, field_type))
     }
 
+    pub(super) fn of_written(&self, written: &Type) -> Type {
+        if !written.is_concrete() {
+            return written.clone();
+        }
+        self.classified(written, written.clone()).read
+    }
+
     fn classified(&self, declared: &Type, field_type: Type) -> FieldRead {
         let kind = match declared {
             Type::Ref(..) => ReadKind::StoredBorrow,

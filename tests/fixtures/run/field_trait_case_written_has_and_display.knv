@@ -1,0 +1,17 @@
+(defstruct user
+  :n int
+  :name string)
+
+(defstruct animal
+  :n int
+  :name string)
+
+(type show
+  (where ((a (has :n int) (has :name string)))
+    (fn ((ref a)) string)))
+
+(defn show (x) (str (:name x) (:n x)))
+
+(defn main ()
+  (println (show (->user 1 (str "ana"))))
+  (println (show (->animal 2 (str "rex")))))

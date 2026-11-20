@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/second_includes_clause.knv
+---
+error[L0210]: malformed `rust-trait`
+ --> expand/second_includes_clause.knv:5:3
+  |
+5 |   (includes written)
+  |   ^^^^^^^^^^^^^^^^^^ this does not fit the shape of `rust-trait`
+  |
+  = help: keep one `includes` clause
+  = note: run `knave doc L0210` for an explanation

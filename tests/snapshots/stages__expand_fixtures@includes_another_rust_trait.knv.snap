@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/includes_another_rust_trait.knv
+---
+error[L0366]: the `includes` clause of `printed` names `shown`, which does not bind `std::fmt::Display`
+ --> expand/includes_another_rust_trait.knv:4:13
+  |
+4 |   (includes shown)
+  |             ^^^^^ this trait does not bind `std::fmt::Display`
+  |
+  = help: name a trait that binds `std::fmt::Display`, so that a function generic over `printed` emits the same Rust bound
+  = note: run `knave doc L0366` for an explanation

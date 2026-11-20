@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/program_trait_includes_display.knv
+---
+show 1
+[true] took 3ms

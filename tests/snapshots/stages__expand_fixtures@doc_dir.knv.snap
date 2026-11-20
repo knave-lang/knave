@@ -9,4 +9,4 @@ input_file: tests/fixtures/expand/doc_dir.knv
 (def no-names "(dir doc_dir/empty)\n\nNo names.")
 (def listing-header "(dir doc_dir/geometry)")
 (def listing-body "\n\narea")
-(def main (fn () ((rust "println!(\"geometry-names listing-body listing-header main no-names own-helper own-names\")" (where () (fn () unit)))) ((rust "println!(\"area\")" (where () (fn () unit)))) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (own-helper))))
+(def main (fn () ((rust "println!(\"geometry-names listing-body listing-header main no-names own-helper own-names\")" (where () (fn () unit)))) ((rust "println!(\"area\")" (where () (fn () unit)))) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (own-helper))))

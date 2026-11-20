@@ -8,7 +8,7 @@ use super::shape::Shape;
 use super::type_placeholder_problems::TypePlaceholderProblems;
 use crate::core::{
     BindingId, CoreModule, DefinitionForm, EnumRust, Item, ItemKind, ParsedTemplate, Piece,
-    TemplateBraces, TypeBinder, TypeExpr,
+    PrintFormat, RustTypeDeclaration, TemplateBraces, TypeBinder, TypeExpr,
 };
 use crate::diagnostic::Diagnostic;
 use crate::reader::{Form, FormKind};
@@ -28,7 +28,8 @@ impl Expander<'_> {
         core: &mut CoreModule,
     ) -> Result<(), Diagnostic> {
         let shape = self.definition_shape(DefinitionForm::RustType, form);
-        let items = shape.at_least(Self::RUST_TYPE_PARTS)?;
+        let (format, items) = PrintFormatClause::split(&shape, Self::RUST_TYPE_PARTS)?;
+        let items = items.as_slice();
         self.reject_misplaced_where(&shape, items)?;
         let body = vec![items[2].clone()];
         let (head, unsized_parameters) = Self::mark_unsized_parameters(&items[1]);
@@ -52,13 +53,14 @@ impl Expander<'_> {
         let clauses =
             self.lower_rust_type_clauses(&shape, form, items, parameterized.binders.len())?;
         core.items.push(Item {
-            kind: ItemKind::RustType(
+            kind: ItemKind::RustType(RustTypeDeclaration {
                 binding,
-                parameterized.binders,
+                binders: parameterized.binders,
                 unsized_parameters,
-                Rc::new(template),
+                template: Rc::new(template),
                 clauses,
-            ),
+                format,
+            }),
             span: form.span(),
             hidden: false,
         });
@@ -294,5 +296,36 @@ impl Expander<'_> {
             }
             None => Ok(()),
         }
+    }
+}
+
+struct PrintFormatClause;
+
+impl PrintFormatClause {
+    const HELP: &'static str = "the one format a `rust-type` names is `(format debug)`";
+
+    fn split(shape: &Shape<'_>, parts: usize) -> Result<(PrintFormat, Vec<Form>), Diagnostic> {
+        let items = shape.at_least(parts)?;
+        let mut format = PrintFormat::default();
+        let mut kept = items[..parts].to_vec();
+        for item in &items[parts..] {
+            match Self::word(item) {
+                Some(word) => format = Self::named(shape, item, word)?,
+                None => kept.push(item.clone()),
+            }
+        }
+        Ok((format, kept))
+    }
+
+    fn word(clause: &Form) -> Option<&str> {
+        let [head, word] = clause.as_list()? else {
+            return None;
+        };
+        let head = head.as_symbol()?;
+        (head.name() == PrintFormat::CLAUSE).then_some(word.as_symbol()?.name())
+    }
+
+    fn named(shape: &Shape<'_>, clause: &Form, word: &str) -> Result<PrintFormat, Diagnostic> {
+        PrintFormat::named(word).ok_or_else(|| shape.malformed_with_help(clause, Self::HELP))
     }
 }

@@ -1,0 +1,19 @@
+(rust-trait flag-text "std::fmt::Display"
+  (includes display)
+  bool)
+
+(type show
+  (where ((a display))
+    (fn ((ref a)) unit)))
+
+(defn show (x) (println "show " x))
+
+(type flag
+  (where ((a flag-text))
+    (fn ((ref a)) string)))
+
+(defn flag (x) (str "[" x "]"))
+
+(defn main ()
+  (show 1)
+  (println (flag true) " took " (millis 3)))

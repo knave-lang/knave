@@ -1,0 +1,39 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/print_durations.knv
+---
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let pause = std::time::Duration::from_millis(250_u64);
+    let step: i64 = 3;
+    println!("{:?}", pause);
+    println!("{:?} at step {}", pause, step);
+    println!("took {:?} at step {}", pause, step);
+    println!("step {} took {:?}", step, pause);
+    println!("took {:?}", pause);
+    print!("{:?}", pause);
+    println!();
+    eprintln!("took {:?} at step {}", pause, step);
+    eprintln!("{:?}", pause);
+    println!("{:?}", pause);
+    println!("took {:?} at step {}", pause, step);
+    println!("{} {:?} done", step, std::time::Duration::from_secs(2_u64))
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

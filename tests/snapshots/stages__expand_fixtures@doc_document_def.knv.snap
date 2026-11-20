@@ -5,4 +5,4 @@ input_file: tests/fixtures/expand/doc_document_def.knv
 ---
 (def twice (fn (x) (mul 2 x)))
 (def twice-page "twice\n\nDoubles a number: `(twice x)`.")
-(def main (fn () ((rust "println!(\"{{}}{{}}\", {&0}, {&1})" (where ((part-type-0 display) (part-type-1 display)) (fn ((ref part-type-0) (ref part-type-1)) unit))) (twice 2) twice-page)))
+(def main (fn () ((rust "println!(\"{format 0}{format 1}\", {&0}, {&1})" (where ((part-type-0 printable) (part-type-1 printable)) (fn ((ref part-type-0) (ref part-type-1)) unit))) (twice 2) twice-page)))

@@ -32,6 +32,7 @@ mod globals;
 mod hidden_kernel_type;
 mod host;
 mod imported_members;
+mod includes_clause;
 mod input_terms;
 mod introduced;
 mod introduced_name;

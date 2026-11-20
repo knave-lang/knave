@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use super::{
     BindingArena, BindingId, Expr, FieldLabel, ImplementorRow, ImplementorRows, Lambda, LintFacts,
-    MismatchHelp, ModuleId, ModulePath, ParsedTemplate, PrimitiveType, StructuralClause,
-    TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+    MismatchHelp, ModuleId, ModulePath, ParsedTemplate, PrimitiveType, PrintFormat,
+    StructuralClause, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
 };
 use crate::rust_trait_path::RustTraitPath;
 use crate::source::Span;
@@ -21,6 +21,7 @@ pub const RUST_TRAIT_HELP_MARKER: &str = "help";
 pub const RUST_TRAIT_ASSOCIATED_MARKER: &str = "associated";
 pub const RUST_TRAIT_STRUCTURAL_MARKER: &str = "structural";
 pub const RUST_TRAIT_REQUIRES_MARKER: &str = "requires";
+pub const RUST_TRAIT_INCLUDES_MARKER: &str = "includes";
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct RustTraitAssociatedType {
@@ -51,6 +52,19 @@ impl ImplementorRow for RustTraitImplementor {
     }
 }
 
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct TraitRelations {
+    pub requires: Vec<RequiredTrait>,
+    pub included: Option<BindingId>,
+}
+
+impl TraitRelations {
+    pub fn included_clause(&self, mut name_of: impl FnMut(BindingId) -> String) -> Option<String> {
+        let included = name_of(self.included?);
+        Some(format!("({RUST_TRAIT_INCLUDES_MARKER} {included})"))
+    }
+}
+
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct RequiredTrait {
     pub bound: TypeBound,
@@ -66,7 +80,7 @@ pub struct RustTraitDeclaration {
     pub self_variable: BindingId,
     pub methods: Vec<TraitMethod>,
     pub help: Option<Rc<str>>,
-    pub requires: Vec<RequiredTrait>,
+    pub relations: TraitRelations,
     pub structural: Option<StructuralClause>,
     pub associated: Vec<RustTraitAssociatedType>,
     pub implementors: ImplementorRows<RustTraitImplementor>,
@@ -107,14 +121,18 @@ pub enum ItemKind {
         Vec<ImplAssociatedType>,
         Vec<ImplMethod>,
     ),
-    RustType(
-        BindingId,
-        Vec<TypeBinder>,
-        Vec<usize>,
-        Rc<ParsedTemplate>,
-        Vec<(TypeExpr, Rc<ParsedTemplate>)>,
-    ),
+    RustType(RustTypeDeclaration),
     MismatchHelp(MismatchHelp),
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct RustTypeDeclaration {
+    pub binding: BindingId,
+    pub binders: Vec<TypeBinder>,
+    pub unsized_parameters: Vec<usize>,
+    pub template: Rc<ParsedTemplate>,
+    pub clauses: Vec<(TypeExpr, Rc<ParsedTemplate>)>,
+    pub format: PrintFormat,
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -193,6 +211,16 @@ struct WrittenExport {
 }
 
 impl ItemKind {
+    pub fn declared_type(&self) -> Option<(BindingId, &[TypeBinder])> {
+        match self {
+            Self::Struct(binding, binders, _) | Self::Enum(binding, binders, ..) => {
+                Some((*binding, binders))
+            }
+            Self::RustType(declaration) => Some((declaration.binding, &declaration.binders)),
+            _ => None,
+        }
+    }
+
     pub fn method_bodies(&self) -> Vec<BindingId> {
         match self {
             Self::Impl(_, _, _, methods) => methods.iter().map(|method| method.binding).collect(),

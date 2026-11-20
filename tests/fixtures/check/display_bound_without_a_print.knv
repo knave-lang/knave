@@ -1,0 +1,7 @@
+(type label
+  (where ((a display)) (fn ((ref a)) int)))
+
+(defn label (x) 1)
+
+(defn main ()
+  (println (label (millis 3))))

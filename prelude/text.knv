@@ -30,8 +30,8 @@
         infallible join lines lower-case parse
         parse-bool-error parse-char-error parse-error
         parse-float-error parse-int-error pattern pr-str
-        print println prn show split starts-with? str subs
-        trim upper-case whitespace?)
+        print printable println prn show split starts-with?
+        str subs trim upper-case whitespace?)
 
 (rust-type formatter "std::fmt::Formatter<'_>")
 
@@ -64,6 +64,10 @@
   (parse-error f32)
   (parse-error f64)
   (where ((a display)) (ref a)))
+
+(rust-trait printable "std::fmt::Display"
+  (includes display)
+  duration)
 
 (rust-trait debug "std::fmt::Debug"
   bool char str string io-error i8 i16 i32 i64 i128 isize u8
@@ -137,8 +141,10 @@
 
 (def display-string
   (rust "{0}.to_string()"
-    (where ((a display))
-      (fn ((ref a)) string))))
+    (where ((a printable))
+      (fn ((ref a)) string))
+    (display "{0}.to_string()")
+    (debug "format!(\"{{:?}}\", {0})")))
 
 (def print-printed-form
   (rust "println!(\"{{}}\", crate::rt::Shown({0}))"
@@ -379,9 +385,9 @@
               (list (list (part-type index) (quote show)))
               (number-add index 1)
               (list shown-argument))
-        (list "{{}}"
+        (list (string "{format " index "}")
               (list (nth piece 1))
-              (list (list (part-type index) (quote display)))
+              (list (list (part-type index) (quote printable)))
               (number-add index 1)
               (list plain-argument))))))
 
@@ -515,10 +521,10 @@
 (document (str part ...)
   "Builds a [string] from its parts.
 
-  A string literal part is literal text, and any other part prints with
-  [display]. `(str x)` emits `x.to_string()`, and `str` as a value is that
-  one-part function, so `(map (iter years) str)` turns each year into a
-  `string`.
+  A string literal part is literal text, a `duration` part prints with Rust's
+  `Debug`, as `250ms`, and any other part prints with [display]. `(str x)`
+  emits `x.to_string()`, and `str` as a value is that one-part function, so
+  `(map (iter years) str)` turns each year into a `string`.
 
   (str \"year \" 2026)
   => \"year 2026\"
@@ -530,7 +536,8 @@
   "Prints its parts to standard output, with no newline of its own.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  [show], and any other part prints with [display].
+  [show], a `duration` part prints with Rust's `Debug`, as `250ms`, and any
+  other part prints with [display].
 
   (print \"total: \" 3)
   => total: 3 ..."
@@ -543,7 +550,8 @@
   "Prints its parts and a newline to standard output.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  [show], and any other part prints with [display].
+  [show], a `duration` part prints with Rust's `Debug`, as `250ms`, and any
+  other part prints with [display].
 
   (println \"total: \" 3)
   => total: 3 ...
@@ -556,7 +564,8 @@
   "Prints its parts to standard error, with no newline of its own.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  [show], and any other part prints with [display].
+  [show], a `duration` part prints with Rust's `Debug`, as `250ms`, and any
+  other part prints with [display].
 
   ```
   (eprint \"total: \" 3)
@@ -571,7 +580,8 @@
   "Prints its parts and a newline to standard error.
 
   A string literal part is literal text, a `(pr-str x)` part prints with
-  [show], and any other part prints with [display].
+  [show], a `duration` part prints with Rust's `Debug`, as `250ms`, and any
+  other part prints with [display].
 
   ```
   (eprintln \"total: \" 3)
@@ -929,6 +939,17 @@
 
   (derive point debug)
   ```")
+
+(document printable
+  "Marks a type that a part of [print], [println], [eprint], [eprintln] or [str]
+  prints.
+
+  It includes every [display] type, and a duration, which prints as Rust's
+  `Debug` prints it. A function generic over a printed value takes [display],
+  so a duration prints only at a call that names its type.
+
+  (str \"took \" (millis 250))
+  => \"took 250ms\"")
 
 (document from-str
   "Marks a type that [parse] builds from a string, as Rust's `FromStr` does.

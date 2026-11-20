@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).expand_report()"
+expression: reports.report(path)
 input_file: tests/fixtures/expand/same_binding_types.knv
 ---
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) true) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_2 display)) (fn ((ref part-type-0_2)) unit))) false) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_3 display)) (fn ((ref part-type-0_3)) unit))) true) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_4 display)) (fn ((ref part-type-0_4)) unit))) false) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_5 display)) (fn ((ref part-type-0_5)) unit))) true) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_6 display)) (fn ((ref part-type-0_6)) unit))) false)))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) true) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0_2 printable)) (fn ((ref part-type-0_2)) unit))) false) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0_3 printable)) (fn ((ref part-type-0_3)) unit))) true) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0_4 printable)) (fn ((ref part-type-0_4)) unit))) false) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0_5 printable)) (fn ((ref part-type-0_5)) unit))) true) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0_6 printable)) (fn ((ref part-type-0_6)) unit))) false)))

@@ -267,7 +267,7 @@ mod tests {
                 self_variable: self.binding("self"),
                 methods: Vec::new(),
                 help: None,
-                requires: Vec::new(),
+                relations: crate::core::TraitRelations::default(),
                 structural: None,
                 associated: Vec::new(),
                 implementors: ImplementorRows::new(rows),

@@ -8,6 +8,7 @@ use pending_item::TypeDefinitionKind;
 use super::budget_arena::BudgetId;
 use super::context::DefinitionContext;
 use super::declared_trait::DeclaredTrait;
+use super::includes_clause::{IncludedTrait, IncludesClause, IncludesEntry};
 use super::mismatch_help::MismatchHelpForm;
 use super::problems::ExpandProblems;
 use super::shape::Shape;
@@ -51,10 +52,12 @@ struct ImplLowering<'a, 'f> {
 type ImplAssociated = Vec<(BindingId, Rc<str>, TypeExpr)>;
 type ImplLoweringParts = (ImplAssociated, Vec<Form>);
 
+#[derive(Default)]
 struct RustTraitEntries {
     methods: Vec<TraitMethod>,
     help: Option<Rc<str>>,
     requires: Vec<RequiredTrait>,
+    included: Option<IncludedTrait>,
     structural: Option<Form>,
     associated: Vec<RustTraitAssociatedType>,
     implementors: Vec<RustTraitImplementor>,
@@ -1626,13 +1629,16 @@ impl Expander<'_> {
         let shape = self.definition_shape(DefinitionForm::RustTrait, form);
         let items = shape.at_least(3)?;
         let path: Rc<str> = shape.string(&items[2])?.into();
-        self.warn_second_trait_path(binding, &items[1], &path);
         let scope = self.tables.scopes.fresh(ScopeKind::Local);
         let mut self_symbol = Symbol::new("self");
         self_symbol.scopes_mut().add(scope);
         let self_form = Form::new(FormKind::Symbol(self_symbol), items[1].span());
         let self_variable = self.define_binder_variable(&self_form)?;
         let entries = self.lower_rust_trait_entries(&shape, scope, &items[3..])?;
+        IncludesClause::new(binding, &path).check_included_path(entries.included, &self.tables)?;
+        if entries.included.is_none() {
+            self.warn_second_trait_path(binding, &items[1], &path);
+        }
         let structural = entries.structural.as_ref().and_then(|clause| {
             let declared = DeclaredTrait {
                 binding,
@@ -1667,7 +1673,7 @@ impl Expander<'_> {
                 self_variable,
                 methods: entries.methods,
                 help: entries.help,
-                requires: entries.requires,
+                relations: IncludesClause::relations(entries.requires, entries.included),
                 structural,
                 associated: entries.associated,
                 implementors: ImplementorRows::new(entries.implementors),
@@ -1684,15 +1690,13 @@ impl Expander<'_> {
         scope: crate::scope::Scope,
         entries: &[Form],
     ) -> Result<RustTraitEntries, Diagnostic> {
-        let mut lowered = RustTraitEntries {
-            methods: Vec::new(),
-            help: None,
-            requires: Vec::new(),
-            structural: None,
-            associated: Vec::new(),
-            implementors: Vec::new(),
-        };
+        let mut lowered = RustTraitEntries::default();
         for entry in entries {
+            if IncludesEntry::new(shape, entry)
+                .lower_into(&mut lowered.included, |written| self.lower_bound(written))?
+            {
+                continue;
+            }
             self.lower_rust_trait_entry(shape, scope, entry, &mut lowered)?;
         }
         Ok(lowered)

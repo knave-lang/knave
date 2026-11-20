@@ -1,6 +1,6 @@
 use super::PrimitiveType;
 use super::lexeme::Lexeme;
-use super::template::Piece;
+use super::piece::Piece;
 use super::template_lexer::TemplateLexer;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -74,7 +74,9 @@ impl<'t> TemplateOperation<'t> {
                     quotes_an_argument = true;
                     Vec::new()
                 }
-                Piece::TypePlaceholder { .. } | Piece::BinderPlaceholder { .. } => Vec::new(),
+                Piece::TypePlaceholder { .. }
+                | Piece::BinderPlaceholder { .. }
+                | Piece::FormatPlaceholder { .. } => Vec::new(),
             })
             .collect();
         Self {

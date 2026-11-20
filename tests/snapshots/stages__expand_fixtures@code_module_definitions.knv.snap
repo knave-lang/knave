@@ -8,4 +8,4 @@ input_file: tests/fixtures/expand/code_module_definitions.knv
 (def own-path "code_module_definitions")
 (def imported-names "(hidden shown)")
 (def ordered "(apple pear)")
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (shown))))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (shown))))

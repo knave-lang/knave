@@ -3,7 +3,8 @@ use super::collected_trait::CollectedTrait;
 use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::written_type_fixture::WrittenTypeFixture;
 use crate::core::{
-    BindingId, BindingKind, ImplementorRows, RustTraitDeclaration, TraitMethod, TypeExpr,
+    BindingId, BindingKind, ImplementorRows, RustTraitDeclaration, TraitMethod, TraitRelations,
+    TypeExpr,
 };
 
 pub(super) struct TraitFixture {
@@ -28,7 +29,7 @@ impl TraitFixture {
             self_variable: binding,
             methods,
             help: None,
-            requires: Vec::new(),
+            relations: TraitRelations::default(),
             structural: None,
             associated: Vec::new(),
             implementors: ImplementorRows::new(Vec::new()),

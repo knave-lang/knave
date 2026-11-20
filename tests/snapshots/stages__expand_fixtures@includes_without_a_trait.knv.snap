@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/includes_without_a_trait.knv
+---
+error[L0210]: malformed `rust-trait`
+ --> expand/includes_without_a_trait.knv:3:41
+  |
+3 | (rust-trait printed "std::fmt::Display" (includes) char)
+  |                                         ^^^^^^^^^^ this does not fit the shape of `rust-trait`
+  |
+  = help: name the one trait whose every implementor this trait includes, as in `(includes display)`
+  = note: run `knave doc L0210` for an explanation

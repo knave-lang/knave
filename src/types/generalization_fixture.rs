@@ -102,7 +102,7 @@ impl GeneralizationFixture {
         literal_parameters: LiteralParameters,
     ) -> GeneralizationRules {
         let pinnable: FxHashSet<TypeVar> = pinnable.iter().copied().collect();
-        GeneralizationRules::new(pinnable, literal_parameters)
+        GeneralizationRules::new(pinnable, literal_parameters, Rc::default())
     }
 
     pub(super) fn function(parameters: Vec<Type>, result: Type) -> TypedExpr {

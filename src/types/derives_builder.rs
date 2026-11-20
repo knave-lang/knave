@@ -29,15 +29,15 @@ impl<'a> DerivesBuilder<'a> {
     }
 
     pub(super) fn add_implementor(self, trait_binding: BindingId, implementor: Implementor) {
-        self.traits
-            .table
-            .add_implementor(trait_binding, implementor);
+        if let Some(rows) = self.traits.table.reached_rows_mut(trait_binding) {
+            rows.add(implementor);
+        }
     }
 
     pub(super) fn remove_implementor(self, trait_binding: BindingId, binding: BindingId) {
-        self.traits
-            .table
-            .remove_struct_implementor(trait_binding, binding);
+        if let Some(rows) = self.traits.table.reached_rows_mut(trait_binding) {
+            rows.remove_struct(binding);
+        }
     }
 
     pub(super) fn record_block(self, candidate: DeriveCandidate, field: Rc<str>, ty: Type) {

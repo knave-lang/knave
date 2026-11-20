@@ -1,5 +1,8 @@
 use super::access::Access;
 use super::conversion::Conversion;
+use super::piece::Piece;
+use super::piece_literals::PieceLiterals;
+use super::print_format::PrintFormat;
 use super::template_braces::TemplateBraces;
 use super::template_operation::TemplateOperation;
 
@@ -16,6 +19,9 @@ impl WrittenPlaceholder {
     ) -> Result<Piece, MalformedPlaceholder> {
         let borrow_marker = characters.next_if_eq(&Access::BORROW);
         let written = Self::placeholder_name(characters)?;
+        if let Some(index) = written.strip_prefix(PrintFormat::PLACEHOLDER_WORD) {
+            return Self::format_placeholder(borrow_marker, index);
+        }
         let (conversion, unconverted) = Conversion::split(&written);
         let (access, name) = Self::access(borrow_marker, unconverted);
         let marks = PlaceholderMarks { access, conversion };
@@ -25,6 +31,16 @@ impl WrittenPlaceholder {
         match name.strip_prefix(Self::BINDER) {
             Some(binder) => Self::binder_placeholder(binder, &marks),
             None => Self::argument_placeholder(name, marks),
+        }
+    }
+
+    fn format_placeholder(
+        borrow_marker: Option<char>,
+        index: &str,
+    ) -> Result<Piece, MalformedPlaceholder> {
+        match (borrow_marker, index.parse::<usize>()) {
+            (None, Ok(index)) => Ok(Piece::FormatPlaceholder { index }),
+            _ => Err(MalformedPlaceholder),
         }
     }
 
@@ -100,61 +116,6 @@ impl PlaceholderMarks {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum Piece {
-    Literal(String),
-    Placeholder {
-        index: usize,
-        access: Access,
-        conversion: Option<Conversion>,
-    },
-    TypePlaceholder {
-        name: String,
-    },
-    BinderPlaceholder {
-        name: String,
-    },
-}
-
-impl Piece {
-    pub fn conversions_in(pieces: &[Self]) -> impl Iterator<Item = (usize, Conversion)> + '_ {
-        pieces.iter().filter_map(Self::conversion)
-    }
-
-    pub fn conversion(&self) -> Option<(usize, Conversion)> {
-        match self {
-            Self::Placeholder {
-                index,
-                conversion: Some(conversion),
-                ..
-            } => Some((*index, *conversion)),
-            _ => None,
-        }
-    }
-
-    pub fn unconverted(&self) -> Self {
-        match self {
-            Self::Placeholder { index, access, .. } => Self::Placeholder {
-                index: *index,
-                access: *access,
-                conversion: None,
-            },
-            other => other.clone(),
-        }
-    }
-
-    pub(super) fn access_for(&self, argument: usize) -> Option<Access> {
-        match self {
-            Self::Placeholder { access, .. } if self.is_placeholder_of(argument) => Some(*access),
-            _ => None,
-        }
-    }
-
-    pub fn is_placeholder_of(&self, argument: usize) -> bool {
-        matches!(self, Self::Placeholder { index, .. } if *index == argument)
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PassingDifference {
     Argument(usize, PassingAspect),
@@ -222,16 +183,20 @@ impl ParsedTemplate {
     pub fn placeholders(&self) -> impl Iterator<Item = usize> + '_ {
         self.pieces.iter().filter_map(|piece| match piece {
             Piece::Placeholder { index, .. } => Some(*index),
-            Piece::Literal(_) | Piece::TypePlaceholder { .. } | Piece::BinderPlaceholder { .. } => {
-                None
-            }
+            Piece::Literal(_)
+            | Piece::TypePlaceholder { .. }
+            | Piece::BinderPlaceholder { .. }
+            | Piece::FormatPlaceholder { .. } => None,
         })
     }
 
     pub fn type_placeholders(&self) -> impl Iterator<Item = &str> + '_ {
         self.pieces.iter().filter_map(|piece| match piece {
             Piece::TypePlaceholder { name } => Some(name.as_str()),
-            Piece::Literal(_) | Piece::Placeholder { .. } | Piece::BinderPlaceholder { .. } => None,
+            Piece::Literal(_)
+            | Piece::Placeholder { .. }
+            | Piece::BinderPlaceholder { .. }
+            | Piece::FormatPlaceholder { .. } => None,
         })
     }
 
@@ -247,19 +212,21 @@ impl ParsedTemplate {
         names
     }
 
-    pub fn with_binders(&self, renames: &[(String, String)]) -> Self {
+    pub fn with_literals(self, literals: &impl PieceLiterals) -> Self {
+        if !self
+            .pieces
+            .iter()
+            .any(|piece| literals.literal(piece).is_some())
+        {
+            return self;
+        }
         let pieces = self
             .pieces
             .iter()
-            .map(|piece| match piece {
-                Piece::BinderPlaceholder { name } => {
-                    let fresh = renames
-                        .iter()
-                        .find(|(binder, _)| binder == name)
-                        .map_or(name.as_str(), |(_, fresh)| fresh.as_str());
-                    Piece::Literal(fresh.to_string())
-                }
-                other => other.clone(),
+            .map(|piece| {
+                literals
+                    .literal(piece)
+                    .map_or_else(|| piece.clone(), Piece::Literal)
             })
             .collect();
         Self::from_pieces(pieces)
@@ -318,6 +285,7 @@ impl ParsedTemplate {
             } => format!("{{{}{index}}}", access.marker()),
             Piece::TypePlaceholder { name } => format!("{{{name}}}"),
             Piece::BinderPlaceholder { name } => format!("{{!{name}}}"),
+            Piece::FormatPlaceholder { index } => PrintFormat::written(*index),
         }
     }
 
@@ -377,7 +345,8 @@ impl ParsedTemplate {
             Piece::Literal(literal) => Some(literal),
             Piece::Placeholder { .. }
             | Piece::TypePlaceholder { .. }
-            | Piece::BinderPlaceholder { .. } => None,
+            | Piece::BinderPlaceholder { .. }
+            | Piece::FormatPlaceholder { .. } => None,
         }
     }
 
@@ -422,7 +391,8 @@ impl ParsedTemplate {
                     Piece::Literal(literal) => Some(Self::unary_deref(literal)),
                     Piece::Placeholder { .. }
                     | Piece::TypePlaceholder { .. }
-                    | Piece::BinderPlaceholder { .. } => None,
+                    | Piece::BinderPlaceholder { .. }
+                    | Piece::FormatPlaceholder { .. } => None,
                 })
                 .unwrap_or(false);
             if !dereferenced {
@@ -462,6 +432,29 @@ impl ParsedTemplate {
 #[cfg(test)]
 mod tests {
     use super::{Access, Conversion, MalformedPlaceholder, ParsedTemplate, Piece};
+    use crate::core::BinderRenames;
+
+    #[test]
+    fn a_format_placeholder_names_its_argument() {
+        let parsed = ParsedTemplate::parse("println!(\"{format 0}\", {0})").expect("a template");
+        assert!(
+            parsed
+                .pieces()
+                .contains(&Piece::FormatPlaceholder { index: 0 })
+        );
+        assert_eq!(parsed.placeholders().collect::<Vec<_>>(), [0]);
+    }
+
+    #[test]
+    fn a_format_placeholder_takes_no_borrow_and_a_number() {
+        for text in ["{&format 0}", "{format x}"] {
+            assert_eq!(
+                ParsedTemplate::parse(text).err(),
+                Some(MalformedPlaceholder),
+                "{text}"
+            );
+        }
+    }
 
     #[test]
     fn splits_literals_from_placeholders() {
@@ -600,7 +593,10 @@ mod tests {
         let text = "{0}.get({index? 1}).map(|{!item}| {!item}[{index 2}])";
         let renamed = ParsedTemplate::parse(text)
             .expect("a valid template")
-            .with_binders(&[("item".to_string(), "item".to_string())]);
+            .with_literals(&BinderRenames::new(&[(
+                "item".to_string(),
+                "item".to_string(),
+            )]));
         assert_eq!(
             renamed.text(),
             "{0}.get({index? 1}).map(|item| item[{index 2}])"
@@ -612,7 +608,10 @@ mod tests {
         let text = "{&0}.iter().map(|{!item}| {owned 1}.push({!item}))";
         let renamed = ParsedTemplate::parse(text)
             .expect("a valid template")
-            .with_binders(&[("item".to_string(), "item".to_string())]);
+            .with_literals(&BinderRenames::new(&[(
+                "item".to_string(),
+                "item".to_string(),
+            )]));
         assert_eq!(
             renamed.text(),
             "{&0}.iter().map(|item| {owned 1}.push(item))"

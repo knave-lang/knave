@@ -59,4 +59,4 @@ warning[L0259]: `float` hides the kernel type `float`
 (def make-holder (fn (item) (new holder (item item))))
 (type pick (where (int) (fn (int) int)))
 (def pick (fn (x) x))
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (field (make-float 3 14) whole)) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0_2 display)) (fn ((ref part-type-0_2)) unit))) (pick 1))))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (field (make-float 3 14) whole)) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0_2 printable)) (fn ((ref part-type-0_2)) unit))) (pick 1))))

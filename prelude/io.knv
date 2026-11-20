@@ -46,7 +46,7 @@
 (def exit
   (rust "crate::rt::exit({0})" (fn (i32) unit)))
 
-(rust-type duration "std::time::Duration")
+(rust-type duration "std::time::Duration" (format debug))
 
 (rust-type instant "std::time::Instant")
 
@@ -222,7 +222,9 @@
 
   [seconds], [millis], [micros] and [nanos] build one, and [elapsed] returns
   one. Durations compare with `=`, `<` and the other comparisons. A duration
-  prints with `prn` as the call that builds it, in its largest whole unit.
+  prints with `println` and `str` as Rust's `Debug` prints it, such as
+  `250ms`, and with `prn` as the call that builds it, in its largest whole
+  unit.
 
   (pr-str (millis 1500))
   => \"(millis 1500)\"")

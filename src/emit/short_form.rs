@@ -129,7 +129,9 @@ impl<'t> TemplateShape<'t> {
                     .arguments
                     .get(*index)
                     .is_some_and(|argument| ShortForm::is_literal(&argument.value)),
-                Piece::TypePlaceholder { .. } | Piece::BinderPlaceholder { .. } => true,
+                Piece::TypePlaceholder { .. }
+                | Piece::BinderPlaceholder { .. }
+                | Piece::FormatPlaceholder { .. } => true,
             })
     }
 

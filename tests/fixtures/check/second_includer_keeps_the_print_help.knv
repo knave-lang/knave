@@ -1,0 +1,9 @@
+(rust-trait flag-text "std::fmt::Display"
+  (includes display)
+  bool)
+
+(defn show (x) (println "show " x))
+
+(defn main ()
+  (show 1)
+  (show (millis 3)))

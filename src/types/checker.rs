@@ -64,7 +64,6 @@ use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
 use super::result_borrow_source::ResultBorrowSource;
 use super::round_facts::RoundFacts;
-use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
@@ -342,17 +341,10 @@ impl TypeChecker {
             types.enter_enum(*binding, collected, &mut self.diagnostics);
             return Ok(());
         }
-        if let ItemKind::RustType(binding, binders, unsized_parameters, template, clauses) = kind {
-            let rust_type = self.type_collector().collect_rust_type(RustTypeItem {
-                binders,
-                unsized_parameters,
-                template,
-                clauses,
-            })?;
-            self.declarations
-                .builder()
-                .types()
-                .add_rust_type(*binding, rust_type);
+        if let ItemKind::RustType(declaration) = kind {
+            let rust_type = self.type_collector().collect_rust_type(declaration)?;
+            let types = self.declarations.builder().types();
+            types.add_rust_type(declaration.binding, rust_type);
             return Ok(());
         }
         if let ItemKind::Trait(
@@ -463,12 +455,9 @@ impl TypeChecker {
 
     fn record_type_arities(&mut self, modules: &[CoreModule]) {
         for item in modules.iter().flat_map(|module| &module.items) {
-            if let ItemKind::Struct(binding, params, _)
-            | ItemKind::Enum(binding, params, ..)
-            | ItemKind::RustType(binding, params, ..) = &item.kind
-            {
+            if let Some((binding, params)) = item.kind.declared_type() {
                 let arity = params.iter().filter(|binder| !binder.lifetime).count();
-                self.type_arities.insert(*binding, arity);
+                self.type_arities.insert(binding, arity);
             }
         }
     }
@@ -850,7 +839,9 @@ impl TypeChecker {
         site: ObligationSite,
         pass: ObligationPass,
     ) {
-        if self.declarations.types().boxed_object(implementor) == Some(bound.binding) {
+        let boxed_object = self.declarations.types().boxed_object(implementor);
+        let inclusions = self.declarations.traits().table.inclusions();
+        if boxed_object.is_some_and(|object| inclusions.is_met_by(bound.binding, object)) {
             return;
         }
         match self.literal_settlement().select(&bound, implementor) {
@@ -1207,8 +1198,9 @@ impl TypeChecker {
         } else {
             LiteralParameters::KeepOpen
         };
-        let rules =
-            GeneralizationRules::new(self.pinnable_variables().of(members), literal_parameters);
+        let pinnable = self.pinnable_variables().of(members);
+        let inclusions = Rc::clone(self.declarations.traits().table.inclusions());
+        let rules = GeneralizationRules::new(pinnable, literal_parameters, inclusions);
         self.generalization(span).generalize(vars, start, &rules);
         self.discharge_obligations(ObligationPass::Deferring);
     }
@@ -1305,7 +1297,12 @@ impl TypeChecker {
     }
 
     pub(super) fn self_plain_bounds(&self, var: TypeVar) -> Vec<Bound> {
-        TypeVariables::new(&self.unifier).self_plain_bounds(var)
+        let bounds = TypeVariables::new(&self.unifier).self_plain_bounds(var);
+        self.declarations
+            .traits()
+            .table
+            .inclusions()
+            .generic_bounds(bounds)
     }
 
     fn monomorphic_vars(&self) -> FxHashSet<TypeVar> {
@@ -1454,7 +1451,7 @@ impl TypeChecker {
         declaration: &crate::core::RustTraitDeclaration,
     ) -> Result<Vec<Bound>, Diagnostic> {
         let mut supertraits = Vec::new();
-        for required in &declaration.requires {
+        for required in &declaration.relations.requires {
             let bound = self
                 .written_types()
                 .lower_type_bound(&required.bound, &FxHashMap::default())?;
@@ -1518,11 +1515,14 @@ impl TypeChecker {
             return;
         }
         let generic_name = self.display().show(&Type::Generic(generic));
-        let diagnostic = TypeProblems::missing_bound(
-            self.bindings.get(bound.binding).name(),
-            &generic_name,
-            span,
-        );
+        let reported = self
+            .declarations
+            .traits()
+            .table
+            .inclusions()
+            .innermost(bound.binding);
+        let diagnostic =
+            TypeProblems::missing_bound(self.bindings.get(reported).name(), &generic_name, span);
         self.diagnostics
             .push(BoundOriginProblems::annotate(diagnostic, &bound.origins));
     }

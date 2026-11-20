@@ -53,4 +53,4 @@ warning[L0259]: `float` hides the kernel type `float`
 (def make-int (fn (n) (new int (n n))))
 (struct int_2 (n bool))
 (def make-int_2 (fn (n_2) (new int_2 (n n_2))))
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (field (make-int_2 true) n))))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (field (make-int_2 true) n))))

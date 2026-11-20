@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/print_literal_format_text.knv
+---
+{format 0} 3
+{} {:?} {{format 0}} 3
+{format 0} 2ms
+{format 0}2ms

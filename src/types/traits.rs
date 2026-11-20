@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::projection::ProjectionTable;
 use super::rust_trait::RustTrait;
 use super::selection::{ImplementorMatch, Selection};
+use super::trait_inclusions::TraitInclusions;
 use super::trait_rows_reach::{Implementor, LoweredRows};
 use super::ty::{Bound, GenericId, Scheme, Type};
 use crate::core::BindingId;
@@ -14,6 +15,7 @@ pub struct TraitTable {
     traits: FxHashMap<BindingId, RustTrait>,
     projections: Rc<ProjectionTable>,
     normalized_implementors: FxHashMap<BindingId, Vec<Implementor>>,
+    inclusions: Rc<TraitInclusions>,
 }
 
 impl TraitTable {
@@ -57,12 +59,29 @@ impl TraitTable {
         self.traits.insert(binding, rust_trait);
     }
 
+    pub fn include(&mut self, including: BindingId, included: BindingId) {
+        Rc::make_mut(&mut self.inclusions).add(including, included);
+    }
+
+    pub fn inclusions(&self) -> &Rc<TraitInclusions> {
+        &self.inclusions
+    }
+
     pub fn rows(&self, binding: BindingId) -> TraitRows<'_> {
-        TraitRows::new(
-            self.traits.get(&binding),
-            self.normalized_implementors(binding),
-            &self.projections,
-        )
+        TraitRows {
+            rust_trait: self.traits.get(&binding),
+            normalized: self.normalized_implementors(binding),
+            included: self.inclusions.included_traits(binding),
+            table: self,
+        }
+    }
+
+    fn own_rows(&self, binding: BindingId) -> impl Iterator<Item = &Implementor> {
+        let reached = match self.traits.get(&binding) {
+            Some(rust_trait) => rust_trait.rows().reached().implementors(),
+            None => &[],
+        };
+        reached.iter().chain(self.normalized_implementors(binding))
     }
 
     pub fn links_argument(&self, binding: BindingId) -> bool {
@@ -118,6 +137,17 @@ impl TraitTable {
         if wanted(declared) {
             return true;
         }
+        let in_including = |binding| Bound {
+            binding,
+            ..declared.clone()
+        };
+        let including = self.inclusions.including_traits(declared.binding);
+        if including
+            .iter()
+            .any(|binding| wanted(&in_including(*binding)))
+        {
+            return true;
+        }
         visited.insert(declared.binding)
             && self.get(declared.binding).is_some_and(|rust_trait| {
                 rust_trait
@@ -160,64 +190,40 @@ impl TraitTable {
         found
     }
 
-    pub fn add_implementor(&mut self, binding: BindingId, implementor: Implementor) {
-        if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait.rows_mut().reached_mut().add(implementor);
-        }
-    }
-
-    pub fn remove_struct_implementor(&mut self, binding: BindingId, struct_binding: BindingId) {
-        if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait
-                .rows_mut()
-                .reached_mut()
-                .remove_struct(struct_binding);
-        }
+    pub fn reached_rows_mut(&mut self, binding: BindingId) -> Option<&mut LoweredRows> {
+        let rust_trait = self.traits.get_mut(&binding)?;
+        Some(rust_trait.rows_mut().reached_mut())
     }
 
     pub fn get(&self, binding: BindingId) -> Option<&RustTrait> {
         self.traits.get(&binding)
-    }
-
-    pub fn set_implementor_scheme(&mut self, binding: BindingId, body: &Type, scheme: Scheme) {
-        if let Some(rust_trait) = self.traits.get_mut(&binding) {
-            rust_trait.rows_mut().reached_mut().set_scheme(body, scheme);
-        }
     }
 }
 
 pub struct TraitRows<'t> {
     rust_trait: Option<&'t RustTrait>,
     normalized: &'t [Implementor],
-    projections: &'t ProjectionTable,
+    included: &'t [BindingId],
+    table: &'t TraitTable,
 }
 
 impl<'t> TraitRows<'t> {
-    pub fn new(
-        rust_trait: Option<&'t RustTrait>,
-        normalized: &'t [Implementor],
-        projections: &'t ProjectionTable,
-    ) -> Self {
-        Self {
-            rust_trait,
-            normalized,
-            projections,
-        }
-    }
-
     pub fn select(&self, bound: &Bound, target: &Type) -> Selection {
         let Some(rust_trait) = self.rust_trait else {
             return Selection::Missing;
         };
-        let normalized = self.projections.normalize_deep(target);
+        let normalized = self.table.projections.normalize_deep(target);
         let associated = rust_trait.associated.is_some();
-        self.rows(rust_trait)
-            .map(|row| ImplementorMatch::select(row, bound, &normalized, associated))
-            .fold(Selection::Missing, Selection::best)
+        let select =
+            |row: &Implementor| ImplementorMatch::select(row, bound, &normalized, associated);
+        let own = Self::own_rows(rust_trait, self.normalized)
+            .map(select)
+            .fold(Selection::Missing, Selection::best);
+        self.included_rows().map(select).fold(own, Selection::best)
     }
 
     pub fn settle_lone_row(&self, bound: &Bound, target: &Type) -> Option<Selection> {
-        let normalized = self.projections.normalize_deep(target);
+        let normalized = self.table.projections.normalize_deep(target);
         let mut open = self.rows(self.rust_trait?).filter(|row| {
             !matches!(
                 ImplementorMatch::select(row, bound, &normalized, false),
@@ -231,13 +237,27 @@ impl<'t> TraitRows<'t> {
         ImplementorMatch::settle(only, bound, &normalized)
     }
 
-    fn rows(&self, rust_trait: &'t RustTrait) -> impl Iterator<Item = &'t Implementor> + use<'t> {
+    fn rows(&self, rust_trait: &'t RustTrait) -> impl Iterator<Item = &'t Implementor> + '_ {
+        Self::own_rows(rust_trait, self.normalized).chain(self.included_rows())
+    }
+
+    fn own_rows(
+        rust_trait: &'t RustTrait,
+        normalized: &'t [Implementor],
+    ) -> impl Iterator<Item = &'t Implementor> + use<'t> {
         rust_trait
             .rows()
             .reached()
             .implementors()
             .iter()
-            .chain(self.normalized)
+            .chain(normalized)
+    }
+
+    fn included_rows(&self) -> impl Iterator<Item = &'t Implementor> + '_ {
+        let table = self.table;
+        self.included
+            .iter()
+            .flat_map(move |included| table.own_rows(*included))
     }
 }
 

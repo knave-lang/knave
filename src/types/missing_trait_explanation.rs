@@ -1,10 +1,12 @@
 use super::bound_origin_problems::BoundOriginProblems;
+use super::bound_origins::BoundOrigin;
 use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::derivable_traits::DerivableTraits;
 use super::enum_trait_help::EnumTraitHelp;
 use super::explanation_sources::ExplanationSources;
 use super::implementor_listing::ImplementorListing;
+use super::included_trait_help::IncludedTraitHelp;
 use super::missing_trait::MissingTrait;
 use super::problems::TypeProblems;
 use super::struct_trait_help::StructTraitHelp;
@@ -25,13 +27,41 @@ impl<'a> MissingTraitExplanation<'a> {
     }
 
     pub(super) fn explain(&self, missing: MissingTrait<'_>) -> Diagnostic {
+        let inclusions = self.sources.declarations.traits().table.inclusions();
+        let generic = inclusions.generic_bound(missing.bound);
+        let missing = MissingTrait {
+            bound: generic.as_ref().unwrap_or(missing.bound),
+            ..missing
+        };
         let (bound, implementor) = (missing.bound, missing.implementor);
-        let mut diagnostic = self.diagnostic(missing);
+        let mut diagnostic = self.with_including_help(self.diagnostic(missing), bound, implementor);
         if let Type::Named(binding, _) = implementor {
             diagnostic = self.type_trait_help(diagnostic, *binding, bound);
             diagnostic = self.with_replacing_impl(diagnostic, *binding, bound.binding);
         }
         BoundOriginProblems::annotate(diagnostic, &bound.origins)
+    }
+
+    fn with_including_help(
+        &self,
+        diagnostic: Diagnostic,
+        bound: &Bound,
+        implementor: &Type,
+    ) -> Diagnostic {
+        let table = &self.sources.declarations.traits().table;
+        let mut including = bound
+            .origins
+            .as_slice()
+            .iter()
+            .filter_map(BoundOrigin::including_trait);
+        let printed = |including: BindingId| {
+            table.satisfies(&Bound::plain(including), implementor, &|_, _| false)
+        };
+        if !including.any(printed) {
+            return diagnostic;
+        }
+        let included = self.sources.bindings.get(bound.binding).name();
+        diagnostic.with_help(IncludedTraitHelp::generic_print(included))
     }
 
     fn diagnostic(&self, missing: MissingTrait<'_>) -> Diagnostic {

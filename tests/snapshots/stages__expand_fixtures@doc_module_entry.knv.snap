@@ -5,4 +5,4 @@ input_file: tests/fixtures/expand/doc_module_entry.knv
 ---
 (export main)
 (def page "(module doc_module_entry)\n\nLooks itself up.")
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) page)))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) page)))

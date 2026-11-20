@@ -65,10 +65,10 @@ impl<'p> TraitReach<'p> {
             .iter()
             .flat_map(|module| &module.items)
             .filter_map(|item| match &item.kind {
-                ItemKind::RustType(binding, _, _, template, _)
-                    if RustType::spells_a_map(template) =>
+                ItemKind::RustType(declaration)
+                    if RustType::spells_a_map(&declaration.template) =>
                 {
-                    Some(*binding)
+                    Some(declaration.binding)
                 }
                 _ => None,
             })
@@ -162,9 +162,10 @@ mod tests {
     use crate::core::{
         AssociatedValue, BindingArena, BindingId, BindingInfo, BindingKind, CoreModule, Expr,
         ExprKind, FieldLabel, FieldSpelling, ImplAssociatedType, ImplementorRows, Item, ItemKind,
-        Leaf, ModuleId, ModulePath, ParsedTemplate, PrimitiveType, References,
-        RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor, TraitMethod,
-        TypeBinder, TypeBound, TypeExpr, TypeExprKind, VariantDeclaration, VariantPayload,
+        Leaf, ModuleId, ModulePath, ParsedTemplate, PrimitiveType, PrintFormat, References,
+        RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor, RustTypeDeclaration,
+        TraitMethod, TraitRelations, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
+        VariantDeclaration, VariantPayload,
     };
     use crate::source::{SourceId, Span};
     use crate::types::TypedSource;
@@ -341,7 +342,7 @@ mod tests {
                 self_variable: self.binding("self"),
                 methods: Vec::new(),
                 help: None,
-                requires: Vec::new(),
+                relations: TraitRelations::default(),
                 structural: None,
                 associated: Vec::new(),
                 implementors: ImplementorRows::new(Vec::new()),
@@ -596,13 +597,14 @@ mod tests {
     fn a_rust_type_reaches_the_traits_of_its_clauses() {
         assert!(DeclaredTraits::new().reaches_through(|traits, named| {
             let clause = (DeclaredTraits::named(named), DeclaredTraits::template());
-            ItemKind::RustType(
-                traits.binding("kept"),
-                Vec::new(),
-                Vec::new(),
-                DeclaredTraits::template(),
-                vec![clause],
-            )
+            ItemKind::RustType(RustTypeDeclaration {
+                binding: traits.binding("kept"),
+                binders: Vec::new(),
+                unsized_parameters: Vec::new(),
+                template: DeclaredTraits::template(),
+                clauses: vec![clause],
+                format: PrintFormat::Display,
+            })
         }));
     }
 

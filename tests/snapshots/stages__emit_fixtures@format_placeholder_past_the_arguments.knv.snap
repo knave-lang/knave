@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/emit/format_placeholder_past_the_arguments.knv
+---
+error[L0603]: invalid Rust template: `{1}` has no matching argument
+ --> emit/format_placeholder_past_the_arguments.knv:6:15
+  |
+6 | (defn main () (show-both 1))
+  |               ^^^^^^^^^^^^^ in this template
+  |
+  = note: run `knave doc L0603` for an explanation

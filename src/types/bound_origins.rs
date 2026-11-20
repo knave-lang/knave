@@ -1,9 +1,20 @@
+use crate::core::BindingId;
 use crate::source::Span;
 
 #[derive(Clone, Copy, Debug)]
 pub enum BoundOrigin {
     BorrowCopied(Span),
     ImplBody(Span),
+    Included(BindingId),
+}
+
+impl BoundOrigin {
+    pub fn including_trait(&self) -> Option<BindingId> {
+        match self {
+            Self::Included(including) => Some(*including),
+            Self::BorrowCopied(_) | Self::ImplBody(_) => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]

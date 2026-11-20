@@ -4,4 +4,4 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/binder_across_quotes.knv
 ---
 (def echo (fn (name) name))
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (do (local picked 2) picked))))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (do (local picked 2) picked))))

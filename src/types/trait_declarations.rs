@@ -24,15 +24,14 @@ impl TraitDeclarations {
         let implementation = &mut self.impls[position];
         implementation.params = params.clone();
         let implementor = implementation.implementor.clone();
-        self.table.set_implementor_scheme(
-            implementation.trait_binding,
-            &implementor,
-            Scheme {
+        if let Some(rows) = self.table.reached_rows_mut(implementation.trait_binding) {
+            let scheme = Scheme {
                 lifetimes: Vec::new(),
                 params,
                 body: implementor.clone(),
-            },
-        );
+            };
+            rows.set_scheme(&implementor, scheme);
+        }
     }
 
     pub fn table(&self) -> &TraitTable {

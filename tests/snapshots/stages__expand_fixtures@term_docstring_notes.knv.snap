@@ -5,4 +5,4 @@ input_file: tests/fixtures/expand/term_docstring_notes.knv
 ---
 (def quokka (fn (x) x))
 (def lemming (fn (x_2) x_2))
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) "1")))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) "1")))

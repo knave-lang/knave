@@ -3261,7 +3261,7 @@ fn doc_prints_the_header_that_documents_a_prelude_term() {
     let doc = sandbox.compiler(&["doc", "str"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
-        "(str part ...)\n\nBuilds a [string] from its parts.\n\nA string literal part is literal text, and any other part prints with\n[display]. `(str x)` emits `x.to_string()`, and `str` as a value is that\none-part function, so `(map (iter years) str)` turns each year into a\n`string`.\n\n(str \"year \" 2026)\n=> \"year 2026\"\n\n(-> (vec 1 2) iter (map str) collect)\n=> (vec (str 1) (str 2))\n"
+        "(str part ...)\n\nBuilds a [string] from its parts.\n\nA string literal part is literal text, a `duration` part prints with Rust's\n`Debug`, as `250ms`, and any other part prints with [display]. `(str x)`\nemits `x.to_string()`, and `str` as a value is that one-part function, so\n`(map (iter years) str)` turns each year into a `string`.\n\n(str \"year \" 2026)\n=> \"year 2026\"\n\n(-> (vec 1 2) iter (map str) collect)\n=> (vec (str 1) (str 2))\n"
     );
 }
 

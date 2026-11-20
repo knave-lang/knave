@@ -42,10 +42,12 @@ pub enum RuntimePart {
     IsEven,
     Index,
     Convert,
+    Length,
+    Count,
 }
 
 impl RuntimePart {
-    const NAMED: [(&'static str, RuntimePart); 35] = [
+    const NAMED: [(&'static str, RuntimePart); 37] = [
         ("Number", RuntimePart::Number),
         ("Signed", RuntimePart::Signed),
         ("Float", RuntimePart::Float),
@@ -81,6 +83,8 @@ impl RuntimePart {
         ("is_even", RuntimePart::IsEven),
         ("index", RuntimePart::Index),
         ("convert", RuntimePart::Convert),
+        ("length", RuntimePart::Length),
+        ("count", RuntimePart::Count),
     ];
 
     const REQUIRED: [(RuntimePart, &'static [RuntimePart]); 24] = [

@@ -56,8 +56,10 @@ impl RuntimeModule {
     const IS_EVEN: &'static str = include_str!("../../prelude/runtime/is_even.rs");
     const INDEX: &'static str = include_str!("../../prelude/runtime/index.rs");
     const CONVERT: &'static str = include_str!("../../prelude/runtime/convert.rs");
+    const LENGTH: &'static str = include_str!("../../prelude/runtime/length.rs");
+    const COUNT: &'static str = include_str!("../../prelude/runtime/count.rs");
     const START_UP_CALL: &'static str = "crate::rt::restore_default_sigpipe();";
-    const FIXED_PARTS: [(RuntimePart, &'static str); 39] = [
+    const FIXED_PARTS: [(RuntimePart, &'static str); 41] = [
         (RuntimePart::Signed, Self::SIGNED),
         (RuntimePart::Float, Self::FLOAT),
         (RuntimePart::Integer, Self::INTEGER),
@@ -97,6 +99,8 @@ impl RuntimeModule {
         (RuntimePart::IsEven, Self::IS_EVEN),
         (RuntimePart::Index, Self::INDEX),
         (RuntimePart::Convert, Self::CONVERT),
+        (RuntimePart::Length, Self::LENGTH),
+        (RuntimePart::Count, Self::COUNT),
     ];
     const CONVERSIONS: &'static [Conversion] = &[
         Conversion {
@@ -276,6 +280,28 @@ mod tests {
                 .contains("pub fn index(value: i64) -> usize")
         );
         assert!(module.start_up_call().is_none());
+    }
+
+    #[test]
+    fn a_length_conversion_brings_the_length_function() {
+        let module = RuntimeModule::of("crate::rt::length(items.len())")
+            .expect("the code needs the runtime");
+        assert!(
+            module
+                .source()
+                .contains("pub fn length(value: usize) -> i64")
+        );
+    }
+
+    #[test]
+    fn a_counted_iterator_brings_the_count_function() {
+        let module = RuntimeModule::of("crate::rt::count(items.iter())")
+            .expect("the code needs the runtime");
+        assert!(
+            module
+                .source()
+                .contains("pub fn count(items: impl Iterator) -> i64")
+        );
     }
 
     #[test]

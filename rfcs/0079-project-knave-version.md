@@ -24,7 +24,7 @@ The workflow holds no version. Its first step reads `:knave` from `project.knv`,
 ```yaml
 - name: Read the Knave version from project.knv
   run: |
-    versions=$(grep -v '^[[:space:]]*;' project.knv | grep -o ':knave "[^"]*".*' | cut -d '"' -f 2 || true)
+    versions=$(awk '{ out = ""; for (i = 1; i <= length($0); i++) { c = substr($0, i, 1); if (escaped) escaped = 0; else if (quoted && c == "\\") escaped = 1; else if (c == "\"") quoted = !quoted; else if (!quoted && c == ";") break; out = out c } print out }' project.knv | grep -o ':knave "[^"]*"' | cut -d '"' -f 2 || true)
     test -n "$versions" || { echo "::error file=project.knv::project.knv records no :knave version"; exit 1; }
     test "$(echo "$versions" | wc -l)" -eq 1 || { echo "::error file=project.knv::project.knv records more than one :knave version"; exit 1; }
     echo "KNAVE_VERSION=$versions" >> "$GITHUB_ENV"
@@ -55,7 +55,9 @@ The project owner decided on 2026-11-18:
 - A kept file's base is named by the version that its filled slot holds.
 - A project without `:knave` gets no version check, and `knave upgrade` adds the key.
 - A compiler older than `:knave` refuses to lower it in `knave upgrade`, with the same install help.
-- A well-formed `:knave` above the running compiler reports `L0736` alone, in place of every other problem of the root project file.
+- A well-formed `:knave` above the running compiler in the root project file reports `L0736` alone, in place of every other problem that loading the project finds, a library's problems included.
+- A library's `:knave` is never compared with the running compiler.
+- The workflow's read step strips each `;` outside a string, and a string may span lines.
 - The template history holds only texts that a release wrote. `cargo xtask prepush` checks each kept text against the template at its release's tag, and takes the latest `v*` tag reachable from `HEAD` as the release a change must keep.
 - `knave upgrade` takes no flag. Adding a skipped component later and a `setup-knave` action are out of scope.
 

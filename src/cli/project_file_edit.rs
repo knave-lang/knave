@@ -37,9 +37,6 @@ impl ProjectFileEdit {
         CompilerCheck::refuse_before_loading(working_directory, terminal)?;
         let located =
             LocatedProject::enter_unchecked(working_directory, terminal, FetchingStore::default())?;
-        if let Some(project) = &located {
-            CompilerCheck::OLDER_COMPILER.report(&project.project_file(), terminal)?;
-        }
         Self::of_located(located, command)
     }
 

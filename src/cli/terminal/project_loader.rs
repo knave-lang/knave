@@ -11,8 +11,6 @@ use crate::project::{Project, ProjectReader};
 use crate::reader::{Form, Reader};
 use crate::source::{SourceId, SourceMap, Span};
 
-type ReaderMethod = fn(ProjectReader<'static>, &[Form], Span) -> Result<Project, Diagnostics>;
-
 pub struct ProjectLoader<'a> {
     sources: &'a mut SourceMap,
     output: &'a dyn DiagnosticOutput,
@@ -28,33 +26,22 @@ impl<'a> ProjectLoader<'a> {
         self.read(source)
     }
 
-    pub fn load_library(&mut self, project_file: &Path) -> Result<Project, ExitStatus> {
-        let source = self.added_or_reported(project_file)?;
-        self.read_with(source, ProjectReader::read_library)
-    }
-
     pub fn read(&mut self, source: SourceId) -> Result<Project, ExitStatus> {
-        self.read_with(source, ProjectReader::read_root)
+        self.forms(source)
+            .and_then(|forms| Self::reader().read(&forms, self.whole_file(source)))
+            .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn read_quietly(&mut self, project_file: &Path) -> Option<Project> {
         let source = self.added(project_file).ok()?;
         let forms = self.forms(source).ok()?;
-        Self::reader()
-            .read_root(&forms, self.whole_file(source))
-            .ok()
+        Self::reader().read(&forms, self.whole_file(source)).ok()
     }
 
     pub fn version_refusal(&mut self, project_file: &Path) -> Option<Diagnostic> {
         let source = self.added(project_file).ok()?;
         let forms = self.forms(source).ok()?;
         Self::reader().refusal(&forms, self.whole_file(source))
-    }
-
-    fn read_with(&self, source: SourceId, read: ReaderMethod) -> Result<Project, ExitStatus> {
-        self.forms(source)
-            .and_then(|forms| read(Self::reader(), &forms, self.whole_file(source)))
-            .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     fn added_or_reported(&mut self, project_file: &Path) -> Result<SourceId, ExitStatus> {

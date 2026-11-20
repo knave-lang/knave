@@ -39,7 +39,7 @@ const NEWER_VERSION: &str = "999.0.0";
 const HELLO_TASK: &str = "(deftask hello ()\n  (println \"hello\"))\n";
 const VERSION_CHECKED_COMMANDS: [&[&str]; 4] =
     [&["fmt"], &["lint"], &["build"], &["task", "hello"]];
-const OLDER_COMPILER_ERROR: &str = "error[L0736]";
+const COMPILER_TOO_OLD_ERROR: &str = "error[L0736]";
 const NEWER_COMPILER_WARNING: &str = "warning[L0737]";
 const RELEASED_TEXTS_VERSION: &str = "0.18.0";
 const VERSION_MASK: &str = "<version>";
@@ -1758,7 +1758,11 @@ fn fmt_of_standard_input_refuses_under_an_older_compiler() {
         );
     let formatted = sandbox.compiler_reading_in("demo-app", UNFORMATTED, &["fmt", "-"]);
     let stderr = formatted.assert_exit_code(1).stderr();
-    assert_eq!(stderr.matches(OLDER_COMPILER_ERROR).count(), 1, "{stderr}");
+    assert_eq!(
+        stderr.matches(COMPILER_TOO_OLD_ERROR).count(),
+        1,
+        "{stderr}"
+    );
     assert!(!stderr.contains("cannot load the project"), "{stderr}");
     assert_eq!(formatted.stdout(), "");
 }
@@ -1779,7 +1783,11 @@ fn fmt_refuses_an_older_compiler_before_it_writes_another_project() {
         .compiler(&["fmt", "first", "second"])
         .assert_exit_code(1)
         .stderr();
-    assert_eq!(stderr.matches(OLDER_COMPILER_ERROR).count(), 1, "{stderr}");
+    assert_eq!(
+        stderr.matches(COMPILER_TOO_OLD_ERROR).count(),
+        1,
+        "{stderr}"
+    );
     assert_eq!(sandbox.contents("first/project.knv"), unformatted_project);
 }
 
@@ -9318,7 +9326,7 @@ fn upgrade_by_a_compiler_older_than_the_project_keeps_the_project_file() {
         upgrade
             .assert_exit_code(1)
             .stderr()
-            .contains(OLDER_COMPILER_ERROR)
+            .contains(COMPILER_TOO_OLD_ERROR)
     );
     assert_eq!(sandbox.contents("demo-app/project.knv"), before);
 }
@@ -9346,7 +9354,7 @@ fn a_compiler_older_than_a_project_with_an_unknown_key_reports_only_the_version(
             .assert_exit_code(1)
             .stderr();
         assert_eq!(
-            stderr.matches(OLDER_COMPILER_ERROR).count(),
+            stderr.matches(COMPILER_TOO_OLD_ERROR).count(),
             1,
             "`knave {}` printed:\n{stderr}",
             command.join(" ")
@@ -9404,7 +9412,7 @@ fn a_compiler_older_than_the_app_reports_only_the_version_before_its_libraries()
             .assert_exit_code(1)
             .stderr();
         assert_eq!(
-            stderr.matches(OLDER_COMPILER_ERROR).count(),
+            stderr.matches(COMPILER_TOO_OLD_ERROR).count(),
             1,
             "`knave {}` printed:\n{stderr}",
             command[0]
@@ -9452,7 +9460,11 @@ fn a_compiler_older_than_a_nested_library_leaves_fmt_of_the_app_silent() {
         .compiler_in("app/libs/lib1", &["fmt"])
         .assert_exit_code(1)
         .stderr();
-    assert_eq!(stderr.matches(OLDER_COMPILER_ERROR).count(), 1, "{stderr}");
+    assert_eq!(
+        stderr.matches(COMPILER_TOO_OLD_ERROR).count(),
+        1,
+        "{stderr}"
+    );
 }
 
 #[test]
@@ -9493,7 +9505,7 @@ fn a_compiler_older_than_the_project_fails_each_command_once() {
             "`knave {}` printed:\n{stderr}",
             command.join(" ")
         );
-        assert!(stderr.contains(OLDER_COMPILER_ERROR), "{stderr}");
+        assert!(stderr.contains(COMPILER_TOO_OLD_ERROR), "{stderr}");
     }
 }
 
@@ -9527,7 +9539,7 @@ fn fmt_of_standard_input_under_an_older_compiler_fails_once() {
     );
     let stderr = formatted.assert_exit_code(1).stderr();
     assert_eq!(stderr.matches("[L073").count(), 1, "{stderr}");
-    assert!(stderr.contains(OLDER_COMPILER_ERROR), "{stderr}");
+    assert!(stderr.contains(COMPILER_TOO_OLD_ERROR), "{stderr}");
     assert_eq!(formatted.stdout(), "");
 }
 

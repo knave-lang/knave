@@ -34,7 +34,7 @@ impl LocatedProject {
     ) -> Result<Option<Self>, ExitStatus> {
         CompilerCheck::refuse_before_loading(directory, terminal)?;
         let located = Self::enter_unchecked(directory, terminal, store)?;
-        Self::check_compiler(located.as_ref(), terminal, &CompilerCheck::EVERY_MISMATCH)?;
+        Self::check_compiler(located.as_ref(), terminal)?;
         Ok(located)
     }
 
@@ -51,14 +51,10 @@ impl LocatedProject {
         Ok(located)
     }
 
-    fn check_compiler(
-        located: Option<&Self>,
-        terminal: &Terminal,
-        check: &CompilerCheck,
-    ) -> Result<(), ExitStatus> {
+    fn check_compiler(located: Option<&Self>, terminal: &Terminal) -> Result<(), ExitStatus> {
         match located {
             Some(entered) => {
-                check.report_located(&entered.project, &entered.project_file(), terminal)
+                CompilerCheck::report_located(&entered.project, &entered.project_file(), terminal)
             }
             None => Ok(()),
         }

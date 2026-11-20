@@ -5,22 +5,11 @@ use super::located_project::ProjectRoot;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
-use crate::project::{CompilerVersion, Project, ReleaseVersion};
+use crate::project::{Project, ReleaseVersion};
 
-type VersionProblem = fn(&CompilerVersion, ReleaseVersion) -> Option<Diagnostic>;
-
-pub struct CompilerCheck {
-    problem_of: VersionProblem,
-}
+pub struct CompilerCheck;
 
 impl CompilerCheck {
-    pub const EVERY_MISMATCH: Self = Self {
-        problem_of: CompilerVersion::problem,
-    };
-    pub const OLDER_COMPILER: Self = Self {
-        problem_of: CompilerVersion::refusal,
-    };
-
     pub fn refuse_before_loading(directory: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
         let Some(root) = ProjectRoot::shown_of(directory)? else {
             return Ok(());
@@ -35,26 +24,25 @@ impl CompilerCheck {
             .print(&Diagnostics::from_iter([refusal])))
     }
 
-    pub fn report(&self, project_file: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
+    pub fn report(project_file: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
         let mut scratch = terminal.scratch();
         let Some(project) = scratch.sources().projects().read_quietly(project_file) else {
             return Ok(());
         };
-        self.report_located(&project, project_file, terminal)
+        Self::report_located(&project, project_file, terminal)
     }
 
     pub fn report_located(
-        &self,
         project: &Project,
         project_file: &Path,
         terminal: &Terminal,
     ) -> Result<(), ExitStatus> {
-        if self.problem_in(project).is_none() {
+        if Self::problem_in(project).is_none() {
             return Ok(());
         }
         let mut scratch = terminal.scratch();
         let located_project = scratch.sources().projects().load(project_file)?;
-        let Some(problem) = self.problem_in(&located_project) else {
+        let Some(problem) = Self::problem_in(&located_project) else {
             return Ok(());
         };
         let mut problems = Diagnostics::default();
@@ -65,8 +53,8 @@ impl CompilerCheck {
         }
     }
 
-    fn problem_in(&self, project: &Project) -> Option<Diagnostic> {
+    fn problem_in(project: &Project) -> Option<Diagnostic> {
         let recorded = project.compiler_version.as_ref()?;
-        (self.problem_of)(recorded, ReleaseVersion::running())
+        recorded.warning(ReleaseVersion::running())
     }
 }

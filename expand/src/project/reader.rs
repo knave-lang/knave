@@ -41,12 +41,7 @@ impl<'v> ProjectReader<'v> {
         }
     }
 
-    pub fn read_root(mut self, forms: &[Form], file: Span) -> Result<Project, Diagnostics> {
-        let project = self.project(forms, file);
-        Self::outcome(project, self.root_problems())
-    }
-
-    pub fn read_library(mut self, forms: &[Form], file: Span) -> Result<Project, Diagnostics> {
+    pub fn read(mut self, forms: &[Form], file: Span) -> Result<Project, Diagnostics> {
         let project = self.project(forms, file);
         Self::outcome(project, self.problems)
     }
@@ -54,13 +49,6 @@ impl<'v> ProjectReader<'v> {
     pub fn refusal(mut self, forms: &[Form], file: Span) -> Option<Diagnostic> {
         self.project(forms, file);
         self.refusal
-    }
-
-    fn root_problems(self) -> Diagnostics {
-        match self.refusal {
-            Some(refusal) if self.problems.has_errors() => Diagnostics::from_iter([refusal]),
-            _ => self.problems,
-        }
     }
 
     fn outcome(project: Option<Project>, problems: Diagnostics) -> Result<Project, Diagnostics> {

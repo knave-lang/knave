@@ -1,6 +1,5 @@
 (type first-parsed
-  (where ((a from-str))
-    (fn (a a) a)))
+  (where ((a from-str)) (fn (a a) a)))
 
 (defn first-parsed (x y) x)
 

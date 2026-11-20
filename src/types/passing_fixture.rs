@@ -15,6 +15,7 @@ use super::pending::PendingBorrow;
 use super::place_types::PlaceTypes;
 use super::reference_depth::ReferenceDepth;
 use super::reopened_parameters::ReopenedParameters;
+use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
 use super::shared_passing_order::SharedPassingOrder;
 use super::shared_variable_group::SharedVariableGroup;
@@ -180,21 +181,29 @@ impl PassingFixture {
     }
 
     pub(super) fn shared_variable_group<'f>(
-        &'f mut self,
+        &'f self,
         group: &'f SharedGroup,
     ) -> SharedVariableGroup<'f> {
-        let (tables, unifier, _) = self.split();
-        SharedVariableGroup::new(group, tables, unifier)
+        self.shared_variable_group_for(None, group)
+    }
+
+    fn shared_variable_group_for<'f>(
+        &'f self,
+        callee: Option<&'f TypedExpr>,
+        group: &'f SharedGroup,
+    ) -> SharedVariableGroup<'f> {
+        let tables = Self::tables_of(&self.declarations, &self.field_readers);
+        let call = SharedCall {
+            group,
+            callee: self.callee_borrows(callee),
+        };
+        SharedVariableGroup::new(call, tables, &self.unifier)
     }
 
     pub(super) fn shared_passing_order<'f>(
-        &'f mut self,
+        &'f self,
         callee: Option<&'f TypedExpr>,
     ) -> SharedPassingOrder<'f> {
-        self.passing_order_for(callee)
-    }
-
-    fn passing_order_for<'f>(&'f self, callee: Option<&'f TypedExpr>) -> SharedPassingOrder<'f> {
         let tables = Self::tables_of(&self.declarations, &self.field_readers);
         let places = PlaceTypes::new(&self.unifier, tables.declared_types());
         SharedPassingOrder::new(places, &self.unifier, self.callee_borrows(callee))
@@ -229,10 +238,8 @@ impl PassingFixture {
             resolved: vec![referent.clone(); depths.len()],
             depths: depths.to_vec(),
         };
-        let tables = Self::tables_of(&self.declarations, &self.field_readers);
-        let order = self.passing_order_for(callee);
-        SharedVariableGroup::new(&group, tables, &self.unifier)
-            .target_depth(&referent, &depths, &order)
+        self.shared_variable_group_for(callee, &group)
+            .target_depth(&referent, &depths)
     }
 
     pub(super) fn template_call(text: &str) -> TypedExpr {

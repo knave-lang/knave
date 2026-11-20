@@ -57,6 +57,7 @@ use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
+use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
 use super::shared_passing_order::SharedPassingOrder;
 use super::shared_variable_group::SharedVariableGroup;
@@ -597,8 +598,11 @@ impl TypeChecker {
     pub(super) fn shared_variable_group<'g>(
         &'g self,
         group: &'g SharedGroup,
+        callee: Option<&'g TypedExpr>,
     ) -> SharedVariableGroup<'g> {
-        SharedVariableGroup::new(group, self.passing_tables(), &self.unifier)
+        let callee = CalleeBorrows::new(callee, &self.template_borrows);
+        let call = SharedCall { group, callee };
+        SharedVariableGroup::new(call, self.passing_tables(), &self.unifier)
     }
 
     pub(super) fn shared_passing_order<'c>(

@@ -1,0 +1,9 @@
+(defstruct user
+  :name string)
+
+(defn make (text)
+  (->user :name (clone text)))
+
+(defn main ()
+  (local made (make (str "a" 1)))
+  (println (:name made)))

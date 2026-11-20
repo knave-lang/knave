@@ -1,3 +1,5 @@
+use rustc_hash::FxHashSet;
+
 use super::flow::Flow;
 use super::need::Need;
 use super::node_id::NodeId;
@@ -29,11 +31,39 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
     }
 
     pub fn found(&self) -> Vec<Refusal<'g>> {
-        self.classes
+        let candidates: Vec<(usize, Refusal<'g>)> = self
+            .classes
             .flows()
             .iter()
-            .filter_map(|flow| self.refusal(flow))
+            .enumerate()
+            .filter_map(|(index, flow)| Some((index, self.refusal(flow)?)))
+            .collect();
+        let reported = self.reported_classes(&candidates);
+        candidates
+            .into_iter()
+            .map(|(_, refusal)| refusal)
+            .filter(|refusal| !self.repeats_a_report(refusal.flow, &reported))
             .collect()
+    }
+
+    fn reported_classes(&self, candidates: &[(usize, Refusal<'_>)]) -> FxHashSet<NodeId> {
+        let refused: FxHashSet<usize> = candidates.iter().map(|(index, _)| *index).collect();
+        let mut reported: FxHashSet<NodeId> = candidates
+            .iter()
+            .map(|(_, refusal)| self.classes.class(refusal.flow.target))
+            .collect();
+        for (index, flow) in self.classes.flows().iter().enumerate() {
+            if !refused.contains(&index) && self.facts.arriving(flow).is_short_lived() {
+                reported.remove(&self.classes.class(flow.target));
+            }
+        }
+        reported
+    }
+
+    fn repeats_a_report(&self, flow: &Flow, reported: &FxHashSet<NodeId>) -> bool {
+        let from_reported = matches!(flow.source, Source::Slot(node) if reported.contains(&self.classes.class(node)));
+        let lasting = self.facts.arriving(flow).without(ReachingText::SHORT_LIVED);
+        from_reported && !self.refuses(flow, lasting)
     }
 
     fn refusal(&self, flow: &'g Flow) -> Option<Refusal<'g>> {
@@ -141,6 +171,43 @@ mod tests {
             )
             .required(FlowFixture::variable(), Need::OwnedOrMixed);
         assert!(flows.refused_at().is_empty());
+    }
+
+    #[test]
+    fn a_refused_clone_argument_is_not_refused_again_at_its_result() {
+        let flows = FlowFixture::default()
+            .flow(
+                (FlowFixture::PARAMETER, FlowFixture::variable()),
+                Transfer::Refer,
+                7,
+            )
+            .required(FlowFixture::variable(), Need::OwnedOrMixed)
+            .text(ReachingText::OWNED, (FlowFixture::PARAMETER, 3))
+            .flow(
+                (FlowFixture::variable(), FlowFixture::field()),
+                Transfer::Move,
+                9,
+            );
+        assert_eq!(flows.refused_at(), vec![7]);
+    }
+
+    #[test]
+    fn a_class_with_an_unrefused_short_lived_arrival_is_refused_again() {
+        let flows = FlowFixture::default()
+            .text(ReachingText::OWNED, (FlowFixture::variable(), 5))
+            .text(ReachingText::LENT, (FlowFixture::LOCAL, 3))
+            .flow(
+                (FlowFixture::LOCAL, FlowFixture::variable()),
+                Transfer::Lend,
+                4,
+            )
+            .text(ReachingText::BORROWED, (FlowFixture::variable(), 6))
+            .flow(
+                (FlowFixture::variable(), FlowFixture::field()),
+                Transfer::Refer,
+                9,
+            );
+        assert_eq!(flows.refused_at(), vec![6, 9]);
     }
 
     #[test]

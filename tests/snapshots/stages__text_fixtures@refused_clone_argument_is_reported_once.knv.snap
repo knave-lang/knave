@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/refused_clone_argument_is_reported_once.knv
+---
+struct user
+  name: owned
+defn make
+  text: a view, written lent
+needs owned text
+  text/refused_clone_argument_is_reported_once.knv:5:24

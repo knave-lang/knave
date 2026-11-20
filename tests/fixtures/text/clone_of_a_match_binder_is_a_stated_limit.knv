@@ -1,0 +1,10 @@
+(defstruct user
+  :name string)
+
+(defn main ()
+  (local found (some (str "a" 1)))
+  (local made
+    (match found
+      ((some text) (->user :name (clone text)))
+      (_ (->user :name (str "none")))))
+  (println (:name made)))

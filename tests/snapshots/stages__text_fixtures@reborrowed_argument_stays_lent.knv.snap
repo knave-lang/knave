@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/reborrowed_argument_stays_lent.knv
+---
+defn main
+  local name: owned
+  local borrowed: lent
+  local reborrowed: lent

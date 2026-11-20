@@ -131,6 +131,19 @@ mod tests {
     }
 
     #[test]
+    fn a_clone_lent_a_lent_local_is_not_refused() {
+        let flows = FlowFixture::default()
+            .text(ReachingText::LENT, (FlowFixture::LOCAL, 3))
+            .flow(
+                (FlowFixture::LOCAL, FlowFixture::variable()),
+                Transfer::Lend,
+                7,
+            )
+            .required(FlowFixture::variable(), Need::OwnedOrMixed);
+        assert!(flows.refused_at().is_empty());
+    }
+
+    #[test]
     fn static_text_given_to_an_owned_argument_is_refused() {
         let owned = SlotOwner::Argument(FlowFixture::span(80));
         let flows = FlowFixture::default()

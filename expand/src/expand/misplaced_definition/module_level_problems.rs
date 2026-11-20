@@ -12,8 +12,10 @@ impl ModuleLevelProblems {
             Label::new(span, "not allowed inside an expression"),
         );
         match kernel {
-            KernelForm::Definition(DefinitionForm::MismatchHelp) => misplaced,
-            _ => misplaced.with_help("use `let` to bind a name inside a body"),
+            KernelForm::Definition(DefinitionForm::Def) => {
+                misplaced.with_help("use `let` to bind a name inside a body")
+            }
+            _ => misplaced,
         }
     }
 }

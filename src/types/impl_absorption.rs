@@ -180,16 +180,49 @@ mod tests {
             (impl t1 (w1 {held}) (t1 (w) (do (local _copy (clone (:value w))) true)))";
 
         const DISPLAY_MAIN: &str = "
-            (defn main () (println (->b2 :inner (->b1 :inner (->b0 :value (str \"x\"))))))";
+            (defn main () (println (->b2 :inner (b1/wrap (->b0 :value (str \"x\"))))))";
 
         const DISPLAY_IMPLS_OUTERMOST_FIRST: [&str; 3] = [
             "(defstruct (b2 a) :inner (b1 a))
             (display (b2 {held}) (x) \"[\" (:inner x) \"]\")",
-            "(defstruct (b1 a) :inner (b0 a))
-            (display (b1 {held}) (x) \"[\" (:inner x) \"]\")",
+            "(defenum (b1 a) (wrap (b0 a)))
+            (display (b1 {held}) (x) (match x ((b1/wrap inner) (str inner))))",
             "(defstruct (b0 a) :value a)
             (display (b0 {held}) (x) \"<\" (:value x) \">\")",
         ];
+
+        const BUILT_CHAIN: &str = "
+            (defn main () (println (->a1 :v 1)))
+            (defstruct (a1 t) :v t)
+            (display (a1 {held}) (x) \"<\" (->a2 :v (:v x)) \">\")
+            (defstruct (a2 t) :v t)
+            (display (a2 {held}) (x) \"<\" (->a3 :v (:v x)) \">\")
+            (defstruct (a3 t) :v t)
+            (display (a3 {held}) (x) \"<\" (:v x) \">\")";
+
+        const INVERTED_DEPTHS: &str = "
+            (defn main () (println (->aa :v 1)))
+            (defstruct (dd t) :v t)
+            (display (dd {held}) (x) \"d\" (:v x))
+            (defstruct (bb t) :inner (dd t))
+            (display (bb {held}) (x) \"b\" (:inner x))
+            (defstruct (aa t) :v t)
+            (display (aa {held}) (x) \"a\" (->bb :inner (->dd :v (:v x))))";
+
+        const VARIANT_CHAIN: &str = "
+            (defn main () (println (->c1 :v 1)))
+            (defstruct (c1 t) :v t)
+            (display (c1 {held}) (x) \"<\" (c2/wrap (:v x)) \">\")
+            (defenum (c2 t) (wrap t))
+            (display (c2 {held}) (x) (match x ((c2/wrap v) (str v))))";
+
+        const WRITTEN_CHAIN: &str = "
+            (defn main () (do (d2-of true) (println (->d1 :v (len \"x\")))))
+            (defn d2-of (v) (->d2 :v v))
+            (defstruct (d1 t) :v t)
+            (display (d1 {held}) (x) (do (local (inner (d2 {held})) (d2-of (:v x))) inner))
+            (defstruct (d2 t) :v t)
+            (display (d2 {held}) (x) \"<\" (:v x) \">\")";
 
         const SIBLING_METHOD_CHAIN: &str = "
             (defn main () (println (t2 (ref (->w2 :inner (->w1 :value (str \"x\")))))))
@@ -210,7 +243,11 @@ mod tests {
         }
 
         fn checks_in_one_round(chain: &str) -> bool {
-            Self::inferred_expressions(chain, "a") == Self::inferred_expressions(chain, "string")
+            Self::checks_in_one_round_holding(chain, "string")
+        }
+
+        fn checks_in_one_round_holding(chain: &str, concrete: &str) -> bool {
+            Self::inferred_expressions(chain, "a") == Self::inferred_expressions(chain, concrete)
         }
 
         fn inferred_expressions(chain: &str, held: &str) -> usize {
@@ -251,6 +288,38 @@ mod tests {
     fn a_call_to_one_method_of_an_impl_waits_for_its_sibling_methods() {
         assert!(ChainFixture::checks_in_one_round(
             ChainFixture::SIBLING_METHOD_CHAIN
+        ));
+    }
+
+    #[test]
+    fn a_chain_of_display_impls_that_build_the_next_type_checks_in_one_round() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::BUILT_CHAIN,
+            "i64"
+        ));
+    }
+
+    #[test]
+    fn an_impl_that_builds_a_deeper_type_checks_after_its_impl() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::INVERTED_DEPTHS,
+            "i64"
+        ));
+    }
+
+    #[test]
+    fn an_impl_that_builds_an_enum_variant_checks_after_the_enum_impl() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::VARIANT_CHAIN,
+            "i64"
+        ));
+    }
+
+    #[test]
+    fn an_impl_that_writes_a_type_checks_after_that_type_impl() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::WRITTEN_CHAIN,
+            "usize"
         ));
     }
 }

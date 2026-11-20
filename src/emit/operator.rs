@@ -1,6 +1,7 @@
 use super::argument_start::ArgumentStart;
-use super::identifier::Identifier;
-use super::open_delimiter::OpenDelimiter;
+use super::literal::Literal;
+use super::nesting::{Depth, Nesting};
+use super::open_calls::OpenCalls;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -112,60 +113,54 @@ impl<'a> RustText<'a> {
     }
 
     pub fn tokens(&self) -> Vec<&'a str> {
-        TokenScanner::scan(self.text).tokens
+        TokenScanner::scan(self.text, Depth::default()).tokens
     }
 
     pub fn closes_every_delimiter(&self) -> bool {
-        TokenScanner::scan(self.text).depth == 0
+        TokenScanner::scan(self.text, Depth::default())
+            .nesting
+            .depth()
+            == 0
     }
 
     pub fn argument_starts(&self, marks: &[usize]) -> Vec<Option<ArgumentStart<'a>>> {
-        TokenScanner::scan_marking(self.text, marks).1
-    }
-
-    fn argument_name(written: &'a str) -> Option<&'a str> {
-        let named = written.strip_suffix('=')?.trim_end();
-        let name = Identifier::ending(named).text();
-        let before_name = &named[..named.len() - name.len()];
-        (!name.is_empty() && before_name.trim_end().ends_with(',')).then_some(name)
+        TokenScanner::scan(self.text, OpenCalls::marking(marks))
+            .nesting
+            .into_starts()
     }
 }
 
-struct TokenScanner<'a> {
+struct TokenScanner<'a, N> {
     text: &'a str,
     tokens: Vec<&'a str>,
     start: Option<usize>,
-    depth: usize,
-    open: Vec<OpenDelimiter<'a>>,
-    tracks_calls: bool,
+    nesting: N,
     literal: Literal,
     literal_start: usize,
     escaped: bool,
 }
 
-impl<'a> TokenScanner<'a> {
+impl<'a, N: Nesting<'a>> TokenScanner<'a, N> {
     const QUOTE_LENGTH: usize = 1;
 
-    fn scan(text: &'a str) -> Self {
-        Self::new(text).run(&[]).0
-    }
-
-    fn scan_marking(text: &'a str, marks: &[usize]) -> (Self, Vec<Option<ArgumentStart<'a>>>) {
+    fn scan(text: &'a str, nesting: N) -> Self {
         Self {
-            tracks_calls: true,
-            ..Self::new(text)
+            text,
+            tokens: Vec::new(),
+            start: None,
+            nesting,
+            literal: Literal::Outside,
+            literal_start: 0,
+            escaped: false,
         }
-        .run(marks)
+        .run()
     }
 
-    fn run(mut self, marks: &[usize]) -> (Self, Vec<Option<ArgumentStart<'a>>>) {
+    fn run(mut self) -> Self {
         let text = self.text;
-        let mut starts = Vec::with_capacity(marks.len());
         let mut characters = text.char_indices().peekable();
         while let Some((position, character)) = characters.next() {
-            if starts.len() < marks.len() {
-                self.mark_up_to(position, marks, &mut starts);
-            }
+            self.nesting.reach(text, position, self.literal);
             if self.consume_literal(position, character) {
                 continue;
             }
@@ -175,53 +170,15 @@ impl<'a> TokenScanner<'a> {
             if self.consume_delimiter(position, character) {
                 continue;
             }
-            if character.is_whitespace() && self.depth == 0 {
+            if character.is_whitespace() && self.nesting.depth() == 0 {
                 self.flush(position);
             } else {
                 self.start.get_or_insert(position);
             }
         }
         self.flush(text.len());
-        self.mark_up_to(text.len(), marks, &mut starts);
-        (self, starts)
-    }
-
-    fn new(text: &'a str) -> Self {
-        Self {
-            text,
-            tokens: Vec::new(),
-            start: None,
-            depth: 0,
-            open: Vec::new(),
-            tracks_calls: false,
-            literal: Literal::Outside,
-            literal_start: 0,
-            escaped: false,
-        }
-    }
-
-    fn mark_up_to(
-        &self,
-        position: usize,
-        marks: &[usize],
-        starts: &mut Vec<Option<ArgumentStart<'a>>>,
-    ) {
-        while let Some(mark) = marks.get(starts.len()).filter(|mark| **mark <= position) {
-            starts.push(self.argument_start_at(*mark));
-        }
-    }
-
-    fn argument_start_at(&self, position: usize) -> Option<ArgumentStart<'a>> {
-        if self.literal != Literal::Outside {
-            return None;
-        }
-        let open = self.open.last()?.clone();
-        let written = self.text[..position].trim_end();
-        if written.ends_with(',') {
-            return Some(ArgumentStart::new(open, None));
-        }
-        let name = RustText::argument_name(written)?;
-        Some(ArgumentStart::new(open, Some(name)))
+        self.nesting.reach(text, text.len(), self.literal);
+        self
     }
 
     fn consume_literal(&mut self, position: usize, character: char) -> bool {
@@ -239,8 +196,9 @@ impl<'a> TokenScanner<'a> {
     }
 
     fn close_literal(&mut self, end: usize) {
-        if let (Literal::String, Some(open)) = (self.literal, self.open.last_mut()) {
-            open.hold_text(&self.text[self.literal_start + 1..end]);
+        if self.literal == Literal::String {
+            self.nesting
+                .hold_text(&self.text[self.literal_start + 1..end]);
         }
         self.literal = Literal::Outside;
     }
@@ -256,7 +214,7 @@ impl<'a> TokenScanner<'a> {
         character: char,
         characters: &mut std::iter::Peekable<std::str::CharIndices<'a>>,
     ) -> bool {
-        if character != '.' || self.depth != 0 {
+        if character != '.' || self.nesting.depth() != 0 {
             return false;
         }
         if characters.peek().is_none_or(|(_, next)| *next != '.') {
@@ -275,55 +233,22 @@ impl<'a> TokenScanner<'a> {
                 self.literal_start = position;
             }
             '\'' if self.opens_character(position) => self.literal = Literal::Character,
-            '(' => self.open(Some(&self.text[..position])),
-            '[' | '{' => self.open(None),
-            ')' | ']' | '}' => self.close(),
-            ',' => return self.count_argument(),
+            '(' => self.nesting.open(Some(&self.text[..position])),
+            '[' | '{' => self.nesting.open(None),
+            ')' | ']' | '}' => self.nesting.close(),
+            ',' => {
+                self.nesting.count_argument();
+                return false;
+            }
             _ => return false,
         }
         self.start.get_or_insert(position);
         true
     }
 
-    fn open(&mut self, called_after: Option<&'a str>) {
-        self.depth += 1;
-        if self.tracks_calls {
-            self.open.push(OpenDelimiter::new(called_after));
-        }
-    }
-
-    fn close(&mut self) {
-        self.depth = self.depth.saturating_sub(1);
-        self.open.pop();
-    }
-
-    fn count_argument(&mut self) -> bool {
-        if let Some(open) = self.open.last_mut() {
-            open.count_argument();
-        }
-        false
-    }
-
     fn flush(&mut self, position: usize) {
         if let Some(start) = self.start.take() {
             self.tokens.push(&self.text[start..position]);
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Literal {
-    Outside,
-    String,
-    Character,
-}
-
-impl Literal {
-    fn closes(self, character: char) -> bool {
-        match self {
-            Literal::Outside => false,
-            Literal::String => character == '"',
-            Literal::Character => character == '\'',
         }
     }
 }

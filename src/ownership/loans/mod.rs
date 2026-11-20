@@ -43,6 +43,7 @@ mod place_access;
 mod point_id;
 mod program_point;
 mod result_loans;
+mod type_memo;
 mod value_regions;
 mod walked;
 

@@ -1,13 +1,11 @@
-use std::cell::RefCell;
-
-use rustc_hash::FxHashMap;
-
+use super::type_memo::TypeMemo;
 use crate::types::{BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedProgram};
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
     copy: CopyRules<'p>,
-    moved: RefCell<FxHashMap<Type, bool>>,
+    moved: TypeMemo,
+    borrowing: TypeMemo,
 }
 
 impl<'p> LoanRules<'p> {
@@ -15,17 +13,13 @@ impl<'p> LoanRules<'p> {
         Self {
             program,
             copy: CopyRules::new(&program.declarations, &program.generics),
-            moved: RefCell::default(),
+            moved: TypeMemo::default(),
+            borrowing: TypeMemo::default(),
         }
     }
 
     pub fn moves(&self, ty: &Type) -> bool {
-        if let Some(moves) = self.moved.borrow().get(ty) {
-            return *moves;
-        }
-        let moves = !self.copy.is_copy(ty);
-        self.moved.borrow_mut().insert(ty.clone(), moves);
-        moves
+        self.moved.answer(ty, |ty| !self.copy.is_copy(ty))
     }
 
     pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {
@@ -35,7 +29,8 @@ impl<'p> LoanRules<'p> {
     }
 
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {
-        BorrowingTypes::of(self.program).keeps_borrow(ty)
+        self.borrowing
+            .answer(ty, |ty| BorrowingTypes::of(self.program).keeps_borrow(ty))
     }
 }
 

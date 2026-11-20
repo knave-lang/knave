@@ -7,7 +7,8 @@ use knave::diagnostic::{DiagnosticCode, DiagnosticRenderer, Diagnostics};
 use knave::expand::{Expander, Program};
 use knave::language::Language;
 use knave::lint::{
-    LintDefaults, LintedProgram, Linter, NeedlessTypeLint, ProgramPosition, ProgramRun, RuleProgram,
+    LintDefaults, LintedProgram, Linter, NeedlessTypeRule, ProgramPosition, ProgramRun,
+    RuleProgram, TrialLint,
 };
 use knave::modules::ModuleSources;
 use knave::project::LintLevel;
@@ -53,11 +54,11 @@ impl LintFixture {
         };
         let mut warnings = std::mem::take(&mut typed.warnings);
         warnings.extend(self.lint_warnings(&program));
-        warnings.extend(self.needless_types(&mut program, typed));
+        warnings.extend(self.needless_types(&mut program, &typed));
         warnings
     }
 
-    fn needless_types(&mut self, program: &mut Program, typed: TypedProgram) -> Diagnostics {
+    fn needless_types(&mut self, program: &mut Program, typed: &TypedProgram) -> Diagnostics {
         let level = LintDefaults::level_of(
             &DiagnosticCode::NEEDLESS_TYPE,
             self.written_needless_type_level(),
@@ -67,13 +68,15 @@ impl LintFixture {
             path: &self.path,
             entry: self.entry,
         };
-        NeedlessTypeLint::new(&mut runs).warnings(
-            level,
-            &mut [LintedProgram {
-                program,
-                declared: &typed,
-            }],
-        )
+        TrialLint::new(&mut runs, &NeedlessTypeRule)
+            .outcome(
+                level,
+                &mut [LintedProgram {
+                    program,
+                    declared: typed,
+                }],
+            )
+            .warnings
     }
 
     fn written_needless_type_level(&self) -> Option<LintLevel> {

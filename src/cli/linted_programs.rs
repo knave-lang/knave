@@ -8,8 +8,8 @@ use super::trial_runs::TrialRuns;
 use crate::diagnostic::{DiagnosticCode, Diagnostics};
 use crate::expand::Program;
 use crate::lint::{
-    AgreedWarnings, LintedProgram, Linter, NeedlessTypeLint, ProgramWarnings, RuleFailure,
-    RuleProgram,
+    AgreedWarnings, LintedProgram, Linter, NeedlessTypeRule, ProgramWarnings, RuleFailure,
+    RuleProgram, TrialLint,
 };
 use crate::types::TypedProgram;
 
@@ -109,7 +109,11 @@ impl LintedPrograms {
                 declared: &checked.typed,
             })
             .collect();
-        NeedlessTypeLint::new(&mut TrialRuns::new(terminal, &self.files))
-            .warnings(level, &mut linted)
+        TrialLint::new(
+            &mut TrialRuns::new(terminal, &self.files),
+            &NeedlessTypeRule,
+        )
+        .outcome(level, &mut linted)
+        .warnings
     }
 }

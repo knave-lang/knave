@@ -4,7 +4,6 @@ use super::written_bodies::WrittenBodies;
 use crate::core::{BindingId, References};
 
 pub struct DependencyGraph {
-    references: FxHashMap<BindingId, References>,
     edges: FxHashMap<BindingId, Vec<BindingId>>,
     always_emitted: FxHashSet<BindingId>,
     compile_time_only: FxHashSet<BindingId>,
@@ -13,13 +12,13 @@ pub struct DependencyGraph {
 
 impl DependencyGraph {
     pub(super) fn build(
-        walked: FxHashMap<BindingId, References>,
+        walked: &FxHashMap<BindingId, References>,
         macro_helpers: FxHashSet<BindingId>,
         written: &WrittenBodies,
     ) -> Self {
         let mut edges = FxHashMap::with_capacity_and_hasher(walked.len(), Default::default());
         let mut direct_compile_time = FxHashSet::default();
-        for (binding, references) in &walked {
+        for (binding, references) in walked {
             if references.uses_compile_time_code() {
                 direct_compile_time.insert(*binding);
             }
@@ -34,7 +33,6 @@ impl DependencyGraph {
             );
         }
         let mut graph = Self {
-            references: walked,
             macro_helpers,
             edges,
             always_emitted: written.iter().collect(),
@@ -42,10 +40,6 @@ impl DependencyGraph {
         };
         graph.spread_compile_time();
         graph
-    }
-
-    pub fn references(&self, binding: BindingId) -> Option<&References> {
-        self.references.get(&binding)
     }
 
     pub fn is_compile_time_only(&self, binding: BindingId) -> bool {
@@ -243,7 +237,6 @@ mod tests {
 
         fn dependencies(self) -> DependencyGraph {
             DependencyGraph {
-                references: FxHashMap::default(),
                 edges: self.edges,
                 always_emitted: self.always_emitted,
                 compile_time_only: self.compile_time_code,

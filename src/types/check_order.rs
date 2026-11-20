@@ -1,14 +1,14 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::core::{BindingId, ImplMethod, ItemKind, TypeExpr, TypeExprKind};
+use crate::core::{BindingId, ImplMethod, ItemKind, References, TypeExpr, TypeExprKind};
 use crate::expand::Program;
 
 use super::constructed_types::ConstructedTypes;
 use super::contained_types::ContainedTypes;
 use super::dependency_graph::DependencyGraph;
 
-pub(super) struct CheckOrder<'a> {
-    dependencies: &'a DependencyGraph,
+pub(super) struct CheckOrder {
+    references: FxHashMap<BindingId, References>,
     impl_methods_of_trait: FxHashMap<BindingId, Vec<BindingId>>,
     trait_of_impl_method: FxHashMap<BindingId, BindingId>,
     same_trait_callees: FxHashMap<BindingId, Vec<BindingId>>,
@@ -27,33 +27,37 @@ enum Step {
     Leave(BindingId),
 }
 
-impl<'a> CheckOrder<'a> {
-    pub(super) fn of(
+impl CheckOrder {
+    pub(super) fn new(
         program: &Program,
-        dependencies: &'a DependencyGraph,
-        definitions: impl Iterator<Item = BindingId>,
-    ) -> Vec<BindingId> {
+        references: FxHashMap<BindingId, References>,
+        dependencies: &DependencyGraph,
+    ) -> Self {
         let impls = Self::impl_entries(program);
-        let mut walk = Self {
-            dependencies,
+        let same_trait_callees = SameTraitCallees::new(
+            &impls,
+            &ContainedTypes::of(program),
+            &ConstructedTypes::new(program, &references, dependencies),
+        )
+        .of(&references);
+        Self {
+            references,
             impl_methods_of_trait: Self::impl_methods_by_trait(&impls),
             trait_of_impl_method: Self::trait_of_impl_method(&impls),
-            same_trait_callees: SameTraitCallees::new(
-                &impls,
-                &ContainedTypes::of(program),
-                &ConstructedTypes::new(program, dependencies),
-            )
-            .of(dependencies),
+            same_trait_callees,
             visited: FxHashSet::default(),
             order: Vec::new(),
-        };
-        let (methods, others): (Vec<BindingId>, Vec<BindingId>) =
-            definitions.partition(|binding| walk.trait_of_impl_method.contains_key(binding));
-        for method in methods {
-            walk.visit(method);
         }
-        walk.order.extend(others);
-        walk.order
+    }
+
+    pub(super) fn of(mut self, definitions: impl Iterator<Item = BindingId>) -> Vec<BindingId> {
+        let (methods, others): (Vec<BindingId>, Vec<BindingId>) =
+            definitions.partition(|binding| self.trait_of_impl_method.contains_key(binding));
+        for method in methods {
+            self.visit(method);
+        }
+        self.order.extend(others);
+        self.order
     }
 
     #[cfg(test)]
@@ -138,7 +142,7 @@ impl<'a> CheckOrder<'a> {
         if let Some(implementing) = self.impl_methods_of_trait.get(&binding) {
             return implementing.clone();
         }
-        let Some(references) = self.dependencies.references(binding) else {
+        let Some(references) = self.references.get(&binding) else {
             return Vec::new();
         };
         let own_trait = self.trait_of_impl_method.get(&binding);
@@ -179,13 +183,16 @@ impl<'i, 'p> SameTraitCallees<'i, 'p> {
         }
     }
 
-    fn of(&self, dependencies: &DependencyGraph) -> FxHashMap<BindingId, Vec<BindingId>> {
+    fn of(
+        &self,
+        references: &FxHashMap<BindingId, References>,
+    ) -> FxHashMap<BindingId, Vec<BindingId>> {
         let methods_by_impl = self.methods_by_trait_and_implementor();
         let mut callees = FxHashMap::default();
         for entry in self.impls {
             for method in entry.methods {
                 let reached = self
-                    .types_reached(entry, method, dependencies)
+                    .types_reached(entry, method, references)
                     .into_iter()
                     .filter_map(|named| methods_by_impl.get(&(entry.trait_binding, named)))
                     .flatten()
@@ -217,14 +224,14 @@ impl<'i, 'p> SameTraitCallees<'i, 'p> {
         &self,
         entry: &ImplEntry<'_>,
         method: &ImplMethod,
-        dependencies: &DependencyGraph,
+        references: &FxHashMap<BindingId, References>,
     ) -> Vec<BindingId> {
         let contained = entry
             .implementor
             .map(|implementor| self.contained.in_type(implementor))
             .unwrap_or_default();
-        let written = dependencies
-            .references(method.binding)
+        let written = references
+            .get(&method.binding)
             .map(|references| references.written_types().named())
             .unwrap_or_default();
         contained

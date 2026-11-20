@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::indexed_implementors::IndexedImplementors;
 use super::projection::ProjectionTable;
 use super::rust_trait::RustTrait;
 use super::selection::{ImplementorMatch, Selection};
@@ -13,7 +14,7 @@ use crate::core::BindingId;
 pub struct TraitTable {
     traits: FxHashMap<BindingId, RustTrait>,
     projections: Rc<ProjectionTable>,
-    normalized_implementors: FxHashMap<BindingId, Vec<Implementor>>,
+    normalized_implementors: FxHashMap<BindingId, IndexedImplementors>,
 }
 
 impl TraitTable {
@@ -32,7 +33,8 @@ impl TraitTable {
                 .filter_map(|implementor| Self::normalized(&self.projections, implementor))
                 .collect();
             if !normalized.is_empty() {
-                self.normalized_implementors.insert(*binding, normalized);
+                let indexed = IndexedImplementors::new(normalized);
+                self.normalized_implementors.insert(*binding, indexed);
             }
         }
         Rc::clone(&self.projections)
@@ -60,7 +62,7 @@ impl TraitTable {
     pub fn rows(&self, binding: BindingId) -> TraitRows<'_> {
         TraitRows::new(
             self.traits.get(&binding),
-            self.normalized_implementors(binding),
+            self.normalized_implementors.get(&binding),
             &self.projections,
         )
     }
@@ -71,13 +73,6 @@ impl TraitTable {
             self.projections.declared_by(binding).is_empty()
                 && rows.iter().any(|row| row.argument.is_none())
         })
-    }
-
-    fn normalized_implementors(&self, binding: BindingId) -> &[Implementor] {
-        self.normalized_implementors
-            .get(&binding)
-            .map(Vec::as_slice)
-            .unwrap_or_default()
     }
 
     pub fn satisfies(
@@ -188,14 +183,14 @@ impl TraitTable {
 
 pub struct TraitRows<'t> {
     rust_trait: Option<&'t RustTrait>,
-    normalized: &'t [Implementor],
+    normalized: Option<&'t IndexedImplementors>,
     projections: &'t ProjectionTable,
 }
 
 impl<'t> TraitRows<'t> {
     pub fn new(
         rust_trait: Option<&'t RustTrait>,
-        normalized: &'t [Implementor],
+        normalized: Option<&'t IndexedImplementors>,
         projections: &'t ProjectionTable,
     ) -> Self {
         Self {
@@ -211,14 +206,14 @@ impl<'t> TraitRows<'t> {
         };
         let normalized = self.projections.normalize_deep(target);
         let associated = rust_trait.associated.is_some();
-        self.rows(rust_trait)
+        self.rows(rust_trait, &normalized)
             .map(|row| ImplementorMatch::select(row, bound, &normalized, associated))
             .fold(Selection::Missing, Selection::best)
     }
 
     pub fn settle_lone_row(&self, bound: &Bound, target: &Type) -> Option<Selection> {
         let normalized = self.projections.normalize_deep(target);
-        let mut open = self.rows(self.rust_trait?).filter(|row| {
+        let mut open = self.rows(self.rust_trait?, &normalized).filter(|row| {
             !matches!(
                 ImplementorMatch::select(row, bound, &normalized, false),
                 Selection::Missing
@@ -231,13 +226,17 @@ impl<'t> TraitRows<'t> {
         ImplementorMatch::settle(only, bound, &normalized)
     }
 
-    fn rows(&self, rust_trait: &'t RustTrait) -> impl Iterator<Item = &'t Implementor> + use<'t> {
+    fn rows<'a>(
+        &self,
+        rust_trait: &'t RustTrait,
+        target: &'a Type,
+    ) -> impl Iterator<Item = &'t Implementor> + use<'t, 'a> {
+        let normalized = self.normalized.into_iter();
         rust_trait
             .rows()
             .reached()
-            .implementors()
-            .iter()
-            .chain(self.normalized)
+            .candidates(target)
+            .chain(normalized.flat_map(move |rows| rows.candidates(target)))
     }
 }
 

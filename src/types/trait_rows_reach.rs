@@ -1,3 +1,4 @@
+use super::indexed_implementors::IndexedImplementors;
 use super::ty::{Bound, Scheme, Type};
 use crate::core::BindingId;
 
@@ -48,20 +49,24 @@ impl TraitRowsReach {
 }
 
 pub struct LoweredRows {
-    implementors: Vec<Implementor>,
+    implementors: IndexedImplementors,
     supertraits: Vec<Bound>,
 }
 
 impl LoweredRows {
     pub fn new(implementors: Vec<Implementor>, supertraits: Vec<Bound>) -> Self {
         Self {
-            implementors,
+            implementors: IndexedImplementors::new(implementors),
             supertraits,
         }
     }
 
     pub fn implementors(&self) -> &[Implementor] {
-        &self.implementors
+        self.implementors.as_slice()
+    }
+
+    pub fn candidates(&self, target: &Type) -> impl Iterator<Item = &Implementor> {
+        self.implementors.candidates(target)
     }
 
     pub fn add(&mut self, implementor: Implementor) {
@@ -69,19 +74,13 @@ impl LoweredRows {
     }
 
     pub fn remove_struct(&mut self, struct_binding: BindingId) {
-        self.implementors.retain(|implementor| {
+        self.implementors = std::mem::take(&mut self.implementors).retained(|implementor| {
             !matches!(implementor.scheme.body, Type::Named(named, _) if named == struct_binding)
         });
     }
 
     pub fn set_scheme(&mut self, body: &Type, scheme: Scheme) {
-        if let Some(implementor) = self
-            .implementors
-            .iter_mut()
-            .find(|implementor| implementor.scheme.body == *body)
-        {
-            implementor.scheme = scheme;
-        }
+        self.implementors.set_scheme(body, scheme);
     }
 
     pub fn supertraits(&self) -> &[Bound] {
@@ -89,7 +88,7 @@ impl LoweredRows {
     }
 
     pub fn is_open(&self) -> bool {
-        self.implementors
+        self.implementors()
             .iter()
             .any(|implementor| !implementor.scheme.params.is_empty())
     }

@@ -95,6 +95,7 @@ mod implementor_listing;
 mod implied_bounds;
 mod index_checks;
 mod index_problems;
+mod indexed_implementors;
 mod infer;
 mod inferred_span;
 mod inferring_checker;

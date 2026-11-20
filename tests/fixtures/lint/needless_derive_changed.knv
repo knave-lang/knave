@@ -1,0 +1,12 @@
+(defstruct counter
+  :count int)
+
+(derive counter clone copy)
+
+(defn bump! (c)
+  (set! (:count c) (+ (:count c) 1)))
+
+(defn main ()
+  (let (c (->counter :count 0))
+    (bump! c)
+    (println (:count c))))

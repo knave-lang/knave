@@ -45,6 +45,10 @@ impl RuleTarget {
         self.span
     }
 
+    pub fn into_table(self) -> Value {
+        self.table
+    }
+
     pub fn call(&self, rule: Form, entries: RuleEntries, step_limit: u64) -> RuleCall {
         let entry = match self.entry {
             TargetEntry::Definition => entries.check,

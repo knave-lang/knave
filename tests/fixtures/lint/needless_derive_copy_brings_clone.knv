@@ -1,0 +1,9 @@
+(defstruct point
+  :x int
+  :y int)
+
+(derive point copy)
+
+(defn main ()
+  (let (p (->point :x 1 :y 2))
+    (println (+ (:x p) (:y p)))))

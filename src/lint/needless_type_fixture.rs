@@ -2,9 +2,12 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 
 use super::linted_program::LintedProgram;
-use super::needless_type_lint::NeedlessTypeLint;
+use super::needless_derive_rule::NeedlessDeriveRule;
+use super::needless_type_rule::NeedlessTypeRule;
 use super::program_position::ProgramPosition;
 use super::program_run::ProgramRun;
+use super::project_library::ProjectLibrary;
+use super::trial_lint::TrialLint;
 use crate::check::ProgramChecker;
 use crate::core::ModulePath;
 use crate::diagnostic::Diagnostics;
@@ -23,8 +26,9 @@ pub enum Emission {
 
 pub struct ScriptedRun {
     emission: Emission,
-    failing_check: Option<usize>,
+    failing_checks: Vec<usize>,
     checks: usize,
+    alone_loads: usize,
     emissions: Cell<usize>,
 }
 
@@ -32,27 +36,26 @@ impl ScriptedRun {
     pub fn emitting(emission: Emission) -> Self {
         Self {
             emission,
-            failing_check: None,
+            failing_checks: Vec::new(),
             checks: 0,
+            alone_loads: 0,
             emissions: Cell::new(0),
         }
     }
 
-    pub fn failing_check(self, trial_check: usize) -> Self {
-        Self {
-            failing_check: Some(trial_check),
-            ..self
-        }
+    pub fn failing_check(mut self, trial_check: usize) -> Self {
+        self.failing_checks.push(trial_check);
+        self
     }
 }
 
 impl ProgramRun for ScriptedRun {
     fn check(&mut self, program: &Program) -> Result<TypedProgram, Diagnostics> {
         self.checks += 1;
-        match self.failing_check {
-            Some(failing) if failing == self.checks => Err(Diagnostics::default()),
-            _ => ProgramChecker::check::<EnforcedOwnership>(program),
+        if self.failing_checks.contains(&self.checks) {
+            return Err(Diagnostics::default());
         }
+        ProgramChecker::check::<EnforcedOwnership>(program)
     }
 
     fn emit(&self, _typed: &TypedProgram) -> Option<String> {
@@ -64,6 +67,7 @@ impl ProgramRun for ScriptedRun {
     }
 
     fn module_alone(&mut self, _beside: ProgramPosition, _module: &ModulePath) -> Option<Program> {
+        self.alone_loads += 1;
         None
     }
 
@@ -84,9 +88,18 @@ impl NeedlessTypeFixture {
     }
 
     const FIXTURES: &str = "tests/fixtures/lint/needless_type";
+    const LINT_FIXTURES: &str = "tests/fixtures/lint";
 
     pub fn expand_lint_fixture(name: &str) -> Self {
-        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join(Self::FIXTURES);
+        Self::expand_fixture_in(Self::FIXTURES, name)
+    }
+
+    pub fn expand_derive_fixture(name: &str) -> Self {
+        Self::expand_fixture_in(Self::LINT_FIXTURES, name)
+    }
+
+    fn expand_fixture_in(fixtures: &str, name: &str) -> Self {
+        let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join(fixtures);
         let text = std::fs::read_to_string(directory.join(format!("{name}.knv")))
             .expect("the fixture is readable");
         Self::expand_in(directory, name, &text)
@@ -118,8 +131,11 @@ impl NeedlessTypeFixture {
         let mut programs = [LintedProgram {
             program: &mut self.program,
             declared: &declared,
+            holds_unlinted_example: false,
         }];
-        let warnings = NeedlessTypeLint::new(&mut run).warnings(written, &mut programs);
+        let warnings = TrialLint::new(&mut run, &NeedlessTypeRule)
+            .outcome(written, &mut programs)
+            .warnings;
         let titles = warnings
             .into_iter()
             .map(|warning| warning.title().to_string())
@@ -141,16 +157,44 @@ impl NeedlessTypeFixture {
             LintedProgram {
                 program: &mut self.program,
                 declared: &first_checked,
+                holds_unlinted_example: false,
             },
             LintedProgram {
                 program: &mut second,
                 declared: &second_checked,
+                holds_unlinted_example: false,
             },
         ];
-        NeedlessTypeLint::new(&mut run)
-            .warnings(Some(LintLevel::Warn), &mut programs)
+        TrialLint::new(&mut run, &NeedlessTypeRule)
+            .outcome(Some(LintLevel::Warn), &mut programs)
+            .warnings
             .into_iter()
             .map(|warning| warning.title().to_string())
             .collect()
     }
+    pub fn derive_trials(mut self, mut run: ScriptedRun) -> DeriveTrials {
+        let declared =
+            ProgramChecker::check::<EnforcedOwnership>(&self.program).expect("the source checks");
+        let mut programs = [LintedProgram {
+            program: &mut self.program,
+            declared: &declared,
+            holds_unlinted_example: false,
+        }];
+        let rule = NeedlessDeriveRule::new(ProjectLibrary::Unpublished);
+        let warnings = TrialLint::new(&mut run, &rule)
+            .outcome(Some(LintLevel::Warn), &mut programs)
+            .warnings;
+        DeriveTrials {
+            warnings: warnings.len(),
+            checks: run.checks,
+            alone_loads: run.alone_loads,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct DeriveTrials {
+    pub warnings: usize,
+    pub checks: usize,
+    pub alone_loads: usize,
 }

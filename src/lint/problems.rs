@@ -36,6 +36,15 @@ impl LintProblems {
         )
     }
 
+    pub fn needless_derive(target: &str, span: Span) -> Diagnostic {
+        Diagnostic::warning(
+            DiagnosticCode::NEEDLESS_DERIVE,
+            format!("`{target}` does not need its `derive` form"),
+            Label::new(span, "inference gives every trait this form lists"),
+        )
+        .with_suggestion("remove the form", Suggestion::new(span, ""))
+    }
+
     pub fn outside_rules(name: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::COMPILE_TIME_ERROR,

@@ -95,6 +95,33 @@ impl DeriveCatalog {
     }
 }
 
+pub struct InferableDerives {
+    traits: Vec<BindingId>,
+}
+
+impl InferableDerives {
+    pub fn of(modules: &[CoreModule], structural: &[StructuralTrait]) -> Self {
+        Self::in_catalog(&DeriveCatalog::of(modules, structural))
+    }
+
+    pub fn gives(&self, trait_binding: BindingId) -> bool {
+        self.traits.contains(&trait_binding)
+    }
+
+    fn in_catalog(catalog: &DeriveCatalog) -> Self {
+        let traits = catalog
+            .entries()
+            .iter()
+            .filter(|entry| match entry.derived {
+                DerivedTrait::Written(name) => StructDerives::INFERRED.contains(&name),
+                DerivedTrait::Structural => true,
+            })
+            .map(|entry| entry.binding)
+            .collect();
+        Self { traits }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::source::{SourceId, Span};
@@ -102,6 +129,8 @@ mod tests {
     use crate::types::derivable_trait::DerivableTrait;
     use crate::types::derived_trait::DerivedTrait;
     use crate::types::written_derive::WrittenDerive;
+
+    use super::InferableDerives;
 
     const SOURCE: &str = "(struct point)\n(defn main () (do))";
 
@@ -126,6 +155,15 @@ mod tests {
                 traits: vec![(self.declarations.trait_named(trait_name), Self::span(7))],
             }
         }
+    }
+
+    #[test]
+    fn inference_gives_its_rust_derives_and_every_structural_trait() {
+        let fixture = CatalogFixture::new();
+        let inferable = InferableDerives::in_catalog(&fixture.declarations.derive_catalog());
+        assert!(inferable.gives(fixture.declarations.trait_named("clone")));
+        assert!(inferable.gives(fixture.declarations.trait_named("show")));
+        assert!(!inferable.gives(fixture.declarations.trait_named("debug")));
     }
 
     #[test]

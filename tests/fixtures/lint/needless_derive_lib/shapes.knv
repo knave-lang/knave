@@ -1,0 +1,7 @@
+(defstruct point
+  :x int
+  :y int)
+
+(derive point clone copy partial-eq)
+
+(export ->point point)

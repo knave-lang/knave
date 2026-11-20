@@ -5,11 +5,12 @@ use super::spanned_forms::SpannedForms;
 use std::rc::Rc;
 
 use crate::core::{
-    BindingId, BindingKind, DefinitionForm, Import, ImportedName, KernelForm, Provenance,
+    BindingId, BindingKind, CoreModule, DefinitionForm, Import, ImportedName, KernelForm,
+    Provenance,
 };
 use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
-use crate::interpret::ListNesting;
+use crate::interpret::{ListNesting, Value};
 use crate::reader::Form;
 use crate::source::{SourceMap, Span};
 
@@ -47,23 +48,48 @@ impl<'p> ModuleTable<'p> {
             .map(|definition| self.definition(definition, span))
             .collect();
         let imports = recorded.iter().map(|import| self.import(import)).collect();
+        let parts = vec![
+            SpannedForms::list(definitions, span),
+            SpannedForms::list(imports, span),
+            Self::notes_of(module, span),
+        ];
+        let table = Self::table(parts, span)?;
+        Ok(Some(RuleTarget::for_module(
+            table,
+            module.path.as_str().into(),
+            span,
+        )))
+    }
+
+    pub fn of_notes(module: &CoreModule) -> Result<Option<RuleTarget>, Diagnostic> {
+        let Some(span) = module.items.first().map(|item| item.span) else {
+            return Ok(None);
+        };
+        let parts = vec![
+            SpannedForms::list(Vec::new(), span),
+            SpannedForms::list(Vec::new(), span),
+            Self::notes_of(module, span),
+        ];
+        let table = Self::table(parts, span)?;
+        Ok(Some(RuleTarget::for_module(
+            table,
+            module.path.as_str().into(),
+            span,
+        )))
+    }
+
+    fn table(parts: Vec<Form>, span: Span) -> Result<Value, Diagnostic> {
+        ListNesting::form_list(parts, span).map_err(|deep| deep.at(span))
+    }
+
+    fn notes_of(module: &CoreModule, span: Span) -> Form {
         let notes = module
             .lint_facts
             .notes()
             .iter()
             .map(|(key, notes)| Self::notes(key, notes, span))
             .collect();
-        let parts = vec![
-            SpannedForms::list(definitions, span),
-            SpannedForms::list(imports, span),
-            SpannedForms::list(notes, span),
-        ];
-        let table = ListNesting::form_list(parts, span).map_err(|deep| deep.at(span))?;
-        Ok(Some(RuleTarget::for_module(
-            table,
-            module.path.as_str().into(),
-            span,
-        )))
+        SpannedForms::list(notes, span)
     }
 
     fn notes(key: &str, notes: &[Form], span: Span) -> Form {

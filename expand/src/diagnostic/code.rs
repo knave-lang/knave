@@ -286,6 +286,7 @@ diagnostic_codes! {
     UNUSED_IMPORT = "L0808",
     NEEDLESS_TYPE = "L0809",
     TEST_OUTSIDE_TESTS = "L0810",
+    NEEDLESS_DERIVE = "L0811",
 }
 
 impl DiagnosticCode {

@@ -12,6 +12,7 @@ use super::project_crates::ProjectCrates;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
+use crate::lint::ProjectLibrary;
 use crate::modules::LibraryTable;
 use crate::project::{Project, ProjectProblems};
 use file_placement::FilePlacement;
@@ -104,6 +105,14 @@ impl LocatedProject {
         FilePlacement::new(&self.root, self.source_root(), &self.libraries)
     }
 
+    pub fn library(&self) -> ProjectLibrary {
+        if self.root.join(&self.project.library_root).is_file() {
+            ProjectLibrary::Published
+        } else {
+            ProjectLibrary::Unpublished
+        }
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -137,7 +146,7 @@ impl LocatedProject {
         ProjectProblems::crates_unavailable_to(command, library.name_span, label)
     }
 
-    pub fn project_file(&self) -> PathBuf {
+    fn project_file(&self) -> PathBuf {
         self.root.join(Language::project_file_name())
     }
 

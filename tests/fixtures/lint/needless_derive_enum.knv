@@ -1,0 +1,6 @@
+(enum rank low high)
+
+(derive rank clone copy partial-eq)
+
+(defn main ()
+  (println (= rank/low rank/high)))

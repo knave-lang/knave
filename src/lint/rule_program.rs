@@ -25,6 +25,7 @@ impl RuleProgram {
     const CHECK: &str = "check-rule";
     const CHECK_MODULE: &str = "check-module";
     const KEPT: &str = "kept-definition?";
+    const EXAMPLES: &str = "module-holds-example?";
     pub(super) const RULES: &str = "rule-names";
     const LOADER: &str = "lint-rules";
 
@@ -85,6 +86,7 @@ impl RuleProgram {
             check: Self::export_named(&program, Self::CHECK),
             check_module: Self::export_named(&program, Self::CHECK_MODULE),
             kept: Self::export_named(&program, Self::KEPT),
+            examples: Self::export_named(&program, Self::EXAMPLES),
             names: Self::export_named(&program, Self::RULES),
         };
         Self {

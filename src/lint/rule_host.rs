@@ -7,6 +7,7 @@ use super::rule_call::RuleCall;
 use super::rule_global::RuleGlobal;
 use super::rule_names::RuleNames;
 use super::rule_program::RuleProgram;
+use super::rule_target::RuleTarget;
 use crate::core::{BindingArena, BindingId, BindingKind};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::MacroCallLookup;
@@ -62,12 +63,34 @@ impl<'h> RuleHost<'h> {
     }
 
     pub fn is_kept(&mut self, binder: Form, step_limit: u64) -> Result<bool, Diagnostic> {
-        let span = binder.span();
+        self.answer(RuleQuestion {
+            entry: self.rules.entries().kept,
+            span: binder.span(),
+            argument: Value::Form(binder),
+            step_limit,
+        })
+    }
+
+    pub fn holds_example(
+        &mut self,
+        module: RuleTarget,
+        step_limit: u64,
+    ) -> Result<bool, Diagnostic> {
+        self.answer(RuleQuestion {
+            entry: self.rules.entries().examples,
+            span: module.span(),
+            argument: module.into_table(),
+            step_limit,
+        })
+    }
+
+    fn answer(&mut self, question: RuleQuestion) -> Result<bool, Diagnostic> {
+        let span = question.span;
         let budget = StepBudget::full();
-        budget.set_limit(step_limit);
-        let kept = self.global_value(self.rules.entries().kept, span)?;
+        budget.set_limit(question.step_limit);
+        let entry = self.global_value(question.entry, span)?;
         let answer =
-            Interpreter::new(self, span, budget).call(&kept, vec![Value::Form(binder)], span)?;
+            Interpreter::new(self, span, budget).call(&entry, vec![question.argument], span)?;
         Ok(matches!(answer, Value::Bool(true)))
     }
 
@@ -87,6 +110,13 @@ impl<'h> RuleHost<'h> {
         let binding = self.program.names.binding_of(symbol)?;
         Some(self.program.bindings.get(binding).kind())
     }
+}
+
+struct RuleQuestion {
+    entry: BindingId,
+    span: Span,
+    argument: Value,
+    step_limit: u64,
 }
 
 impl Host for RuleHost<'_> {

@@ -9456,6 +9456,16 @@ fn a_compiler_newer_than_the_project_warns_when_a_library_fails_to_load() {
 }
 
 #[test]
+fn fmt_under_a_newer_compiler_shows_the_project_file_from_the_root() {
+    let sandbox = Sandbox::with_recorded_version("fmt_newer_compiler_path", FILLED_VERSION);
+    let stderr = sandbox
+        .compiler_in("demo-app", &["fmt"])
+        .assert_exit_code(0)
+        .stderr();
+    assert!(stderr.contains("--> project.knv:"), "{stderr}");
+}
+
+#[test]
 fn a_compiler_older_than_a_nested_library_leaves_fmt_of_the_app_silent() {
     let sandbox = Sandbox::new("version_older_nested_library")
         .with_file(

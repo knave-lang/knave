@@ -37,7 +37,7 @@ impl LocatedProject {
         };
         CompilerCheck::new(terminal).refuse_before_loading(&root)?;
         let located = Self::enter_unchecked(directory, terminal, store);
-        CompilerCheck::new(terminal).report_entered(&root)?;
+        CompilerCheck::new(terminal).report(&root)?;
         located
     }
 

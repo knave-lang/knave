@@ -402,7 +402,11 @@ error[L0408]: no struct has a field `:size`
 1 | (defn size-of (x) (:size x))
   |                    ^^^^^ unknown field
   |
-  = help: a field with a similar name exists: `:side`
+help: a field with a similar name exists
+  |
+1 - (defn size-of (x) (:size x))
+1 + (defn size-of (x) (:side x))
+  |
 ```
 
 The help appears only when a field of a struct is within the distance of the existing closest-name rule.

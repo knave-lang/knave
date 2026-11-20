@@ -2,13 +2,13 @@ use std::rc::Rc;
 
 use super::problems::TypeProblems;
 use super::unifier::LiteralKind;
-use crate::core::FieldLabel;
+use crate::core::{FieldLabel, Keyword};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
 
-pub(super) struct FieldReadProblems;
+pub(super) struct FieldOwnerProblems;
 
-impl FieldReadProblems {
+impl FieldOwnerProblems {
     pub(super) fn ambiguous(field: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::CANNOT_INFER,
@@ -28,6 +28,14 @@ impl FieldReadProblems {
             Label::new(label.span, "unknown field"),
         );
         TypeProblems::with_similar_field(absent, label, similar)
+    }
+
+    pub(super) fn undeclared_written(field: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNKNOWN_FIELD,
+            format!("no struct has a field `{}{field}`", Keyword::MARKER),
+            Label::new(span, "this bound names it"),
+        )
     }
 
     pub(super) fn literal_owner(literal: LiteralKind, span: Span) -> Diagnostic {

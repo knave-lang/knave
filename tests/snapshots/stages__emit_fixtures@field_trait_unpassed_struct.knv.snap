@@ -1,0 +1,65 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/field_trait_unpassed_struct.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Cat {
+    age: i64,
+}
+
+fn make_cat(age: i64) -> Cat {
+    Cat { age }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Dog {
+    age: i64,
+}
+
+fn make_dog(age: i64) -> Dog {
+    Dog { age }
+}
+
+fn age_of<A: HasAge>(x: A) -> i64 {
+    x.age()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", age_of(make_cat(3)));
+    println!("{}", age_of(make_dog(4)))
+}
+
+trait HasAge {
+    fn age(&self) -> i64;
+}
+
+impl HasAge for Cat {
+    fn age(&self) -> i64 {
+        self.age
+    }
+}
+
+impl HasAge for Dog {
+    fn age(&self) -> i64 {
+        self.age
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

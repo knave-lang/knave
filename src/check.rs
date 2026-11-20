@@ -7,8 +7,9 @@ use crate::diagnostic::Diagnostics;
 use crate::expand::Program;
 use crate::ownership::{InPlaceChanges, OwnershipGate};
 use crate::types::{
-    DefinitionGraph, DroppedInlineSchemes, FormResult, FormResults, InferredCopies,
-    InstantiationReport, LiteralDefaults, MainResult, Pinning, Type, TypeChecker, TypedProgram,
+    DefinitionGraph, DroppedInlineSchemes, FieldReadSettlement, FormResult, FormResults,
+    InferredCopies, InstantiationReport, LiteralDefaults, MainResult, Pinning, Type, TypeChecker,
+    TypedProgram,
 };
 
 pub struct ProgramChecker;
@@ -200,6 +201,7 @@ impl<'a, Gate: OwnershipGate> CheckRuns<'a, Gate> {
     fn typed_and_owned(&self, defaulting: DefaultingRule) -> Result<CheckedProgram, Diagnostics> {
         let mut typed = self.check_types(self.pinning.pins(), defaulting.clone())?;
         let instantiations = InstantiationReport::of(self.program, &self.graph, &typed);
+        FieldReadSettlement::new(&instantiations).settle(&mut typed)?;
         let inferred_copies = Self::check_ownership(&mut typed)?;
         Ok(CheckedProgram {
             program: typed,

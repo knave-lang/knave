@@ -1,0 +1,21 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(defstruct user
+  :age str)
+
+(defstruct admin
+  :age str)
+
+(defn age-of (x) (str (:age x)))
+
+(defn label-of (x) (str (:age x)))
+
+(defn main ()
+  (println (age-of (->cat 3)))
+  (println (age-of (->dog 4)))
+  (println (label-of (->user "u")))
+  (println (label-of (->admin "a"))))

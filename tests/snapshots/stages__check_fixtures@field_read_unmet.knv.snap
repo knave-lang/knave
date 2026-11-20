@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/field_read_unmet.knv
+---
+error[L0404]: `product` does not implement `(has :name str)`
+  --> check/field_read_unmet.knv:15:28
+   |
+15 |   (println (uppercase-name (->product 7))))
+   |                            ^^^^^^^^^^^^^ this needs `(has :name str)`
+   |
+   = note: run `knave doc L0404` for an explanation

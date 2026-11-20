@@ -1,0 +1,8 @@
+(defn credit! (balances name amount)
+  (set! (at balances name) amount))
+
+(defn main ()
+  (local balances (hash-map (str "a" 1) 1))
+  (credit! balances "a" 2)
+  (set-at! balances ("a") 3)
+  (println (len balances)))

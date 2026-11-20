@@ -12,11 +12,11 @@ use crate::types::TypedExpr;
 
 pub struct InlineRust<'t> {
     template: TemplateCall<'t>,
-    queries: &'static [usize],
+    queries: Vec<usize>,
 }
 
 impl<'t> InlineRust<'t> {
-    pub fn new(scheme: CalleeScheme<'t>, queries: &'static [usize]) -> Self {
+    pub fn new(scheme: CalleeScheme<'t>, queries: Vec<usize>) -> Self {
         Self {
             template: TemplateCall::new(scheme),
             queries,
@@ -43,7 +43,7 @@ impl<'t> CallTarget<'t> for InlineRust<'t> {
         values: &[TextValue],
     ) -> Option<TextValue> {
         Self::shares_nested_text(call, values)
-            .then(|| InlineFlows::new(context, call).value(values, self.queries))
+            .then(|| InlineFlows::new(context, call).value(values, &self.queries))
     }
 
     fn converted(&self, values: &[TextValue]) -> Option<TextValue> {

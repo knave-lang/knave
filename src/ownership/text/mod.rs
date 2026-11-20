@@ -16,6 +16,7 @@ mod inline_rust;
 mod instantiation;
 mod listed_section;
 mod listed_slot;
+mod map_queries;
 mod need;
 mod node_id;
 mod node_partition;

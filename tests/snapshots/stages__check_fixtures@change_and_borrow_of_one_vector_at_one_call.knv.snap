@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/change_and_borrow_of_one_vector_at_one_call.knv
+---
+error[L0518]: `v` changes while the call still borrows it
+ --> check/change_and_borrow_of_one_vector_at_one_call.knv:5:13
+  |
+5 |   (add-len! v v)
+  |             ^ - the call borrows `v` here
+  |             |
+  |             `v` changes here
+  |
+  = help: bind a `clone` of `v` to a local before the call, and pass the local
+  = note: run `knave doc L0518` for an explanation

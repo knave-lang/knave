@@ -1,9 +1,10 @@
-use super::conflict_kind::ConflictKind;
+use super::conflict_wording::ConflictWording;
+use crate::diagnostic::Diagnostic;
 
 pub trait Access {
     fn verb(&self) -> &'static str;
     fn excludes_shared_loans(&self) -> bool;
-    fn conflict_kind(&self) -> ConflictKind;
+    fn conflict(&self, wording: &dyn ConflictWording) -> Diagnostic;
 }
 
 pub struct Change;
@@ -21,8 +22,8 @@ impl Access for Change {
         true
     }
 
-    fn conflict_kind(&self) -> ConflictKind {
-        ConflictKind::Change
+    fn conflict(&self, wording: &dyn ConflictWording) -> Diagnostic {
+        wording.changed_while_lent()
     }
 }
 
@@ -35,8 +36,8 @@ impl Access for Move {
         true
     }
 
-    fn conflict_kind(&self) -> ConflictKind {
-        ConflictKind::Move
+    fn conflict(&self, wording: &dyn ConflictWording) -> Diagnostic {
+        wording.moved_while_lent()
     }
 }
 
@@ -49,7 +50,7 @@ impl Access for Borrowing {
         false
     }
 
-    fn conflict_kind(&self) -> ConflictKind {
-        ConflictKind::BorrowDuringMut
+    fn conflict(&self, wording: &dyn ConflictWording) -> Diagnostic {
+        wording.borrowed_while_lent_as_mut()
     }
 }

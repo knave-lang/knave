@@ -1,0 +1,6 @@
+(defn add-len! (v w) (push! v (len w)))
+
+(defn main ()
+  (local v (vec 1))
+  (add-len! v v)
+  (println (len v)))

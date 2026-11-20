@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/parsed_template_borrows_each_string.knv
+---
+5

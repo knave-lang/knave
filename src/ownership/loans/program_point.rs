@@ -51,12 +51,11 @@ pub struct PointFacts<'p> {
 }
 
 impl<'p> PointFacts<'p> {
-    pub fn live_before(&self, mut live: FxHashSet<BindingId>) -> FxHashSet<BindingId> {
+    pub fn narrow_to_live_before(&self, live: &mut FxHashSet<BindingId>) {
         for defined in &self.point.defined {
             live.remove(defined);
         }
         live.extend(self.point.used.iter().map(|used| used.binding));
-        live
     }
 
     pub fn use_of(&self, binding: BindingId) -> Option<Span> {

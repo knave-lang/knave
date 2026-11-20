@@ -8288,6 +8288,17 @@ fn new_skips_git_and_keeps_the_github_workflow() {
 }
 
 #[test]
+fn test_refuses_a_test_file_that_cannot_be_a_module() {
+    let sandbox = Sandbox::new("test_unnamable_file")
+        .with_file(&Language::project_file_name(), "(defproject unnamable)\n")
+        .with_file("src/main.knv", "(defn main () (println 1))\n")
+        .with_file("tests/bad name.knv", "(deftest t (assert true))\n");
+    let test = sandbox.compiler(&["test"]).assert_exit_code(2).stderr();
+    assert!(test.contains("error: `tests/bad name.knv` cannot be a module"), "{test}");
+    assert!(!test.contains("<tests>"), "{test}");
+}
+
+#[test]
 fn new_writes_a_project_that_passes_its_own_checks() {
     let sandbox = Sandbox::new("new_project_checks");
     sandbox

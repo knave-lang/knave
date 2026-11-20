@@ -3,6 +3,7 @@ use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
 use super::open_field_owner::OpenFieldOwner;
 use super::open_read::OpenRead;
+use super::plain_bound::PlainBound;
 use super::read_view::ReadView;
 use super::ty::Type;
 use super::typed::{TypedExpr, TypedExprKind, TypedStructExpr};
@@ -83,6 +84,6 @@ impl<'c> UnfitReads<'c> {
         let mut plain = (self.unifier.bounds(*var).iter()).filter(|bound| {
             bound.argument.is_none() && !field_traits.bindings().is_field_bound(bound)
         });
-        plain.all(|bound| traits.table().satisfies(bound, read, &|_, _| false))
+        plain.all(|bound| PlainBound::new(traits.table()).is_met_by(bound, read))
     }
 }

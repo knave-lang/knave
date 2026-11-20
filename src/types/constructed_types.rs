@@ -1,51 +1,42 @@
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
-use crate::core::{BindingId, Expr, ExprKind, ImplMethod, ItemKind, References, StructExpr};
+use super::dependency_graph::DependencyGraph;
+use crate::core::{BindingId, ItemKind, References};
 use crate::expand::Program;
 
-pub(super) struct ConstructedTypes<'r> {
+pub(super) struct ConstructedTypes<'d> {
     enum_of_variant: FxHashMap<BindingId, BindingId>,
-    built_by_definition: FxHashMap<BindingId, Vec<BindingId>>,
-    references: &'r FxHashMap<BindingId, References>,
+    dependencies: &'d DependencyGraph,
 }
 
-impl<'r> ConstructedTypes<'r> {
-    pub(super) fn of(program: &Program, references: &'r FxHashMap<BindingId, References>) -> Self {
-        let items: Vec<&ItemKind> = program
-            .modules
-            .iter()
-            .flat_map(|module| &module.items)
-            .map(|item| &item.kind)
-            .collect();
-        let mut constructed = Self {
-            enum_of_variant: Self::enum_of_variant(&items),
-            built_by_definition: FxHashMap::default(),
-            references,
-        };
-        constructed.built_by_definition = constructed.built_by_definitions(&items);
-        constructed
+impl<'d> ConstructedTypes<'d> {
+    pub(super) fn new(program: &Program, dependencies: &'d DependencyGraph) -> Self {
+        Self {
+            enum_of_variant: Self::enum_of_variant(program),
+            dependencies,
+        }
     }
 
-    pub(super) fn by_method(&self, method: &ImplMethod) -> Vec<BindingId> {
-        let mut built = self.in_expressions(method.lambda.body.expressions());
-        let mut visited = FxHashSet::default();
-        let mut pending = self.globals_of(method.binding).to_vec();
-        while let Some(global) = pending.pop() {
-            let Some(built_by_global) = self.built_by_definition.get(&global) else {
-                continue;
-            };
-            if visited.insert(global) {
-                built.extend(built_by_global);
-                pending.extend(self.globals_of(global));
-            }
-        }
+    pub(super) fn by_method(&self, method: BindingId) -> Vec<BindingId> {
+        let mut built: Vec<BindingId> = self
+            .dependencies
+            .reachable_from(&[method])
+            .into_iter()
+            .filter_map(|reached| self.dependencies.references(reached))
+            .flat_map(References::constructions)
+            .map(|construction| self.type_built_by(*construction))
+            .collect();
+        built.sort_unstable();
+        built.dedup();
         built
     }
 
-    fn enum_of_variant(items: &[&ItemKind]) -> FxHashMap<BindingId, BindingId> {
-        items
+    fn enum_of_variant(program: &Program) -> FxHashMap<BindingId, BindingId> {
+        program
+            .modules
             .iter()
-            .filter_map(|kind| match kind {
+            .flat_map(|module| &module.items)
+            .filter_map(|item| match &item.kind {
                 ItemKind::Enum(binding, _, variants, ..) => Some((*binding, variants)),
                 _ => None,
             })
@@ -57,43 +48,73 @@ impl<'r> ConstructedTypes<'r> {
             .collect()
     }
 
-    fn built_by_definitions(&self, items: &[&ItemKind]) -> FxHashMap<BindingId, Vec<BindingId>> {
-        items
-            .iter()
-            .filter_map(|kind| match kind {
-                ItemKind::Def(binding, value) => Some((
-                    *binding,
-                    self.in_expressions(std::iter::once(value.as_ref())),
-                )),
-                _ => None,
-            })
-            .collect()
+    fn type_built_by(&self, construction: BindingId) -> BindingId {
+        self.enum_of_variant
+            .get(&construction)
+            .copied()
+            .unwrap_or(construction)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ConstructedTypes;
+    use crate::types::check_order::CheckOrder;
+    use crate::types::graph::DefinitionGraph;
+    use crate::types::typed_source::TypedSource;
+
+    struct ConstructedTypesFixture {
+        source: TypedSource,
     }
 
-    fn globals_of(&self, binding: BindingId) -> &[BindingId] {
-        self.references
-            .get(&binding)
-            .map(References::globals)
-            .unwrap_or_default()
-    }
+    impl ConstructedTypesFixture {
+        const SOURCE: &str = "
+            (defstruct (labeled t) :v t)
+            (defstruct (positional t) :v t)
+            (defstruct (passed t) :v t)
+            (defstruct (distant t) :v t)
+            (defenum (shape t) (dot t))
+            (defn near (v) (build-distant v))
+            (defn build-distant (v) (->distant :v v))
+            (trait probe (probe (fn ((ref self)) bool)))
+            (impl probe (vec a)
+              (probe (items)
+                (do (local _labeled (->labeled :v 1))
+                    (local _positional (->positional 1))
+                    (local build ->passed)
+                    (local _passed (build 1))
+                    (local _distant (near 1))
+                    (local _shape (shape/dot 1))
+                    (= (len items) 0))))
+            (defn main () (println (probe (ref (vec 1)))))";
 
-    fn in_expressions<'e>(&self, expressions: impl Iterator<Item = &'e Expr>) -> Vec<BindingId> {
-        let mut constructed = Vec::new();
-        let mut pending: Vec<&Expr> = expressions.collect();
-        while let Some(expr) = pending.pop() {
-            constructed.extend(self.constructed_by(expr));
-            pending.extend(expr.children());
-        }
-        constructed
-    }
-
-    fn constructed_by(&self, expr: &Expr) -> Option<BindingId> {
-        match expr.kind() {
-            ExprKind::Struct(StructExpr::New(binding, _)) => Some(*binding),
-            ExprKind::Variant(variant, _) | ExprKind::LabeledVariant(variant, _) => {
-                self.enum_of_variant.get(variant).copied()
+        fn new() -> Self {
+            Self {
+                source: TypedSource::expand(Self::SOURCE),
             }
-            _ => None,
         }
+
+        fn built_by_probe(&self) -> Vec<String> {
+            let program = self.source.program();
+            let graph = DefinitionGraph::of(program);
+            let method = CheckOrder::impl_methods(program)
+                .find(|method| program.bindings.get(*method).name() == "probe")
+                .expect("the source implements probe");
+            let mut names: Vec<String> = ConstructedTypes::new(program, graph.dependencies())
+                .by_method(method)
+                .into_iter()
+                .map(|built| program.bindings.get(built).name().to_string())
+                .collect();
+            names.sort();
+            names
+        }
+    }
+
+    #[test]
+    fn a_method_builds_each_type_it_constructs_directly_or_through_definitions() {
+        assert_eq!(
+            ConstructedTypesFixture::new().built_by_probe(),
+            ["distant", "labeled", "passed", "positional", "shape"]
+        );
     }
 }

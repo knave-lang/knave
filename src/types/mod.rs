@@ -48,6 +48,7 @@ mod deferred_decisions;
 mod deferred_definitions;
 mod definition_kind;
 mod definition_outcomes;
+mod dependency_graph;
 mod derivable_trait;
 mod derivable_traits;
 mod derive_blockers;

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashSet;
 
-use super::graph::DependencyGraph;
+use super::dependency_graph::DependencyGraph;
 use crate::core::BindingId;
 
 #[derive(Default)]

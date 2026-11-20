@@ -1,9 +1,8 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/agree/returned_borrow_across_push.knv
 ---
-Checker: accepted
+Checker: rejected: L0518 in `pick!`
 CheckerWithoutOwnership: rejected: E0502 in `pick!`
-CompiledDebug: rejected: E0502 in `pick!`
-finding CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `pick!`
+CompiledDebug: rejected: L0518 in `pick!`

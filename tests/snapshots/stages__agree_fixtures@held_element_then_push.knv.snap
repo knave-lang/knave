@@ -1,9 +1,8 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/agree/held_element_then_push.knv
 ---
-Checker: accepted
+Checker: rejected: L0518 in `main`
 CheckerWithoutOwnership: rejected: E0502 in `main`
-CompiledDebug: rejected: E0502 in `main`
-finding CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
+CompiledDebug: rejected: L0518 in `main`

@@ -1917,7 +1917,7 @@ impl<'a> ExpressionEmitter<'a> {
             return self.template_call(&rewritten, &compound.arguments, types, span);
         }
         self.locals.enter();
-        let parsed = self.with_fresh_template_binders(&Template::new(&template.template));
+        let parsed = self.with_fresh_template_binders(&self.plan.template(&template.template));
         let context = Self::argument_context(arguments);
         let roles: Vec<ArgumentRole> = arguments
             .iter()

@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::rc::Rc;
 
 use knave_expand::mangle::NameMangler;
 use rustc_hash::FxHashMap;
@@ -7,6 +8,8 @@ use super::constant_definitions::ConstantDefinitions;
 use super::entry_point::EntryPoint;
 use super::item_visibilities::ItemVisibilities;
 use super::problems::EmitProblems;
+use super::template::Template;
+use super::template::judged_templates::JudgedTemplates;
 use super::trait_use_search::TraitUseSearch;
 use super::visibility::Visibility;
 use crate::core::{BindingId, ModuleId};
@@ -42,6 +45,7 @@ pub struct EmitPlan<'p> {
     items: FxHashMap<BindingId, ItemInfo>,
     used_rust_types: BTreeSet<BindingId>,
     trait_uses: FxHashMap<ModuleId, BTreeSet<BindingId>>,
+    templates: JudgedTemplates,
 }
 
 impl<'p> EmitPlan<'p> {
@@ -78,6 +82,7 @@ impl<'p> EmitPlan<'p> {
             items: FxHashMap::default(),
             used_rust_types: BTreeSet::new(),
             trait_uses: FxHashMap::default(),
+            templates: JudgedTemplates::default(),
         };
         plan.visit_definition(main);
         plan.reach_implementations();
@@ -98,6 +103,10 @@ impl<'p> EmitPlan<'p> {
 
     pub fn entry(&self) -> &EntryPoint {
         &self.entry
+    }
+
+    pub fn template(&self, text: &Rc<str>) -> Template {
+        self.templates.template(text)
     }
 
     fn choose_main_body_name(&self) -> Option<String> {

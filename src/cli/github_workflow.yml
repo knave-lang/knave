@@ -15,7 +15,7 @@ jobs:
       - name: Read the Knave version from {project-file}
         run: |
           versions=$(awk '{ out = ""; for (i = 1; i <= length($0); i++) { c = substr($0, i, 1); if (escaped) escaped = 0; else if (quoted && c == "\\") escaped = 1; else if (c == "\"") quoted = !quoted; else if (!quoted && c == ";") break; out = out c } print out }' {project-file} | grep -o ':{version-key} "[^"]*"' | cut -d '"' -f 2 || true)
-          test -n "$versions" || { echo "::error file={project-file}::{project-file} records no :{version-key} version"; exit 1; }
+          test -n "$versions" || { echo "::error file={project-file}::{project-file} records no :{version-key} \"x.y.z\" on one line"; exit 1; }
           test "$(echo "$versions" | wc -l)" -eq 1 || { echo "::error file={project-file}::{project-file} records more than one :{version-key} version"; exit 1; }
           echo "KNAVE_VERSION=$versions" >> "$GITHUB_ENV"
       - id: knave-cache

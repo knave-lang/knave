@@ -4,6 +4,7 @@ use super::callee::Callee;
 use super::instantiation::Instantiation;
 use super::need::Need;
 use super::node_id::NodeId;
+use super::place_writes::PlaceWrites;
 use super::representation::Representation;
 use super::scheme_position::SchemePosition;
 use super::short_lived_text::ShortLivedText;
@@ -103,28 +104,13 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             self.context.require(variable.clone(), Need::OwnedOrMixed);
         }
         match access {
-            Access::Mutable => self.write(variable, value),
+            Access::Mutable => {
+                PlaceWrites::new(self.context, self.call).through_variable(variable, value)
+            }
             Access::Direct | Access::Referenced => self.pour(
                 &variable,
                 &value.clone().transferred(Transfer::lending(access)),
             ),
-        }
-    }
-
-    fn write(&mut self, variable: Slot, place: &TextValue) {
-        let written = self
-            .context
-            .node(Slot::from(SlotOwner::Written(self.call.span)));
-        let changed = self.context.node(variable.clone());
-        self.context.unite(written, changed);
-        for (source, _, _) in place.sources() {
-            if let Source::Slot(node) = source {
-                self.context.unite(changed, *node);
-            }
-        }
-        for (path, nested) in place.nested() {
-            let inner = self.context.node(variable.nested(path));
-            self.context.unite(inner, *nested);
         }
     }
 
@@ -156,7 +142,9 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
     ) {
         match written {
             Representation::Owned => self.pour_owned_argument(target, value),
-            Representation::Mutable if target.changes_in_place() => self.change_in_place(value),
+            Representation::Mutable if target.changes_in_place() => {
+                PlaceWrites::new(self.context, self.call).in_place(value)
+            }
             _ => {}
         }
     }
@@ -166,17 +154,6 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             let argument = Slot::from(owner);
             self.pour(&argument, value);
             self.context.require(argument, Need::Owned);
-        }
-    }
-
-    fn change_in_place(&mut self, place: &TextValue) {
-        let changed = Slot::from(SlotOwner::Written(self.call.span));
-        self.context.require(changed.clone(), Need::Owned);
-        let node = self.context.node(changed);
-        for (source, _, _) in place.sources() {
-            if let Source::Slot(slot) = source {
-                self.context.unite(node, *slot);
-            }
         }
     }
 

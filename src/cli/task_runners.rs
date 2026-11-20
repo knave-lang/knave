@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use super::exit_status::ExitStatus;
 use super::project_task::{ProjectTask, TaskName};
-use super::task_catalog::TaskCatalog;
+use super::task_catalog::{EnteredProgram, TaskCatalog};
 use super::terminal::Terminal;
 use crate::build::BuildProfile;
 use crate::diagnostic::Diagnostics;
@@ -37,6 +37,14 @@ impl<'c> TaskRunners<'c> {
     }
 
     pub fn check(&self, terminal: &mut Terminal) -> Result<Diagnostics, ExitStatus> {
+        let entered = self.program(terminal)?;
+        let checked = terminal
+            .checking()
+            .check_keeping_warnings(&entered.program)?;
+        Ok(checked.warnings)
+    }
+
+    pub fn program(&self, terminal: &mut Terminal) -> Result<EnteredProgram, ExitStatus> {
         let names = self.catalog.names(terminal)?;
         let signatures = self.catalog.signatures(terminal, &names)?;
         let runners: Vec<String> = names
@@ -45,11 +53,7 @@ impl<'c> TaskRunners<'c> {
             .map(|(name, signature)| Self::runner(name, signature))
             .collect();
         let (block, _) = TaskCatalog::block_of(&runners);
-        let entered = self.catalog.entered_program(terminal, &block)?;
-        let checked = terminal
-            .checking()
-            .check_keeping_warnings(&entered.program)?;
-        Ok(checked.warnings)
+        self.catalog.entered_program(terminal, &block)
     }
 
     fn runner(name: &TaskName, signature: &str) -> String {

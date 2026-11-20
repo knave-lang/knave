@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::mem;
 
 use rustc_hash::FxHashMap;
@@ -20,11 +21,11 @@ pub type ByValueRewrites = FxHashMap<BindingId, ByValueSignature>;
 pub struct NeedlessTypeTrial<'r, Run: ProgramRun> {
     run: &'r mut Run,
     program: TrialProgram<'r>,
-    declared: TrialFace,
+    declared: TrialFace<&'r TypedProgram>,
 }
 
 impl<'r, Run: ProgramRun> NeedlessTypeTrial<'r, Run> {
-    pub fn new(run: &'r mut Run, program: &'r mut Program, declared: TypedProgram) -> Self {
+    pub fn new(run: &'r mut Run, program: &'r mut Program, declared: &'r TypedProgram) -> Self {
         let program = TrialProgram::new(program);
         let declared = TrialFace::new(declared, &program.definitions);
         Self {
@@ -32,10 +33,6 @@ impl<'r, Run: ProgramRun> NeedlessTypeTrial<'r, Run> {
             program,
             declared,
         }
-    }
-
-    pub fn into_declared(self) -> TypedProgram {
-        self.declared.into_typed()
     }
 
     fn face_of(&mut self, modules: Vec<CoreModule>) -> Result<TrialFace, Diagnostics> {
@@ -162,7 +159,7 @@ impl<'a, Run: ProgramRun> FaceComparison<'a, Run> {
 
     fn verdict(
         &self,
-        expected: &mut TrialFace,
+        expected: &mut TrialFace<impl Borrow<TypedProgram>>,
         stripped: &mut TrialFace,
         removed: &[BindingId],
     ) -> TrialVerdict<()> {

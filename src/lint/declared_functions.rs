@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+
+use super::declaration_key::DeclarationKey;
 use super::declared_signature::DeclaredSignature;
 use super::function_declaration::FunctionDeclaration;
 use super::library_declarations::LibraryDeclarations;
@@ -45,6 +48,14 @@ impl<'p> DeclaredFunctions<'p> {
             .collect()
     }
 
+    pub fn key(&self, declaration: &FunctionDeclaration, file: Option<PathBuf>) -> DeclarationKey {
+        let function = self.name(declaration.function);
+        match file {
+            Some(file) => DeclarationKey::InFile(file, function),
+            None => DeclarationKey::InModule(declaration.module.clone(), function),
+        }
+    }
+
     pub fn name(&self, function: BindingId) -> String {
         self.program.bindings.get(function).name().to_string()
     }
@@ -71,6 +82,7 @@ impl<'p> DeclaredFunctions<'p> {
         };
         Some(FunctionDeclaration {
             function: *function,
+            module: module.path.clone(),
             span: item.span,
             signature: DeclaredSignature::of(written)?,
             parameters: Self::lambda_parameters(module, *function)?,

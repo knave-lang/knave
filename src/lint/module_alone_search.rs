@@ -2,21 +2,23 @@ use super::declared_functions::DeclaredFunctions;
 use super::library_declarations::LibraryDeclarations;
 use super::needless_type_search::NeedlessTypeSearch;
 use super::needless_type_trial::NeedlessTypeTrial;
+use super::program_position::ProgramPosition;
 use super::program_run::ProgramRun;
 use crate::core::{BindingId, ModulePath};
 use crate::expand::Program;
 
 pub struct ModuleAloneSearch<'r, Run: ProgramRun> {
     run: &'r mut Run,
+    beside: ProgramPosition,
 }
 
 impl<'r, Run: ProgramRun> ModuleAloneSearch<'r, Run> {
-    pub fn new(run: &'r mut Run) -> Self {
-        Self { run }
+    pub fn new(run: &'r mut Run, beside: ProgramPosition) -> Self {
+        Self { run, beside }
     }
 
     pub fn removable_names(self, library: &LibraryDeclarations) -> Vec<String> {
-        let Some(mut alone) = self.run.module_alone(&library.module) else {
+        let Some(mut alone) = self.run.module_alone(self.beside, &library.module) else {
             return Vec::new();
         };
         Self::check_every_definition_of(&mut alone, &library.module);
@@ -28,7 +30,7 @@ impl<'r, Run: ProgramRun> ModuleAloneSearch<'r, Run> {
             .iter()
             .map(|declaration| declaration.function)
             .collect();
-        let mut trial = NeedlessTypeTrial::new(self.run, &mut alone, declared);
+        let mut trial = NeedlessTypeTrial::new(self.run, &mut alone, &declared);
         let removable = NeedlessTypeSearch::new(&mut trial)
             .jointly_removable(&tried)
             .removable;

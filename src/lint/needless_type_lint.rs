@@ -1,8 +1,14 @@
+use rustc_hash::FxHashSet;
+
+use super::declaration_key::DeclarationKey;
 use super::declared_functions::DeclaredFunctions;
+use super::function_declaration::FunctionDeclaration;
+use super::linted_program::LintedProgram;
 use super::module_alone_search::ModuleAloneSearch;
 use super::needless_type_search::NeedlessTypeSearch;
 use super::needless_type_trial::{ByValueRewrites, NeedlessTypeTrial};
 use super::needless_type_warnings::NeedlessTypeWarnings;
+use super::program_position::ProgramPosition;
 use super::program_run::ProgramRun;
 use super::removal::Removal;
 use crate::core::BindingId;
@@ -15,6 +21,47 @@ pub struct NeedlessTypeLint<'r, Run: ProgramRun> {
     run: &'r mut Run,
 }
 
+struct KeyedCandidates {
+    candidates: Vec<FunctionDeclaration>,
+    keys: Vec<DeclarationKey>,
+}
+
+impl KeyedCandidates {
+    fn tried_among(&self, tried: &[DeclarationKey]) -> Vec<BindingId> {
+        self.candidates
+            .iter()
+            .zip(&self.keys)
+            .filter(|(_, key)| tried.contains(key))
+            .map(|(declaration, _)| declaration.function)
+            .collect()
+    }
+}
+
+struct ProgramRemoval<'k> {
+    keyed: &'k KeyedCandidates,
+    removal: Removal<ByValueRewrites>,
+}
+
+impl ProgramRemoval<'_> {
+    fn refuses(&self, key: &DeclarationKey) -> bool {
+        self.keyed()
+            .any(|(candidate, removed)| candidate == key && !removed)
+    }
+
+    fn removes_any_but(&self, kept: &[DeclarationKey]) -> bool {
+        self.keyed()
+            .any(|(candidate, removed)| removed && !kept.contains(candidate))
+    }
+
+    fn keyed(&self) -> impl Iterator<Item = (&DeclarationKey, bool)> {
+        self.keyed
+            .keys
+            .iter()
+            .zip(&self.keyed.candidates)
+            .map(|(key, declaration)| (key, self.removal.removable.contains(&declaration.function)))
+    }
+}
+
 impl<'r, Run: ProgramRun> NeedlessTypeLint<'r, Run> {
     pub fn new(run: &'r mut Run) -> Self {
         Self { run }
@@ -23,36 +70,116 @@ impl<'r, Run: ProgramRun> NeedlessTypeLint<'r, Run> {
     pub fn warnings(
         &mut self,
         level: Option<LintLevel>,
-        program: &mut Program,
-        declared: TypedProgram,
+        programs: &mut [LintedProgram<'_>],
     ) -> Diagnostics {
         if level == Some(LintLevel::Allow) {
             return Diagnostics::default();
         }
-        let candidates = DeclaredFunctions::new(program).candidates();
-        let tried = candidates
+        let keyed = self.keyed(programs);
+        let mut tried = Self::tried_keys(&keyed);
+        loop {
+            let removals = self.removals(programs, &keyed, &tried);
+            let kept: Vec<DeclarationKey> = tried
+                .iter()
+                .filter(|key| !removals.iter().any(|removal| removal.refuses(key)))
+                .cloned()
+                .collect();
+            if !removals
+                .iter()
+                .any(|removal| removal.removes_any_but(&kept))
+            {
+                return Self::warned_once(programs, removals, &kept);
+            }
+            tried = kept;
+        }
+    }
+
+    fn keyed(&self, programs: &[LintedProgram<'_>]) -> Vec<KeyedCandidates> {
+        programs
             .iter()
-            .filter(|declaration| declaration.needs_a_trial())
-            .map(|declaration| declaration.function)
-            .collect();
-        let removal = self.removal(program, declared, tried);
-        let by_value = removal.kept.unwrap_or_default();
-        NeedlessTypeWarnings::new(program).of(&candidates, &removal.removable, &by_value)
+            .map(|linted| {
+                let declared = DeclaredFunctions::new(linted.program);
+                let candidates = declared.candidates();
+                let keys = candidates
+                    .iter()
+                    .map(|declaration| {
+                        let file = self.run.source_path(declaration.span.source());
+                        declared.key(declaration, file)
+                    })
+                    .collect();
+                KeyedCandidates { candidates, keys }
+            })
+            .collect()
+    }
+
+    fn tried_keys(keyed: &[KeyedCandidates]) -> Vec<DeclarationKey> {
+        let mut tried = Vec::new();
+        for program in keyed {
+            for (declaration, key) in program.candidates.iter().zip(&program.keys) {
+                if declaration.needs_a_trial() && !tried.contains(key) {
+                    tried.push(key.clone());
+                }
+            }
+        }
+        tried
+    }
+
+    fn removals<'k>(
+        &mut self,
+        programs: &mut [LintedProgram<'_>],
+        keyed: &'k [KeyedCandidates],
+        tried: &[DeclarationKey],
+    ) -> Vec<ProgramRemoval<'k>> {
+        programs
+            .iter_mut()
+            .zip(keyed)
+            .enumerate()
+            .map(|(position, (linted, keyed))| {
+                let tried_here = keyed.tried_among(tried);
+                let removal = self.removal(ProgramPosition::nth(position), linted, tried_here);
+                ProgramRemoval { keyed, removal }
+            })
+            .collect()
+    }
+
+    fn warned_once(
+        programs: &[LintedProgram<'_>],
+        removals: Vec<ProgramRemoval<'_>>,
+        removable: &[DeclarationKey],
+    ) -> Diagnostics {
+        let mut warned: FxHashSet<DeclarationKey> = FxHashSet::default();
+        let mut warnings = Diagnostics::default();
+        for (linted, program_removal) in programs.iter().zip(removals) {
+            let keyed = program_removal.keyed;
+            let first_here: Vec<BindingId> = keyed
+                .keys
+                .iter()
+                .zip(&keyed.candidates)
+                .filter(|(key, _)| removable.contains(key) && warned.insert((*key).clone()))
+                .map(|(_, declaration)| declaration.function)
+                .collect();
+            let by_value = program_removal.removal.kept.unwrap_or_default();
+            warnings.extend(NeedlessTypeWarnings::new(linted.program).of(
+                &keyed.candidates,
+                &first_here,
+                &by_value,
+            ));
+        }
+        warnings
     }
 
     fn removal(
         &mut self,
-        program: &mut Program,
-        mut declared: TypedProgram,
+        position: ProgramPosition,
+        linted: &mut LintedProgram<'_>,
         mut tried: Vec<BindingId>,
     ) -> Removal<ByValueRewrites> {
         loop {
-            let (removal, typed) = self.program_search(program, declared, &tried);
-            let accepted = self.accepted_by_modules(program, &removal.removable);
+            let removal = self.program_search(linted.program, linted.declared, &tried);
+            let accepted = self.accepted_by_modules(position, linted.program, &removal.removable);
             if accepted.len() == removal.removable.len() {
                 return removal;
             }
-            declared = typed;
             tried = accepted;
         }
     }
@@ -60,26 +187,27 @@ impl<'r, Run: ProgramRun> NeedlessTypeLint<'r, Run> {
     fn program_search(
         &mut self,
         program: &mut Program,
-        declared: TypedProgram,
+        declared: &TypedProgram,
         tried: &[BindingId],
-    ) -> (Removal<ByValueRewrites>, TypedProgram) {
+    ) -> Removal<ByValueRewrites> {
         if tried.is_empty() {
-            return (Removal::default(), declared);
+            return Removal::default();
         }
         let mut trial = NeedlessTypeTrial::new(&mut *self.run, program, declared);
-        let removal = NeedlessTypeSearch::new(&mut trial).jointly_removable(tried);
-        (removal, trial.into_declared())
+        NeedlessTypeSearch::new(&mut trial).jointly_removable(tried)
     }
 
     fn accepted_by_modules(
         &mut self,
+        position: ProgramPosition,
         program: &Program,
         removable: &[BindingId],
     ) -> Vec<BindingId> {
         let declared = DeclaredFunctions::new(program);
         let mut refused = Vec::new();
         for library in declared.library_declarations(removable) {
-            let accepted = ModuleAloneSearch::new(&mut *self.run).removable_names(&library);
+            let accepted =
+                ModuleAloneSearch::new(&mut *self.run, position).removable_names(&library);
             let refused_names: Vec<String> = library
                 .names
                 .into_iter()
@@ -160,6 +288,13 @@ mod tests {
             ScriptedRun::emitting(Emission::Unchanged),
         );
         assert_eq!((titles.len(), checks), (0, 0));
+    }
+
+    #[test]
+    fn a_declaration_that_two_programs_hold_warns_once() {
+        let titles = NeedlessTypeFixture::expand(TWICE)
+            .warning_titles_in_two_programs(TWICE, ScriptedRun::emitting(Emission::Unchanged));
+        assert_eq!(titles, ["`twice` does not need its `type` declaration"]);
     }
 
     #[test]

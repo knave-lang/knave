@@ -8,6 +8,7 @@ use super::distinct_output::DistinctOutput;
 use super::entry_tree::EntryTree;
 use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
+use super::program_file::ProgramFile;
 use super::project_task::TaskName;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
@@ -34,6 +35,7 @@ pub struct TaskCatalog {
 pub struct EnteredProgram {
     pub program: Program,
     pub source: SourceId,
+    pub file: ProgramFile,
 }
 
 impl TaskCatalog {
@@ -145,12 +147,17 @@ impl TaskCatalog {
         terminal: &mut Terminal,
         entry: &str,
     ) -> Result<EnteredProgram, ExitStatus> {
+        let file = self.request.module.file.clone();
         terminal
             .expansion()
             .sessions()
             .within_evaluation(&self.request, |mut session| {
                 let source = session.add_source(Self::RUNNER_SOURCE, entry);
-                Self::entered(session, source).map(|program| EnteredProgram { program, source })
+                Self::entered(session, source).map(|program| EnteredProgram {
+                    program,
+                    source,
+                    file,
+                })
             })
     }
 

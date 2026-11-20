@@ -2189,6 +2189,432 @@ fn lint_tries_an_exported_type_in_its_own_module() {
     assert!(!stderr.contains("`area`"), "{stderr}");
 }
 
+#[test]
+fn lint_keeps_a_declaration_that_a_test_program_needs() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps");
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(!lint.contains("`describe`"), "{lint}");
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["tasks/hello.knv", "tests/moves-test.knv"]
+    );
+}
+
+#[test]
+fn lint_resolves_source_modules_from_a_test_file() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_test_file");
+    let lint = sandbox
+        .compiler(&["lint", "tests/moves-test.knv"])
+        .assert_exit_code(1)
+        .stderr();
+    assert!(!lint.contains("L0204"), "{lint}");
+    assert_eq!(WholeProject::unused_in(&lint), ["tests/moves-test.knv"]);
+}
+
+#[test]
+fn lint_of_a_directory_prints_only_the_files_under_it() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_directories")
+        .with_file("src/tools/spare.knv", WholeProject::UNUSED_FUNCTION);
+    let unused_under =
+        |directory: &str| WholeProject::unused_in(&sandbox.compiler(&["lint", directory]).stderr());
+    assert_eq!(unused_under("tests"), ["tests/moves-test.knv"]);
+    assert_eq!(unused_under("tasks"), ["tasks/hello.knv"]);
+    assert_eq!(unused_under("src/tools"), ["src/tools/spare.knv"]);
+    assert_eq!(
+        unused_under("."),
+        [
+            "src/tools/spare.knv",
+            "tasks/hello.knv",
+            "tests/moves-test.knv"
+        ]
+    );
+    let from_inside = sandbox.compiler_in("src", &["lint", "tools"]).stderr();
+    let found = WholeProject::unused_in(&from_inside);
+    assert_eq!(found.len(), 1, "{from_inside}");
+    assert!(found[0].ends_with("src/tools/spare.knv"), "{from_inside}");
+}
+
+#[test]
+fn lint_prints_a_warning_on_a_module_that_a_test_shares_once() {
+    let sandbox = WholeProject::shared_module("lint_shared_module");
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert_eq!(WholeProject::unused_in(&lint), ["src/shapes.knv"]);
+}
+
+#[test]
+fn lint_checks_every_knv_file_the_project_holds() {
+    let sandbox = WholeProject::shared_module("lint_every_file")
+        .with_file("src/spare.knv", WholeProject::UNUSED_FUNCTION)
+        .with_file("examples/demo.knv", WholeProject::UNUSED_FUNCTION)
+        .with_file(".hidden/secret.knv", WholeProject::UNUSED_FUNCTION)
+        .with_file("nested/project.knv", "(defproject nested)\n")
+        .with_file("nested/src/main.knv", WholeProject::UNUSED_FUNCTION);
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["examples/demo.knv", "src/shapes.knv", "src/spare.knv"]
+    );
+}
+
+#[test]
+fn lint_of_a_task_file_lints_it_with_the_task_program() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_task_file");
+    let lint = sandbox
+        .compiler(&["lint", "tasks/hello.knv"])
+        .assert_exit_code(1)
+        .stderr();
+    assert_eq!(WholeProject::unused_in(&lint), ["tasks/hello.knv"]);
+}
+
+#[test]
+fn lint_of_a_directory_outside_a_project_is_a_usage_error() {
+    let sandbox = Sandbox::new("lint_directory_outside").with_file("loose/a.knv", "(def a 1)\n");
+    let lint = sandbox
+        .compiler(&["lint", "loose"])
+        .assert_exit_code(2)
+        .stderr();
+    assert!(lint.contains("error: `loose` is in no project"), "{lint}");
+}
+
+#[test]
+fn lint_of_a_starter_test_file_prints_nothing() {
+    let sandbox = Sandbox::new("lint_starter_test_file");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let lint = sandbox.compiler_in("demo-app", &["lint", "tests/greeting.knv"]);
+    lint.assert_exit_code(0);
+    assert_eq!(lint.stderr(), "");
+}
+
+#[test]
+fn lint_of_a_named_file_keeps_a_declaration_another_program_needs() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_named_files").with_file(
+        "tests/plain-test.knv",
+        "(use moves ->applied describe)\n\n(deftest plain\n  (assert (= (describe (ref (->applied :move (str \"a\") :after (str \"b\")))) \"a then b\")))\n",
+    );
+    for file in ["tests/plain-test.knv", "src/main.knv", "src/moves.knv"] {
+        let lint = sandbox.compiler(&["lint", file]);
+        lint.assert_exit_code(0);
+        assert_eq!(lint.stderr(), "", "{file}");
+    }
+}
+
+#[test]
+fn lint_names_a_folder_it_cannot_read_and_lints_the_rest() {
+    let sandbox =
+        WholeProject::lint_gaps("lint_gaps_unreadable").with_file("locked/a.knv", "(def a 1)\n");
+    let locked = sandbox.directory.join("locked");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))
+        .expect("the sandbox locks a folder");
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(2).stderr();
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755))
+        .expect("the sandbox unlocks the folder");
+    assert!(lint.contains("error: cannot read `"), "{lint}");
+    assert!(lint.contains("locked`"), "{lint}");
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["tasks/hello.knv", "tests/moves-test.knv"]
+    );
+}
+
+#[test]
+fn lint_reports_a_private_main_of_a_reached_module() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_private_main").with_file(
+        "src/moves.knv",
+        "(export ->applied applied describe)\n\n(defstruct applied :move string :after string)\n\n(type describe (fn ((ref applied)) string))\n\n(defn describe (applied) (str (:move applied) \" then \" (:after applied)))\n\n(defn main () (println \"stray\"))\n",
+    );
+    let lint = sandbox.compiler(&["lint"]).stderr();
+    assert!(
+        lint.contains("warning[L0807]: `main` is never used\n --> src/moves.knv:9:7"),
+        "{lint}"
+    );
+}
+
+#[test]
+fn lint_walks_a_folder_link_once() {
+    let sandbox = WholeProject::shared_module("lint_folder_link")
+        .with_file("src/extra.knv", WholeProject::UNUSED_FUNCTION);
+    std::os::unix::fs::symlink(".", sandbox.directory.join("src/loop"))
+        .expect("the sandbox links a folder");
+    let lint = sandbox.compiler(&["lint"]).stderr();
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["src/extra.knv", "src/shapes.knv"]
+    );
+}
+
+#[test]
+fn lint_lints_every_other_program_beside_one_that_fails() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_failing_file").with_file(
+        "examples/wip.knv",
+        "(defn main () (println undefined-name))\n",
+    );
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(lint.contains("error[L0201]"), "{lint}");
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["tasks/hello.knv", "tests/moves-test.knv"]
+    );
+}
+
+#[test]
+fn lint_runs_no_needless_type_trial_beside_a_failing_program() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_failing_test").with_file(
+        "tests/extra-test.knv",
+        "(deftest t (assert (= (nope) 1)))\n",
+    );
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(lint.contains("error[L0201]"), "{lint}");
+    assert!(!lint.contains("L0809"), "{lint}");
+}
+
+#[test]
+fn lint_exits_one_on_a_failing_program_with_no_other_lint() {
+    let sandbox = WholeProject::shared_module("lint_failing_without_lints")
+        .with_file(
+            "src/shapes.knv",
+            "(export area)\n\n(defn area (w h) (* w h))\n",
+        )
+        .with_file(
+            "examples/wip.knv",
+            "(defn main () (println undefined-name))\n",
+        );
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(lint.contains("error[L0201]"), "{lint}");
+}
+
+#[test]
+fn lint_names_a_module_by_its_file_when_a_link_comes_first() {
+    let sandbox = WholeProject::lint_gaps_linked_first("lint_gaps_link_first");
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(!lint.contains("L0809"), "{lint}");
+    assert!(!lint.contains("a-moves"), "{lint}");
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["tasks/hello.knv", "tests/moves-test.knv"]
+    );
+}
+
+#[test]
+fn doc_write_keeps_a_module_page_when_a_link_comes_first() {
+    let sandbox = WholeProject::lint_gaps_linked_first("doc_write_link_first");
+    sandbox.compiler(&["doc", "--write"]).assert_exit_code(0);
+    for page in ["a-moves.md", "main.md", "moves.md"] {
+        assert!(sandbox.directory.join("doc").join(page).is_file(), "{page}");
+    }
+}
+
+#[test]
+fn lint_prints_a_linked_source_module_once() {
+    let sandbox = WholeProject::shared_module("lint_linked_source_module");
+    std::os::unix::fs::symlink("shapes.knv", sandbox.directory.join("src/a-shapes.knv"))
+        .expect("the sandbox links a file");
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert_eq!(WholeProject::unused_in(&lint), ["src/shapes.knv"]);
+}
+
+#[test]
+fn lint_names_an_unreached_file_by_its_real_path() {
+    let sandbox = WholeProject::shared_module("lint_unreached_link_first");
+    std::os::unix::fs::symlink("spare.knv", sandbox.directory.join("src/a-spare.knv"))
+        .expect("the sandbox links a file");
+    fs::write(
+        sandbox.directory.join("src/spare.knv"),
+        WholeProject::UNUSED_FUNCTION,
+    )
+    .expect("the sandbox writes a file");
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["src/shapes.knv", "src/spare.knv"]
+    );
+}
+
+#[test]
+fn lint_prints_a_file_linked_into_tests_once() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_link_into_tests");
+    std::os::unix::fs::symlink(
+        "../tests/moves-test.knv",
+        sandbox.directory.join("src/alias.knv"),
+    )
+    .expect("the sandbox links a file");
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert_eq!(
+        WholeProject::unused_in(&lint),
+        ["tasks/hello.knv", "tests/moves-test.knv"]
+    );
+}
+
+#[test]
+fn lint_refuses_a_test_file_that_cannot_be_a_module() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_unnamable_test")
+        .with_file("tests/bad name.knv", "(deftest t (assert true))\n");
+    let lint = sandbox.compiler(&["lint"]).stderr();
+    assert!(
+        lint.contains("error: `tests/bad name.knv` cannot be a module"),
+        "{lint}"
+    );
+    assert!(!lint.contains("<tests>"), "{lint}");
+}
+
+#[test]
+fn lint_of_a_missing_path_cannot_read_it() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_missing_path");
+    let lint = sandbox
+        .compiler(&["lint", "src/nope.knv"])
+        .assert_exit_code(2)
+        .stderr();
+    assert!(
+        lint.starts_with("error: cannot read `src/nope.knv`"),
+        "{lint}"
+    );
+    assert_eq!(lint.lines().count(), 1, "{lint}");
+}
+
+#[test]
+fn lint_of_a_file_no_program_loads_lints_it_alone() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_hidden_file")
+        .with_file(".hidden/f.knv", WholeProject::UNUSED_FUNCTION);
+    let lint = sandbox
+        .compiler(&["lint", ".hidden/f.knv"])
+        .assert_exit_code(1)
+        .stderr();
+    assert_eq!(WholeProject::unused_in(&lint), [".hidden/f.knv"]);
+}
+
+#[test]
+fn lint_of_an_unreadable_file_prints_its_error_once() {
+    let sandbox = WholeProject::lint_gaps("lint_gaps_unreadable_file")
+        .with_file("src/locked.knv", "(def locked 1)\n");
+    let locked = sandbox.directory.join("src/locked.knv");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000))
+        .expect("the sandbox locks a file");
+    let lint = sandbox
+        .compiler(&["lint", "src/locked.knv"])
+        .assert_exit_code(2)
+        .stderr();
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o644))
+        .expect("the sandbox unlocks the file");
+    assert_eq!(lint.matches("cannot read").count(), 1, "{lint}");
+}
+
+#[test]
+fn lint_warns_on_each_of_two_files_with_one_stem() {
+    let helper = "(type helper (fn (int) int))\n\n(defn helper (x) (* 2 x))\n\n(defn main () (println (helper 4)))\n";
+    let sandbox = Sandbox::new("lint_same_stem")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject stems (lints (needless-type warn)))\n",
+        )
+        .with_file("src/main.knv", "(defn main () (println 1))\n")
+        .with_file("examples/a/main.knv", helper)
+        .with_file("examples/b/main.knv", helper);
+    let lint = sandbox.compiler(&["lint"]).stderr();
+    assert!(lint.contains("--> examples/a/main.knv:1:1"), "{lint}");
+    assert!(lint.contains("--> examples/b/main.knv:1:1"), "{lint}");
+}
+
+#[test]
+fn doc_write_writes_no_page_through_a_link_to_the_source_root() {
+    let sandbox = WholeProject::shared_module("doc_write_root_link");
+    std::os::unix::fs::symlink(".", sandbox.directory.join("src/loop"))
+        .expect("the sandbox links a folder");
+    sandbox.compiler(&["doc", "--write"]).assert_exit_code(0);
+    assert!(sandbox.directory.join("doc/shapes.md").is_file());
+    assert!(!sandbox.directory.join("doc/loop").exists());
+}
+
+#[test]
+fn lint_keys_a_declaration_by_its_file_in_every_program() {
+    let sandbox = Sandbox::new("lint_one_key_per_file")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject twofalse (lints (needless-type deny)))\n",
+        )
+        .with_file("src/main.knv", "(defn main () (println 1))\n")
+        .with_file(
+            "examples/a/b.knv",
+            "(export ->applied applied describe)\n\n(defstruct applied :move string :after string)\n\n(type describe (fn ((ref applied)) string))\n\n(defn describe (applied) (str (:move applied) \" then \" (:after applied)))\n",
+        )
+        .with_file(
+            "examples/z.knv",
+            "(use a/b ->applied describe)\n\n(defstruct attempt :move string)\n\n(defn main ()\n  (println (describe (ref (->applied :move (str \"a\") :after (str \"b\"))))))\n",
+        );
+    let lint = sandbox.compiler(&["lint"]).stderr();
+    assert!(!lint.contains("L0809"), "{lint}");
+}
+
+struct WholeProject;
+
+impl WholeProject {
+    const UNUSED_FUNCTION: &str = "(defn spare () (let (unused 1) (println \"spare\")))\n";
+    const UNUSED_AT: &str = "warning[L0801]: `unused` is never read\n --> ";
+
+    fn lint_gaps(name: &str) -> Sandbox {
+        Sandbox::new(name)
+            .with_file(
+                &Language::project_file_name(),
+                "(defproject gaps (lints (needless-type deny)))\n",
+            )
+            .with_file(
+                "src/moves.knv",
+                "(export ->applied applied describe)\n\n(defstruct applied :move string :after string)\n\n(type describe (fn ((ref applied)) string))\n\n(defn describe (applied) (str (:move applied) \" then \" (:after applied)))\n",
+            )
+            .with_file(
+                "src/main.knv",
+                "(use moves ->applied describe)\n\n(defn main () (println (describe (ref (->applied :move (str \"claim\") :after (str \"open\"))))))\n",
+            )
+            .with_file(
+                "tests/moves-test.knv",
+                "(use moves ->applied describe)\n\n(defstruct attempt :move string)\n\n(deftest describes-a-move\n  (let (unused 1)\n    (assert (= (describe (ref (->applied :move (str \"a\") :after (str \"b\")))) \"a then b\"))))\n",
+            )
+            .with_file(
+                "tasks/hello.knv",
+                "(deftask hello ()\n  (let (unused 1) (println \"hello\")))\n",
+            )
+    }
+
+    fn lint_gaps_linked_first(name: &str) -> Sandbox {
+        let sandbox = Self::lint_gaps(name);
+        let moves = sandbox.directory.join("src/moves.knv");
+        let text = fs::read_to_string(&moves).expect("the sandbox reads a file");
+        fs::remove_file(&moves).expect("the sandbox removes a file");
+        std::os::unix::fs::symlink("moves.knv", sandbox.directory.join("src/a-moves.knv"))
+            .expect("the sandbox links a file");
+        fs::write(&moves, text).expect("the sandbox writes a file");
+        sandbox
+    }
+
+    fn shared_module(name: &str) -> Sandbox {
+        Sandbox::new(name)
+            .with_file(&Language::project_file_name(), "(defproject shared)\n")
+            .with_file(
+                "src/shapes.knv",
+                "(export area)\n\n(defn area (w h) (let (unused 1) (* w h)))\n",
+            )
+            .with_file(
+                "src/main.knv",
+                "(use shapes area)\n\n(defn main () (println (area 2 3)))\n",
+            )
+            .with_file(
+                "tests/shapes-test.knv",
+                "(use shapes area)\n\n(deftest area-multiplies\n  (assert (= (area 2 3) 6)))\n",
+            )
+    }
+
+    fn unused_in(stderr: &str) -> Vec<String> {
+        let mut files: Vec<String> = stderr
+            .split(Self::UNUSED_AT)
+            .skip(1)
+            .filter_map(|rest| rest.split(':').next())
+            .map(str::to_string)
+            .collect();
+        files.sort();
+        files
+    }
+}
+
 struct NeedlessTypeProject;
 
 impl NeedlessTypeProject {
@@ -8294,7 +8720,10 @@ fn test_refuses_a_test_file_that_cannot_be_a_module() {
         .with_file("src/main.knv", "(defn main () (println 1))\n")
         .with_file("tests/bad name.knv", "(deftest t (assert true))\n");
     let test = sandbox.compiler(&["test"]).assert_exit_code(2).stderr();
-    assert!(test.contains("error: `tests/bad name.knv` cannot be a module"), "{test}");
+    assert!(
+        test.contains("error: `tests/bad name.knv` cannot be a module"),
+        "{test}"
+    );
     assert!(!test.contains("<tests>"), "{test}");
 }
 

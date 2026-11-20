@@ -12,6 +12,7 @@ use super::exit_status::ExitStatus;
 use super::expand::ExpandCommand;
 use super::fmt::FmtCommand;
 use super::lint::LintCommand;
+use super::lint_path::LintPath;
 use super::terminal::Terminal;
 use super::types::TypesCommand;
 
@@ -32,7 +33,7 @@ pub enum InspectionCommand {
     #[command(about = "Check a program, then print the warnings of the lint rules")]
     Lint {
         #[command(flatten)]
-        entry: EntryArgument,
+        path: LintPath,
     },
     #[command(about = "Print a program as kernel forms after macro expansion")]
     Expand {
@@ -62,7 +63,7 @@ impl InspectionCommand {
             Self::Check(arguments) => arguments.run(terminal),
             Self::Types { entry } => TypesCommand::new(entry).run(terminal),
             Self::Doc(arguments) => arguments.run(terminal),
-            Self::Lint { entry } => LintCommand::new(entry).run(terminal),
+            Self::Lint { path } => LintCommand::new(path).run(terminal),
             Self::Expand { entry } => ExpandCommand::new(entry).run(terminal),
             Self::Emit(arguments) => arguments.run(terminal),
             Self::Fmt {

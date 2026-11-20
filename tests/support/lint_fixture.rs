@@ -6,7 +6,9 @@ use knave::core::ModulePath;
 use knave::diagnostic::{DiagnosticCode, DiagnosticRenderer, Diagnostics};
 use knave::expand::{Expander, Program};
 use knave::language::Language;
-use knave::lint::{LintDefaults, Linter, NeedlessTypeLint, ProgramRun, RuleProgram};
+use knave::lint::{
+    LintDefaults, LintedProgram, Linter, NeedlessTypeLint, ProgramPosition, ProgramRun, RuleProgram,
+};
 use knave::modules::ModuleSources;
 use knave::project::LintLevel;
 use knave::source::{SourceId, SourceMap, Span};
@@ -65,7 +67,13 @@ impl LintFixture {
             path: &self.path,
             entry: self.entry,
         };
-        NeedlessTypeLint::new(&mut runs).warnings(level, program, typed)
+        NeedlessTypeLint::new(&mut runs).warnings(
+            level,
+            &mut [LintedProgram {
+                program,
+                declared: &typed,
+            }],
+        )
     }
 
     fn written_needless_type_level(&self) -> Option<LintLevel> {
@@ -136,7 +144,11 @@ impl ProgramRun for FixtureRuns<'_> {
         TrialStages::emit(typed, Span::new(self.entry, 0..0))
     }
 
-    fn module_alone(&mut self, module: &ModulePath) -> Option<Program> {
+    fn module_alone(&mut self, _beside: ProgramPosition, module: &ModulePath) -> Option<Program> {
         self.expanded_alone(module).ok()
+    }
+
+    fn source_path(&self, source: SourceId) -> Option<PathBuf> {
+        fs::canonicalize(self.sources.file(source).name()).ok()
     }
 }

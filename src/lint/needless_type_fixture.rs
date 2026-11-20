@@ -1,7 +1,9 @@
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
 
+use super::linted_program::LintedProgram;
 use super::needless_type_lint::NeedlessTypeLint;
+use super::program_position::ProgramPosition;
 use super::program_run::ProgramRun;
 use crate::check::ProgramChecker;
 use crate::core::ModulePath;
@@ -10,7 +12,7 @@ use crate::expand::{Expander, Program};
 use crate::modules::ModuleSources;
 use crate::ownership::EnforcedOwnership;
 use crate::project::LintLevel;
-use crate::source::SourceMap;
+use crate::source::{SourceId, SourceMap};
 use crate::types::TypedProgram;
 
 #[derive(Clone, Copy)]
@@ -61,7 +63,11 @@ impl ProgramRun for ScriptedRun {
         })
     }
 
-    fn module_alone(&mut self, _module: &ModulePath) -> Option<Program> {
+    fn module_alone(&mut self, _beside: ProgramPosition, _module: &ModulePath) -> Option<Program> {
+        None
+    }
+
+    fn source_path(&self, _source: SourceId) -> Option<PathBuf> {
         None
     }
 }
@@ -109,12 +115,42 @@ impl NeedlessTypeFixture {
     ) -> (Vec<String>, usize) {
         let declared =
             ProgramChecker::check::<EnforcedOwnership>(&self.program).expect("the source checks");
-        let warnings =
-            NeedlessTypeLint::new(&mut run).warnings(written, &mut self.program, declared);
+        let mut programs = [LintedProgram {
+            program: &mut self.program,
+            declared: &declared,
+        }];
+        let warnings = NeedlessTypeLint::new(&mut run).warnings(written, &mut programs);
         let titles = warnings
             .into_iter()
             .map(|warning| warning.title().to_string())
             .collect();
         (titles, run.checks)
+    }
+
+    pub fn warning_titles_in_two_programs(
+        mut self,
+        text: &str,
+        mut run: ScriptedRun,
+    ) -> Vec<String> {
+        let mut second = Self::expand(text).program;
+        let first_checked =
+            ProgramChecker::check::<EnforcedOwnership>(&self.program).expect("the source checks");
+        let second_checked =
+            ProgramChecker::check::<EnforcedOwnership>(&second).expect("the source checks");
+        let mut programs = [
+            LintedProgram {
+                program: &mut self.program,
+                declared: &first_checked,
+            },
+            LintedProgram {
+                program: &mut second,
+                declared: &second_checked,
+            },
+        ];
+        NeedlessTypeLint::new(&mut run)
+            .warnings(Some(LintLevel::Warn), &mut programs)
+            .into_iter()
+            .map(|warning| warning.title().to_string())
+            .collect()
     }
 }

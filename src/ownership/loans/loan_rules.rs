@@ -1,8 +1,13 @@
+use std::cell::RefCell;
+
+use rustc_hash::FxHashMap;
+
 use crate::types::{BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedProgram};
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
     copy: CopyRules<'p>,
+    moved: RefCell<FxHashMap<Type, bool>>,
 }
 
 impl<'p> LoanRules<'p> {
@@ -10,11 +15,17 @@ impl<'p> LoanRules<'p> {
         Self {
             program,
             copy: CopyRules::new(&program.declarations, &program.generics),
+            moved: RefCell::default(),
         }
     }
 
     pub fn moves(&self, ty: &Type) -> bool {
-        !self.copy.is_copy(ty)
+        if let Some(moves) = self.moved.borrow().get(ty) {
+            return *moves;
+        }
+        let moves = !self.copy.is_copy(ty);
+        self.moved.borrow_mut().insert(ty.clone(), moves);
+        moves
     }
 
     pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {

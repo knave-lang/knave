@@ -7,9 +7,14 @@ pub(super) struct FieldTraitPath<'a> {
 
 impl<'a> FieldTraitPath<'a> {
     const CRATE_ROOT: &'static str = "crate::";
+    const UNUSED_MODULE_INDEX: usize = u32::MAX as usize;
 
     pub(super) fn new(program: &'a TypedProgram) -> Self {
         Self { program }
+    }
+
+    pub(super) fn outside_every_module() -> ModuleId {
+        ModuleId::new(Self::UNUSED_MODULE_INDEX)
     }
 
     pub(super) fn of(&self, field_trait: BindingId, from: ModuleId) -> Option<String> {

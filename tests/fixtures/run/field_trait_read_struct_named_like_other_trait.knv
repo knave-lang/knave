@@ -1,0 +1,17 @@
+(defstruct has-name
+  :n int)
+
+(defstruct user
+  :best has-name
+  :name str)
+
+(defstruct animal
+  :best has-name
+  :name str)
+
+(defn both (x)
+  (str (:name x) (:n (:best x))))
+
+(defn main ()
+  (println (both (->user (->has-name 1) "a")))
+  (println (both (->animal (->has-name 2) "b"))))

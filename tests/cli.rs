@@ -9055,6 +9055,24 @@ fn upgrade_of_an_earlier_version_records_it_without_the_warning() {
 }
 
 #[test]
+fn upgrade_keeps_a_comment_after_the_project_name_on_its_line() {
+    let sandbox = Sandbox::new("upgrade_name_comment");
+    sandbox.compiler(&["new", "demo"]).assert_silent_success();
+    let sandbox = sandbox.with_file(
+        "demo/project.knv",
+        ";; my project\n(defproject demo ; the name\n  :version \"1.0.0\" ; ver\n  (dependencies (serde \"1.0\"))) ; trailing\n\n;; end\n",
+    );
+    sandbox
+        .compiler_in("demo", &["upgrade"])
+        .assert_exit_code(0);
+    let project = sandbox.contents("demo/project.knv");
+    assert!(
+        project.contains("(defproject demo ; the name\n"),
+        "{project}"
+    );
+}
+
+#[test]
 fn a_project_without_a_recorded_version_reports_no_version() {
     let sandbox = Sandbox::new("version_unrecorded");
     sandbox

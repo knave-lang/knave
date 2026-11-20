@@ -5,9 +5,9 @@ use crate::cli::diagnostic_output::DiagnosticOutput;
 use crate::cli::embedded_prelude::EmbeddedPrelude;
 use crate::cli::exit_status::ExitStatus;
 use crate::cli::unreadable_file::UnreadableFile;
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostics;
 use crate::modules::ModuleSources;
-use crate::project::{Project, ProjectReader};
+use crate::project::{CompilerVersion, Project, ProjectReader};
 use crate::reader::{Form, Reader};
 use crate::source::{SourceId, SourceMap, Span};
 
@@ -36,10 +36,10 @@ impl<'a> ProjectLoader<'a> {
         self.project_of(source).ok()
     }
 
-    pub fn version_refusal(&mut self, project_file: &Path) -> Option<Diagnostic> {
+    pub fn recorded_version(&mut self, project_file: &Path) -> Option<CompilerVersion> {
         let source = self.added_quietly(project_file)?;
         let forms = self.forms(source).ok()?;
-        Self::reader().refusal(&forms, self.whole_file(source))
+        Self::reader().recorded_version(&forms, self.whole_file(source))
     }
 
     fn project_of(&self, source: SourceId) -> Result<Project, Diagnostics> {

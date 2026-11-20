@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use super::compiler_version_problems::CompilerVersionProblems;
 use super::dependency_reader::DependencyReader;
-use super::fields::{FieldScanner, Fields};
+use super::fields::{FieldScanner, Fields, ScannedForms};
 use super::lint_reader::LintReader;
 use super::name::ProjectName;
 use super::problems::ProjectProblems;
@@ -10,7 +10,7 @@ use super::release_version::ReleaseVersion;
 use super::section::Section;
 use super::vocabulary::ProjectVocabulary;
 use super::{CompilerVersion, Project};
-use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::diagnostic::Diagnostics;
 use crate::language::Language;
 use crate::reader::Form;
 use crate::source::Span;
@@ -18,7 +18,6 @@ use crate::source::Span;
 pub struct ProjectReader<'v> {
     problems: Diagnostics,
     vocabulary: &'v ProjectVocabulary,
-    refusal: Option<Diagnostic>,
 }
 
 struct ProjectForm<'f> {
@@ -37,7 +36,6 @@ impl<'v> ProjectReader<'v> {
         Self {
             problems: Diagnostics::default(),
             vocabulary,
-            refusal: None,
         }
     }
 
@@ -46,9 +44,10 @@ impl<'v> ProjectReader<'v> {
         Self::outcome(project, self.problems)
     }
 
-    pub fn refusal(mut self, forms: &[Form], file: Span) -> Option<Diagnostic> {
-        self.project(forms, file);
-        self.refusal
+    pub fn recorded_version(mut self, forms: &[Form], file: Span) -> Option<CompilerVersion> {
+        let form = self.project_form(forms, file)?;
+        let scanned = self.scanned(&form);
+        self.compiler_version(&scanned.fields)
     }
 
     fn outcome(project: Option<Project>, problems: Diagnostics) -> Result<Project, Diagnostics> {
@@ -61,13 +60,17 @@ impl<'v> ProjectReader<'v> {
     fn project(&mut self, forms: &[Form], file: Span) -> Option<Project> {
         let form = self.project_form(forms, file)?;
         let name = self.name(&form);
-        let scanned = FieldScanner::new(Self::KEYS, &mut self.problems).scan(form.body);
+        let scanned = self.scanned(&form);
         let mut sections = SectionTable::default();
         scanned
             .others
             .iter()
             .for_each(|other| self.read_section(other, &mut sections));
         self.with_fields(name, &scanned.fields, sections)
+    }
+
+    fn scanned<'f>(&mut self, form: &ProjectForm<'f>) -> ScannedForms<'f> {
+        FieldScanner::new(Self::KEYS, &mut self.problems).scan(form.body)
     }
 
     fn project_form<'f>(&mut self, forms: &'f [Form], file: Span) -> Option<ProjectForm<'f>> {
@@ -201,9 +204,7 @@ impl<'v> ProjectReader<'v> {
                 .push(CompilerVersionProblems::malformed_version(mismatch));
             return None;
         };
-        let recorded = CompilerVersion::new(version, span);
-        self.refusal = recorded.refusal(ReleaseVersion::running());
-        Some(recorded)
+        Some(CompilerVersion::new(version, span))
     }
 
     fn module_file(&mut self, fields: &Fields<'_>, key: &str, default_module: &str) -> PathBuf {

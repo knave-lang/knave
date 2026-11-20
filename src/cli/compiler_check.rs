@@ -16,7 +16,10 @@ impl CompilerCheck {
         };
         let mut scratch = terminal.scratch();
         let project_file = root.join(Language::project_file_name());
-        let Some(refusal) = scratch.sources().projects().version_refusal(&project_file) else {
+        let Some(recorded) = scratch.sources().projects().recorded_version(&project_file) else {
+            return Ok(());
+        };
+        let Some(refusal) = recorded.refusal(ReleaseVersion::running()) else {
             return Ok(());
         };
         Err(scratch

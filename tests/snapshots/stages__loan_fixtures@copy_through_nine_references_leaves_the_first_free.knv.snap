@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/copy_through_nine_references_leaves_the_first_free.knv
+---
+swap-in!
+  2:9 change `m`: no live loan
+main
+  6:21 borrow `s`: no live loan
+  7:18 borrow `r1`: `s` lent at 6:21, held by `r1`
+  8:18 borrow `r2`: `s` lent at 6:21, held by `r1`
+  9:18 borrow `r3`: `s` lent at 6:21, held by `r1`
+  10:18 borrow `r4`: `s` lent at 6:21, held by `r1`
+  11:18 borrow `r5`: `s` lent at 6:21, held by `r1`
+  12:18 borrow `r6`: `s` lent at 6:21, held by `r1`
+  13:18 borrow `r7`: `s` lent at 6:21, held by `r1`
+  14:18 borrow `r8`: `s` lent at 6:21, held by `r1`
+  17:18 change `r1`: `s` lent at 6:21, held by `r1`

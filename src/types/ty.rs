@@ -39,7 +39,7 @@ impl Lifetime {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Type {
     Var(TypeVar),
     Generic(GenericId),

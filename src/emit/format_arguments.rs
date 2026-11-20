@@ -1,6 +1,6 @@
 use super::argument_start::ArgumentStart;
 use super::format_string::{FormatString, PassedArgument};
-use super::identifier::Identifier;
+use super::macro_call::MacroCall;
 use super::open_delimiter::OpenDelimiter;
 use super::operator::RustText;
 use crate::core::Piece;
@@ -130,26 +130,24 @@ impl FormatMacro {
         }
     }
 
-    const BANG: char = '!';
     const CALL_OPENS: char = '(';
 
     fn is_called_in(text: &str) -> bool {
-        text.match_indices(Self::BANG).any(|(bang, _)| {
-            text[bang + 1..].starts_with(Self::CALL_OPENS) && Self::names(&text[..bang])
-        })
-    }
-
-    fn names(before_bang: &str) -> bool {
-        let name = Identifier::ending(before_bang).text();
-        Self::ALL
-            .iter()
-            .any(|format_macro| format_macro.name == name)
+        text.match_indices(Self::CALL_OPENS)
+            .any(|(parenthesis, _)| {
+                MacroCall::ending(&text[..parenthesis])
+                    .is_some_and(|call| Self::named(call.name()).is_some())
+            })
     }
 
     fn called_by(open: &OpenDelimiter<'_>) -> Option<&'static Self> {
+        Self::named(open.callee()?)
+    }
+
+    fn named(name: &str) -> Option<&'static Self> {
         Self::ALL
             .iter()
-            .find(|format_macro| open.callee() == Some(format_macro.name))
+            .find(|format_macro| format_macro.name == name)
     }
 
     fn format_string<'t>(&self, open: &OpenDelimiter<'t>) -> Option<FormatString<'t>> {
@@ -203,6 +201,7 @@ mod tests {
             "println!(\"{{{{:p}}}} {{}}\", {0})",
             "println!(\"}}}}{{:p}} {{}}\", 1, {0})",
             "{{ f(\"{{}}\", 1); println!(\"{{:p}} {{}}\", 1, {0}) }}",
+            "println! (\"{{}}\", {0})",
         ] {
             assert!(FormatFixture::formats_whole(text, 0), "{text}");
         }

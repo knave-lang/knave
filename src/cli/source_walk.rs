@@ -1,108 +1,39 @@
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
-
-use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::located_project::LocatedProject;
 use super::module_names::ModuleNames;
-use super::program_file::ProgramFile;
-use super::skipped_directory::SkippedDirectory;
+use super::source_files::SourceFiles;
 use super::taken_module_paths::TakenModulePaths;
 use super::terminal::Terminal;
-use super::tree_bounds::TreeBounds;
 use super::tree_file::TreeFile;
-use super::unreadable_file::UnreadableFile;
-use super::working_directory::WorkingDirectory;
-use crate::language::Language;
-use crate::modules::ProjectTree;
 
 pub struct SourceWalk<'p> {
-    root: PathBuf,
-    bounds: TreeBounds,
-    skipped: SkippedDirectory,
-    left_out: Vec<PathBuf>,
+    files: SourceFiles,
     taken: TakenModulePaths<'p>,
 }
 
 impl<'p> SourceWalk<'p> {
     pub fn of(project: &'p LocatedProject) -> Self {
-        let root = Self::walked_root(project);
-        let placement = project.placement();
-        let left_out = [placement.tasks_directory(), placement.tests_directory()]
-            .iter()
-            .filter_map(|directory| ProgramFile::canonical(directory))
-            .collect();
         Self {
-            skipped: SkippedDirectory::for_walk_of(&root),
-            bounds: TreeBounds::of(&root),
-            root,
-            left_out,
-            taken: placement.taken_module_paths(),
+            files: SourceFiles::under(project.source_root(), project),
+            taken: project.placement().taken_module_paths(),
         }
     }
 
     pub fn module_paths(&self, terminal: &mut Terminal) -> Result<Vec<String>, ExitStatus> {
-        let files = self.files().map_err(|error| {
-            UnreadableFile::new(&self.root, &error).report_to(&StandardErrorMessages)
-        })?;
+        let mut files: Vec<TreeFile> = self
+            .files
+            .paths()?
+            .into_iter()
+            .filter_map(|path| {
+                let module = ModuleNames::of_source(path.strip_prefix(self.files.root()).ok()?)?;
+                Some(TreeFile::new(module, path))
+            })
+            .collect();
+        files.sort();
         if let Some(file) = files.iter().find(|file| file.is_unnamable()) {
             return Err(file.report_unnamable());
         }
         self.taken.refuse(&files, terminal)?;
         Ok(files.into_iter().map(TreeFile::into_module).collect())
-    }
-
-    fn walked_root(project: &LocatedProject) -> PathBuf {
-        let source_root = project.source_root();
-        if source_root.as_os_str().is_empty() {
-            WorkingDirectory::path().to_path_buf()
-        } else {
-            source_root
-        }
-    }
-
-    fn files(&self) -> io::Result<Vec<TreeFile>> {
-        let mut files = Vec::new();
-        self.collect(&self.root, &mut files)?;
-        files.sort();
-        Ok(files)
-    }
-
-    fn collect(&self, directory: &Path, files: &mut Vec<TreeFile>) -> io::Result<()> {
-        for entry in fs::read_dir(directory)? {
-            let path = entry?.path();
-            if path.is_dir() {
-                self.collect_inside(&path, files)?;
-            } else if let Some(module) = self.module_of(&path) {
-                files.push(TreeFile::new(module, path));
-            }
-        }
-        Ok(())
-    }
-
-    fn collect_inside(&self, directory: &Path, files: &mut Vec<TreeFile>) -> io::Result<()> {
-        if self.walks_into(directory) {
-            self.collect(directory, files)?;
-        }
-        Ok(())
-    }
-
-    fn walks_into(&self, directory: &Path) -> bool {
-        match self.bounds.inside(directory) {
-            Some(directory) => {
-                !self.skipped.is_skipped(&directory)
-                    && !self.left_out.contains(&directory)
-                    && !ProjectTree::holds_a_project(&directory)
-            }
-            None => false,
-        }
-    }
-
-    fn module_of(&self, file: &Path) -> Option<String> {
-        if file.extension()? != Language::EXTENSION || ProgramFile::is_project_file(file) {
-            return None;
-        }
-        ModuleNames::of_source(file.strip_prefix(&self.root).ok()?)
     }
 }

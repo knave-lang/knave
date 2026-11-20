@@ -112,6 +112,7 @@ mod set_aside_drop;
 mod set_aside_source;
 mod skip_reason;
 mod skipped_directory;
+mod source_files;
 mod source_report;
 mod source_walk;
 mod sources_survey;

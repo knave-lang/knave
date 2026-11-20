@@ -678,9 +678,11 @@
 (document usize
   "Holds an unsigned integer as wide as a pointer, as Rust's `usize` does.
 
-  A vector or a slice is indexed by a `usize`.
+  It is Rust's size type, written for Rust interop. [convert] turns it into
+  an [int].
 
-  (deref (at (vec 5 6) (the usize 1)))
+  (let (size (the usize 6))
+    (the int (convert size)))
   => 6")
 
 (document f32

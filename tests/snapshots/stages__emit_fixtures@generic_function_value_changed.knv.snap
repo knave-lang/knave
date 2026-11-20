@@ -3,12 +3,12 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/generic_function_value_changed.knv
 ---
-fn change(items: &mut Vec<i64>) -> usize {
+fn change(items: &mut Vec<i64>) -> i64 {
     items.push(1);
-    items.len()
+    crate::rt::length(items.len())
 }
 
-fn apply_one(f: impl FnOnce(Vec<i64>) -> usize, a: Vec<i64>) -> usize {
+fn apply_one(f: impl FnOnce(Vec<i64>) -> i64, a: Vec<i64>) -> i64 {
     f(a)
 }
 
@@ -35,4 +35,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

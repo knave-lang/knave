@@ -58,7 +58,7 @@ fn main() {
         )
     );
     let someone = make_user("cy", vec!["ops".to_string(), "dev".to_string()]);
-    println!("{}", someone.tags.len());
+    println!("{}", crate::rt::length(someone.tags.len()));
     println!("{}", someone.name)
 }
 
@@ -314,5 +314,21 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

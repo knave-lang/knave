@@ -3,20 +3,24 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/one_type_helpers.knv
 ---
-fn is_alive(grid: &[Vec<bool>], x: usize, y: usize) -> bool {
-    *grid.get(y).unwrap().get(x).unwrap()
+fn is_alive(grid: &[Vec<bool>], x: i64, y: i64) -> bool {
+    *grid
+        .get(usize::try_from(y).unwrap_or(usize::MAX))
+        .unwrap()
+        .get(usize::try_from(x).unwrap_or(usize::MAX))
+        .unwrap()
 }
 
 fn print_generation(generation: i64) {
     println!("{}", generation)
 }
 
-fn size(items: &str) -> usize {
-    items.len()
+fn size(items: &str) -> i64 {
+    crate::rt::length(items.len())
 }
 
-fn size_many<A: crate::rt::Sequence>(items: &A) -> usize {
-    items.len()
+fn size_many<A: crate::rt::Sequence>(items: &A) -> i64 {
+    crate::rt::length(items.len())
 }
 
 fn shout(value: i64) -> String {
@@ -134,4 +138,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

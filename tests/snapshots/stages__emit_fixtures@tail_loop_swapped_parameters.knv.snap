@@ -27,10 +27,10 @@ fn alternate<'a>(mut make: &'a str, mut model: &'a str, mut turns: i64) -> &'a s
     }
 }
 
-fn settle<'a>(mut make: &'a str, model: &'a str, mut turns: i64) -> usize {
+fn settle<'a>(mut make: &'a str, model: &'a str, mut turns: i64) -> i64 {
     loop {
         if turns == 0 {
-            return make.len();
+            return crate::rt::length(make.len());
         } else {
             (make, turns) = (model, turns - 1);
             continue;
@@ -54,7 +54,11 @@ fn main() {
     let mut spare: Vec<i64> = vec![2019_i64];
     let mut years: Vec<i64> = vec![2021_i64];
     fill(&mut spare, &mut years, "filled", 3);
-    println!("{} {}", spare.len(), years.len());
+    println!(
+        "{} {}",
+        crate::rt::length(spare.len()),
+        crate::rt::length(years.len())
+    );
     let model = "Leaf".to_string();
     println!("{}", alternate("Nissan", model.as_str(), 3));
     println!("{}", settle("Nissan", model.as_str(), 2));
@@ -76,4 +80,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

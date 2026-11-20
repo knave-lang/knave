@@ -9,8 +9,8 @@ enum Token {
     Number(String),
 }
 
-fn classify(tokens: &[Token], position: usize) -> i64 {
-    match tokens.get(position) {
+fn classify(tokens: &[Token], position: i64) -> i64 {
+    match tokens.get(usize::try_from(position).unwrap_or(usize::MAX)) {
         Some(Token::Symbol(text)) if text == "(" => 1,
         Some(Token::Symbol(_)) => 2,
         Some(Token::Number(_)) => 3,
@@ -18,9 +18,9 @@ fn classify(tokens: &[Token], position: usize) -> i64 {
     }
 }
 
-fn scan(tokens: &[Token], mut position: usize) -> i64 {
+fn scan(tokens: &[Token], mut position: i64) -> i64 {
     loop {
-        match tokens.get(position) {
+        match tokens.get(usize::try_from(position).unwrap_or(usize::MAX)) {
             Some(Token::Symbol(text)) if text == "(" => {
                 position += 1;
                 continue;

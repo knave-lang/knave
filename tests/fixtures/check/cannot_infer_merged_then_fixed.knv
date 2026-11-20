@@ -1,6 +1,6 @@
 (trait container
   (type item)
-  (size (fn ((ref self)) usize)))
+  (size (fn ((ref self)) int)))
 
 (struct (wrapper a b)
         (label a)

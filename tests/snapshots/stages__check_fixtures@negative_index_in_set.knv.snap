@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/negative_index_in_set.knv
+---
+error[L0466]: the value `-1` is negative
+ --> check/negative_index_in_set.knv:3:17
+  |
+3 |     (set! (at v -1) 9)
+  |                 ^^ an index or a size is at least 0
+  |
+  = help: count the position from the front, starting at 0
+  = note: run `knave doc L0466` for an explanation

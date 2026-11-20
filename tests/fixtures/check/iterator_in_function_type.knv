@@ -1,8 +1,8 @@
 (defstruct tally
-  :counter (fn ((iterator (ref i64))) usize))
+  :counter (fn ((iterator (ref i64))) int))
 
 (enum survey
-  (counted (option (fn ((option (iterator i64))) usize)))
+  (counted (option (fn ((option (iterator i64))) int)))
   skipped)
 
 (defn tally-years (counter years)
@@ -13,16 +13,15 @@
   count)
 
 (type tally-signed
-  (fn ((fn ((iterator (ref i64))) usize)
+  (fn ((fn ((iterator (ref i64))) int)
        (ref (vec i64)))
-    usize))
+    int))
 
 (defn tally-signed (counter years)
   (counter (iter years)))
 
 (type counter-signed
-  (fn ()
-    (fn ((iterator (ref i64))) usize)))
+  (fn () (fn ((iterator (ref i64))) int)))
 
 (defn counter-signed () count)
 

@@ -473,7 +473,7 @@
 
 (type fragile-count
   (where ((a cargo))
-    (fn ((ref (crate a))) usize)))
+    (fn ((ref (crate a))) int)))
 
 (defn fragile-count (crate)
   (count (filter (iter (:items crate))

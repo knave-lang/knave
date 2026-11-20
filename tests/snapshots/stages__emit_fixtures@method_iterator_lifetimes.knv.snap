@@ -5,10 +5,10 @@ input_file: tests/fixtures/emit/method_iterator_lifetimes.knv
 ---
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 struct Depot {
-    size: usize,
+    size: i64,
 }
 
-fn make_depot(size: usize) -> Depot {
+fn make_depot(size: i64) -> Depot {
     Depot { size }
 }
 
@@ -21,16 +21,16 @@ fn main() {
 }
 
 trait Counter {
-    fn tally<'a>(&self, _: impl Iterator<Item = &'a str>) -> usize;
-    fn total<'a>(_: impl Iterator<Item = &'a str>, _: &Self) -> usize;
+    fn tally<'a>(&self, _: impl Iterator<Item = &'a str>) -> i64;
+    fn total<'a>(_: impl Iterator<Item = &'a str>, _: &Self) -> i64;
 }
 
 impl Counter for Depot {
-    fn tally<'a>(&self, names: impl Iterator<Item = &'a str>) -> usize {
-        self.size + names.count()
+    fn tally<'a>(&self, names: impl Iterator<Item = &'a str>) -> i64 {
+        self.size + crate::rt::count(names)
     }
-    fn total<'a>(names: impl Iterator<Item = &'a str>, lot: &Depot) -> usize {
-        lot.size + names.count()
+    fn total<'a>(names: impl Iterator<Item = &'a str>, lot: &Depot) -> i64 {
+        lot.size + crate::rt::count(names)
     }
 }
 
@@ -49,4 +49,21 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

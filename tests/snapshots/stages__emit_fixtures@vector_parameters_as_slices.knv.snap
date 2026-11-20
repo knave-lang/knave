@@ -18,7 +18,7 @@ fn reset_first_year(years: &mut [i64], year: i64) {
 }
 
 fn reset_last_year(years: &mut [i64], year: i64) {
-    years[years.len() - 1] = year
+    years[crate::rt::index(crate::rt::length(years.len()) - 1)] = year
 }
 
 fn reset_both(years: &mut [i64], year: i64) {
@@ -26,8 +26,8 @@ fn reset_both(years: &mut [i64], year: i64) {
     reset_last_year(years, year)
 }
 
-fn clear_cell(grid: &mut [Vec<bool>], row: usize, column: usize) {
-    grid[row][column] = false
+fn clear_cell(grid: &mut [Vec<bool>], row: i64, column: i64) {
+    grid[crate::rt::index(row)][crate::rt::index(column)] = false
 }
 
 fn replace_first<'a>(cars: &mut [Car<'a>], car: Car<'a>) {
@@ -49,7 +49,7 @@ fn main() {
     reset_both(&mut years, 2013);
     println!("{} {}", years[0], years[1]);
     add_year(&mut years, 2025);
-    println!("{} {}", years[0], years.len());
+    println!("{} {}", years[0], crate::rt::length(years.len()));
     let mut grid = vec![vec![true, true], vec![true, true]];
     clear_cell(&mut grid, 1, 0);
     println!("{}", grid[1][0]);
@@ -73,4 +73,36 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

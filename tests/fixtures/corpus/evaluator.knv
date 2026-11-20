@@ -20,7 +20,7 @@
       (let-match ((pair index script) entry)
         (run index script)))))
 
-(type run (fn (usize (ref str)) unit))
+(type run (fn (int (ref str)) unit))
 
 (defn run (index script)
   (println (str "script " index ": " script))

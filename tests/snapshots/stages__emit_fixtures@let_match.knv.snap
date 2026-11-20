@@ -14,13 +14,13 @@ fn make_point(x: i64, y: i64) -> Point {
 }
 
 fn sum_pairs(items: &[(i64, i64)]) -> i64 {
-    let mut index: usize = 0;
+    let mut index: i64 = 0;
     let mut total: i64 = 0;
     loop {
-        if index == items.len() {
+        if index == crate::rt::length(items.len()) {
             break total;
         } else {
-            let (left, right) = &items[index];
+            let (left, right) = &items[crate::rt::index(index)];
             (index, total) = (index + 1, total + *left + *right);
             continue;
         }
@@ -74,4 +74,36 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

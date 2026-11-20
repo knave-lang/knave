@@ -12,10 +12,7 @@ fn main() {
     let years: Vec<i64> = vec![2021_i64, 2023_i64, 2018_i64, 2024_i64];
     println!(
         "{}",
-        years
-            .iter()
-            .filter(|&&argument: &&i64| is_recent(argument))
-            .count()
+        crate::rt::count(years.iter().filter(|&&argument: &&i64| is_recent(argument)))
     );
     println!(
         "{}",
@@ -27,10 +24,11 @@ fn main() {
     );
     println!(
         "{}",
-        years
-            .iter()
-            .take_while(|&&argument: &&i64| is_recent(argument))
-            .count()
+        crate::rt::count(
+            years
+                .iter()
+                .take_while(|&&argument: &&i64| is_recent(argument))
+        )
     )
 }
 
@@ -286,5 +284,22 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

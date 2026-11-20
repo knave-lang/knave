@@ -43,31 +43,35 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     println!(
         "{}",
-        bytes()
-            .iter()
-            .take_while(|&&argument: &&u8| is_small_byte(argument))
-            .count()
+        crate::rt::count(
+            bytes()
+                .iter()
+                .take_while(|&&argument: &&u8| is_small_byte(argument))
+        )
     );
     println!(
         "{}",
-        readings()
-            .iter()
-            .take_while(|&&argument: &&u16| is_small_reading(argument))
-            .count()
+        crate::rt::count(
+            readings()
+                .iter()
+                .take_while(|&&argument: &&u16| is_small_reading(argument))
+        )
     );
     println!(
         "{}",
-        offsets()
-            .iter()
-            .take_while(|&&argument: &&i32| is_small_offset(argument))
-            .count()
+        crate::rt::count(
+            offsets()
+                .iter()
+                .take_while(|&&argument: &&i32| is_small_offset(argument))
+        )
     );
     println!(
         "{}",
-        ratios()
-            .iter()
-            .take_while(|&&argument: &&f32| is_small_ratio(argument))
-            .count()
+        crate::rt::count(
+            ratios()
+                .iter()
+                .take_while(|&&argument: &&f32| is_small_ratio(argument))
+        )
     )
 }
 
@@ -86,4 +90,21 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

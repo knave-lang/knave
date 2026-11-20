@@ -21,7 +21,7 @@ fn main() {
     println!("{}", ada.name);
     println!("{}", ada.name.clone());
     println!("{}", ada.age);
-    println!("{}", ORIGIN.len())
+    println!("{}", crate::rt::length(ORIGIN.len()))
 }
 
 mod rt {
@@ -39,4 +39,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

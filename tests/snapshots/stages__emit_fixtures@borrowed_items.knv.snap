@@ -7,16 +7,16 @@ fn is_later<A: PartialOrd>(left: A, right: A) -> bool {
     left > right
 }
 
-fn leaf_count(models: &[&str]) -> usize {
-    models.iter().filter(|m: &&&str| ***m == *"Leaf").count()
+fn leaf_count(models: &[&str]) -> i64 {
+    crate::rt::count(models.iter().filter(|m: &&&str| ***m == *"Leaf"))
 }
 
-fn deref_leaf_count(models: &[&str]) -> usize {
-    models.iter().filter(|m: &&&str| ***m == *"Leaf").count()
+fn deref_leaf_count(models: &[&str]) -> i64 {
+    crate::rt::count(models.iter().filter(|m: &&&str| ***m == *"Leaf"))
 }
 
-fn count_of<A: PartialEq>(names: &[A], wanted: &A) -> usize {
-    names.iter().filter(|n: &&A| *n == wanted).count()
+fn count_of<A: PartialEq>(names: &[A], wanted: &A) -> i64 {
+    crate::rt::count(names.iter().filter(|n: &&A| *n == wanted))
 }
 
 fn report_years(years: &[i64]) {
@@ -25,7 +25,7 @@ fn report_years(years: &[i64]) {
     let is_recent = |y: &i64| *y > 2020;
     println!("{}", years.iter().any(is_recent));
     let is_typed_recent = |y: &&i64| **y > 2020;
-    println!("{}", years.iter().filter(is_typed_recent).count())
+    println!("{}", crate::rt::count(years.iter().filter(is_typed_recent)))
 }
 
 fn main() {
@@ -111,4 +111,21 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

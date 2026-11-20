@@ -28,6 +28,14 @@ impl<'c> NegativeIndexLiterals<'c> {
         problems
     }
 
+    pub(super) fn in_values(values: &[TypedExpr]) -> Diagnostics {
+        let mut problems = Diagnostics::default();
+        for value in values {
+            Self::report_tails(value, &mut problems);
+        }
+        problems
+    }
+
     fn report_tails(value: &TypedExpr, problems: &mut Diagnostics) {
         if let Some(bound) = ReturnedLet::new(value).value() {
             return Self::report_tails(bound, problems);

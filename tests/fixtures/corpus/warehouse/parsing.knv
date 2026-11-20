@@ -13,7 +13,7 @@
 
 (type parse-stock-lines
   (fn ((ref (vec (ref str)))
-       usize
+       int
        (sorted-map string item))
     (result (sorted-map string item) ledger-error)))
 
@@ -30,7 +30,7 @@
     (none (ok stock))))
 
 (type parse-item
-  (fn (usize (ref str))
+  (fn (int (ref str))
     (result item ledger-error)))
 
 (defn parse-item (line row)
@@ -56,9 +56,7 @@
                      (vec)))
 
 (type parse-event-lines
-  (fn ((ref (vec (ref str)))
-       usize
-       (vec event))
+  (fn ((ref (vec (ref str))) int (vec event))
     (result (vec event) ledger-error)))
 
 (defn parse-event-lines (rows index events)
@@ -73,7 +71,7 @@
     (none (ok events))))
 
 (type parse-event
-  (fn (usize (ref str))
+  (fn (int (ref str))
     (result event ledger-error)))
 
 (defn parse-event (line row)
@@ -88,7 +86,7 @@
                                 (str "expected 3 words in `" row "`")))))
 
 (type event-of
-  (fn (usize (ref str) string (ref str))
+  (fn (int (ref str) string (ref str))
     (result event ledger-error)))
 
 (defn event-of (line verb sku amount)
@@ -103,7 +101,7 @@
     (_ (err (ledger-error/bad-line line (str "unknown verb `" verb "`"))))))
 
 (type field-at
-  (fn ((ref (vec (ref str))) usize)
+  (fn ((ref (vec (ref str))) int)
     (ref str)))
 
 (defn field-at (fields index)

@@ -24,7 +24,7 @@ static CARDS: std::sync::LazyLock<Vec<Card<'_>>> = std::sync::LazyLock::new(|| {
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", crate::rt::Shown(&CARDS.len()));
+    println!("{}", crate::rt::Shown(&crate::rt::length(CARDS.len())));
     CARDS
         .iter()
         .for_each(|card: &Card<'_>| println!("{}", card.name))
@@ -282,5 +282,21 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

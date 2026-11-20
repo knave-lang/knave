@@ -21,9 +21,9 @@ fn test_counts() {
     crate::rt::check_equal_with(
         "test_runner_entry.knv:12:3",
         "(assert (= (len \"ab\") 2) \"two letters\")",
-        &"ab".len(),
+        &crate::rt::length("ab".len()),
         &2,
-        |left: &usize, right: &usize| *left == *right,
+        |left: &i64, right: &i64| *left == *right,
         || "two letters",
     );
 }
@@ -504,5 +504,21 @@ mod rt {
             .copied()
             .or_else(|| payload.downcast_ref::<String>().map(String::as_str))
             .unwrap_or("Box<dyn Any>")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

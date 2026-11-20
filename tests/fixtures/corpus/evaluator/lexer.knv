@@ -13,7 +13,7 @@
   (scan (collect (chars source)) 0 (vec)))
 
 (type scan
-  (fn ((ref (vec char)) usize (vec token))
+  (fn ((ref (vec char)) int (vec token))
     (result (vec token) string)))
 
 (defn scan (characters position tokens)
@@ -55,9 +55,9 @@
 
 (type span-end
   (fn ((ref (vec char))
-       usize
+       int
        (fn-mut (char) bool))
-    usize))
+    int))
 
 (defn span-end (characters position accepts)
   (if (and (< position (len characters))
@@ -106,6 +106,5 @@
   (deref (unwrap (get items position))))
 
 (def slice-text
-  (rust "{0}[{1}..{2}].iter().collect::<String>()"
-    (fn ((ref (vec char)) usize usize)
-      string)))
+  (rust "{0}[{index 1}..{index 2}].iter().collect::<String>()"
+    (fn ((ref (vec char)) int int) string)))

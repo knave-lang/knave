@@ -27,7 +27,10 @@ fn main() {
     let items: Vec<i64> = vec![3_i64, 5_i64, 8_i64];
     {
         let show = |y: &i64| peek(y);
-        println!("{}", items.iter().filter(|y: &&i64| show(y) > 3).count())
+        println!(
+            "{}",
+            crate::rt::count(items.iter().filter(|y: &&i64| show(y) > 3))
+        )
     }
     peek_through_shared();
     peek_through_mut()
@@ -285,5 +288,22 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

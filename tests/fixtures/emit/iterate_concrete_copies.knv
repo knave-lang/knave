@@ -3,14 +3,14 @@
 (defn total (values) (sum values))
 
 (type count-long
-  (fn ((iterator (ref str))) usize))
+  (fn ((iterator (ref str))) int))
 
 (defn count-long (names)
   (count (filter names
            (fn (name) (> (len name) 4)))))
 
 (type count-big
-  (fn ((iterator (ref i64))) usize))
+  (fn ((iterator (ref i64))) int))
 
 (defn count-big (values)
   (count (filter values

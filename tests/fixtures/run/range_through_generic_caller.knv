@@ -1,10 +1,10 @@
 (type count-to
-  (where ((n integer)) (fn (n) usize)))
+  (where ((n integer)) (fn (n) int)))
 
 (defn count-to (n) (count (range 0 n)))
 
 (type count-twice
-  (where ((n integer)) (fn (n) usize)))
+  (where ((n integer)) (fn (n) int)))
 
 (defn count-twice (n)
   (+ (count-to n) (count-to n)))

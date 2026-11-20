@@ -10,10 +10,10 @@
   (area (fn ((ref self)) f64))
 
   (label-length
-    (fn ((ref self)) usize))
+    (fn ((ref self)) int))
 
   (label-details
-    (fn ((ref self)) usize))
+    (fn ((ref self)) int))
 
   (wait (fn ((ref self)) unit)))
 

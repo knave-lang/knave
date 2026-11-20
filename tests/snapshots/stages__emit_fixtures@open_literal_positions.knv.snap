@@ -36,7 +36,7 @@ struct Holder<A> {
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    let is_several = std::env::args().skip(1).collect::<Vec<String>>().len() > 5;
+    let is_several = crate::rt::length(std::env::args().skip(1).collect::<Vec<String>>().len()) > 5;
     let odometer: i64 = 2024;
     let total: i64 = same(3000000000);
     println!("{}", total);
@@ -365,5 +365,21 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

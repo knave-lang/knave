@@ -1,4 +1,4 @@
-(type consume (fn ((vec i64)) usize))
+(type consume (fn ((vec i64)) int))
 
 (defn consume (items) (len items))
 

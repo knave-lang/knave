@@ -1,0 +1,2 @@
+(defn main ()
+  (let (v (vec 1 2)) (prn (assoc v -1 9))))

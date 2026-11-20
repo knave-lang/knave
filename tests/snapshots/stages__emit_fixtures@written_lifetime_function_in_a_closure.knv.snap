@@ -5,8 +5,9 @@ expression: reports.report(path)
 input_file: tests/fixtures/emit/written_lifetime_function_in_a_closure.knv
 ---
 fn lines_longer_than<'a>(text: &'a str, shortest: &str) -> impl Iterator<Item = &'a str> {
-    text.lines()
-        .filter(move |line: &&'a str| (*line).len() > shortest.len())
+    text.lines().filter(move |line: &&'a str| {
+        crate::rt::length((*line).len()) > crate::rt::length(shortest.len())
+    })
 }
 
 fn main() {
@@ -29,4 +30,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

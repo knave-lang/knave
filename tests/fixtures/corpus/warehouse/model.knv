@@ -10,7 +10,7 @@
   (defaults :reorder-at 10))
 
 (defstruct entry
-  :sequence usize
+  :sequence int
   :sku string
   :delta i64
   :balance u32)
@@ -29,7 +29,7 @@
   (negative-count (struct (sku string)
                           (removed u32)
                           (available u32)))
-  (bad-line (struct (line usize) (reason string)))
+  (bad-line (struct (line int) (reason string)))
   (bad-number parse-int-error))
 
 (trait valued

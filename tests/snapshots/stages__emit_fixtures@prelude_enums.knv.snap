@@ -10,12 +10,12 @@ fn checked_half(n: i64) -> Result<i64, &'static str> {
 fn main() {
     crate::rt::restore_default_sigpipe();
     let numbers: Vec<i64> = vec![10_i64, 20_i64, 30_i64];
-    let index: usize = 0;
+    let index: i64 = 0;
     let first: Option<i64> = Some(5);
     println!("{}", first.unwrap());
     println!(
         "{}",
-        match numbers.get(index) {
+        match numbers.get(usize::try_from(index).unwrap_or(usize::MAX)) {
             Some(x) => *x,
             None => 0,
         }

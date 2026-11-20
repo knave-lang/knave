@@ -3,21 +3,21 @@
   :year u16)
 
 (type count-long
-  (fn ((iterator (ref str))) usize))
+  (fn ((iterator (ref str))) int))
 
 (defn count-long (names)
   (count (filter names
            (fn (name) (> (len name) 4)))))
 
 (type count-big
-  (fn ((iterator (ref i64))) usize))
+  (fn ((iterator (ref i64))) int))
 
 (defn count-big (values)
   (count (filter values
            (fn (value) (> value 50)))))
 
 (type count-new
-  (fn ((iterator (ref car))) usize))
+  (fn ((iterator (ref car))) int))
 
 (defn count-new (cars)
   (count (filter cars
@@ -26,7 +26,7 @@
 (type count-both
   (fn ((iterator (ref str))
        (iterator (ref str)))
-    usize))
+    int))
 
 (defn count-both (models makers)
   (+ (count models) (count makers)))

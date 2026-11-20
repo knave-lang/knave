@@ -9,7 +9,7 @@ fn read_source<S: crate::rt::Source + ?Sized>(source: &S) -> Result<String, std:
 
 fn report(read: &Result<String, std::io::Error>) {
     match read {
-        Ok(text) => println!("{}", text.len()),
+        Ok(text) => println!("{}", crate::rt::length(text.len())),
         Err(error) => eprintln!("{}", error),
     }
 }
@@ -65,4 +65,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

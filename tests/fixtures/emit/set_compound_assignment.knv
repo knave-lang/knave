@@ -3,7 +3,7 @@
   :misses i64)
 
 (defstruct cursor
-  :i usize)
+  :i int)
 
 (defn miss! (tally)
   (set! (:misses tally)

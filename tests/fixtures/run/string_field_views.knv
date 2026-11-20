@@ -15,8 +15,7 @@
 
 (defn name-of (someone) (:name someone))
 
-(type name-length
-  (fn ((ref str)) usize))
+(type name-length (fn ((ref str)) int))
 
 (defn name-length (name) (len name))
 

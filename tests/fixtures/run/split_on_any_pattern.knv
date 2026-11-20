@@ -1,6 +1,6 @@
 (type part-count
   (where ((p pattern))
-    (fn ((ref str) p) usize)))
+    (fn ((ref str) p) int)))
 
 (defn part-count (text separator)
   (count (split text separator)))

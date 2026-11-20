@@ -1,6 +1,6 @@
 (defstruct named
   :name string
-  :size usize)
+  :size int)
 
 (defn main ()
   (local label (str "abc"))

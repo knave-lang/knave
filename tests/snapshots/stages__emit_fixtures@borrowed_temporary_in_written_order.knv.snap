@@ -48,7 +48,7 @@ fn nums() -> Vec<i64> {
 }
 
 fn first_of(items: impl Iterator<Item = i64>, text: &str) -> &str {
-    &text[0..items.count()]
+    &text[0..crate::rt::index(crate::rt::count(items))]
 }
 
 fn seven() -> i64 {
@@ -301,4 +301,37 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

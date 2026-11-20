@@ -30,8 +30,8 @@ fn announced(text: &str) -> String {
     text.to_string()
 }
 
-fn prefix(size: usize, text: &str) -> &str {
-    &text[0..size]
+fn prefix(size: i64, text: &str) -> &str {
+    &text[0..crate::rt::index(size)]
 }
 
 fn through_as_str(name: &str) {
@@ -76,10 +76,10 @@ fn through_nested_str(name: &str) {
     println!("{}", letter)
 }
 
-fn through_try(name: &str) -> Result<usize, std::io::Error> {
+fn through_try(name: &str) -> Result<i64, std::io::Error> {
     let owner = format!("{}-j", name);
     let letter = checked(owner.as_str())?;
-    Ok(letter.len())
+    Ok(crate::rt::length(letter.len()))
 }
 
 fn label_text<'a>(tag: &'a Label<'a>) -> &'a str {
@@ -106,7 +106,7 @@ fn written_borrow_of_struct(name: &str) {
 fn in_written_order() {
     let owner;
     let shown = prefix(
-        announced("first").len(),
+        crate::rt::length(announced("first").len()),
         {
             owner = announced("second");
             &owner
@@ -430,5 +430,37 @@ mod rt {
             Ok(value) => value,
             Err(error) => panic!("called unwrap-ok on (err {})", Shown(&error)),
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

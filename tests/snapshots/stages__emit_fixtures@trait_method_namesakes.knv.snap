@@ -8,7 +8,7 @@ fn main() {
     let mut readings: Vec<i64> = vec![1200_i64, 3400_i64];
     crate::trait_method_namesakes::odometers::reset_odometer(&mut readings);
     crate::trait_method_namesakes::counters::reset_counter(&mut readings);
-    println!("{} {}", readings[0], readings.len())
+    println!("{} {}", readings[0], crate::rt::length(readings.len()))
 }
 
 mod trait_method_namesakes {
@@ -79,4 +79,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

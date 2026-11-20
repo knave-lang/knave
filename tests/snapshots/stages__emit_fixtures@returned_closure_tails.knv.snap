@@ -25,9 +25,9 @@ fn bound_adder(x: i64) -> impl Fn(i64) -> i64 {
     add
 }
 
-fn bound_measurer(limit: usize) -> impl Fn(&str) -> usize {
-    let most: usize = limit;
-    let measure = move |name: &str| name.len() + most;
+fn bound_measurer(limit: i64) -> impl Fn(&str) -> i64 {
+    let most: i64 = limit;
+    let measure = move |name: &str| crate::rt::length(name.len()) + most;
     println!("{}", measure(""));
     measure
 }
@@ -63,4 +63,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

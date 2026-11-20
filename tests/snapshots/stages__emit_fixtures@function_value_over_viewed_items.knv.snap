@@ -3,12 +3,12 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/function_value_over_viewed_items.knv
 ---
-fn width(row: &[i64]) -> usize {
-    row.len()
+fn width(row: &[i64]) -> i64 {
+    crate::rt::length(row.len())
 }
 
 fn is_long(model: &str) -> bool {
-    model.len() > 4
+    crate::rt::length(model.len()) > 4
 }
 
 fn models() -> Vec<String> {
@@ -24,10 +24,11 @@ fn main() {
     );
     println!(
         "{}",
-        models()
-            .iter()
-            .filter(|argument: &&String| is_long(argument))
-            .count()
+        crate::rt::count(
+            models()
+                .iter()
+                .filter(|argument: &&String| is_long(argument))
+        )
     )
 }
 
@@ -94,4 +95,37 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

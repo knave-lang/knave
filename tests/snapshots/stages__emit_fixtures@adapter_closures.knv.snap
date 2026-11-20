@@ -14,12 +14,18 @@ fn make_car(make: &str, year: u16) -> Car<'_> {
 }
 
 fn report_years(years: &[i64]) {
-    println!("{}", years.iter().filter(|y: &&i64| **y > 2020).count());
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| **y > 2020))
+    );
     println!(
         "{}",
         crate::prelude::iterator::sum(years.iter().map(|y: &i64| *y + 1))
     );
-    println!("{}", years.iter().take_while(|y: &&i64| **y < 2022).count());
+    println!(
+        "{}",
+        crate::rt::count(years.iter().take_while(|y: &&i64| **y < 2022))
+    );
     println!(
         "{}",
         crate::rt::Shown(&years.iter().find(|y: &&i64| **y > 2020))
@@ -33,7 +39,7 @@ fn report_years(years: &[i64]) {
 fn report_cars(cars: &[Car<'_>]) {
     println!(
         "{}",
-        cars.iter().filter(|c: &&Car<'_>| c.year > 2020).count()
+        crate::rt::count(cars.iter().filter(|c: &&Car<'_>| c.year > 2020))
     );
     println!(
         "{}",
@@ -41,7 +47,7 @@ fn report_cars(cars: &[Car<'_>]) {
     );
     println!(
         "{}",
-        cars.iter().take_while(|c: &&Car<'_>| c.year > 2020).count()
+        crate::rt::count(cars.iter().take_while(|c: &&Car<'_>| c.year > 2020))
     );
     println!(
         "{}",
@@ -60,7 +66,10 @@ fn report_cars(cars: &[Car<'_>]) {
 fn main() {
     crate::rt::restore_default_sigpipe();
     let years: Vec<i64> = vec![2019_i64, 2021_i64, 2024_i64];
-    println!("{}", years.iter().filter(|y: &&i64| **y > 2020).count());
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| **y > 2020))
+    );
     println!(
         "{}",
         crate::prelude::iterator::sum(years.iter().map(|y: &i64| *y + 1))
@@ -381,5 +390,22 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

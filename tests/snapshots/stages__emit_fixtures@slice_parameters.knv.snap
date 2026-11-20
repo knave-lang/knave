@@ -20,8 +20,8 @@ fn make_car<'a>(make: &'a str, model: &'a str, year: u16, is_electric: bool) -> 
     }
 }
 
-fn size(items: &[Car<'_>]) -> usize {
-    items.len()
+fn size(items: &[Car<'_>]) -> i64 {
+    crate::rt::length(items.len())
 }
 
 fn print_years(cars: &[Car<'_>]) {
@@ -59,12 +59,12 @@ fn main() {
     let fleet = vec![leaf, civic];
     println!("{}", size(&fleet));
     print_years(&fleet);
-    println!("{}", years(&fleet).len());
+    println!("{}", crate::rt::length(years(&fleet).len()));
     println!("{}", second_year(&fleet));
     println!("{}", maybe_second_year(&fleet).unwrap_or(0));
     let mut model_years: Vec<i64> = vec![2019_i64];
     add_year(&mut model_years, 2024);
-    println!("{}", model_years.len())
+    println!("{}", crate::rt::length(model_years.len()))
 }
 
 mod rt {
@@ -82,4 +82,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

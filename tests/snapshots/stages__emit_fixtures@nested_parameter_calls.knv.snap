@@ -43,7 +43,7 @@ fn main() {
             1
         )
     );
-    println!("{}", calls.len());
+    println!("{}", crate::rt::length(calls.len()));
     println!("{}", around(inc, |n: i64| n * 10, 1));
     println!("{}", is_both_positive(|n: i64| n > 0, 1));
     let mut record = |n: i64| {
@@ -54,7 +54,7 @@ fn main() {
         let call_argument_0 = record(1);
         record(call_argument_0)
     });
-    println!("{}", calls.len())
+    println!("{}", crate::rt::length(calls.len()))
 }
 
 mod rt {
@@ -72,4 +72,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

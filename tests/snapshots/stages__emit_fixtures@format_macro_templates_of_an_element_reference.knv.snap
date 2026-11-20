@@ -17,7 +17,7 @@ fn main() {
             out
         });
         {
-            let template_argument_0 = (*trick).len();
+            let template_argument_0 = crate::rt::length((*trick).len());
             let template_argument_1 = trick;
             {
                 assert!(template_argument_0 > 0, "empty {}", template_argument_1);
@@ -28,7 +28,7 @@ fn main() {
         }
     });
     tricks.push("dash");
-    println!("{}", tricks.len())
+    println!("{}", crate::rt::length(tricks.len()))
 }
 
 mod rt {
@@ -46,4 +46,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

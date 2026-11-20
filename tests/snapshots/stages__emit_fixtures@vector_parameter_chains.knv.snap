@@ -22,24 +22,24 @@ fn oldest_year(years: &[i64]) -> &i64 {
 }
 
 fn newest_year(years: &[i64]) -> &i64 {
-    &years[years.len() - 1]
+    &years[crate::rt::index(crate::rt::length(years.len()) - 1)]
 }
 
 fn year_span(years: &[i64]) -> i64 {
     *newest_year(years) - *oldest_year(years)
 }
 
-fn added_years(years: &[i64], index: usize) -> i64 {
-    if index < years.len() {
-        years[index] + subtracted_years(years, index + 1)
+fn added_years(years: &[i64], index: i64) -> i64 {
+    if index < crate::rt::length(years.len()) {
+        years[crate::rt::index(index)] + subtracted_years(years, index + 1)
     } else {
         0
     }
 }
 
-fn subtracted_years(years: &[i64], index: usize) -> i64 {
-    if index < years.len() {
-        added_years(years, index + 1) - years[index]
+fn subtracted_years(years: &[i64], index: i64) -> i64 {
+    if index < crate::rt::length(years.len()) {
+        added_years(years, index + 1) - years[crate::rt::index(index)]
     } else {
         0
     }
@@ -56,15 +56,15 @@ fn fill_years(years: &mut Vec<i64>, year: i64, remaining: i64) {
     }
 }
 
-fn year_capacity(years: &Vec<i64>) -> usize {
-    years.capacity()
+fn year_capacity(years: &Vec<i64>) -> i64 {
+    crate::rt::convert::<i64, _>(years.capacity())
 }
 
-fn year_count<A: crate::rt::Sequence>(years: &A) -> usize {
-    years.len()
+fn year_count<A: crate::rt::Sequence>(years: &A) -> i64 {
+    crate::rt::length(years.len())
 }
 
-fn counted_years(years: &Vec<i64>) -> usize {
+fn counted_years(years: &Vec<i64>) -> i64 {
     year_count(years)
 }
 
@@ -89,13 +89,21 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     let mut leaf_years: Vec<i64> = vec![2011_i64, 2017_i64];
     record_decade(&mut leaf_years, 2019);
-    println!("{} {}", leaf_years.len(), year_span(&leaf_years));
-    println!("{}", added_years(&leaf_years, 0));
-    fill_years(&mut leaf_years, 2024, 2);
-    println!("{} {}", leaf_years.len(), oldest_year(&leaf_years));
     println!(
         "{} {}",
-        leaf_years.len() <= year_capacity(&leaf_years),
+        crate::rt::length(leaf_years.len()),
+        year_span(&leaf_years)
+    );
+    println!("{}", added_years(&leaf_years, 0));
+    fill_years(&mut leaf_years, 2024, 2);
+    println!(
+        "{} {}",
+        crate::rt::length(leaf_years.len()),
+        oldest_year(&leaf_years)
+    );
+    println!(
+        "{} {}",
+        crate::rt::length(leaf_years.len()) <= year_capacity(&leaf_years),
         counted_years(&leaf_years)
     );
     let count_years = year_count;
@@ -105,6 +113,55 @@ fn main() {
 }
 
 mod rt {
+    use std::ops::{
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign,
+    };
+
+    pub trait Number:
+        Copy
+        + PartialOrd
+        + Add<Output = Self>
+        + Sub<Output = Self>
+        + Mul<Output = Self>
+        + Div<Output = Self>
+        + Rem<Output = Self>
+        + AddAssign
+        + SubAssign
+        + MulAssign
+        + DivAssign
+        + RemAssign
+    {
+    }
+
+    macro_rules! numbers {
+        ($($number:ty),*) => {
+            $(
+                impl Number for $number {}
+            )*
+        };
+    }
+
+    numbers!(
+        i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+    );
+
+    pub trait Integer:
+        Number + std::fmt::Display + TryFrom<i128> + TryFrom<u128> + TryInto<i128> + TryInto<u128>
+    {
+    }
+
+    macro_rules! integers {
+        ($($integer:ty),*) => {
+            $(
+                impl Integer for $integer {}
+            )*
+        };
+    }
+
+    integers!(
+        i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize
+    );
+
     pub trait Sequence {
         fn len(&self) -> usize;
     }
@@ -153,4 +210,65 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn convert<To: Integer, From: Integer>(value: From) -> To {
+        let signed = From::try_from(-1_i128).is_ok();
+        let converted = if signed {
+            TryInto::<i128>::try_into(value)
+                .ok()
+                .and_then(|wide| To::try_from(wide).ok())
+        } else {
+            TryInto::<u128>::try_into(value)
+                .ok()
+                .and_then(|wide| To::try_from(wide).ok())
+        };
+        match converted {
+            Some(converted) => converted,
+            None => conversion_overflow::<To, From>(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn conversion_overflow<To: Integer, From: Integer>(value: From) -> ! {
+        panic!(
+            "attempt to convert {value} to `{}` with overflow",
+            std::any::type_name::<To>()
+        )
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

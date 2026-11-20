@@ -3,14 +3,14 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/set_integer_keys.knv
 ---
-fn set_next(years: &mut [i64], i: usize, year: i64) {
-    years[i + 1] = year
+fn set_next(years: &mut [i64], i: i64, year: i64) {
+    years[crate::rt::index(i + 1)] = year
 }
 
-fn fill(years: &mut [i64], mut i: usize, n: usize) {
+fn fill(years: &mut [i64], mut i: i64, n: i64) {
     loop {
         if i < n {
-            years[i] = 2020;
+            years[crate::rt::index(i)] = 2020;
             i += 1;
             continue;
         } else {
@@ -43,4 +43,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
 }

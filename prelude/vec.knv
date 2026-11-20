@@ -125,8 +125,8 @@
       (fn ((mut (vec a))) (option a)))))
 
 (def remove-at!
-  (rust "{0}.remove({1})"
-    (where (a) (fn ((mut (vec a)) usize) a))))
+  (rust "{0}.remove({index 1})"
+    (where (a) (fn ((mut (vec a)) int) a))))
 
 (def sort-ascending!
   (rust "{0}.sort()"
@@ -153,15 +153,15 @@
         unit))))
 
 (def windows
-  (rust "{0}.windows({1})"
+  (rust "{0}.windows({index 1})"
     (where (a)
-      (fn ((ref (slice a)) usize)
+      (fn ((ref (slice a)) int)
         (iterator (ref (slice a)))))))
 
 (def at
-  (rust "&{0}[{1}]"
+  (rust "&{0}[{index 1}]"
     (where (a)
-      (fn ((ref (slice a)) usize) (ref a)))))
+      (fn ((ref (slice a)) int) (ref a)))))
 
 (def first
   (macro (form)
@@ -257,8 +257,8 @@
 (document (remove-at! items index)
   "Removes the item at an index and returns it.
 
-  `index` is a [usize], so an [int] is an error. Each later item moves down by
-  one. It panics when `index` is not below the vector's length.
+  Each later item moves down by one. It panics when `index` is negative or
+  not below the vector's length.
 
   (let (items (vec 1 2 3))
     (remove-at! items 0))
@@ -306,9 +306,8 @@
 (document (windows items size)
   "Returns an iterator over each run of `size` neighboring items of a slice.
 
-  Each run is a `(ref (slice a))`. `size` is a [usize], so an [int] is an
-  error. A slice shorter than `size` gives no run. It panics when `size` is
-  zero. A vector passes as its slice.
+  Each run is a `(ref (slice a))`. A slice shorter than `size` gives no run.
+  It panics when `size` is zero or negative. A vector passes as its slice.
 
   (-> (vec 1 2 3) (windows 2) count)
   => 2
@@ -319,9 +318,8 @@
 (document (at items index)
   "Returns a borrow of the item at an index.
 
-  `index` is a [usize], so an [int] is an error. It panics when `index` is not
-  below the length. `get` returns an [option] in place of the panic. A vector
-  passes as its slice.
+  It panics when `index` is negative or not below the length. `get` returns
+  an [option] in place of the panic. A vector passes as its slice.
 
   (let (items (vec 10 20))
     (deref (at items 1)))

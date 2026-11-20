@@ -12,7 +12,7 @@
   (scan (collect (chars source)) 0 (vec)))
 
 (type scan
-  (fn ((ref (vec char)) usize (vec token))
+  (fn ((ref (vec char)) int (vec token))
     (result (vec token) string)))
 
 (defn scan (characters position tokens)

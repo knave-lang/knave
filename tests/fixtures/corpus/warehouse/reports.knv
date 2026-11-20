@@ -61,7 +61,7 @@
         (println (str "  " name ": " (dollars (deref worth))))))))
 
 (type print-top-value
-  (fn ((ref (sorted-map string item)) usize)
+  (fn ((ref (sorted-map string item)) int)
     unit))
 
 (defn print-top-value (stock limit)

@@ -28,7 +28,7 @@
   (str text))
 
 (type prefix
-  (fn (usize (ref str)) (ref str)))
+  (fn (int (ref str)) (ref str)))
 
 (defn prefix (size text) (subs text 0 size))
 
@@ -63,7 +63,7 @@
   (println letter))
 
 (type through-try
-  (fn ((ref str)) (result usize io-error)))
+  (fn ((ref str)) (result int io-error)))
 
 (defn through-try (name)
   (local letter

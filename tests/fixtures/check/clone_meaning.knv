@@ -15,7 +15,7 @@
   (store-in-vec stack)
   (push! stack 1))
 
-(type walk (fn ((vec i64) i64) usize))
+(type walk (fn ((vec i64) i64) int))
 
 (defn walk (stack n)
   (if (= n 0)

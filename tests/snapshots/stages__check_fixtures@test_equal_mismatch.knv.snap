@@ -7,6 +7,6 @@ error[L0401]: mismatched types
  --> check/test_equal_mismatch.knv:4:3
   |
 4 |   (assert (= (len "ab") "two")))
-  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `str`
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `int`, found `str`
   |
   = note: run `knave doc L0401` for an explanation

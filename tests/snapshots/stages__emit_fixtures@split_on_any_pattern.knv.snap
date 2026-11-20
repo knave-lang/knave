@@ -3,8 +3,8 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/split_on_any_pattern.knv
 ---
-fn part_count<P: crate::rt::Separator>(text: &str, separator: P) -> usize {
-    crate::rt::Separator::split(separator, text).count()
+fn part_count<P: crate::rt::Separator>(text: &str, separator: P) -> i64 {
+    crate::rt::count(crate::rt::Separator::split(separator, text))
 }
 
 fn main() {
@@ -20,7 +20,7 @@ fn main() {
         strings.push(";".to_string());
         strings.iter().for_each(|separator: &String| {
             println!("{}", part_count("a;b", separator));
-            println!("{}", "a;b;c".split(separator).count())
+            println!("{}", crate::rt::count("a;b;c".split(separator)))
         })
     }
     {
@@ -29,16 +29,14 @@ fn main() {
         literals.push(";");
         literals.iter().for_each(|separator: &&str| {
             println!("{}", part_count("a,b;c", separator));
-            println!("{}", "a,b;c".split(separator).count())
+            println!("{}", crate::rt::count("a,b;c".split(separator)))
         })
     }
-    println!("{}", "a,b".split(",").count());
-    println!("{}", "a b".split(' ').count());
+    println!("{}", crate::rt::count("a,b".split(",")));
+    println!("{}", crate::rt::count("a b".split(' ')));
     println!(
         "{}",
-        "a1b"
-            .split(|argument_0: char| argument_0.is_ascii_digit())
-            .count()
+        crate::rt::count("a1b".split(|argument_0: char| argument_0.is_ascii_digit()))
     )
 }
 
@@ -103,4 +101,21 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

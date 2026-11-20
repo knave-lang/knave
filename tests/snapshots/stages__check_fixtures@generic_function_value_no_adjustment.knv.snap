@@ -7,7 +7,7 @@ error[L0507]: mismatched function type
  --> check/generic_function_value_no_adjustment.knv:9:25
   |
 9 |   (println (apply-first change! (vec (vec 1)))))
-  |                         ^^^^^^^ expected `(fn ((ref (vec int))) usize)`, found `(fn ((mut (vec int))) usize)`
+  |                         ^^^^^^^ expected `(fn ((ref (vec int))) int)`, found `(fn ((mut (vec int))) int)`
   |
   = note: no adjustment makes parameter 1 match
   = help: change the parameter's ownership in a `type` signature, or pass a function that matches

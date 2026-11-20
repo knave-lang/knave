@@ -19,7 +19,7 @@
     (fn (value) (< value 50))))
 
 (type how-many
-  (fn ((iterator i64)) usize))
+  (fn ((iterator i64)) int))
 
 (defn how-many (values) (count values))
 

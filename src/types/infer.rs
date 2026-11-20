@@ -2404,10 +2404,10 @@ impl TypeChecker {
         let element = self.unifier.fresh();
         let parameters = vec![
             Type::shared(self.prelude_types().slice_of(element.clone())),
-            Type::Primitive(PrimitiveType::Usize),
+            Collection::INDEX,
         ];
         let result = self.prelude_types().option_type(element);
-        let template = SyntheticTemplate::LOOK_UP.text();
+        let template = SyntheticTemplate::SLICE_LOOK_UP.text();
         self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
@@ -2733,11 +2733,11 @@ impl TypeChecker {
             .expect(Expectation::plain(&target), collection.ty(), value.span)
             .map_err(|error| self.point_struct_base_to_fields(error, collection.ty()))?;
         let mut parameters = vec![Type::mutable(target)];
-        parameters.extend((0..depth).map(|_| Type::Primitive(PrimitiveType::Usize)));
+        parameters.extend((0..depth).map(|_| Collection::INDEX));
         parameters.push(item_type);
         let mut template = "{0}".to_string();
         for index in 1..=depth {
-            template.push_str(&format!("[{{{index}}}]"));
+            template.push_str(&format!("[{{index {index}}}]"));
         }
         template.push_str(&format!(" = {{{}}}", depth + 1));
         let mut arguments = Vec::with_capacity(keys.len() + 1);
@@ -2882,7 +2882,7 @@ impl TypeChecker {
         for key in keys {
             let typed = self.infer(key)?;
             self.unification().expect(
-                Expectation::plain(&Type::Primitive(PrimitiveType::Usize)),
+                Expectation::plain(&Collection::INDEX),
                 &typed.ty,
                 typed.span,
             )?;

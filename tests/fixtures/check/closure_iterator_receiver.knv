@@ -1,15 +1,18 @@
 (defn main ()
   (local years (vec 2019 2021 2024))
-  (local tally (fn (it) (count it)))
-  (println (tally (iter years)))
-  (local offset-tally
-    (fn (it) (+ 1 (count it))))
-  (println (offset-tally (iter years)))
-  (local alias-tally
-    (fn (it) (local items it) (count items)))
-  (println (alias-tally (iter years)))
-  (local nested-alias-tally
+  (local found (fn (it) (some? (max it))))
+  (println (found (iter years)))
+  (local not-empty
+    (fn (it) (not (none? (max it)))))
+  (println (not-empty (iter years)))
+  (local alias-found
     (fn (it)
-      (+ 1
-         (do (local items it) (count items)))))
-  (println (nested-alias-tally (iter years))))
+      (local items it)
+      (some? (max items))))
+  (println (alias-found (iter years)))
+  (local nested-alias-found
+    (fn (it)
+      (not (do
+             (local items it)
+             (none? (max items))))))
+  (println (nested-alias-found (iter years))))

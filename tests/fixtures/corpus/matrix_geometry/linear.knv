@@ -25,17 +25,17 @@
           (str (rounded (deref value)))
           (str text " " (rounded (deref value))))))))
 
-(type size (fn ((ref matrix)) usize))
+(type size (fn ((ref matrix)) int))
 
 (defn size (m) (len (:rows m)))
 
 (type cell
-  (fn ((ref matrix) usize usize) f64))
+  (fn ((ref matrix) int int) f64))
 
 (defn cell (m row column)
   (at (at (:rows m) row) column))
 
-(type identity (fn (usize) matrix))
+(type identity (fn (int) matrix))
 
 (defn identity (n)
   (->matrix (collect (map (range 0 n)
@@ -56,7 +56,7 @@
                                       (dot-at left right row column)))))))))
 
 (type dot-at
-  (fn ((ref matrix) (ref matrix) usize usize)
+  (fn ((ref matrix) (ref matrix) int int)
     f64))
 
 (defn dot-at (left right row column)
@@ -76,7 +76,7 @@
                                     (fn (column) (cell m column row)))))))))
 
 (type minor
-  (fn ((ref matrix) usize) matrix))
+  (fn ((ref matrix) int) matrix))
 
 (defn minor (m skipped)
   (local n (size m))
@@ -100,7 +100,7 @@
               (cell m 0 column)
               (determinant (ref (minor m column)))))))))
 
-(type sign-of (fn (usize) f64))
+(type sign-of (fn (int) f64))
 
 (defn sign-of (column)
   (if (= (rem column 2) 0) 1.0 -1.0))
@@ -119,7 +119,7 @@
                           whole)))))))
 
 (type replace-column
-  (fn ((ref matrix) usize (ref (vec f64)))
+  (fn ((ref matrix) int (ref (vec f64)))
     matrix))
 
 (defn replace-column (m replaced targets)

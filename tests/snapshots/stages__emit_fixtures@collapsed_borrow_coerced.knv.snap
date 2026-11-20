@@ -7,8 +7,8 @@ fn total(value: &i64) -> i64 {
     *value + 1
 }
 
-fn count_items<A>(items: &[A]) -> usize {
-    items.len()
+fn count_items<A>(items: &[A]) -> i64 {
+    crate::rt::length(items.len())
 }
 
 fn main() {
@@ -35,7 +35,7 @@ fn main() {
         .iter()
         .map(|name: &&str| **name == *"a")
         .collect::<Vec<_>>();
-    println!("{}", matches.len())
+    println!("{}", crate::rt::length(matches.len()))
 }
 
 mod rt {
@@ -53,4 +53,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

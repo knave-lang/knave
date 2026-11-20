@@ -17,7 +17,7 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     let leaf = make_car("Leaf", 2024);
     println!("{}", leaf.twin().model);
-    println!("{}", leaf.fleet().len());
+    println!("{}", crate::rt::length(leaf.fleet().len()));
     println!("{}", leaf.rename("Nissan").year);
     println!("{}", leaf.newer(make_car("Golf", 2019)).model);
     println!("{}", leaf.swap(2030).year)
@@ -69,4 +69,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

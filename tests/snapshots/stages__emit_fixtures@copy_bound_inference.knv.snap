@@ -26,11 +26,11 @@ fn bigger<A: PartialOrd>(a: A, b: A) -> A {
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", twice(3_i64).len());
-    println!("{}", twice(1.5).len());
-    println!("{}", twice_pinned(3_i64).len());
-    println!("{}", wrap(3_i64).len());
-    println!("{}", wrap("one".to_string()).len());
+    println!("{}", crate::rt::length(twice(3_i64).len()));
+    println!("{}", crate::rt::length(twice(1.5).len()));
+    println!("{}", crate::rt::length(twice_pinned(3_i64).len()));
+    println!("{}", crate::rt::length(wrap(3_i64).len()));
+    println!("{}", crate::rt::length(wrap("one".to_string()).len()));
     show_twice(&3_i64);
     show_twice(&"two".to_string());
     println!("{}", bigger(1_i64, 2));
@@ -52,4 +52,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

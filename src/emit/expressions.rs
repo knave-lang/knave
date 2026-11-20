@@ -5,6 +5,7 @@ use rustc_hash::FxHashSet;
 
 use super::argument_role::ArgumentRole;
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
+use super::converted_argument::ConvertedArgument;
 use super::destructured_wrapper::DestructuredWrapper;
 use super::double_negation::DoubleNegation;
 use super::emitted_types::EmittedTypes;
@@ -1394,11 +1395,10 @@ impl<'a> ExpressionEmitter<'a> {
             inner.push(Fragment::Text(name.to_string()));
             return inner;
         }
-        let key_codes: Vec<Code> = keys.iter().map(|key| self.expr(key)).collect();
         inner.push(Fragment::Text(name.to_string()));
-        for key in key_codes {
+        for key in keys {
             inner.push(Fragment::Text("[".to_string()));
-            inner.extend(key.fragments);
+            inner.extend(ConvertedArgument::INDEX.code(&self.expr(key)).fragments);
             inner.push(Fragment::Text("]".to_string()));
         }
         inner.push(Fragment::Text(" = ".to_string()));

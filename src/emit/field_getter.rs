@@ -1,9 +1,7 @@
 use super::field_trait_path::FieldTraitPath;
 use super::fragment::{Code, Precedence};
 use crate::core::{FieldLabel, ModuleId, ReferenceKind};
-use crate::types::{
-    Type, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram, Unborrowed, WrittenBorrows,
-};
+use crate::types::{Type, TypedExpr, TypedExprKind, TypedProgram, Unborrowed, WrittenBorrows};
 
 pub(super) struct FieldGetter<'a> {
     program: &'a TypedProgram,
@@ -23,7 +21,7 @@ impl<'a> FieldGetter<'a> {
         let getter = FieldTraitPath::new(self.program)
             .getter(&label.name, self.module)
             .expect("a read of a generic owner has a field trait");
-        let receiver = if self.is_reference(Self::receiver_of(owner)) {
+        let receiver = if Self::is_reference(Self::receiver_of(owner)) {
             receiver
         } else {
             Self::borrowed(receiver)
@@ -44,10 +42,8 @@ impl<'a> FieldGetter<'a> {
         }
     }
 
-    fn is_reference(&self, receiver: &TypedExpr) -> bool {
-        let borrowed_parameter = matches!(receiver.kind,
-            TypedExprKind::Leaf(TypedLeaf::Local(binding)) if self.program.ownership.parameter_modes.borrows(binding));
-        borrowed_parameter || matches!(receiver.ty, Type::Ref(..) | Type::Mut(..))
+    fn is_reference(receiver: &TypedExpr) -> bool {
+        matches!(receiver.ty, Type::Ref(..) | Type::Mut(..))
     }
 
     fn borrowed(receiver: Code) -> Code {

@@ -80,7 +80,7 @@ impl<'l> WrittenTypeLowering<'l> {
         };
         if let Some(field) = &bound.field {
             let field_traits = &self.declarations.traits().rust_paths().field_traits();
-            let field_trait = (field_traits.trait_of(field))
+            let field_trait = (field_traits.bindings().trait_of(field))
                 .ok_or_else(|| self.unregistered_field(field, argument.span()))?;
             let read = self.lower_type(argument, scope)?;
             let written = Bound::with_argument(field_trait, read);

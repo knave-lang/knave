@@ -1,4 +1,5 @@
 use super::declarations::Declarations;
+use super::open_field_owner::OpenFieldOwner;
 use super::ty::{Bound, Type, TypeVar};
 use super::unborrowed::Unborrowed;
 use super::unifier::Unifier;
@@ -19,12 +20,13 @@ impl<'c> FieldBound<'c> {
 
     pub(super) fn read(mut self, owner: &Type, field: &str) -> Option<Type> {
         let field_traits = self.declarations.traits().rust_paths().field_traits();
-        let binding = field_traits.trait_of(field)?;
+        let binding = field_traits.bindings().trait_of(field)?;
         if let Some(read) = self.declared_read(owner, binding) {
             return Some(read);
         }
-        let var = self.open_owner(owner)?;
-        Some(match self.known_read(var, binding) {
+        let open = OpenFieldOwner::new(self.unifier);
+        let var = open.var(owner)?;
+        Some(match open.bound_read(var, binding) {
             Some(read) => read,
             None => self.new_read(var, binding),
         })
@@ -38,28 +40,6 @@ impl<'c> FieldBound<'c> {
         bounds
             .filter(|bound| bound.binding == binding)
             .find_map(|bound| bound.argument.clone())
-    }
-
-    fn open_owner(&self, owner: &Type) -> Option<TypeVar> {
-        match self.shallow_without_borrows(owner) {
-            Type::Var(var) if self.unifier.literal_kind(var).is_none() => Some(var),
-            _ => None,
-        }
-    }
-
-    fn shallow_without_borrows(&self, owner: &Type) -> Type {
-        match self.unifier.shallow(owner) {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => self.shallow_without_borrows(&inner),
-            resolved => resolved,
-        }
-    }
-
-    fn known_read(&self, var: TypeVar, binding: BindingId) -> Option<Type> {
-        self.unifier
-            .bounds(var)
-            .iter()
-            .find(|bound| bound.binding == binding)
-            .and_then(|bound| bound.argument.clone())
     }
 
     fn new_read(&mut self, var: TypeVar, binding: BindingId) -> Type {

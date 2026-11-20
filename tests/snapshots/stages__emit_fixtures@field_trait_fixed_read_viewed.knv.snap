@@ -35,6 +35,18 @@ mod field_traits {
     pub trait HasTitle {
         fn title(&self) -> &String;
     }
+
+    impl<T: HasTitle + ?Sized> HasTitle for &T {
+        fn title(&self) -> &String {
+            T::title(self)
+        }
+    }
+
+    impl<T: HasTitle + ?Sized> HasTitle for &mut T {
+        fn title(&self) -> &String {
+            T::title(self)
+        }
+    }
 }
 
 impl field_traits::HasTitle for Book {

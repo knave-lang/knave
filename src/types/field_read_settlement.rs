@@ -93,7 +93,7 @@ impl<'r> FieldReadSettlement<'r> {
         params
             .flat_map(|(binding, param)| {
                 param.bounds.iter().filter_map(move |bound| {
-                    let field = field_traits.field_of(bound.binding)?;
+                    let field = field_traits.bindings().field_of(bound.binding)?;
                     Some(FieldReader {
                         binding,
                         owner: param.id,

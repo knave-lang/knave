@@ -50,7 +50,9 @@ impl<'a> ObligationSolver<'a> {
 
     fn discharge(&mut self, obligation: Obligation) {
         let bound = self.resolve_bound(&obligation.bound);
-        let implementor = self.unifier.resolve(&obligation.implementor);
+        let resolved = self.unifier.resolve(&obligation.implementor);
+        let traits = &self.sources.declarations.traits().table;
+        let implementor = FieldReadSelection::owner(traits, &bound, &resolved).clone();
         match implementor {
             Type::Var(var) => self.unifier.add_bound(var, bound),
             Type::Generic(generic) => self.settle_generic(generic, bound, obligation.site.span),

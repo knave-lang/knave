@@ -1,0 +1,19 @@
+(defstruct book
+  :title string
+  :pages int)
+
+(defstruct film
+  :title string
+  :pages int)
+
+(defn f (xs)
+  (count (filter (iter xs)
+           (fn (x) (= (:pages x) (:pages x))))))
+
+(defn main ()
+  (local bs
+    (vec (->book (str "dune") 1)
+         (->book (str "it") 2)))
+  (local fs (vec (->film (str "jaws") 3)))
+  (println (f bs))
+  (println (f fs)))

@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_owner_ref_max_by_key.knv
+---
+(some (->book :title "dune" :pages 1))
+(some (->film :title "jaws" :pages 3))

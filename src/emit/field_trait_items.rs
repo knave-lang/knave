@@ -1,3 +1,5 @@
+use rustc_hash::FxHashSet;
+
 use super::emitted_types::EmittedTypes;
 use super::field_trait_path::FieldTraitPath;
 use super::fragment::Fragment;
@@ -23,6 +25,7 @@ struct FieldTrait<'p> {
 
 impl<'a> FieldTraitItems<'a> {
     const CRATE_ITEMS: &'static str = "use super::*;";
+    const REFERENCES: [&'static str; 2] = ["&", "&mut "];
 
     pub fn new(program: &'a TypedProgram, plan: &'a EmitPlan<'a>, types: EmittedTypes<'a>) -> Self {
         Self {
@@ -60,19 +63,21 @@ impl<'a> FieldTraitItems<'a> {
 
     fn trait_module(&self, types: &RustTypes, traits: &[FieldTrait]) -> Vec<Fragment> {
         let mut inner = vec![Fragment::Newline];
-        if traits
-            .iter()
-            .any(|field_trait| self.reads_crate_type(&field_trait.plan.read))
-        {
+        let crate_types = self.crate_types();
+        let mut reads = traits.iter().map(|field_trait| &field_trait.plan.read);
+        if reads.any(|read| Self::reads_crate_type(read, &crate_types)) {
             inner.extend([
                 Fragment::Text(Self::CRATE_ITEMS.to_string()),
                 Fragment::Newline,
                 Fragment::Newline,
             ]);
         }
-        let declarations = traits
-            .iter()
-            .map(|field_trait| self.declaration(types, field_trait));
+        let declarations = traits.iter().flat_map(|field_trait| {
+            let declaration = self.declaration(types, field_trait);
+            let references = (Self::REFERENCES.iter())
+                .map(|reference| Self::reference_impl(types, field_trait, reference));
+            std::iter::once(declaration).chain(references)
+        });
         inner.extend(ModuleTree::separated(declarations.collect()));
         let visibility = FieldTraitPath::new(self.program).visibility();
         vec![
@@ -83,17 +88,16 @@ impl<'a> FieldTraitItems<'a> {
         ]
     }
 
-    fn reads_crate_type(&self, read: &Type) -> bool {
-        let declared = |binding: &BindingId| {
-            (self.program.modules.iter())
-                .any(|module| module.structs.contains(binding) || module.enums.contains(binding))
-        };
+    fn crate_types(&self) -> FxHashSet<BindingId> {
+        let modules = self.program.modules.iter();
+        let types = modules.flat_map(|module| module.structs.iter().chain(&module.enums));
+        types.copied().collect()
+    }
+
+    fn reads_crate_type(read: &Type, crate_types: &FxHashSet<BindingId>) -> bool {
         match read {
-            Type::Named(binding, _) if declared(binding) => true,
-            _ => read
-                .parts()
-                .into_iter()
-                .any(|part| self.reads_crate_type(part)),
+            Type::Named(binding, _) if crate_types.contains(binding) => true,
+            _ => (read.parts().into_iter()).any(|part| Self::reads_crate_type(part, crate_types)),
         }
     }
 
@@ -104,7 +108,11 @@ impl<'a> FieldTraitItems<'a> {
     ) -> Option<FieldTrait<'p>> {
         let traits = self.program.declarations.traits();
         let name = traits.table().get(binding)?.path.to_string();
-        let field = traits.rust_paths().field_traits().field_of(binding)?;
+        let field = traits
+            .rust_paths()
+            .field_traits()
+            .bindings()
+            .field_of(binding)?;
         Some(FieldTrait {
             name,
             path: FieldTraitPath::new(self.program).of(binding, self.program.entry)?,
@@ -121,6 +129,28 @@ impl<'a> FieldTraitItems<'a> {
                 "fn {}(&self) -> {read};",
                 field_trait.getter
             ))]),
+            Fragment::Newline,
+            Fragment::Text("}".to_string()),
+        ]
+    }
+
+    fn reference_impl(
+        types: &RustTypes,
+        field_trait: &FieldTrait,
+        reference: &str,
+    ) -> Vec<Fragment> {
+        let read = Self::trait_read(types, field_trait.plan);
+        let (name, getter) = (&field_trait.name, &field_trait.getter);
+        vec![
+            Fragment::Text(format!(
+                "impl<T: {name} + ?Sized> {name} for {reference}T {{"
+            )),
+            Fragment::Indented(vec![
+                Fragment::Text(format!("fn {getter}(&self) -> {read} {{")),
+                Fragment::Indented(vec![Fragment::Text(format!("T::{getter}(self)"))]),
+                Fragment::Newline,
+                Fragment::Text("}".to_string()),
+            ]),
             Fragment::Newline,
             Fragment::Text("}".to_string()),
         ]

@@ -31,8 +31,8 @@ impl<'p> FieldTraitNames<'p> {
         let Some(own) = path_of(reader.trait_binding) else {
             return false;
         };
-        let mut others = (traits.rust_paths().field_traits().into_iter())
-            .map(|(_, binding)| *binding)
+        let mut others = (traits.rust_paths().field_traits().bindings().iter())
+            .map(|(_, binding)| binding)
             .filter(|binding| *binding != reader.trait_binding);
         !others.any(|binding| path_of(binding) == Some(own))
     }

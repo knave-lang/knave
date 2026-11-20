@@ -72,7 +72,7 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
             return None;
         }
         let cause = if self.refuses(flow, arriving.without(ReachingText::ASSUMED)) {
-            RefusalCause::Rfc
+            RefusalCause::Rule
         } else {
             RefusalCause::StatedLimit
         };

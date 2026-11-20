@@ -2,7 +2,7 @@ use super::flow::Flow;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RefusalCause {
-    Rfc,
+    Rule,
     StatedLimit,
 }
 

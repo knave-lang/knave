@@ -15,3 +15,16 @@ pub enum SlotOwner {
     Argument(Span),
     Written(Span),
 }
+
+impl SlotOwner {
+    pub fn is_variable(&self) -> bool {
+        matches!(self, Self::Variable(..))
+    }
+
+    pub fn is_decided(&self) -> bool {
+        matches!(
+            self,
+            Self::Parameter(_) | Self::Result(_) | Self::Local(_) | Self::Field(..)
+        )
+    }
+}

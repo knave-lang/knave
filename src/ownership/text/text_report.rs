@@ -81,7 +81,7 @@ impl<'r, 'p> TextReport<'r, 'p> {
 
     fn cause_note(cause: RefusalCause) -> &'static str {
         match cause {
-            RefusalCause::Rfc => "",
+            RefusalCause::Rule => "",
             RefusalCause::StatedLimit => ", by a stated limit",
         }
     }

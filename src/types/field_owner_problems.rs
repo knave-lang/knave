@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::problems::TypeProblems;
+use super::shown_read_mismatch::ShownReadMismatch;
 use super::unifier::LiteralKind;
 use crate::core::{FieldLabel, Keyword};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
@@ -30,11 +31,13 @@ impl FieldOwnerProblems {
         TypeProblems::with_similar_field(absent, label, similar)
     }
 
-    pub(super) fn read_mismatch(
-        (owner, field): (&str, &str),
-        (read, passed): (String, String),
-        span: Span,
-    ) -> Diagnostic {
+    pub(super) fn read_mismatch(mismatch: &ShownReadMismatch, span: Span) -> Diagnostic {
+        let ShownReadMismatch {
+            owner,
+            field,
+            read,
+            passed,
+        } = mismatch;
         let field = format!("{}{field}", Keyword::MARKER);
         Diagnostic::error(
             DiagnosticCode::MISSING_TRAIT,

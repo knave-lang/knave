@@ -88,7 +88,11 @@ impl<'l> WrittenTypeLowering<'l> {
             let no_generics = FxHashMap::default();
             let read =
                 OpenRead::new(CopyRules::new(self.declarations, &no_generics)).of_written(&written);
+            let closed = read.is_concrete();
             let written = Bound::with_argument(field_trait, read);
+            if !closed {
+                return Ok(written);
+            }
             return Ok(written.from_origins(BoundOrigins::written()));
         }
         self.check_trait_argument(bound.binding, argument.span())?;

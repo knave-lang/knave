@@ -4,6 +4,7 @@ use super::lowered_associated_value::LoweredAssociatedValue;
 use super::lowered_binders::LoweredBinders;
 use super::lowered_impl::LoweredImpl;
 use super::problems::TypeProblems;
+use super::result_borrow_source::ResultBorrowSource;
 use super::trait_rows_reach::Implementor;
 use super::ty::{GenericId, Scheme, Type};
 use super::written_type_lowering::WrittenTypeLowering;
@@ -22,6 +23,12 @@ pub(super) struct SchemeLowering<'l> {
 impl<'l> SchemeLowering<'l> {
     pub(super) fn new(types: WrittenTypeLowering<'l>, variables: WrittenTypeVariables<'l>) -> Self {
         Self { types, variables }
+    }
+
+    pub(super) fn lower_template(&mut self, type_expr: &TypeExpr) -> Result<Scheme, Diagnostic> {
+        let scheme = self.lower_scheme(type_expr)?;
+        ResultBorrowSource::of(type_expr).map_or(Ok(()), |source| source.check())?;
+        Ok(scheme)
     }
 
     pub(super) fn lower_scheme(&mut self, type_expr: &TypeExpr) -> Result<Scheme, Diagnostic> {

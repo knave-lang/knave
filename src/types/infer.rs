@@ -3170,7 +3170,7 @@ impl TypeChecker {
         template: &Rc<RustTemplate>,
         span: Span,
     ) -> Result<(TypedExprKind, Type), Diagnostic> {
-        let scheme = self.written_schemes().lower_scheme(&template.type_expr)?;
+        let scheme = self.written_schemes().lower_template(&template.type_expr)?;
         let name = TemplateName::Inline(&template.template);
         let rust_types = &self.declarations.types().rust_types;
         self.template_borrows.register(name, &scheme, rust_types);

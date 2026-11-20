@@ -62,6 +62,7 @@ use super::prelude_types::PreludeTypes;
 use super::problems::{MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
+use super::result_borrow_source::ResultBorrowSource;
 use super::round_facts::RoundFacts;
 use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
@@ -1024,6 +1025,11 @@ impl TypeChecker {
             return false;
         };
         let scheme = self.written_schemes().lower_scheme(&template.type_expr);
+        let traits = self.declarations.traits();
+        let scheme = scheme.and_then(|scheme| {
+            ResultBorrowSource::declared(&template.type_expr, member.binding, traits)
+                .map(|()| scheme)
+        });
         let scheme = scheme.unwrap_or_else(|diagnostic| {
             self.diagnostics.push(diagnostic);
             self.generic_declarations().failed_scheme()

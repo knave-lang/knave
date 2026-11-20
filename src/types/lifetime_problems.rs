@@ -11,8 +11,8 @@ impl LifetimeProblems {
             Label::new(result, "borrows from which parameter?"),
         )
         .with_help(
-            "name the parameter it borrows from with a lifetime, as in \
-             `(where ('a) (fn ((ref 'a str) (ref str)) (ref 'a str)))`",
+            "write one lifetime on the result and on every parameter it can borrow from, as in \
+             `(where ('a) (fn ((ref 'a str) (ref 'a str)) (ref 'a str)))`",
         )
     }
 }

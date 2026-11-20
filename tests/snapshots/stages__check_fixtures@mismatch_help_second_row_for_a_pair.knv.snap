@@ -7,13 +7,13 @@ error[L0468]: a `mismatch-help` already states the help for these two types
    --> check/mismatch_help_second_row_for_a_pair.knv:1:1
     |
   1 |   (mismatch-help int usize "mine: {value}")
-    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ second help for the same types
+    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ second row for the same types
     |
    ::: prelude/number.knv:229:1
     |
 229 | / (mismatch-help int usize
 230 | |                "convert it with `(convert {value})`, which panics when the value does not fit")
-    | |_______________________________________________________________________________________________- first help
+    | |_______________________________________________________________________________________________- first row
     |
     = help: remove this row
     = note: run `knave doc L0468` for an explanation

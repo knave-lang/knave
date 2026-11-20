@@ -2,10 +2,11 @@ use super::access::Access;
 use super::reaching_text::ReachingText;
 use crate::types::Borrow;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Transfer {
     Move,
     Refer,
+    Reborrow,
     Lend,
     View,
 }
@@ -20,7 +21,7 @@ impl Transfer {
 
     pub fn passing(borrow: &Borrow) -> Self {
         match borrow {
-            Borrow::Deref(_) => Self::Lend,
+            Borrow::Deref(_) => Self::Reborrow,
             _ => Self::Move,
         }
     }
@@ -33,12 +34,12 @@ impl Transfer {
     }
 
     pub fn lends(self) -> bool {
-        matches!(self, Self::Refer | Self::Lend)
+        matches!(self, Self::Refer | Self::Reborrow | Self::Lend)
     }
 
     pub fn without_referent(self) -> Self {
         match self {
-            Self::Lend => Self::Refer,
+            Self::Reborrow | Self::Lend => Self::Refer,
             other => other,
         }
     }
@@ -47,9 +48,14 @@ impl Transfer {
         match self {
             Self::Move => text,
             Self::Refer => Self::replace(text, ReachingText::OWNED, ReachingText::LENT),
-            Self::Lend => Self::replace(
+            Self::Reborrow => Self::replace(
                 text,
                 ReachingText::OWNED,
+                ReachingText::OWNED.with(ReachingText::LENT),
+            ),
+            Self::Lend => Self::replace(
+                text,
+                ReachingText::OWNED.with(ReachingText::LENT),
                 ReachingText::OWNED.with(ReachingText::LENT),
             ),
             Self::View => Self::replace(
@@ -61,12 +67,7 @@ impl Transfer {
     }
 
     pub fn then(self, next: Self) -> Self {
-        match (self, next) {
-            (Self::Move, other) | (other, Self::Move) => other,
-            (Self::View, _) | (_, Self::View) => Self::View,
-            (Self::Lend, _) | (_, Self::Lend) => Self::Lend,
-            (Self::Refer, Self::Refer) => Self::Refer,
-        }
+        self.max(next)
     }
 
     fn replace(
@@ -152,6 +153,29 @@ mod tests {
     }
 
     #[test]
+    fn a_loan_of_a_lent_value_lends_its_owned_referent() {
+        assert_eq!(
+            Transfer::Lend.carry(ReachingText::LENT),
+            ReachingText::OWNED.with(ReachingText::LENT)
+        );
+    }
+
+    #[test]
+    fn a_reborrow_keeps_a_lent_value_lent() {
+        assert_eq!(
+            Transfer::Reborrow.carry(ReachingText::LENT),
+            ReachingText::LENT
+        );
+        assert_eq!(
+            Transfer::Reborrow.carry(ReachingText::OWNED),
+            ReachingText::OWNED.with(ReachingText::LENT)
+        );
+        assert!(Transfer::Reborrow.lends());
+        assert_eq!(Transfer::Reborrow.without_referent(), Transfer::Refer);
+        assert_eq!(Transfer::Reborrow.then(Transfer::Lend), Transfer::Lend);
+    }
+
+    #[test]
     fn a_loan_of_a_reference_is_a_loan() {
         assert_eq!(Transfer::Refer.then(Transfer::Lend), Transfer::Lend);
         assert_eq!(Transfer::Lend.then(Transfer::Refer), Transfer::Lend);
@@ -182,9 +206,9 @@ mod tests {
     }
 
     #[test]
-    fn a_dereferenced_argument_is_lent_and_any_other_moved() {
+    fn a_dereferenced_argument_is_reborrowed_and_any_other_moved() {
         use crate::types::Borrow;
-        assert_eq!(Transfer::passing(&Borrow::Deref(1)), Transfer::Lend);
+        assert_eq!(Transfer::passing(&Borrow::Deref(1)), Transfer::Reborrow);
         assert_eq!(Transfer::passing(&Borrow::Shared), Transfer::Move);
     }
 

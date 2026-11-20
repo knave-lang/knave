@@ -1,0 +1,10 @@
+(defn main ()
+  (local names (vec (str "a" 1)))
+  (local counts (hash-map 1 (str "b" 2)))
+  (local lent (unwrap (first names)))
+  (local from-local (clone lent))
+  (local from-call
+    (clone (unwrap (first names))))
+  (local from-lookup
+    (clone (unwrap (get counts 1))))
+  (println from-local from-call from-lookup))

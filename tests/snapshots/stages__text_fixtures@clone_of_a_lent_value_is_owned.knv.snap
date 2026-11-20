@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/clone_of_a_lent_value_is_owned.knv
+---
+defn main
+  local names[0]: owned
+  local counts[1]: owned
+  local lent: lent
+  local from-local: owned
+  local from-call: owned
+  local from-lookup: owned

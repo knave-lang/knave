@@ -1,0 +1,10 @@
+(type same?
+  (where ((a partial-eq)) (fn (a a) bool)))
+
+(defn same? (left right) (= left right))
+
+(defn main ()
+  (local name (str "ada" 1))
+  (local borrowed (ref name))
+  (local reborrowed (ref borrowed))
+  (println (same? borrowed reborrowed)))

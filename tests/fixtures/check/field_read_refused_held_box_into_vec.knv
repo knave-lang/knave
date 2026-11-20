@@ -1,0 +1,14 @@
+(defstruct cat
+  :a int)
+
+(defstruct dog
+  :a int)
+
+(defstruct (box t)
+  :v t)
+
+(defn f (x) (vec (:v (->box (:a x)))))
+
+(defn main ()
+  (println (len (f (->cat 1))))
+  (println (len (f (->dog 2)))))

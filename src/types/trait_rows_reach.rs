@@ -66,7 +66,7 @@ impl LoweredRows {
     }
 
     pub fn remove_struct(&mut self, struct_binding: BindingId) {
-        self.implementors = std::mem::take(&mut self.implementors).retained(|implementor| {
+        self.implementors.retain(|implementor| {
             !matches!(implementor.scheme.body, Type::Named(named, _) if named == struct_binding)
         });
     }
@@ -103,7 +103,7 @@ mod tests {
         let mut rows = RowsFixture::lowered();
         rows.assert_reached();
         assert!(rows.get().is_some());
-        assert!(rows.reached_mut().implementors().is_empty());
+        assert!(rows.reached_mut().implementors().iter().next().is_none());
     }
 
     #[test]

@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::cell::OnceCell;
 
 use rustc_hash::FxHashMap;
 
@@ -6,88 +6,127 @@ use super::implementor::Implementor;
 use super::ty::{Scheme, Type};
 use crate::core::{BindingId, PrimitiveType};
 
-#[derive(Default)]
 pub struct IndexedImplementors {
     implementors: Vec<Implementor>,
-    every: Vec<usize>,
-    open: Vec<usize>,
-    by_head: FxHashMap<TypeHead, Vec<usize>>,
+    index: OnceCell<HeadIndex>,
 }
 
 impl IndexedImplementors {
     pub fn new(implementors: Vec<Implementor>) -> Self {
-        let mut indexed = Self {
-            implementors: Vec::with_capacity(implementors.len()),
-            every: Vec::with_capacity(implementors.len()),
-            open: Vec::new(),
-            by_head: FxHashMap::default(),
-        };
-        for implementor in implementors {
-            indexed.push(implementor);
+        Self {
+            implementors,
+            index: OnceCell::new(),
         }
-        indexed
     }
 
     pub fn push(&mut self, implementor: Implementor) {
-        let position = self.implementors.len();
-        match TypeHead::of(&implementor.scheme.body) {
-            Some(head) => self.push_headed(head, position),
-            None => self.push_open(position),
-        }
-        self.every.push(position);
         self.implementors.push(implementor);
+        self.index.take();
     }
 
-    fn push_headed(&mut self, head: TypeHead, position: usize) {
-        let open = &self.open;
-        self.by_head
-            .entry(head)
-            .or_insert_with(|| open.clone())
-            .push(position);
+    pub fn iter(&self) -> std::slice::Iter<'_, Implementor> {
+        self.implementors.iter()
     }
 
-    fn push_open(&mut self, position: usize) {
-        self.open.push(position);
-        for positions in self.by_head.values_mut() {
-            positions.push(position);
+    pub fn candidates(&self, target: &Type) -> Candidates<'_> {
+        let Some(head) = TypeHead::of(target) else {
+            return Candidates::Every(self.implementors.iter());
+        };
+        let index = self.index.get_or_init(|| HeadIndex::of(&self.implementors));
+        Candidates::Headed {
+            implementors: &self.implementors,
+            positions: index.positions(head),
         }
     }
 
-    pub fn candidates(&self, target: &Type) -> impl Iterator<Item = &Implementor> {
-        let positions = match TypeHead::of(target) {
-            Some(head) => self.by_head.get(&head).unwrap_or(&self.open),
-            None => &self.every,
-        };
-        positions
-            .iter()
-            .map(|position| &self.implementors[*position])
-    }
-
-    pub fn retained(self, keep: impl FnMut(&Implementor) -> bool) -> Self {
-        Self::new(self.implementors.into_iter().filter(keep).collect())
+    pub fn retain(&mut self, keep: impl FnMut(&Implementor) -> bool) {
+        self.implementors.retain(keep);
+        self.index.take();
     }
 
     pub fn set_scheme(&mut self, body: &Type, scheme: Scheme) {
-        let Some(implementor) = self
+        if let Some(implementor) = self
             .implementors
             .iter_mut()
             .find(|implementor| implementor.scheme.body == *body)
-        else {
-            return;
-        };
-        let moves_head = TypeHead::of(&scheme.body) != TypeHead::of(body);
-        implementor.scheme = scheme;
-        if moves_head {
-            *self = Self::new(std::mem::take(&mut self.implementors));
+        {
+            implementor.scheme = scheme;
+            self.index.take();
         }
     }
 }
 
-impl Deref for IndexedImplementors {
-    type Target = [Implementor];
+struct HeadIndex {
+    open: Vec<usize>,
+    by_head: FxHashMap<TypeHead, Vec<usize>>,
+}
 
-    fn deref(&self) -> &[Implementor] {
-        &self.implementors
+impl HeadIndex {
+    fn of(implementors: &[Implementor]) -> Self {
+        let mut index = Self {
+            open: Vec::new(),
+            by_head: FxHashMap::default(),
+        };
+        for (position, implementor) in implementors.iter().enumerate() {
+            match TypeHead::of(&implementor.scheme.body) {
+                Some(head) => index.by_head.entry(head).or_default().push(position),
+                None => index.open.push(position),
+            }
+        }
+        index
+    }
+
+    fn positions(&self, head: TypeHead) -> MergedPositions<'_> {
+        MergedPositions {
+            headed: self.by_head.get(&head).map_or(&[], Vec::as_slice),
+            open: &self.open,
+        }
+    }
+}
+
+pub enum Candidates<'i> {
+    Every(std::slice::Iter<'i, Implementor>),
+    Headed {
+        implementors: &'i [Implementor],
+        positions: MergedPositions<'i>,
+    },
+}
+
+impl<'i> Iterator for Candidates<'i> {
+    type Item = &'i Implementor;
+
+    fn next(&mut self) -> Option<&'i Implementor> {
+        match self {
+            Self::Every(rows) => rows.next(),
+            Self::Headed {
+                implementors,
+                positions,
+            } => positions.next().map(|position| &implementors[position]),
+        }
+    }
+}
+
+pub struct MergedPositions<'i> {
+    headed: &'i [usize],
+    open: &'i [usize],
+}
+
+impl Iterator for MergedPositions<'_> {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<usize> {
+        let takes_headed = match (self.headed.first(), self.open.first()) {
+            (Some(headed), Some(open)) => headed < open,
+            (headed, _) => headed.is_some(),
+        };
+        let side = if takes_headed {
+            &mut self.headed
+        } else {
+            &mut self.open
+        };
+        let (position, rest) = side.split_first()?;
+        *side = rest;
+        Some(*position)
     }
 }
 
@@ -181,7 +220,10 @@ mod tests {
         ];
         let indexed = IndexFixture::indexed(&bodies);
         for body in &bodies {
-            assert_eq!(IndexFixture::candidates(&indexed, body), [body.clone()]);
+            assert_eq!(
+                IndexFixture::candidates(&indexed, body),
+                std::slice::from_ref(body)
+            );
         }
     }
 
@@ -242,8 +284,8 @@ mod tests {
 
     #[test]
     fn a_dropped_row_leaves_the_index() {
-        let indexed = IndexFixture::indexed(&[IndexFixture::integer(), IndexFixture::text()])
-            .retained(|row| row.scheme.body != IndexFixture::integer());
+        let mut indexed = IndexFixture::indexed(&[IndexFixture::integer(), IndexFixture::text()]);
+        indexed.retain(|row| row.scheme.body != IndexFixture::integer());
         assert!(IndexFixture::candidates(&indexed, &IndexFixture::integer()).is_empty());
     }
 }

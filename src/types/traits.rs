@@ -137,7 +137,7 @@ impl TraitTable {
     }
 
     fn implementors_are(rows: &LoweredRows, types: &[Type]) -> bool {
-        rows.implementors().len() == types.len()
+        rows.implementors().iter().len() == types.len()
             && types.iter().all(|ty| {
                 rows.implementors()
                     .iter()

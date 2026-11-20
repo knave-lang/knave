@@ -95,7 +95,7 @@ impl<'a> CopyRules<'a> {
     fn bound_allows_only_copy(&self, bound: BindingId) -> bool {
         self.traits.get(bound).is_some_and(|rust_trait| {
             let implementors = rust_trait.rows().reached().implementors();
-            !implementors.is_empty()
+            implementors.iter().next().is_some()
                 && implementors.iter().all(|implementor| {
                     implementor.scheme.params.is_empty() && self.is_copy(&implementor.scheme.body)
                 })

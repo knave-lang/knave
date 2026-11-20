@@ -231,7 +231,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         let node = self.context.node(variable);
         match access {
             Access::Direct => node,
-            Access::Referenced | Access::Mutable => {
+            _ => {
                 let read = Slot::new(SlotOwner::Value(self.call.span), path.clone());
                 let reference = TextValue::from(Source::Slot(node), self.call.span)
                     .transferred(Transfer::Refer);

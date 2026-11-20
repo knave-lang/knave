@@ -69,12 +69,9 @@ impl<'p> DefinitionGraph<'p> {
                 .filter(|definition| walked.contains_key(&definition.binding)),
         );
         let written = WrittenBodies::of(&program.modules);
-        let dependencies = DependencyGraph::build(walked, macro_helpers, &written);
-        let order = CheckOrder::of(
-            program,
-            &dependencies,
-            definitions.iter().map(|definition| definition.binding),
-        );
+        let dependencies = DependencyGraph::build(&walked, macro_helpers, &written);
+        let order = CheckOrder::new(program, walked, &dependencies)
+            .of(definitions.iter().map(|definition| definition.binding));
         let components = dependencies.components(&order);
         Self {
             definitions,

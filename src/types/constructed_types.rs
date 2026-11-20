@@ -6,13 +6,19 @@ use crate::expand::Program;
 
 pub(super) struct ConstructedTypes<'d> {
     enum_of_variant: FxHashMap<BindingId, BindingId>,
+    references: &'d FxHashMap<BindingId, References>,
     dependencies: &'d DependencyGraph,
 }
 
 impl<'d> ConstructedTypes<'d> {
-    pub(super) fn new(program: &Program, dependencies: &'d DependencyGraph) -> Self {
+    pub(super) fn new(
+        program: &Program,
+        references: &'d FxHashMap<BindingId, References>,
+        dependencies: &'d DependencyGraph,
+    ) -> Self {
         Self {
             enum_of_variant: Self::enum_of_variant(program),
+            references,
             dependencies,
         }
     }
@@ -22,7 +28,7 @@ impl<'d> ConstructedTypes<'d> {
             .dependencies
             .reachable_from(&[method])
             .into_iter()
-            .filter_map(|reached| self.dependencies.references(reached))
+            .filter_map(|reached| self.references.get(&reached))
             .flat_map(References::constructions)
             .map(|construction| self.type_built_by(*construction))
             .collect();
@@ -58,10 +64,14 @@ impl<'d> ConstructedTypes<'d> {
 
 #[cfg(test)]
 mod tests {
+    use rustc_hash::{FxHashMap, FxHashSet};
+
     use super::ConstructedTypes;
+    use crate::core::{BindingId, References};
     use crate::types::check_order::CheckOrder;
-    use crate::types::graph::DefinitionGraph;
+    use crate::types::dependency_graph::DependencyGraph;
     use crate::types::typed_source::TypedSource;
+    use crate::types::written_bodies::WrittenBodies;
 
     struct ConstructedTypesFixture {
         source: TypedSource,
@@ -96,17 +106,32 @@ mod tests {
 
         fn built_by_probe(&self) -> Vec<String> {
             let program = self.source.program();
-            let graph = DefinitionGraph::of(program);
+            let references = self.references();
+            let dependencies = DependencyGraph::build(
+                &references,
+                FxHashSet::default(),
+                &WrittenBodies::of(&program.modules),
+            );
             let method = CheckOrder::impl_methods(program)
                 .find(|method| program.bindings.get(*method).name() == "probe")
                 .expect("the source implements probe");
-            let mut names: Vec<String> = ConstructedTypes::new(program, graph.dependencies())
+            let mut names: Vec<String> = ConstructedTypes::new(program, &references, &dependencies)
                 .by_method(method)
                 .into_iter()
                 .map(|built| program.bindings.get(built).name().to_string())
                 .collect();
             names.sort();
             names
+        }
+
+        fn references(&self) -> FxHashMap<BindingId, References> {
+            let program = self.source.program();
+            program
+                .modules
+                .iter()
+                .flat_map(|module| module.definitions())
+                .map(|(binding, value)| (binding, References::of(value, &program.bindings)))
+                .collect()
         }
     }
 

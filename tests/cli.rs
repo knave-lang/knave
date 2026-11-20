@@ -43,6 +43,8 @@ const COMPILER_TOO_OLD_ERROR: &str = "error[L0736]";
 const NEWER_COMPILER_WARNING: &str = "warning[L0737]";
 const RELEASED_TEXTS_VERSION: &str = "0.18.0";
 const VERSION_MASK: &str = "<version>";
+const MISSING_VERSION_ERROR: &str =
+    "::error file=project.knv::project.knv records no :knave \"x.y.z\" on one line\n";
 const RELEASED_SKILL: &str =
     include_str!("../src/cli/earlier_texts/skills/writing-knave/SKILL.md/0.18.0");
 const RELEASED_WORKFLOW: &str =
@@ -8465,11 +8467,23 @@ fn new_writes_a_workflow_that_fails_without_a_recorded_version() {
     );
     assert_eq!(
         sandbox.run_version_step("demo-app"),
-        (
-            false,
-            String::new(),
-            "::error file=project.knv::project.knv records no :knave version\n".to_string()
-        )
+        (false, String::new(), MISSING_VERSION_ERROR.to_string())
+    );
+}
+
+#[test]
+fn new_writes_a_workflow_that_fails_on_a_version_two_spaces_from_its_key() {
+    let sandbox = Sandbox::new("new_workflow_spaced_version");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let sandbox = sandbox.with_file(
+        "demo-app/project.knv",
+        "(defproject d :knave  \"0.20.2\")\n",
+    );
+    assert_eq!(
+        sandbox.run_version_step("demo-app"),
+        (false, String::new(), MISSING_VERSION_ERROR.to_string())
     );
 }
 
@@ -8517,11 +8531,7 @@ fn new_writes_a_workflow_that_skips_a_version_in_a_trailing_comment() {
     );
     assert_eq!(
         sandbox.run_version_step("demo-app"),
-        (
-            false,
-            String::new(),
-            "::error file=project.knv::project.knv records no :knave version\n".to_string()
-        )
+        (false, String::new(), MISSING_VERSION_ERROR.to_string())
     );
 }
 

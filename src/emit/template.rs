@@ -1,4 +1,5 @@
 use std::cell::OnceCell;
+use std::rc::Rc;
 
 use super::argument_role::ArgumentRole;
 use super::converted_argument::ConvertedArgument;
@@ -10,6 +11,8 @@ use super::substitution::Substitution;
 use super::template_arguments::TemplateArguments;
 use crate::core::{Access, ParsedTemplate, Piece};
 
+pub(super) mod judged_templates;
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum TemplateError {
     MissingArgument(usize),
@@ -19,7 +22,7 @@ pub enum TemplateError {
 
 pub struct Template {
     parsed: ParsedTemplate,
-    formatted: OnceCell<Vec<usize>>,
+    formatted: OnceCell<Rc<[usize]>>,
 }
 
 impl Template {
@@ -49,9 +52,11 @@ impl Template {
     }
 
     pub(super) fn written_role(&self, argument: usize) -> Option<ArgumentRole> {
-        let formatted = self
-            .formatted
-            .get_or_init(|| FormatArguments::new(self.parsed.pieces()).formatted());
+        let formatted = self.formatted.get_or_init(|| {
+            FormatArguments::new(self.parsed.pieces())
+                .formatted()
+                .into()
+        });
         if formatted.contains(&argument) {
             let role = if self.parsed.borrows(argument) {
                 ArgumentRole::Formatted
@@ -95,7 +100,7 @@ impl Template {
     pub fn with_binders(&self, renames: &[(String, String)]) -> Self {
         Self {
             parsed: self.parsed.with_binders(renames),
-            formatted: OnceCell::new(),
+            formatted: self.formatted.clone(),
         }
     }
 

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_malformed_short.knv
+---
+error[L0228]: malformed `has` type
+ --> check/field_bound_malformed_short.knv:8:14
+  |
+8 |   (where ((a (has :name)))
+  |              ^^^^^^^^^^^ this does not fit the shape of the type
+  |
+  = help: write it as `(has :field type)`
+  = note: run `knave doc L0228` for an explanation

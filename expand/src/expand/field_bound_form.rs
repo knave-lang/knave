@@ -16,9 +16,7 @@ impl<'e, 's> FieldBoundForm<'e, 's> {
     }
 
     pub(super) fn lower(self, bound: &Form) -> Option<Result<TypeBound, Diagnostic>> {
-        let [name, field, read] = bound.as_list()? else {
-            return None;
-        };
+        let (name, parts) = bound.as_list()?.split_first()?;
         let symbol = name.as_symbol()?;
         let binding = self
             .expander
@@ -31,6 +29,9 @@ impl<'e, 's> FieldBoundForm<'e, 's> {
             return None;
         }
         let malformed = || ExpandProblems::malformed_type(KernelType::Has, bound.span());
+        let [field, read] = parts else {
+            return Some(Err(malformed()));
+        };
         let field = field
             .as_symbol()
             .and_then(|symbol| Keyword::field_name(symbol.name()));

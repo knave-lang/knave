@@ -152,10 +152,7 @@ impl FmtCommand {
         let files = Self::source_files(terminal, &paths, &mut worst);
         let mut lookups = NearbyProjects::new(FormattedFiles::of(&files));
         for file in &files {
-            match self.format_file(terminal, file, &mut lookups) {
-                Ok(status) => worst.record(status),
-                Err(stopped) => return stopped,
-            }
+            worst.record(self.format_file(terminal, file, &mut lookups));
         }
         worst.status
     }
@@ -183,22 +180,20 @@ impl FmtCommand {
         terminal: &mut Terminal,
         path: &Path,
         lookups: &mut NearbyProjects,
-    ) -> Result<ExitStatus, ExitStatus> {
+    ) -> ExitStatus {
         let text = match ModuleSources::read_file(path) {
             Ok(text) => text,
             Err(error) => {
                 let output = terminal.diagnostic_output();
-                return Ok(UnreadableFile::new(path, &error).report_to(&*output));
+                return UnreadableFile::new(path, &error).report_to(&*output);
             }
         };
         let lookup = lookups.lookup_for(path, terminal);
-        Ok(
-            match self.formatted(terminal, path, text.clone(), &lookup) {
-                Ok(formatted) if formatted == text => ExitStatus::Success,
-                Ok(formatted) => self.apply(path, &formatted),
-                Err(status) => status,
-            },
-        )
+        match self.formatted(terminal, path, text.clone(), &lookup) {
+            Ok(formatted) if formatted == text => ExitStatus::Success,
+            Ok(formatted) => self.apply(path, &formatted),
+            Err(status) => status,
+        }
     }
 
     fn formatted(

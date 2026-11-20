@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/lint/needless_derive_byvalue.knv
+---
+

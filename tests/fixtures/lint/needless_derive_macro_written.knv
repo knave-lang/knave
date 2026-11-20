@@ -1,0 +1,11 @@
+(defrule comparable
+  ((name) (derive name clone partial-eq)))
+
+(defstruct point
+  :x int
+  :y int)
+
+(comparable point)
+
+(defn main ()
+  (println (= (->point :x 1 :y 2) (->point :x 1 :y 2))))

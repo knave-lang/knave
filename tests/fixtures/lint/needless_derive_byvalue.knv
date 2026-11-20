@@ -1,0 +1,10 @@
+(defstruct point
+  :x int
+  :y int)
+
+(derive point clone partial-eq)
+
+(defn total (p) (+ (:x p) (:y p)))
+
+(defn main ()
+  (println (total (->point :x 1 :y 2))))

@@ -1,0 +1,6 @@
+(defstruct note
+  :text string)
+
+(derive note clone partial-eq)
+
+(export ->note note)

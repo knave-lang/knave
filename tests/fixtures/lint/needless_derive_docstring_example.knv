@@ -1,0 +1,12 @@
+(defn twice (x)
+  "Doubles a number.
+
+  (defstruct pair-of
+    :left int
+    :right int)
+  (derive pair-of clone copy)
+  (twice 3)
+  => 6"
+  (* 2 x))
+
+(defn main () (println (twice 3)))

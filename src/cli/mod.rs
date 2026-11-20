@@ -45,6 +45,7 @@ mod error_pages;
 mod eval;
 mod evaluation_output;
 mod evaluation_request;
+mod example_runs;
 mod exit_status;
 mod expand;
 mod expanded_page;

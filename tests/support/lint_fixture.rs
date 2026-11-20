@@ -7,8 +7,8 @@ use knave::diagnostic::{DiagnosticCode, DiagnosticRenderer, Diagnostics};
 use knave::expand::{Expander, Program};
 use knave::language::Language;
 use knave::lint::{
-    LintDefaults, LintedProgram, Linter, NeedlessTypeRule, ProgramPosition, ProgramRun,
-    RuleProgram, TrialLint,
+    LintDefaults, LintedProgram, Linter, NeedlessDeriveRule, ProgramPosition, ProgramRun,
+    ProjectLibrary, RuleProgram, TrialLevels, TrialLints,
 };
 use knave::modules::ModuleSources;
 use knave::project::LintLevel;
@@ -54,29 +54,36 @@ impl LintFixture {
         };
         let mut warnings = std::mem::take(&mut typed.warnings);
         warnings.extend(self.lint_warnings(&program));
-        warnings.extend(self.needless_types(&mut program, &typed));
+        warnings.extend(self.trial_warnings(&mut program, &typed));
         warnings
     }
 
-    fn needless_types(&mut self, program: &mut Program, typed: &TypedProgram) -> Diagnostics {
-        let level = LintDefaults::level_of(
-            &DiagnosticCode::NEEDLESS_TYPE,
-            self.written_needless_type_level(),
-        );
-        let mut runs = FixtureRuns {
+    fn trial_warnings(&mut self, program: &mut Program, typed: &TypedProgram) -> Diagnostics {
+        let levels = TrialLevels {
+            needless_type: LintDefaults::level_of(
+                &DiagnosticCode::NEEDLESS_TYPE,
+                self.written_needless_type_level(),
+            ),
+            needless_derive: LintDefaults::level_of(&DiagnosticCode::NEEDLESS_DERIVE, None),
+        };
+        let derive = NeedlessDeriveRule::new(ProjectLibrary::Unpublished);
+        let holds_unlinted_example = self.holds_example(program);
+        TrialLints::new(&mut self.runs(), derive).warnings(
+            levels,
+            &mut [LintedProgram {
+                program,
+                declared: typed,
+                holds_unlinted_example,
+            }],
+        )
+    }
+
+    fn runs(&mut self) -> FixtureRuns<'_> {
+        FixtureRuns {
             sources: &mut self.sources,
             path: &self.path,
             entry: self.entry,
-        };
-        TrialLint::new(&mut runs, &NeedlessTypeRule)
-            .outcome(
-                level,
-                &mut [LintedProgram {
-                    program,
-                    declared: typed,
-                }],
-            )
-            .warnings
+        }
     }
 
     fn written_needless_type_level(&self) -> Option<LintLevel> {
@@ -91,6 +98,13 @@ impl LintFixture {
             .levels()
             .find(|(code, _)| **code == DiagnosticCode::NEEDLESS_TYPE)
             .map(|(_, level)| level)
+    }
+
+    fn holds_example(&self, program: &Program) -> bool {
+        let mut rules = RuleProgram::expand_from_sources().expect("the lint rules expand");
+        Linter::new(program, &self.sources)
+            .holds_example(&mut rules)
+            .expect("the example question runs")
     }
 
     fn lint_warnings(&self, program: &Program) -> Diagnostics {

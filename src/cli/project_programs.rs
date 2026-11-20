@@ -68,6 +68,7 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
+        loaded.publish(project.library());
         loaded.add(Self::entry(terminal, project.entry()));
         let project = Self::tests(terminal, project, loaded);
         let project = Self::tasks(terminal, project, loaded);
@@ -89,6 +90,7 @@ impl ProjectPrograms {
             return project;
         }
         let tree = TestEntries::project_tree(project);
+        loaded.run_examples();
         loaded.add(tree.load(terminal).and_then(|module| {
             let file = module.file.clone();
             let program = TestRunnerProgram::new(None).program(terminal, module)?;

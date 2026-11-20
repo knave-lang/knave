@@ -1,0 +1,5 @@
+(use needless_derive_text/notes ->note)
+
+(defn main ()
+  (println (= (->note :text (str "fake"))
+              (->note :text (str "fake")))))

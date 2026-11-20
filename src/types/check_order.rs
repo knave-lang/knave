@@ -42,7 +42,7 @@ impl<'a> CheckOrder<'a> {
                 &ContainedTypes::of(program),
                 references,
             )
-            .of(&ConstructedTypes::of(program)),
+            .of(&ConstructedTypes::of(program, references)),
             visited: FxHashSet::default(),
             order: Vec::with_capacity(references.len()),
         };
@@ -178,7 +178,7 @@ impl<'i, 'p> SameTraitCallees<'i, 'p> {
         }
     }
 
-    fn of(&self, constructed: &ConstructedTypes) -> FxHashMap<BindingId, Vec<BindingId>> {
+    fn of(&self, constructed: &ConstructedTypes<'_>) -> FxHashMap<BindingId, Vec<BindingId>> {
         let methods_by_impl = self.methods_by_trait_and_implementor();
         let mut callees = FxHashMap::default();
         for entry in self.impls {
@@ -216,7 +216,7 @@ impl<'i, 'p> SameTraitCallees<'i, 'p> {
         &self,
         entry: &ImplEntry<'_>,
         method: &ImplMethod,
-        constructed: &ConstructedTypes,
+        constructed: &ConstructedTypes<'_>,
     ) -> Vec<BindingId> {
         let contained = entry
             .implementor
@@ -231,7 +231,7 @@ impl<'i, 'p> SameTraitCallees<'i, 'p> {
             .iter()
             .chain(written)
             .copied()
-            .chain(constructed.in_lambda(&method.lambda))
+            .chain(constructed.by_method(method))
             .collect()
     }
 }

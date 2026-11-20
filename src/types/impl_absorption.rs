@@ -224,6 +224,31 @@ mod tests {
             (defstruct (d2 t) :v t)
             (display (d2 {held}) (x) \"<\" (:v x) \">\")";
 
+        const POSITIONAL_CHAIN: &str = "
+            (defn main () (println (->a1 :v 1)))
+            (defstruct (a1 t) :v t)
+            (display (a1 {held}) (x) \"<\" (->a2 (:v x)) \">\")
+            (defstruct (a2 t) :v t)
+            (display (a2 {held}) (x) \"<\" (->a3 (:v x)) \">\")
+            (defstruct (a3 t) :v t)
+            (display (a3 {held}) (x) \"<\" (:v x) \">\")";
+
+        const CONSTRUCTOR_VALUE_CHAIN: &str = "
+            (defn main () (println (->a1 :v 1)))
+            (defstruct (a1 t) :v t)
+            (display (a1 {held}) (x) \"<\" (do (local build ->a2) (build (:v x))) \">\")
+            (defstruct (a2 t) :v t)
+            (display (a2 {held}) (x) \"<\" (:v x) \">\")";
+
+        const FUNCTION_CHAIN: &str = "
+            (defn main () (do (wrap-a2 true) (println (->a1 :v 1))))
+            (defn wrap-a2 (v) (build-a2 v))
+            (defn build-a2 (v) (->a2 :v v))
+            (defstruct (a1 t) :v t)
+            (display (a1 {held}) (x) \"<\" (wrap-a2 (:v x)) \">\")
+            (defstruct (a2 t) :v t)
+            (display (a2 {held}) (x) \"<\" (:v x) \">\")";
+
         const SIBLING_METHOD_CHAIN: &str = "
             (defn main () (println (t2 (ref (->w2 :inner (->w1 :value (str \"x\")))))))
             (defstruct (w2 a) :inner (w1 a))
@@ -320,6 +345,30 @@ mod tests {
         assert!(ChainFixture::checks_in_one_round_holding(
             ChainFixture::WRITTEN_CHAIN,
             "usize"
+        ));
+    }
+
+    #[test]
+    fn an_impl_that_calls_a_constructor_without_labels_checks_after_its_impl() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::POSITIONAL_CHAIN,
+            "i64"
+        ));
+    }
+
+    #[test]
+    fn an_impl_that_names_a_constructor_as_a_value_checks_after_its_impl() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::CONSTRUCTOR_VALUE_CHAIN,
+            "i64"
+        ));
+    }
+
+    #[test]
+    fn an_impl_that_builds_a_type_through_functions_checks_after_its_impl() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::FUNCTION_CHAIN,
+            "i64"
         ));
     }
 }

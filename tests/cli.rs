@@ -8849,6 +8849,44 @@ fn a_compiler_older_than_the_app_reports_only_the_version_before_its_libraries()
 }
 
 #[test]
+fn a_compiler_older_than_a_nested_library_leaves_fmt_of_the_app_silent() {
+    let sandbox = Sandbox::new("version_older_nested_library")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app (libraries (lib1 :path \"libs/lib1\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(defn main ()\n  (println \"hello\"))\n",
+        )
+        .with_file(
+            &format!("app/libs/lib1/{}", Language::project_file_name()),
+            &format!("(defproject lib1 :knave \"{NEWER_VERSION}\")\n"),
+        )
+        .with_file(
+            "app/libs/lib1/src/lib.knv",
+            "(export help)\n\n(defn help () 1)\n",
+        );
+    for command in [&["fmt"][..], &["fmt", "--check"], &["check"]] {
+        let stderr = sandbox
+            .compiler_in("app", command)
+            .assert_exit_code(0)
+            .stderr();
+        assert_eq!(
+            stderr,
+            "",
+            "`knave {}` printed:\n{stderr}",
+            command.join(" ")
+        );
+    }
+    let stderr = sandbox
+        .compiler_in("app/libs/lib1", &["fmt"])
+        .assert_exit_code(1)
+        .stderr();
+    assert_eq!(stderr.matches(OLDER_COMPILER_ERROR).count(), 1, "{stderr}");
+}
+
+#[test]
 fn a_compiler_newer_than_the_project_warns_once_per_command() {
     let sandbox = Sandbox::with_recorded_version("version_newer_compiler", FILLED_VERSION);
     for command in [

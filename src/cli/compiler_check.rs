@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use super::exit_status::ExitStatus;
+use super::located_project::ProjectRoot;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
@@ -20,7 +21,10 @@ impl CompilerCheck {
         problem_of: CompilerVersion::refusal,
     };
 
-    pub fn refuse_before_loading(root: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
+    pub fn refuse_before_loading(directory: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
+        let Some(root) = ProjectRoot::shown_of(directory)? else {
+            return Ok(());
+        };
         let mut scratch = terminal.scratch();
         let project_file = root.join(Language::project_file_name());
         let Some(refusal) = scratch.sources().projects().version_refusal(&project_file) else {

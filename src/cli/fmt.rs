@@ -144,11 +144,11 @@ impl FmtCommand {
     }
 
     fn format_walked(&mut self, terminal: &mut Terminal, paths: Vec<PathBuf>) -> ExitStatus {
-        let mut worst = WorstStatus::new();
-        let files = Self::source_files(terminal, paths, &mut worst);
-        if let Err(refused) = ComparedRoots::around(&files).compare_versions(terminal) {
+        if let Err(refused) = ComparedRoots::around(&paths).compare_versions(terminal) {
             return refused;
         }
+        let mut worst = WorstStatus::new();
+        let files = Self::source_files(terminal, &paths, &mut worst);
         let mut lookups = NearbyProjects::new(FormattedFiles::of(&files));
         for file in &files {
             match self.format_file(terminal, file, &mut lookups) {
@@ -161,15 +161,15 @@ impl FmtCommand {
 
     fn source_files(
         terminal: &Terminal,
-        paths: Vec<PathBuf>,
+        paths: &[PathBuf],
         worst: &mut WorstStatus,
     ) -> Vec<PathBuf> {
         let mut files = Vec::new();
         for path in paths {
-            match SourceFiles::under(&path) {
+            match SourceFiles::under(path) {
                 Ok(walked) => files.extend(walked),
                 Err(error) => worst.record(
-                    UnreadableFile::new(&path, &error).report_to(&*terminal.diagnostic_output()),
+                    UnreadableFile::new(path, &error).report_to(&*terminal.diagnostic_output()),
                 ),
             }
         }

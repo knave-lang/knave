@@ -1,0 +1,12 @@
+(defstruct cat
+  :name str)
+
+(defstruct dog
+  :name str)
+
+(defn hello (x)
+  (str "hi " (:name (ref x))))
+
+(defn main ()
+  (println (hello (->cat "tom")))
+  (println (hello (->dog "rex"))))

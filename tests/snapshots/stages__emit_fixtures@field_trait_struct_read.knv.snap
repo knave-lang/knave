@@ -47,6 +47,18 @@ mod field_traits {
     pub trait HasStart {
         fn start(&self) -> Point;
     }
+
+    impl<T: HasStart + ?Sized> HasStart for &T {
+        fn start(&self) -> Point {
+            T::start(self)
+        }
+    }
+
+    impl<T: HasStart + ?Sized> HasStart for &mut T {
+        fn start(&self) -> Point {
+            T::start(self)
+        }
+    }
 }
 
 impl field_traits::HasStart for Line {

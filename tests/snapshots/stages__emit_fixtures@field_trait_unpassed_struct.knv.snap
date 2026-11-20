@@ -35,6 +35,18 @@ mod field_traits {
     pub trait HasAge {
         fn age(&self) -> i64;
     }
+
+    impl<T: HasAge + ?Sized> HasAge for &T {
+        fn age(&self) -> i64 {
+            T::age(self)
+        }
+    }
+
+    impl<T: HasAge + ?Sized> HasAge for &mut T {
+        fn age(&self) -> i64 {
+            T::age(self)
+        }
+    }
 }
 
 impl field_traits::HasAge for Cat {

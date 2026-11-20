@@ -26,7 +26,7 @@ impl<'u> FieldReadSelection<'u> {
         };
         match traits
             .rows(bound.binding)
-            .select(&open, self.owner(bound, implementor))
+            .select(&open, Unborrowed::of(implementor))
         {
             Selection::Implemented {
                 requirements,
@@ -42,11 +42,12 @@ impl<'u> FieldReadSelection<'u> {
         }
     }
 
-    fn owner<'t>(&self, bound: &Bound, implementor: &'t Type) -> &'t Type {
-        if Self::is_written(bound) {
-            implementor
-        } else {
+    pub(super) fn owner<'t>(traits: &TraitTable, bound: &Bound, implementor: &'t Type) -> &'t Type {
+        let reads_field = (traits.get(bound.binding)).is_some_and(|known| known.reads_field);
+        if reads_field {
             Unborrowed::of(implementor)
+        } else {
+            implementor
         }
     }
 

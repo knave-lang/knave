@@ -49,10 +49,8 @@ impl<'a> TraitDeclarationsBuilder<'a> {
             let binding = bindings.add(info);
             let (field, rust_trait) = field_trait.into_rust_trait();
             self.traits.table.add(binding, rust_trait);
-            self.traits
-                .rust_paths
-                .field_traits
-                .extend([(field, binding)]);
+            let field_traits = &mut self.traits.rust_paths.field_traits;
+            field_traits.bindings_mut().record(field, binding);
         }
     }
 

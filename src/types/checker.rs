@@ -841,7 +841,9 @@ impl TypeChecker {
 
     fn discharge(&mut self, obligation: Obligation, pass: ObligationPass) {
         let bound = self.resolve_bound(&obligation.bound);
-        let implementor = self.unifier.resolve(&obligation.implementor);
+        let resolved = self.unifier.resolve(&obligation.implementor);
+        let traits = &self.declarations.traits().table;
+        let implementor = FieldReadSelection::owner(traits, &bound, &resolved).clone();
         match implementor {
             Type::Var(var) => self.unifier.add_bound(var, bound),
             Type::Generic(generic) => {

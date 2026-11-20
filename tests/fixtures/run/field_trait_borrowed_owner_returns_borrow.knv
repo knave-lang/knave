@@ -1,0 +1,12 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(defn title-of (x) (:title x))
+
+(defn main ()
+  (local b (->book (str "dune")))
+  (println (title-of b))
+  (println (title-of (->film (str "up")))))

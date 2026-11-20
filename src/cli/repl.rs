@@ -260,8 +260,8 @@ impl PromptSession {
         self.locate_expression_errors(&input.name);
         let forms = FormsText::named(input.name, input.text, None);
         let status = EvalCommand::new(
-            ModuleText::Loaded(module.file.path().to_path_buf(), module.sources),
-            Some(self.module.root().to_path_buf()),
+            ModuleText::Loaded(Box::new(module)),
+            None,
             forms,
             EvaluationSettings {
                 profile: self.profile,

@@ -8908,6 +8908,7 @@ fn a_compiler_newer_than_the_project_warns_once_per_command() {
         &["fmt", "project.knv"],
         &["fmt", "--check", "project.knv"],
         &["fmt", "src/main.knv", "project.knv"],
+        &["eval", "src/main.knv", "(greeting)"],
     ] {
         let stderr = sandbox
             .compiler_in("demo-app", command)
@@ -8920,6 +8921,13 @@ fn a_compiler_newer_than_the_project_warns_once_per_command() {
             command.join(" ")
         );
     }
+    let repl = sandbox.compiler_reading_in("demo-app", "(greeting)\n(greeting)\n", &["repl"]);
+    let stderr = repl.assert_exit_code(0).stderr();
+    assert_eq!(
+        stderr.matches(NEWER_COMPILER_WARNING).count(),
+        1,
+        "`knave repl` printed:\n{stderr}"
+    );
 }
 
 #[test]

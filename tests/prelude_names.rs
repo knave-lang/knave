@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use knave::core::ModulePath;
+use knave::diagnostic::DiagnosticCode;
 use knave::expand::Expander;
 use knave::modules::ModuleSources;
 use knave::reader::{Form, FormKind, Reader};
@@ -180,7 +181,7 @@ impl PreludeExamples {
 
     fn broken_examples(&self) -> Vec<String> {
         let names = self.compiler.exported_names();
-        let rules = ExampleRules::of(self.functions(&names));
+        let rules = self.rules(&names);
         self.compiler
             .pages(&names)
             .iter()
@@ -188,10 +189,14 @@ impl PreludeExamples {
             .collect()
     }
 
-    fn functions(&self, names: &[String]) -> BTreeSet<String> {
-        let values = ValueProbe::of(names.to_vec()).values();
+    fn rules(&self, names: &[String]) -> ExampleRules {
+        let probed = ValueProbe::of(names.to_vec()).probe();
+        ExampleRules::of(self.functions(&probed.values), probed.macros)
+    }
+
+    fn functions(&self, values: &[String]) -> BTreeSet<String> {
         self.compiler
-            .inferred_types(&values)
+            .inferred_types(values)
             .into_iter()
             .filter(|(_, shape)| shape.is_function)
             .map(|(name, _)| name)
@@ -289,7 +294,7 @@ impl<'a> ExampleBlocks<'a> {
 }
 
 struct ExampleRules {
-    functions: BTreeSet<String>,
+    calls: BTreeSet<String>,
 }
 
 impl ExampleRules {
@@ -310,12 +315,65 @@ impl ExampleRules {
         "micros",
         "nanos",
     ];
+    const SYNTAX_FORM_RULE: &str = "a macro is a call, unless it is a syntax form: one that takes \
+         an argument it does not evaluate once as an expression, such as a binding list, a body, a \
+         pattern, a name, a type, or a literal format string";
+    const SYNTAX_FORMS: &[&str] = &[
+        "->",
+        "->>",
+        "and",
+        "assert",
+        "assoc-in",
+        "char",
+        "comment",
+        "cond",
+        "defenum",
+        "defmacro",
+        "defn",
+        "defrule",
+        "defstruct",
+        "deftask",
+        "deftest",
+        "deftrait",
+        "deftype",
+        "display",
+        "doc",
+        "doc-body",
+        "doc-header",
+        "doc-page",
+        "docstring",
+        "eprint",
+        "eprintln",
+        "let",
+        "let-match",
+        "let-try",
+        "loop",
+        "module",
+        "or",
+        "print",
+        "println",
+        "run-tests",
+        "set!",
+        "show",
+        "sort!",
+        "template",
+        "the",
+        "try->",
+        "unless",
+        "when",
+        "with-macro-steps",
+    ];
     const TEST: &str = "deftest";
     const THREADS: &[&str] = &["->", "->>"];
     const FIRST_STEP: usize = 2;
 
-    fn of(functions: BTreeSet<String>) -> Self {
-        Self { functions }
+    fn of(functions: BTreeSet<String>, macros: Vec<String>) -> Self {
+        let call_like_macros = macros
+            .into_iter()
+            .filter(|name| !Self::SYNTAX_FORMS.contains(&name.as_str()));
+        Self {
+            calls: functions.into_iter().chain(call_like_macros).collect(),
+        }
     }
 
     fn problems(&self, page: &str, example: &str) -> Vec<String> {
@@ -365,7 +423,7 @@ impl ExampleRules {
     }
 
     fn starts_chain(&self, name: &str) -> bool {
-        self.functions.contains(name) && !Self::CONSTRUCTORS.contains(&name)
+        self.calls.contains(name) && !Self::CONSTRUCTORS.contains(&name)
     }
 }
 
@@ -382,32 +440,42 @@ impl ValueProbe {
     }
 
     fn values(self) -> Vec<String> {
-        let failing = self.failing_lines();
-        self.names
-            .into_iter()
-            .enumerate()
-            .filter(|(line, _)| !failing.contains(line))
-            .map(|(_, name)| name)
-            .collect()
+        self.probe().values
     }
 
-    fn failing_lines(&self) -> BTreeSet<usize> {
+    fn probe(self) -> ProbedNames {
+        let diagnosed = self.diagnosed_lines();
+        let mut probed = ProbedNames::default();
+        for (line, name) in self.names.into_iter().enumerate() {
+            if diagnosed.macros.contains(&line) {
+                probed.macros.push(name);
+            } else if !diagnosed.failing.contains(&line) {
+                probed.values.push(name);
+            }
+        }
+        probed
+    }
+
+    fn diagnosed_lines(&self) -> DiagnosedLines {
         let text = self.probe_text();
         let mut sources = SourceMap::default();
         let entry = sources.add(Self::FILE, text.clone());
         let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let module_sources = ModuleSources::new(directory.clone(), directory);
+        let mut diagnosed = DiagnosedLines::default();
         let Err(diagnostics) = Expander::new(&mut sources, module_sources)
             .expand(ModulePath::new(Self::MODULE), entry)
         else {
-            return BTreeSet::new();
+            return diagnosed;
         };
-        diagnostics
-            .into_iter()
-            .map(|diagnostic| diagnostic.primary().span())
-            .filter(|span| span.source() == entry)
-            .map(|span| text[..span.range().start].matches('\n').count())
-            .collect()
+        for diagnostic in diagnostics.into_iter() {
+            let span = diagnostic.primary().span();
+            if span.source() == entry {
+                let line = text[..span.range().start].matches('\n').count();
+                diagnosed.record(line, diagnostic.code());
+            }
+        }
+        diagnosed
     }
 
     fn probe_text(&self) -> String {
@@ -416,6 +484,27 @@ impl ValueProbe {
             .enumerate()
             .map(|(position, name)| format!("(def probe-{position} (infer {name}))\n"))
             .collect()
+    }
+}
+
+#[derive(Default)]
+struct ProbedNames {
+    values: Vec<String>,
+    macros: Vec<String>,
+}
+
+#[derive(Default)]
+struct DiagnosedLines {
+    failing: BTreeSet<usize>,
+    macros: BTreeSet<usize>,
+}
+
+impl DiagnosedLines {
+    fn record(&mut self, line: usize, code: Option<&DiagnosticCode>) {
+        self.failing.insert(line);
+        if code == Some(&DiagnosticCode::MACRO_AS_VALUE) {
+            self.macros.insert(line);
+        }
     }
 }
 
@@ -528,7 +617,9 @@ fn each_prelude_example_follows_the_code_rules_of_the_skill() {
     let broken = PreludeExamples::load().broken_examples();
     assert!(
         broken.is_empty(),
-        "prelude examples that break the code rules of `skills/writing-knave/SKILL.md`:\n{}",
+        "prelude examples that break the code rules of `skills/writing-knave/SKILL.md`, \
+         where {}:\n{}",
+        ExampleRules::SYNTAX_FORM_RULE,
         broken.join("\n")
     );
 }
@@ -537,6 +628,7 @@ struct RulesFixture;
 
 impl RulesFixture {
     const FUNCTIONS: &[&str] = &["collect", "map", "iter", "some", "unwrap-ok"];
+    const MACROS: &[&str] = &["keys", "when"];
     const PAGE: &str = "ok";
 
     fn problems(example: &str) -> Vec<String> {
@@ -553,6 +645,7 @@ impl RulesFixture {
                 .iter()
                 .map(|name| name.to_string())
                 .collect(),
+            Self::MACROS.iter().map(|name| name.to_string()).collect(),
         )
     }
 }
@@ -586,6 +679,25 @@ fn a_call_on_a_call_breaks_the_rules_unless_threaded() {
 }
 
 #[test]
+fn a_call_on_a_call_like_macro_breaks_the_rules_unless_threaded() {
+    assert_eq!(
+        RulesFixture::problems("(collect (keys table))"),
+        ["`(collect (keys ...))` is not threaded with `->` or `->>`"]
+    );
+    assert_eq!(
+        RulesFixture::problems("(keys (collect items))"),
+        ["`(keys (collect ...))` is not threaded with `->` or `->>`"]
+    );
+    assert!(RulesFixture::problems("(-> table keys collect)").is_empty());
+}
+
+#[test]
+fn a_syntax_form_starts_no_chain() {
+    assert!(RulesFixture::problems("(collect (when ready items))").is_empty());
+    assert!(RulesFixture::problems("(when (collect items) done)").is_empty());
+}
+
+#[test]
 fn a_constructor_or_another_form_starts_no_chain() {
     assert!(RulesFixture::problems("(some (map items str))").is_empty());
     assert!(RulesFixture::problems("(collect (some 1))").is_empty());
@@ -607,10 +719,23 @@ fn only_a_function_type_is_a_function() {
 }
 
 #[test]
-fn only_a_prelude_function_joins_the_functions_of_the_rules() {
-    let names = ["map", "->"].map(String::from);
-    let functions = PreludeExamples::load().functions(&names);
-    assert_eq!(functions, BTreeSet::from(["map".to_string()]));
+fn only_a_prelude_function_or_call_like_macro_starts_a_chain() {
+    let names = ["map", "iter", "->", "deref", "int"].map(String::from);
+    let rules = PreludeExamples::load().rules(&names);
+    assert!(rules.starts_chain("map"));
+    assert!(rules.starts_chain("iter"));
+    assert!(!rules.starts_chain("->"));
+    assert!(!rules.starts_chain("deref"));
+    assert!(!rules.starts_chain("int"));
+}
+
+#[test]
+fn each_syntax_form_is_a_macro() {
+    let names: Vec<String> = ExampleRules::SYNTAX_FORMS
+        .iter()
+        .map(|name| name.to_string())
+        .collect();
+    assert_eq!(ValueProbe::of(names.clone()).probe().macros, names);
 }
 
 #[test]

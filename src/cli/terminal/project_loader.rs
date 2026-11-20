@@ -27,21 +27,28 @@ impl<'a> ProjectLoader<'a> {
     }
 
     pub fn read(&mut self, source: SourceId) -> Result<Project, ExitStatus> {
-        self.forms(source)
-            .and_then(|forms| Self::reader().read(&forms, self.whole_file(source)))
+        self.project_of(source)
             .map_err(|diagnostics| self.report(&diagnostics))
     }
 
     pub fn read_quietly(&mut self, project_file: &Path) -> Option<Project> {
-        let source = self.added(project_file).ok()?;
-        let forms = self.forms(source).ok()?;
-        Self::reader().read(&forms, self.whole_file(source)).ok()
+        let source = self.added_quietly(project_file)?;
+        self.project_of(source).ok()
     }
 
     pub fn version_refusal(&mut self, project_file: &Path) -> Option<Diagnostic> {
-        let source = self.added(project_file).ok()?;
+        let source = self.added_quietly(project_file)?;
         let forms = self.forms(source).ok()?;
         Self::reader().refusal(&forms, self.whole_file(source))
+    }
+
+    fn project_of(&self, source: SourceId) -> Result<Project, Diagnostics> {
+        self.forms(source)
+            .and_then(|forms| Self::reader().read(&forms, self.whole_file(source)))
+    }
+
+    fn added_quietly(&mut self, project_file: &Path) -> Option<SourceId> {
+        self.added(project_file).ok()
     }
 
     fn added_or_reported(&mut self, project_file: &Path) -> Result<SourceId, ExitStatus> {

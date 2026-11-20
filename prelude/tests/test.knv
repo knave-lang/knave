@@ -1,3 +1,3 @@
-(use prelude/test doctest)
+(use prelude/test doctest text-holds-example?)
 
 (doctest prelude/test)

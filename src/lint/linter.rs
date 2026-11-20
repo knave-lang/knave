@@ -30,6 +30,26 @@ impl<'p> Linter<'p> {
         }
     }
 
+    pub fn holds_example(&self, rules: &mut RuleProgram) -> Result<bool, RuleFailure> {
+        let names = rules.read_back(&self.program.bindings).into_names();
+        let rules = &*rules;
+        let mut host = RuleHost::new(rules, self.facts(&names));
+        for module in self.program.project_modules() {
+            let table = ModuleTable::of_notes(module).map_err(|failure| rules.failure(failure))?;
+            let Some(table) = table else {
+                continue;
+            };
+            match host.holds_example(table, self.step_limit) {
+                Ok(false) => {}
+                Err(failure) if !Self::passed_budget(&failure) => {
+                    return Err(rules.failure(failure));
+                }
+                _ => return Ok(true),
+            }
+        }
+        Ok(false)
+    }
+
     #[cfg(test)]
     pub fn with_step_limit(self, step_limit: u64) -> Self {
         Self { step_limit, ..self }
@@ -185,6 +205,15 @@ mod tests {
             linter.is_kept(&mut host, helper, span)
         }
 
+        fn holds_example(text: &str, step_limit: u64) -> bool {
+            let source = ExpandedSource::expand(text);
+            let mut rules = RuleProgram::expand_from_sources().expect("the lint rules expand");
+            Linter::new(source.program(), source.sources())
+                .with_step_limit(step_limit)
+                .holds_example(&mut rules)
+                .expect("the example question runs")
+        }
+
         fn short_definition_and_long_chain() -> ExpandedSource {
             let locals: String = (1..=Self::CHAIN_LENGTH)
                 .map(|index| format!(" (local v{index} (+ v{} 1))", index - 1))
@@ -195,6 +224,34 @@ mod tests {
                 Self::CHAIN_LENGTH
             ))
         }
+    }
+
+    const DOUBLED: &str = "(export twice)\n(defn twice (x)\n  \"Doubles a number.\n\n  (twice 2)\n  => 4\"\n  (* 2 x))";
+
+    const UNEXAMPLED: &str = "(export twice)\n(defn twice (x)\n  \"Doubles a number.\"\n  (* 2 x))";
+
+    #[test]
+    fn a_docstring_with_an_example_holds_one() {
+        assert!(LinterFixture::holds_example(
+            DOUBLED,
+            StepBudget::DEFAULT_LIMIT
+        ));
+    }
+
+    #[test]
+    fn a_docstring_of_prose_holds_no_example() {
+        assert!(!LinterFixture::holds_example(
+            UNEXAMPLED,
+            StepBudget::DEFAULT_LIMIT
+        ));
+    }
+
+    #[test]
+    fn a_question_past_its_budget_counts_as_an_example() {
+        assert!(LinterFixture::holds_example(
+            UNEXAMPLED,
+            LinterFixture::TINY_STEP_LIMIT
+        ));
     }
 
     #[test]

@@ -11,10 +11,13 @@
 (use prelude/internal/macros docstring-notes-of doctests-key
                              module-docstrings-key)
 
+(use prelude/test text-holds-example?)
+
 (module
   "Holds the lint rules that `knave lint` runs.")
 
-(export check-module check-rule kept-definition? rule-names)
+(export check-module check-rule kept-definition?
+        module-holds-example? rule-names)
 
 (document (unused-binding table)
   "Reports a local binding that nothing reads: a name of a `let` or a `local`, or a parameter of a `fn` applied where it is written, as `loop` writes one.
@@ -439,6 +442,26 @@
 
 (def kept-definition?
   (fn (name) (ignored? name)))
+
+(document (module-holds-example? module)
+  "Answers whether a docstring of `module` holds an example that
+  `knave test` runs. `module` is the table that `check-module` takes.
+
+  `knave lint` asks it about each module of a program only when no program
+  it lints runs the examples, so that `needless-derive` keeps the forms an
+  example could need.")
+
+(def module-holds-example?
+  (fn (module)
+    (any-holds-example? (docstring-texts (nth module 2)))))
+
+(def any-holds-example?
+  (fn (texts)
+    (if (empty? texts)
+      false
+      (if (text-holds-example? (first texts))
+        true
+        (recur (rest texts))))))
 
 (def unreachable-definition
   (fn (entries)

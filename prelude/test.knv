@@ -33,7 +33,7 @@
   "Runs tests and docstring examples under `knave test`.")
 
 (export assert check-library-examples deftest doctest
-        run-tests)
+        run-tests text-holds-example?)
 
 (def define-test
   (macro (call)
@@ -525,41 +525,39 @@
 
 (def block-steps
   (fn (context text lines)
-    (local steps (block-forms context text lines (list)))
-    (if (holds-example? steps) steps (list))))
+    (local block
+      (block-forms context text (list lines (list) 0)))
+    (if (state-found? block)
+      (state-steps block)
+      (list))))
 
-(def holds-example?
-  (fn (steps)
-    (if (empty? steps)
-      false
-      (if (example-step? (first steps))
-        true
-        (recur (rest steps))))))
+(document (text-holds-example? text)
+  "Answers whether the docstring `text` holds an example that `knave test`
+  runs.
 
-(def example-step?
-  (fn (step)
-    (if (list? step)
-      (if (empty? step)
-        false
-        (if (symbol? (first step))
-          (example-head? (first step))
-          false))
-      false)))
+  `knave lint` asks it about each docstring of a module that no linted
+  program tests.
 
-(def example-head?
-  (fn (head)
-    (if (same-binding? head (quote check-example))
-      true
-      (if (same-binding? head (quote run-example))
-        true
-        (same-binding? head (quote unreadable-example))))))
+  ```
+  (defmacro holds-example? (text)
+    (if (text-holds-example? text)
+      (quote true)
+      (quote false)))
+
+  (holds-example? \"Doubles a number.\")
+  => false
+  ```")
+
+(def text-holds-example?
+  (fn (text)
+    (bool-not (empty? (docstring-steps (quote text-holds-example?) text)))))
 
 (def block-forms
-  (fn (context text lines steps)
-    (local state (block-state context text lines steps))
-    (if (empty? (state-lines state))
-      (state-steps state)
-      (recur context text (state-lines state) (state-steps state)))))
+  (fn (context text state)
+    (local next (block-state context text state))
+    (if (empty? (state-lines next))
+      next
+      (recur context text next))))
 
 (def state-lines
   (fn (state) (first state)))
@@ -567,16 +565,37 @@
 (def state-steps
   (fn (state) (nth state 1)))
 
+(def state-examples
+  (fn (state) (nth state 2)))
+
+(def state-found?
+  (fn (state)
+    (number-lt 0 (state-examples state))))
+
+(def code-state
+  (fn (lines state code)
+    (list lines
+          (concat (state-steps state) (list code))
+          (state-examples state))))
+
+(def example-state
+  (fn (lines state step)
+    (list lines
+          (concat (state-steps state) (list step))
+          (number-add (state-examples state) 1))))
+
 (def finished-block
-  (fn (steps) (list (list) steps)))
+  (fn (state step)
+    (example-state (list) state step)))
 
 (def rejected-block
-  (fn () (finished-block (list))))
+  (fn () (list (list) (list) 0)))
 
 (def block-state
-  (fn (context text lines steps)
-    (code-form-state context text lines steps
-                     (read-line-form context text (first lines)))))
+  (fn (context text state)
+    (code-form-state context text state
+                     (read-line-form context text
+                                     (first (state-lines state))))))
 
 (def read-line-form
   (fn (context text line)
@@ -584,12 +603,12 @@
                (number-add (line-offset line) (line-indent line)))))
 
 (def code-form-state
-  (fn (context text lines steps read)
+  (fn (context text state read)
     (if (empty? read)
       (rejected-block)
       (after-code context text
-                  (lines-after lines (nth read 1))
-                  steps
+                  (lines-after (state-lines state) (nth read 1))
+                  state
                   (first read)))))
 
 (def lines-after
@@ -609,9 +628,9 @@
                 (string-length (line-text line)))))
 
 (def after-code
-  (fn (context text lines steps code)
+  (fn (context text lines state code)
     (if (form-ends-its-line? lines)
-      (next-step context text (rest lines) steps code)
+      (next-step context text (rest lines) state code)
       (rejected-block))))
 
 (def form-ends-its-line?
@@ -635,10 +654,10 @@
 (def comment-mark ";")
 
 (def next-step
-  (fn (context text lines steps code)
+  (fn (context text lines state code)
     (if (arrow-first? lines)
-      (read-example context text lines steps code)
-      (list lines (concat steps (list code))))))
+      (read-example context text lines state code)
+      (code-state lines state code))))
 
 (def arrow-first?
   (fn (lines)
@@ -647,15 +666,16 @@
       (arrow-line? (line-text (first lines))))))
 
 (def read-example
-  (fn (context text lines steps code)
+  (fn (context text lines state code)
     (local arrow-form (read-arrow context text (first lines)))
     (local read
       (read-form context text (result-offset (first lines))))
     (local remaining (result-lines lines read))
     (if (unchecked-result? remaining)
-      (list (rest remaining)
-            (concat steps (list (unchecked-step arrow-form code))))
-      (compared-state steps arrow-form code read remaining))))
+      (example-state (rest remaining)
+                     state
+                     (unchecked-step arrow-form code))
+      (compared-state state arrow-form code read remaining))))
 
 (def read-arrow
   (fn (context text line)
@@ -693,12 +713,12 @@
 (def unchecked-result-mark "...")
 
 (def compared-state
-  (fn (steps arrow-form code read remaining)
+  (fn (state arrow-form code read remaining)
     (if (if (empty? read) false (form-ends-its-line? remaining))
-      (list (rest remaining)
-            (concat steps
-                    (list (example-step arrow-form code (first read)))))
-      (finished-block (concat steps (list (unreadable-step code)))))))
+      (example-state (rest remaining)
+                     state
+                     (example-step arrow-form code (first read)))
+      (finished-block state (unreadable-step code)))))
 
 (def example-step
   (fn (arrow-form code expected)

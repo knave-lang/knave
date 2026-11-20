@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use super::argument_start::ArgumentStart;
 use super::format_string::{FormatString, PassedArgument};
 use super::macro_call::MacroCall;
@@ -9,10 +11,20 @@ pub(super) struct FormatArguments<'p> {
     pieces: &'p [Piece],
 }
 
+struct PlacedText {
+    written: String,
+    uses: Vec<PlacedArgument>,
+}
+
 struct PlacedArgument {
     argument: usize,
     position: usize,
     offset: usize,
+}
+
+struct JudgedUse {
+    argument: usize,
+    whole: bool,
 }
 
 struct FormatMacro {
@@ -28,30 +40,37 @@ impl<'p> FormatArguments<'p> {
     }
 
     pub(super) fn formatted(&self) -> Vec<usize> {
-        if !self.calls_a_macro() {
+        if !self.calls_a_format_macro() {
             return Vec::new();
         }
-        let (written, uses) = self.placed_text();
-        let marks: Vec<usize> = uses.iter().map(|placed| placed.offset).collect();
-        let starts = RustText::new(&written).argument_starts(&marks);
-        let mut formatted: Vec<usize> = uses.iter().map(|placed| placed.argument).collect();
-        formatted.sort_unstable();
-        formatted.dedup();
-        let whole: Vec<bool> = uses
+        let placed = self.placed_text();
+        let starts = RustText::new(&placed.written).argument_starts(&placed.offsets());
+        let judged = placed
+            .uses
             .iter()
-            .zip(&starts)
-            .map(|(placed, start)| self.is_whole_argument(placed.position, start.as_ref()))
-            .collect();
-        formatted.retain(|argument| {
-            uses.iter()
-                .zip(&whole)
-                .filter(|(placed, _)| placed.argument == *argument)
-                .all(|(_, whole)| *whole)
-        });
-        formatted
+            .zip(starts)
+            .map(|(placed, start)| JudgedUse {
+                argument: placed.argument,
+                whole: self.is_whole_argument(placed.position, start.as_ref()),
+            });
+        Self::arguments_whole_at_every_use(judged)
     }
 
-    fn calls_a_macro(&self) -> bool {
+    fn arguments_whole_at_every_use(judged: impl Iterator<Item = JudgedUse>) -> Vec<usize> {
+        let mut every_use_whole = BTreeMap::new();
+        for judged_use in judged {
+            every_use_whole
+                .entry(judged_use.argument)
+                .and_modify(|all: &mut bool| *all &= judged_use.whole)
+                .or_insert(judged_use.whole);
+        }
+        every_use_whole
+            .into_iter()
+            .filter_map(|(argument, all)| all.then_some(argument))
+            .collect()
+    }
+
+    fn calls_a_format_macro(&self) -> bool {
         self.pieces.iter().any(|piece| match piece {
             Piece::Literal(text) => FormatMacro::is_called_in(text),
             _ => false,
@@ -80,7 +99,7 @@ impl<'p> FormatArguments<'p> {
         )
     }
 
-    fn placed_text(&self) -> (String, Vec<PlacedArgument>) {
+    fn placed_text(&self) -> PlacedText {
         let mut written = String::new();
         let mut uses = Vec::new();
         for (position, piece) in self.pieces.iter().enumerate() {
@@ -97,7 +116,13 @@ impl<'p> FormatArguments<'p> {
                 _ => written.push_str(Self::PLACED_VALUE),
             }
         }
-        (written, uses)
+        PlacedText { written, uses }
+    }
+}
+
+impl PlacedText {
+    fn offsets(&self) -> Vec<usize> {
+        self.uses.iter().map(|placed| placed.offset).collect()
     }
 }
 

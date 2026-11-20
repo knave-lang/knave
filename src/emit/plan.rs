@@ -4,6 +4,7 @@ use knave_expand::mangle::NameMangler;
 use rustc_hash::FxHashMap;
 
 use super::constant_definitions::ConstantDefinitions;
+use super::entry_point::EntryPoint;
 use super::item_visibilities::ItemVisibilities;
 use super::problems::EmitProblems;
 use super::visibility::Visibility;
@@ -32,8 +33,7 @@ pub struct ItemInfo {
 
 pub struct EmitPlan<'p> {
     program: &'p TypedProgram,
-    main: BindingId,
-    main_body: Option<String>,
+    entry: EntryPoint,
     definitions: FxHashMap<BindingId, (&'p TypedDefinition, ModuleId)>,
     type_modules: FxHashMap<BindingId, ModuleId>,
     reached: Vec<BindingId>,
@@ -53,8 +53,7 @@ impl<'p> EmitPlan<'p> {
             .ok_or_else(|| Diagnostics::from(EmitProblems::missing_main(entry_span)))?;
         let mut plan = Self {
             program,
-            main,
-            main_body: None,
+            entry: EntryPoint::new(main),
             definitions: Self::index_definitions(program),
             type_modules: program
                 .modules
@@ -82,7 +81,7 @@ impl<'p> EmitPlan<'p> {
         plan.visit_definition(main);
         plan.reach_implementations();
         plan.reach_trait_defaults();
-        plan.main_body = plan.choose_main_body_name();
+        plan.entry.name_body(plan.choose_main_body_name());
         plan.assign_items()?;
         plan.collect_trait_uses();
         Ok(plan)
@@ -96,25 +95,17 @@ impl<'p> EmitPlan<'p> {
         self.items.get(&binding)
     }
 
-    pub fn entry_function(&self) -> BindingId {
-        self.main
-    }
-
-    pub fn is_result_main(&self, binding: BindingId) -> bool {
-        binding == self.main && self.main_body.is_some()
-    }
-
-    pub fn main_body_name(&self) -> Option<&str> {
-        self.main_body.as_deref()
+    pub fn entry(&self) -> &EntryPoint {
+        &self.entry
     }
 
     fn choose_main_body_name(&self) -> Option<String> {
-        self.definition(self.main)?
+        self.definition(self.entry.function())?
             .result_error(self.program.declarations.types().enums())?;
         let taken: BTreeSet<String> = self
             .reached
             .iter()
-            .filter(|binding| **binding != self.main)
+            .filter(|binding| **binding != self.entry.function())
             .filter(|binding| !self.program.synthetic_bindings.contains(*binding))
             .map(|binding| self.item_info(*binding))
             .filter(|info| info.module == self.program.entry)
@@ -504,7 +495,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn yields_name(&self, binding: BindingId, holder: BindingId) -> bool {
-        holder == self.main || self.program.bindings.origin(binding).is_introduced()
+        holder == self.entry.function() || self.program.bindings.origin(binding).is_introduced()
     }
 
     fn entry_and_written_items_first(&self) -> Vec<BindingId> {
@@ -512,10 +503,10 @@ impl<'p> EmitPlan<'p> {
             .reached
             .iter()
             .copied()
-            .filter(|binding| *binding != self.main)
+            .filter(|binding| *binding != self.entry.function())
             .filter(|binding| !self.program.synthetic_bindings.contains(binding))
             .partition(|binding| self.program.bindings.origin(*binding).is_introduced());
-        std::iter::once(self.main)
+        std::iter::once(self.entry.function())
             .chain(written)
             .chain(introduced)
             .collect()
@@ -568,8 +559,12 @@ impl<'p> EmitPlan<'p> {
             Some((definition, module)) => (*module, self.definition_kind(definition)),
             None => (self.type_modules[&binding], self.named_type_kind(binding)),
         };
-        let rust_name = match (kind, binding == self.main, &self.main_body) {
-            (ItemKind::Function, true, Some(body)) => body.clone(),
+        let rust_name = match (
+            kind,
+            binding == self.entry.function(),
+            self.entry.body_name(),
+        ) {
+            (ItemKind::Function, true, Some(body)) => body.to_string(),
             (ItemKind::Function, true, None) => Self::ENTRY_RUST_NAME.to_string(),
             (ItemKind::Function, ..) => NameMangler::value(name),
             (ItemKind::Const | ItemKind::Static, ..) => NameMangler::constant(name),

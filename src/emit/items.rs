@@ -120,7 +120,7 @@ impl<'a> ItemEmitter<'a> {
             .plan
             .items_of(self.program.entry)
             .iter()
-            .position(|binding| *binding == self.plan.entry_function())
+            .position(|binding| *binding == self.plan.entry().function())
             .expect("the entry function is an item of the entry module");
         (items, leading_uses + entry_function)
     }
@@ -244,7 +244,7 @@ impl<'a> ItemEmitter<'a> {
             info.name.clone(),
             self.program.bindings.get(binding).name().to_string(),
         ));
-        if self.plan.is_result_main(binding) {
+        if self.plan.entry().is_result_main(binding) {
             let definition = self
                 .plan
                 .definition(binding)
@@ -809,10 +809,8 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn main_wrapper(&self, span: Span) -> Vec<Fragment> {
-        let body = self
-            .plan
-            .main_body_name()
-            .expect("a result main has a body name");
+        let entry = self.plan.entry();
+        let body = entry.body_name().expect("a result main has a body name");
         vec![Fragment::Spanned(
             span,
             vec![

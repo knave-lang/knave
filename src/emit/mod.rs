@@ -50,6 +50,7 @@ mod open_literals;
 mod operator;
 mod plan;
 mod preceded_code;
+mod print_formats;
 mod problems;
 mod result_borrows;
 mod reused_locals;

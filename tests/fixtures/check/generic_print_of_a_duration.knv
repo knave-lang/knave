@@ -1,0 +1,5 @@
+(defn show (value) (println value))
+
+(defn main ()
+  (show 1)
+  (show (seconds 1)))

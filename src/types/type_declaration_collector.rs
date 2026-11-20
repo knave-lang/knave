@@ -13,14 +13,13 @@ use super::mismatch_helps::MismatchHelpRow;
 use super::parameter_usage::ParameterUsage;
 use super::payload_lowering::PayloadLowering;
 use super::problems::TypeProblems;
-use super::rust_type_item::RustTypeItem;
 use super::ty::{GenericId, GenericParam, Type};
 use super::type_declarations::TypeDeclarations;
 use super::written_type_lowering::WrittenTypeLowering;
 use super::{RustType, StructDefinition};
 use crate::core::{
-    BindingArena, BindingId, FieldLabel, MismatchHelp, TypeBinder, TypeExpr, TypeExprKind,
-    VariantPayload as CoreVariantPayload,
+    BindingArena, BindingId, FieldLabel, MismatchHelp, PrintFormat, RustTypeDeclaration,
+    TypeBinder, TypeExpr, TypeExprKind, VariantPayload as CoreVariantPayload,
 };
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -144,6 +143,7 @@ impl<'c> TypeDeclarationCollector<'c> {
             clauses: Vec::new(),
             params: params.iter().map(|param| Rc::clone(&param.name)).collect(),
             unsized_parameters: Vec::new(),
+            format: PrintFormat::Display,
         });
         let definition = EnumDefinition {
             lifetimes,
@@ -161,14 +161,16 @@ impl<'c> TypeDeclarationCollector<'c> {
 
     pub(super) fn collect_rust_type(
         &mut self,
-        item: RustTypeItem<'_>,
+        declaration: &RustTypeDeclaration,
     ) -> Result<RustType, Diagnostic> {
-        let RustTypeItem {
+        let RustTypeDeclaration {
             binders,
             unsized_parameters,
             template,
             clauses,
-        } = item;
+            format,
+            ..
+        } = declaration;
         self.reject_bounds(binders)?;
         let clauses = clauses
             .iter()
@@ -179,7 +181,7 @@ impl<'c> TypeDeclarationCollector<'c> {
                 ))
             })
             .collect::<Result<Vec<_>, Diagnostic>>()?;
-        Ok(RustType {
+        let rust_type = RustType {
             template: template.clone(),
             clauses,
             params: binders
@@ -188,7 +190,9 @@ impl<'c> TypeDeclarationCollector<'c> {
                 .map(|binder| Rc::from(self.bindings.get(binder.variable).name()))
                 .collect(),
             unsized_parameters: unsized_parameters.to_vec(),
-        })
+            format: *format,
+        };
+        Ok(rust_type)
     }
 
     fn lower_variant_payload(
@@ -369,9 +373,8 @@ impl<'c> TypeDeclarationCollector<'c> {
 mod tests {
     use std::rc::Rc;
 
-    use crate::core::{EnumRust, ParsedTemplate, VariantPayload};
+    use crate::core::{EnumRust, ParsedTemplate, PrintFormat, RustTypeDeclaration, VariantPayload};
     use crate::types::enum_item::EnumItem;
-    use crate::types::rust_type_item::RustTypeItem;
     use crate::types::ty::Type;
     use crate::types::written_type_fixture::WrittenTypeFixture as Fixture;
 
@@ -532,16 +535,20 @@ mod tests {
         let clause = std::rc::Rc::new(ParsedTemplate::parse("Holder<i64>").expect("a template"));
         let binders = [Fixture::bounded(variable, &[])];
         let clauses = [(Fixture::integer(), clause)];
+        let declaration = RustTypeDeclaration {
+            binding: variable,
+            binders: binders.to_vec(),
+            unsized_parameters: vec![0],
+            template,
+            clauses: clauses.to_vec(),
+            format: PrintFormat::Debug,
+        };
         let rust_type = fixture
             .checker
             .type_collector()
-            .collect_rust_type(RustTypeItem {
-                binders: &binders,
-                unsized_parameters: &[0],
-                template: &template,
-                clauses: &clauses,
-            })
+            .collect_rust_type(&declaration)
             .expect("the rust type collects");
+        assert_eq!(rust_type.format, PrintFormat::Debug);
         assert_eq!(rust_type.clauses.len(), 1);
         assert_eq!(rust_type.unsized_parameters, vec![0]);
         assert_eq!(rust_type.params.len(), 1);

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/missing_bound_names_the_included_trait.knv
+---
+error[L0440]: `a` might not implement `display`
+ --> check/missing_bound_names_the_included_trait.knv:4:33
+  |
+4 | (defn show (x) (println "show " x))
+  |                                 ^ this needs `display`
+  |
+  = help: add the trait to the signature's `where`: `(a display)`
+  = note: run `knave doc L0440` for an explanation

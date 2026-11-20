@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/format_and_includes_clauses.knv
+---
+(rust-type span "std::ops::Range<i64>" (format debug))
+(rust-trait binary "std::fmt::Binary" int)
+(rust-trait bits "std::fmt::Binary" (includes binary) u8)

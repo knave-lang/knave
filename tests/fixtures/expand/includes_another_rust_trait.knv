@@ -1,0 +1,5 @@
+(rust-trait shown "std::fmt::Debug" bool)
+
+(rust-trait printed "std::fmt::Display"
+  (includes shown)
+  char)

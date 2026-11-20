@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/includes_a_chain.knv
+---
+110
+101
+11

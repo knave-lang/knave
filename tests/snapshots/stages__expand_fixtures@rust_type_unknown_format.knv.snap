@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/expand/rust_type_unknown_format.knv
+---
+error[L0210]: malformed `rust-type`
+ --> expand/rust_type_unknown_format.knv:1:40
+  |
+1 | (rust-type span "std::ops::Range<i64>" (format pretty))
+  |                                        ^^^^^^^^^^^^^^^ this does not fit the shape of `rust-type`
+  |
+  = help: the one format a `rust-type` names is `(format debug)`
+  = note: run `knave doc L0210` for an explanation

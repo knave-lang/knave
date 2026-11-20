@@ -1,0 +1,6 @@
+(type show
+  (where (a) (fn ((ref a)) unit)))
+
+(defn show (x) (println "show " x))
+
+(defn main () (show 1))

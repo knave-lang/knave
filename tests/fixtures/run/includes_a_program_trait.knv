@@ -1,0 +1,11 @@
+(rust-trait binary "std::fmt::Binary" i64)
+
+(rust-trait bits "std::fmt::Binary" (includes binary) u8)
+
+(def binary-text
+  (rust "format!(\"{{:b}}\", {0})"
+    (where ((a bits)) (fn ((ref a)) string))))
+
+(defn main ()
+  (println (binary-text 5))
+  (println (binary-text (the u8 6))))

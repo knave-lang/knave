@@ -1,0 +1,6 @@
+(def show-both
+  (rust "println!(\"{format 1}\", {0})"
+    (where ((a display))
+      (fn ((ref a)) unit))))
+
+(defn main () (show-both 1))

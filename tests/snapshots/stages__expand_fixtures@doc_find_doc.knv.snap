@@ -22,4 +22,4 @@ input_file: tests/fixtures/expand/doc_find_doc.knv
 (def leading-hyphens "(find-doc --quokka)\n\nNo matches.")
 (def find-doc-header "(find-doc quokka)")
 (def find-doc-body "\n\nNo matches.")
-(def main (fn () ((rust "println!(\"(defn hidden ())\\n    Mentions a marmot.\")" (where () (fn () unit)))) ((rust "println!(\"No matches.\")" (where () (fn () unit)))) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (shown))))
+(def main (fn () ((rust "println!(\"(defn hidden ())\\n    Mentions a marmot.\")" (where () (fn () unit)))) ((rust "println!(\"No matches.\")" (where () (fn () unit)))) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (shown))))

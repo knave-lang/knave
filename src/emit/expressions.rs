@@ -19,6 +19,7 @@ use super::open_literals::OpenLiterals;
 use super::operator::{RustOperator, Side};
 use super::plan::{EmitPlan, ItemKind};
 use super::preceded_code::PrecededCode;
+use super::print_formats::PrintFormats;
 use super::problems::EmitProblems;
 use super::result_borrows::ResultBorrows;
 use super::reused_locals::ReusedLocals;
@@ -29,8 +30,8 @@ use super::template_arguments::TemplateArguments;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
 use super::{EmissionWork, type_context::TypeContext};
 use crate::core::{
-    BindingId, BindingKind, FieldLabel, Literal, ModuleId, ParsedTemplate, PrimitiveType,
-    ReferenceKind, RustTemplate, VariantInfo,
+    BinderRenames, BindingId, BindingKind, FieldLabel, Literal, ModuleId, ParsedTemplate,
+    PrimitiveType, ReferenceKind, RustTemplate, VariantInfo,
 };
 use crate::diagnostic::Diagnostic;
 use crate::ownership::StructUpdateOrder;
@@ -1557,7 +1558,7 @@ impl<'a> ExpressionEmitter<'a> {
             return Code::atom(template.template.to_string());
         }
         self.locals.enter();
-        let parsed = self.with_fresh_template_binders(&parsed);
+        let parsed = self.with_fresh_template_binders(parsed);
         let code = match ty {
             Type::Function(_, parameters, _) => self.eta_expanded(&parsed, parameters, types, span),
             _ => self.inline_with_places(&parsed, TemplateArguments::none(), types, &[], span),
@@ -1918,7 +1919,12 @@ impl<'a> ExpressionEmitter<'a> {
             return self.template_call(&rewritten, &compound.arguments, types, span);
         }
         self.locals.enter();
-        let parsed = self.with_fresh_template_binders(&self.plan.template(&template.template));
+        let formats = PrintFormats::new(self.types.rust_types(), arguments);
+        let resolved = self
+            .plan
+            .template(&template.template)
+            .with_literals(&formats);
+        let parsed = self.with_fresh_template_binders(resolved);
         let context = Self::argument_context(arguments);
         let roles: Vec<ArgumentRole> = arguments
             .iter()
@@ -2088,13 +2094,13 @@ impl<'a> ExpressionEmitter<'a> {
         Self::prefixed(&"*".repeat(levels), code).spanned(span)
     }
 
-    fn with_fresh_template_binders(&mut self, template: &Template) -> Template {
+    fn with_fresh_template_binders(&mut self, template: Template) -> Template {
         let renames: Vec<(String, String)> = template
             .binder_names()
             .into_iter()
             .map(|name| (name.to_string(), self.locals.temporary(name)))
             .collect();
-        template.with_binders(&renames)
+        template.with_literals(&BinderRenames::new(&renames))
     }
 
     fn inlines_call(lambda: &TypedLambda, call_arguments: &[&str]) -> bool {

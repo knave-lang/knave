@@ -1,0 +1,21 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/run/print_durations.knv
+---
+250ms
+250ms at step 3
+took 250ms at step 3
+step 3 took 250ms
+took 250ms
+250ms
+250ms
+took 250ms at step 3
+3 2s done
+ref 250ms
+each 1ms
+each 2ms
+stderr:
+took 250ms at step 3
+250ms
+exit code: 0

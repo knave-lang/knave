@@ -1,0 +1,6 @@
+(rust-trait written "std::fmt::Display" bool)
+
+(rust-trait printed "std::fmt::Display"
+  (includes written)
+  (includes written)
+  char)

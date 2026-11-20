@@ -4,4 +4,4 @@ expression: reports.report(path)
 input_file: tests/fixtures/expand/doc_module_undocumented.knv
 ---
 (def shapes-page "(module undocumented/shapes)\n\nNo documentation.\n\n(defn area (width height))")
-(def main (fn () ((rust "println!(\"{{}}{{}}\", {&0}, {&1})" (where ((part-type-0 display) (part-type-1 display)) (fn ((ref part-type-0) (ref part-type-1)) unit))) (area 2 3) shapes-page)))
+(def main (fn () ((rust "println!(\"{format 0}{format 1}\", {&0}, {&1})" (where ((part-type-0 printable) (part-type-1 printable)) (fn ((ref part-type-0) (ref part-type-1)) unit))) (area 2 3) shapes-page)))

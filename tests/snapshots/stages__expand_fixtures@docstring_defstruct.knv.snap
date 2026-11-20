@@ -5,5 +5,5 @@ input_file: tests/fixtures/expand/docstring_defstruct.knv
 ---
 (struct point (x int) (y int))
 (def make-point (fn (x y) (new point (x x) (y y))))
-(def main (fn () ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (field (new point (x 1) (y 2)) x))))
+(def main (fn () ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (field (new point (x 1) (y 2)) x))))
 (def point-page "(defstruct point)\n\nA point on a grid.")

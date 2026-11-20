@@ -47,6 +47,11 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         traits
             .table
             .add(collected.declaration.binding, collected.rust_trait);
+        if let Some(included) = collected.declaration.relations.included {
+            traits
+                .table
+                .include(collected.declaration.binding, included);
+        }
         traits.rust_paths.record(collected.declaration);
         for (method, info) in collected.methods {
             synthetic.insert(method);
@@ -61,9 +66,12 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         impl_methods: &mut FxHashSet<BindingId>,
     ) {
         let traits = self.traits;
-        traits
+        if let Some(rows) = traits
             .table
-            .add_implementor(collected.definition.trait_binding, collected.implementor);
+            .reached_rows_mut(collected.definition.trait_binding)
+        {
+            rows.add(collected.implementor);
+        }
         for method in &collected.definition.methods {
             synthetic.insert(method.binding);
             impl_methods.insert(method.binding);

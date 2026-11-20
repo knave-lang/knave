@@ -3,9 +3,9 @@ use rustc_hash::FxHashMap;
 use super::{
     Arm, Binder, BindingArena, BindingId, Block, BodyItem, ClosureKind, Control, CoreModule, Expr,
     ExprKind, FieldLabel, Item, ItemKind, KernelConstants, KernelForm, KeyedPath, Lambda, Leaf,
-    Literal, MapOperation, ParsedTemplate, Pattern, PatternArguments, PatternKind, PatternPart,
-    RustTemplate, RustTraitImplementor, StructExpr, TypeBinder, TypeBound, TypeExpr, TypeExprKind,
-    VariantDeclaration, VariantPayload,
+    Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, RustTemplate,
+    RustTraitImplementor, RustTypeDeclaration, StructExpr, TypeBinder, TypeBound, TypeExpr,
+    TypeExprKind, VariantDeclaration, VariantPayload,
 };
 use crate::stack::DeepRecursion;
 
@@ -78,10 +78,8 @@ impl<'a> CorePrinter<'a> {
     }
 
     fn imported_type_item(&mut self, item: &Item) -> String {
-        if let ItemKind::RustType(binding, params, unsized_parameters, template, clauses) =
-            &item.kind
-        {
-            return self.rust_type_item(*binding, params, unsized_parameters, template, clauses);
+        if let ItemKind::RustType(declaration) = &item.kind {
+            return self.rust_type_item(declaration);
         }
         if let ItemKind::RustTrait(declaration) = &item.kind {
             return self.rust_trait_item(declaration);
@@ -502,19 +500,21 @@ impl<'a> CorePrinter<'a> {
         format!("({})", parts.join(" "))
     }
 
-    fn rust_type_item(
-        &mut self,
-        binding: BindingId,
-        params: &[TypeBinder],
-        unsized_parameters: &[usize],
-        template: &ParsedTemplate,
-        clauses: &[(TypeExpr, std::rc::Rc<ParsedTemplate>)],
-    ) -> String {
-        let head = self.type_head_with_unsized(binding, params, unsized_parameters);
+    fn rust_type_item(&mut self, declaration: &RustTypeDeclaration) -> String {
+        let RustTypeDeclaration {
+            binding,
+            binders,
+            unsized_parameters,
+            template,
+            clauses,
+            format,
+        } = declaration;
+        let head = self.type_head_with_unsized(*binding, binders, unsized_parameters);
         let mut parts = vec![head, format!("{:?}", template.text())];
         parts.extend(clauses.iter().map(|(target, template)| {
             format!("({} {:?})", self.type_expr(target), template.text())
         }));
+        parts.extend(format.clause());
         Self::list("rust-type", parts)
     }
 
@@ -636,8 +636,9 @@ impl<'a> CorePrinter<'a> {
                 crate::core::RUST_TRAIT_HELP_MARKER
             ));
         }
-        if !declaration.requires.is_empty() {
+        if !declaration.relations.requires.is_empty() {
             let required = declaration
+                .relations
                 .requires
                 .iter()
                 .map(|required| self.bound(&required.bound))
@@ -647,6 +648,11 @@ impl<'a> CorePrinter<'a> {
                 required,
             ));
         }
+        parts.extend(
+            declaration
+                .relations
+                .included_clause(|binding| self.name(binding)),
+        );
         if let Some(structural) = &declaration.structural {
             parts.push(Self::structural_clause(structural));
         }

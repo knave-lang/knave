@@ -1,0 +1,5 @@
+(rust-type span "std::ops::Range<i64>" (format debug))
+
+(rust-trait binary "std::fmt::Binary" i64)
+
+(rust-trait bits "std::fmt::Binary" (includes binary) u8)

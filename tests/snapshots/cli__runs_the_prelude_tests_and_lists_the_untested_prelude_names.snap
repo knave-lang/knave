@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
 untested in prelude (57 of 260): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display duration enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl instant integer io-error macro mismatch-help module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
-running 240 tests
+running 241 tests
 test number/inc-adds-one-to-any-number ... ok
 test number/dec-subtracts-one-from-any-number ... ok
 test number/inc-and-dec-are-values ... ok
@@ -209,6 +209,7 @@ ok
 test prelude/text/doc:display ... ok
 test prelude/text/doc:char ... ok
 test prelude/text/doc:show ... ok
+test prelude/text/doc:printable ... ok
 test prelude/text/doc:from-str ... ok
 test prelude/text/doc:parse-error ... ok
 test prelude/text/doc:parse-bool-error ... ok
@@ -263,4 +264,4 @@ test prelude/vec/doc:last ... ok
 test prelude/vec/doc:reverse ... ok
 test prelude/vec/doc:reverse! ... ok
 test prelude/vec/doc:dedup! ... ok
-240 passed, 0 failed
+241 passed, 0 failed

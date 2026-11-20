@@ -9,7 +9,7 @@ use super::operator::{RustOperator, RustText, Side};
 use super::preceded_code::PrecededCode;
 use super::substitution::Substitution;
 use super::template_arguments::TemplateArguments;
-use crate::core::{Access, ParsedTemplate, Piece};
+use crate::core::{Access, ParsedTemplate, Piece, PieceLiterals};
 
 pub(super) mod judged_templates;
 
@@ -97,10 +97,18 @@ impl Template {
         self.parsed.binder_names()
     }
 
-    pub fn with_binders(&self, renames: &[(String, String)]) -> Self {
+    pub fn with_literals(self, literals: &impl PieceLiterals) -> Self {
+        if !self
+            .parsed
+            .pieces()
+            .iter()
+            .any(|piece| literals.literal(piece).is_some())
+        {
+            return self;
+        }
         Self {
-            parsed: self.parsed.with_binders(renames),
-            formatted: self.formatted.clone(),
+            parsed: self.parsed.with_literals(literals),
+            formatted: OnceCell::new(),
         }
     }
 
@@ -224,6 +232,9 @@ impl Template {
                 Piece::BinderPlaceholder { name } => {
                     return Err(TemplateError::UnresolvedBinder(name.clone()));
                 }
+                Piece::FormatPlaceholder { index } => {
+                    return Err(TemplateError::MissingArgument(*index));
+                }
             }
         }
         Ok(Code {
@@ -245,7 +256,8 @@ impl Template {
                 Piece::Literal(literal) => Some(literal.as_str()),
                 Piece::Placeholder { .. }
                 | Piece::TypePlaceholder { .. }
-                | Piece::BinderPlaceholder { .. } => None,
+                | Piece::BinderPlaceholder { .. }
+                | Piece::FormatPlaceholder { .. } => None,
             })
             .collect();
         RustText::new(&text).closes_every_delimiter()
@@ -336,7 +348,8 @@ impl Template {
         match piece {
             Piece::Placeholder { .. }
             | Piece::TypePlaceholder { .. }
-            | Piece::BinderPlaceholder { .. } => true,
+            | Piece::BinderPlaceholder { .. }
+            | Piece::FormatPlaceholder { .. } => true,
             Piece::Literal(literal) => !literal.trim().is_empty(),
         }
     }
@@ -365,7 +378,8 @@ impl Template {
             Piece::Literal(literal) => Some(literal),
             Piece::Placeholder { .. }
             | Piece::TypePlaceholder { .. }
-            | Piece::BinderPlaceholder { .. } => None,
+            | Piece::BinderPlaceholder { .. }
+            | Piece::FormatPlaceholder { .. } => None,
         }
     }
 
@@ -463,6 +477,36 @@ impl InlinedCall {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::BinderRenames;
+
+    #[test]
+    fn a_format_placeholder_needs_the_format_of_its_argument() {
+        let unresolved = Template::new("println!(\"{format 0}\", {0})")
+            .inline_with_types(TemplateArguments::Written(vec![Code::atom("x")]), &[], &[])
+            .map(|code| code.text());
+        assert_eq!(unresolved, Err(TemplateError::MissingArgument(0)));
+    }
+
+    #[test]
+    fn a_resolved_format_placeholder_is_literal_text() {
+        let template = Template::new("println!(\"{{format 0}} {format 0}\", {0})");
+        let resolved = template.with_literals(&DebugFormats);
+        assert_eq!(
+            Template::new(resolved.text())
+                .inline_with_types(TemplateArguments::Written(vec![Code::atom("x")]), &[], &[])
+                .map(|code| code.text()),
+            Ok("println!(\"{format 0} {:?}\", x)".to_string())
+        );
+    }
+
+    struct DebugFormats;
+
+    impl PieceLiterals for DebugFormats {
+        fn literal(&self, piece: &Piece) -> Option<String> {
+            matches!(piece, Piece::FormatPlaceholder { .. })
+                .then(|| crate::core::PrintFormat::Debug.placeholder().to_string())
+        }
+    }
 
     fn inline(template: &str, arguments: Vec<Code>) -> String {
         Template::new(template)
@@ -654,10 +698,11 @@ mod tests {
     fn renames_each_binder_use() {
         let template =
             Template::new("{0}.sort_by(|{!left}, {!right}| {1}({!left}, {!right}).cmp(&0))");
-        let renamed = template.with_binders(&[
+        let renames = [
             ("left".to_string(), "left_2".to_string()),
             ("right".to_string(), "right".to_string()),
-        ]);
+        ];
+        let renamed = template.with_literals(&BinderRenames::new(&renames));
         assert_eq!(
             renamed.text(),
             "{0}.sort_by(|left_2, right| {1}(left_2, right).cmp(&0))"

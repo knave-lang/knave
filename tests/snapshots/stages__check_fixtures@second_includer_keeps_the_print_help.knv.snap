@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/second_includer_keeps_the_print_help.knv
+---
+error[L0404]: `duration` does not implement `display`
+ --> check/second_includer_keeps_the_print_help.knv:9:9
+  |
+9 |   (show (millis 3)))
+  |         ^^^^^^^^^^ this needs `display`
+  |
+  = note: `display` is implemented for: bool, char, str, string, (ref str), io-error, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, (where ((a display)) (ref a))
+  = note: `display` is implemented for `(parse-error target)` for each `target` in: bool, char, string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float
+  = help: a generic function prints only `display` types: give the parameter a type, or print the value with `prn`
+  = note: run `knave doc L0404` for an explanation

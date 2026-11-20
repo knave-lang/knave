@@ -69,7 +69,7 @@ impl<'a> Generalization<'a> {
             return None;
         }
         let name = ParameterNames::at(position);
-        let bounds = self.variables().self_plain_bounds(var);
+        let bounds = rules.generic_bounds(self.variables().self_plain_bounds(var));
         let param =
             GenericDeclarations::new(self.generics, self.unifier).generalize(var, &name, bounds);
         if let Some(literal) = literal {

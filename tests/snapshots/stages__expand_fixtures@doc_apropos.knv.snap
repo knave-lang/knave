@@ -13,4 +13,4 @@ input_file: tests/fixtures/expand/doc_apropos.knv
 (def no-match-with-spaces "(apropos \"xyzzy none\")\n\nNo matches. Try (find-doc \"xyzzy none\") to search docstrings.")
 (def apropos-header "(apropos quokka)")
 (def apropos-body "\n\nQuokka-Upper quokka-count")
-(def main (fn () ((rust "println!(\"Quokka-Upper quokka-count\")" (where () (fn () unit)))) ((rust "println!(\"No matches. Try (find-doc xyzzy-none) to search docstrings.\")" (where () (fn () unit)))) ((rust "println!(\"{{}}\", {&0})" (where ((part-type-0 display)) (fn ((ref part-type-0)) unit))) (shown-lemming))))
+(def main (fn () ((rust "println!(\"Quokka-Upper quokka-count\")" (where () (fn () unit)))) ((rust "println!(\"No matches. Try (find-doc xyzzy-none) to search docstrings.\")" (where () (fn () unit)))) ((rust "println!(\"{format 0}\", {&0})" (where ((part-type-0 printable)) (fn ((ref part-type-0)) unit))) (shown-lemming))))

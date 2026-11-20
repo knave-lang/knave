@@ -3,13 +3,14 @@ use std::rc::Rc;
 
 use super::template_spelling::TemplateSpelling;
 use super::ty::Type;
-use crate::core::{BindingId, ParsedTemplate};
+use crate::core::{BindingId, ParsedTemplate, PrintFormat};
 
 pub struct RustType {
     pub template: Rc<ParsedTemplate>,
     pub clauses: Vec<(Type, Rc<ParsedTemplate>)>,
     pub params: Vec<Rc<str>>,
     pub unsized_parameters: Vec<usize>,
+    pub format: PrintFormat,
 }
 
 impl RustType {

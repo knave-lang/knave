@@ -59,16 +59,23 @@ impl<'i> NamedTypes<'i> {
                 Self::types([implementor].into_iter(), visit);
                 Self::types(associated.iter().map(|value| &value.value), visit);
             }
-            ItemKind::RustType(_, _, _, _, clauses) => {
-                Self::types(clauses.iter().map(|(target, _)| target), visit);
+            ItemKind::RustType(declaration) => {
+                Self::types(declaration.clauses.iter().map(|(target, _)| target), visit);
             }
             _ => {}
         }
     }
 
     fn visit_rust_trait(declaration: &RustTraitDeclaration, visit: &mut dyn FnMut(BindingId)) {
+        if let Some(included) = declaration.relations.included {
+            visit(included);
+        }
         Self::bounds(
-            declaration.requires.iter().map(|required| &required.bound),
+            declaration
+                .relations
+                .requires
+                .iter()
+                .map(|required| &required.bound),
             visit,
         );
         Self::types(

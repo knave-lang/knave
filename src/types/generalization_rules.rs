@@ -1,19 +1,32 @@
+use std::rc::Rc;
+
 use rustc_hash::FxHashSet;
 
 use super::literal_parameters::LiteralParameters;
-use super::ty::TypeVar;
+use super::trait_inclusions::TraitInclusions;
+use super::ty::{Bound, TypeVar};
 
 pub(super) struct GeneralizationRules {
     pinnable: FxHashSet<TypeVar>,
     literal_parameters: LiteralParameters,
+    inclusions: Rc<TraitInclusions>,
 }
 
 impl GeneralizationRules {
-    pub(super) fn new(pinnable: FxHashSet<TypeVar>, literal_parameters: LiteralParameters) -> Self {
+    pub(super) fn new(
+        pinnable: FxHashSet<TypeVar>,
+        literal_parameters: LiteralParameters,
+        inclusions: Rc<TraitInclusions>,
+    ) -> Self {
         Self {
             pinnable,
             literal_parameters,
+            inclusions,
         }
+    }
+
+    pub(super) fn generic_bounds(&self, bounds: Vec<Bound>) -> Vec<Bound> {
+        self.inclusions.generic_bounds(bounds)
     }
 
     pub(super) fn defaults_literal(&self, var: TypeVar) -> bool {

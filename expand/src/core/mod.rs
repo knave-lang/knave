@@ -2,6 +2,7 @@ mod access;
 mod argument_passing;
 mod argument_positions;
 mod binder_origin;
+mod binder_renames;
 mod binding;
 mod builtin;
 mod clause_comparison;
@@ -25,8 +26,11 @@ mod pair_position;
 mod passing_allowance;
 mod passing_relaxation;
 mod path_part;
+mod piece;
+mod piece_literals;
 mod primitive;
 mod primitive_names;
+mod print_format;
 mod printer;
 mod references;
 mod saved_bindings;
@@ -43,6 +47,7 @@ mod written_types;
 pub use access::Access;
 pub use argument_positions::ArgumentPositions;
 pub use binder_origin::BinderOrigin;
+pub use binder_renames::BinderRenames;
 pub use binding::{
     BindingArena, BindingId, BindingInfo, BindingKind, Declaration, ModuleDefinitions, Namespace,
     VariantInfo,
@@ -71,18 +76,22 @@ pub use member_owners::MemberOwners;
 pub use mismatch_help::MismatchHelp;
 pub use module::{
     AssociatedValue, CoreModule, EnumDefiner, EnumRust, ImplAssociatedType, ImplMethod, Item,
-    ItemKind, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER, RUST_TRAIT_METHOD_MARKER,
-    RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER, RequiredTrait,
-    RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor, TraitAssociatedType,
-    TraitMethod, VariantDeclaration, VariantPayload,
+    ItemKind, RUST_TRAIT_ASSOCIATED_MARKER, RUST_TRAIT_HELP_MARKER, RUST_TRAIT_INCLUDES_MARKER,
+    RUST_TRAIT_METHOD_MARKER, RUST_TRAIT_REQUIRES_MARKER, RUST_TRAIT_STRUCTURAL_MARKER,
+    RequiredTrait, RustTraitAssociatedType, RustTraitDeclaration, RustTraitImplementor,
+    RustTypeDeclaration, TraitAssociatedType, TraitMethod, TraitRelations, VariantDeclaration,
+    VariantPayload,
 };
 pub use module_id::ModuleId;
 pub use module_path::ModulePath;
 pub use named_types::NamedTypes;
 pub use pair_position::PairPosition;
 pub use passing_allowance::PassingAllowance;
+pub use piece::Piece;
+pub use piece_literals::PieceLiterals;
 pub use primitive::PrimitiveType;
 pub use primitive_names::PrimitiveNames;
+pub use print_format::PrintFormat;
 pub use printer::CorePrinter;
 pub use references::References;
 pub use saved_bindings::{BindingTables, SavedBindings};
@@ -91,7 +100,7 @@ pub use structural::{
     StructuralClause, StructuralKey, StructuralPiece, StructuralTemplate, StructuralValues,
     UnfilledPlaceholder,
 };
-pub use template::{MalformedPlaceholder, ParsedTemplate, PassingAspect, PassingDifference, Piece};
+pub use template::{MalformedPlaceholder, ParsedTemplate, PassingAspect, PassingDifference};
 pub use template_braces::TemplateBraces;
 pub use template_operation::{Division, Operand, TemplateOperation};
 pub use types::{ClosureKind, TypeBinder, TypeBound, TypeExpr, TypeExprKind};

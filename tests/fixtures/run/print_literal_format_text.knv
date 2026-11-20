@@ -1,0 +1,5 @@
+(defn main ()
+  (println "{format 0} " 3)
+  (println "{} {:?} {{format 0}} " 3)
+  (println "{format 0} " (millis 2))
+  (println (str "{format 0}" (millis 2))))

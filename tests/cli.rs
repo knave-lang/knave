@@ -9076,7 +9076,7 @@ fn new_writes_a_workflow_that_reads_past_an_escaped_quote_in_a_string() {
         .assert_silent_success();
     let sandbox = sandbox.with_file(
         "demo-app/project.knv",
-        "(defproject demo-app :description \"a\\\";b\" :knave \"0.19.0\")\n",
+        "(defproject demo-app :description \"a\\\";b\" :knave \"0.19.0\") ; was :knave \"0.18.0\"\n",
     );
     assert_eq!(
         sandbox.run_version_step("demo-app"),
@@ -9093,6 +9093,27 @@ fn new_writes_a_workflow_that_fails_on_two_recorded_versions() {
     let sandbox = sandbox.with_file(
         "demo-app/project.knv",
         "(defproject demo-app\n  :knave \"0.18.0\"\n  :knave \"0.19.0\")\n",
+    );
+    assert_eq!(
+        sandbox.run_version_step("demo-app"),
+        (
+            false,
+            String::new(),
+            "::error file=project.knv::project.knv records more than one :knave version\n"
+                .to_string()
+        )
+    );
+}
+
+#[test]
+fn new_writes_a_workflow_that_fails_on_two_versions_in_one_line() {
+    let sandbox = Sandbox::new("new_workflow_two_versions_in_one_line");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let sandbox = sandbox.with_file(
+        "demo-app/project.knv",
+        "(defproject demo-app :knave \"0.18.0\" :knave \"0.19.0\")\n",
     );
     assert_eq!(
         sandbox.run_version_step("demo-app"),

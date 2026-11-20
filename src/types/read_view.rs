@@ -15,6 +15,22 @@ impl<'t> ReadView<'t> {
         self.views_as(written) && written.reference_depth() == self.read.reference_depth()
     }
 
+    pub(super) fn is_reached_as(&self, reached: &Type) -> bool {
+        self.views_as(reached) && reached.reference_depth() <= self.read.reference_depth()
+    }
+
+    pub(super) fn at_depth_of(&self, reached: &Type) -> Type {
+        let open_depth = matches!(reached.innermost_referent(), Type::Var(_));
+        let mut read = self.read;
+        while !open_depth
+            && read.reference_depth() > reached.reference_depth()
+            && let Type::Ref(_, inner) | Type::Mut(_, inner) = read
+        {
+            read = inner;
+        }
+        read.clone()
+    }
+
     pub(super) fn is_used_as(&self, used: &Type) -> bool {
         Self::fits(self.read, used) || self.is_borrowed_as_unsized(used)
     }
@@ -34,10 +50,7 @@ impl<'t> ReadView<'t> {
             (Type::Named(read, reads), Type::Named(used, uses)) => {
                 read == used
                     && reads.len() == uses.len()
-                    && reads
-                        .iter()
-                        .zip(uses)
-                        .all(|(read, used)| Self::fits(read, used))
+                    && (reads.iter().zip(uses)).all(|(read, used)| Self::fits(read, used))
             }
             _ => read == used,
         }

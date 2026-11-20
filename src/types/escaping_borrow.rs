@@ -57,7 +57,7 @@ impl<'p> EscapingBorrow<'p> {
                 self.program.has_lifetime_parameter(*binding)
                     || arguments.iter().any(|argument| self.holds_borrow(argument))
             }
-            _ => false,
+            unsized_view => unsized_view.is_unsized(),
         }
     }
 }

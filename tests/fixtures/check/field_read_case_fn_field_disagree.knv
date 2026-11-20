@@ -1,0 +1,11 @@
+(defstruct user
+  :f (fn (int) int))
+
+(defstruct animal
+  :f (fn (int) bool))
+
+(defn call (x) ((:f x) 1))
+
+(defn main ()
+  (println (call (->user (fn (v) (+ v 1)))))
+  (println (call (->animal (fn (v) (> v 0))))))

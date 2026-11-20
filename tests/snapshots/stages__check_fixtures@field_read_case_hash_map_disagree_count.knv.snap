@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_hash_map_disagree_count.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_hash_map_disagree_count.knv:7:24
+  |
+7 | (defn size (x) (count (:m x)))
+  |                        ^^ cannot tell which struct's `m` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

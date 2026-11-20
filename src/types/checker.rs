@@ -905,7 +905,6 @@ impl TypeChecker {
     ) {
         if let (Some(argument), Some(expected)) = (argument, &bound.argument)
             && self.unifier.unify(expected, &argument, site.span).is_err()
-            && !FieldReadSelection::settles_later(&self.declarations.traits().table, &bound)
         {
             self.report_missing_trait(&bound, implementor, site.span);
             return;

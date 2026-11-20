@@ -1,0 +1,12 @@
+(defstruct user
+  :p (pair int string))
+
+(defstruct animal
+  :p (pair int string))
+
+(defn head (x)
+  (match (:p x) ((pair l r) (+ 1 l))))
+
+(defn main ()
+  (println (head (->user (pair 1 (str "a")))))
+  (println (head (->animal (pair 2 (str "b"))))))

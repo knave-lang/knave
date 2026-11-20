@@ -40,7 +40,11 @@ impl<'p> ReaderShape<'p> {
 
     fn allows(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
         let emitted_read = plan.read.is_concrete() && !matches!(plan.read, Type::Function(..));
-        emitted_read && !self.changes_a_field(reader) && self.passes_owner(reader, plan)
+        let settled_read = matches!(reader.read, Type::Generic(_)) || reader.read.is_concrete();
+        emitted_read
+            && settled_read
+            && !self.changes_a_field(reader)
+            && self.passes_owner(reader, plan)
     }
 
     pub(super) fn copies_owner(&self, plan: &FieldTraitPlan) -> bool {

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_call_same_struct_two_types.knv
+---
+error[L0404]: `user` does not implement `(has :n (option (ref str)))`
+  --> check/field_bound_call_same_struct_two_types.knv:11:18
+   |
+11 |   (println (n-or (->user none) "w"))
+   |                  ^^^^^^^^^^^^^ this needs `(has :n (option (ref str)))`
+   |
+   = note: run `knave doc L0404` for an explanation

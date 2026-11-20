@@ -1,0 +1,11 @@
+(def parsed-lengths
+  (rust "({&0}.len() + {&1}.len()) as i64"
+    (where ((a from-str)) (fn (a a) i64))))
+
+(defn total ((x (ref string)) (y (ref string)))
+  (parsed-lengths x y))
+
+(defn main ()
+  (local first (str "Ana"))
+  (local second (str "Bo"))
+  (println (total (ref first) (ref second))))

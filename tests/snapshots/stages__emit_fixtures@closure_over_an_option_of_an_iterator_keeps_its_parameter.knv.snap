@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/closure_over_an_option_of_an_iterator_keeps_its_parameter.knv
 ---
-fn kept(s: &mut String) -> impl FnOnce() -> usize {
+fn kept(s: &mut String) -> impl FnOnce() -> i64 {
     *s = "xy".to_string();
     let cs = Some(s.as_str().chars());
     move || match cs {
-        Some(c) => c.count(),
+        Some(c) => crate::rt::count(c),
         None => 0,
     }
 }
@@ -34,4 +34,21 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

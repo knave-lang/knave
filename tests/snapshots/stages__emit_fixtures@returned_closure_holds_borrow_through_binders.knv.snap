@@ -3,16 +3,16 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/returned_closure_holds_borrow_through_binders.knv
 ---
-fn looped(items: &mut Vec<i64>) -> impl FnOnce() -> usize {
+fn looped(items: &mut Vec<i64>) -> impl FnOnce() -> i64 {
     items.push(1);
     let it = items.iter();
-    move || it.count()
+    move || crate::rt::count(it)
 }
 
-fn matched(items: &mut Vec<i64>) -> impl FnOnce() -> usize {
+fn matched(items: &mut Vec<i64>) -> impl FnOnce() -> i64 {
     items.push(1);
     let it = items.iter();
-    move || it.count()
+    move || crate::rt::count(it)
 }
 
 fn main() {
@@ -37,4 +37,21 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

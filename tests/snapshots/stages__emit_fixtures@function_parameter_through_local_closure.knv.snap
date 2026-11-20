@@ -53,7 +53,7 @@ fn main() {
     record_through_twice(|year: i64| years.push(year), 2028);
     record_in_loop(|year: i64| years.push(year), 2029);
     record_nested(|year: i64| years.push(year), 2031);
-    println!("{}", years.len())
+    println!("{}", crate::rt::length(years.len()))
 }
 
 mod rt {
@@ -71,4 +71,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

@@ -8,7 +8,7 @@ struct Stack<A> {
     items: Vec<A>,
 }
 
-fn count<C: Container<Item = Item>, Item>(c: &C) -> usize {
+fn count<C: Container<Item = Item>, Item>(c: &C) -> i64 {
     c.size()
 }
 
@@ -24,13 +24,13 @@ fn main() {
 
 trait Container {
     type Item;
-    fn size(&self) -> usize;
+    fn size(&self) -> i64;
 }
 
 impl<A> Container for Stack<A> {
     type Item = A;
-    fn size(&self) -> usize {
-        self.items.len()
+    fn size(&self) -> i64 {
+        crate::rt::length(self.items.len())
     }
 }
 
@@ -49,4 +49,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

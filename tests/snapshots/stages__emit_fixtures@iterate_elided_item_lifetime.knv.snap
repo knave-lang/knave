@@ -13,23 +13,23 @@ fn make_car(model: &str, year: u16) -> Car<'_> {
     Car { model, year }
 }
 
-fn count_long<'a>(names: impl Iterator<Item = &'a str>) -> usize {
-    names.filter(|name: &&str| (*name).len() > 4).count()
+fn count_long<'a>(names: impl Iterator<Item = &'a str>) -> i64 {
+    crate::rt::count(names.filter(|name: &&str| crate::rt::length((*name).len()) > 4))
 }
 
-fn count_big<'a>(values: impl Iterator<Item = &'a i64>) -> usize {
-    values.filter(|value: &&i64| **value > 50).count()
+fn count_big<'a>(values: impl Iterator<Item = &'a i64>) -> i64 {
+    crate::rt::count(values.filter(|value: &&i64| **value > 50))
 }
 
-fn count_new<'a>(cars: impl Iterator<Item = &'a Car<'a>>) -> usize {
-    cars.filter(|car: &&Car<'_>| car.year > 2020).count()
+fn count_new<'a>(cars: impl Iterator<Item = &'a Car<'a>>) -> i64 {
+    crate::rt::count(cars.filter(|car: &&Car<'_>| car.year > 2020))
 }
 
 fn count_both<'a, 'b>(
     models: impl Iterator<Item = &'a str>,
     makers: impl Iterator<Item = &'b str>,
-) -> usize {
-    models.count() + makers.count()
+) -> i64 {
+    crate::rt::count(models) + crate::rt::count(makers)
 }
 
 fn last_name<'a>(names: impl Iterator<Item = &'a str>) -> Option<&'a str> {
@@ -304,5 +304,38 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

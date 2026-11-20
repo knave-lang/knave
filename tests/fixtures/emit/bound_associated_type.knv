@@ -1,6 +1,6 @@
 (trait container
   (type item)
-  (size (fn ((ref self)) usize)))
+  (size (fn ((ref self)) int)))
 
 (struct (stack a) (items (vec a)))
 
@@ -10,7 +10,7 @@
 
 (type count
   (where ((c (container item)) item)
-    (fn ((ref c)) usize)))
+    (fn ((ref c)) int)))
 
 (defn count (c) (size c))
 

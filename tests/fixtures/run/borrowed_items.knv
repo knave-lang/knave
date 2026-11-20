@@ -5,14 +5,14 @@
 (defn later? (left right) (> left right))
 
 (type leaf-count
-  (fn ((ref (slice (ref str)))) usize))
+  (fn ((ref (slice (ref str)))) int))
 
 (defn leaf-count (models)
   (count (filter (iter models)
            (fn (m) (= m "Leaf")))))
 
 (type deref-leaf-count
-  (fn ((ref (slice (ref str)))) usize))
+  (fn ((ref (slice (ref str)))) int))
 
 (defn deref-leaf-count (models)
   (count (filter (iter models)

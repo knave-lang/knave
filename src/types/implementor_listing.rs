@@ -125,7 +125,7 @@ mod tests {
     use crate::types::problems::ImplementorList;
 
     const SOURCE: &str = "
-        (trait shown (show (fn ((ref self)) usize)))
+        (trait shown (show (fn ((ref self)) int)))
         (impl shown (vec i64) (show (items) (len items)))
         (impl shown (vec string) (show (items) (len items)))
         (impl shown (option i64) (show (item) 1))

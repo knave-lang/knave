@@ -29,7 +29,7 @@ trait Showroom {
     fn longer_make<'a>(argument_0: &'a str, argument_1: &'a str, argument_2: &'a Self) -> &'a str {
         let pick = |build: &mut dyn FnMut() -> Car<'a>| build().make;
         pick(&mut || Car {
-            make: if argument_0.len() > argument_1.len() {
+            make: if crate::rt::length(argument_0.len()) > crate::rt::length(argument_1.len()) {
                 argument_0
             } else {
                 argument_1
@@ -56,4 +56,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

@@ -2,7 +2,7 @@
 
 (type read-both
   (fn ((ref str) (ref str))
-    (result usize app-error)))
+    (result int app-error)))
 
 (defn read-both (first second)
   (local head (try (slurp first)))

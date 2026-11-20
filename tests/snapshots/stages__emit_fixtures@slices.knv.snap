@@ -11,13 +11,13 @@ fn first_number<A>(numbers: &[A]) -> &A {
     &numbers[0]
 }
 
-fn count_pairs<A>(numbers: &[A]) -> usize {
-    numbers.windows(2).count()
+fn count_pairs<A>(numbers: &[A]) -> i64 {
+    crate::rt::count(numbers.windows(2))
 }
 
-fn total_from<A: crate::rt::Number>(numbers: &[A], mut index: usize) -> A {
+fn total_from<A: crate::rt::Number>(numbers: &[A], mut index: i64) -> A {
     loop {
-        if index < numbers.len() {
+        if index < crate::rt::length(numbers.len()) {
             index += 1;
             continue;
         } else {
@@ -103,4 +103,37 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

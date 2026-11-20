@@ -15,8 +15,8 @@ fn is_all_small(values: impl Iterator<Item = i64>) -> bool {
     values.into_iter().all(|value: i64| value < 50)
 }
 
-fn how_many(values: impl Iterator<Item = i64>) -> usize {
-    values.count()
+fn how_many(values: impl Iterator<Item = i64>) -> i64 {
+    crate::rt::count(values)
 }
 
 fn first_even(values: impl Iterator<Item = i64>) -> Option<i64> {
@@ -299,5 +299,22 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

@@ -6,7 +6,7 @@ input_file: tests/fixtures/check/closure_iterator_receiver.knv
 error[L0458]: Rust cannot name the type `(iterator (ref int))` here
  --> check/closure_iterator_receiver.knv:3:21
   |
-3 |   (local tally (fn (it) (count it)))
+3 |   (local found (fn (it) (some? (max it))))
   |                     ^^ this parameter holds `(iterator (ref int))`, and the closure calls a method on it
   |
   = note: Rust names this type only as the type of a function's own parameter or result
@@ -17,7 +17,7 @@ error[L0458]: Rust cannot name the type `(iterator (ref int))` here
 error[L0458]: Rust cannot name the type `(iterator (ref int))` here
  --> check/closure_iterator_receiver.knv:6:10
   |
-6 |     (fn (it) (+ 1 (count it))))
+6 |     (fn (it) (not (none? (max it)))))
   |          ^^ this parameter holds `(iterator (ref int))`, and the closure calls a method on it
   |
   = note: Rust names this type only as the type of a function's own parameter or result
@@ -28,7 +28,7 @@ error[L0458]: Rust cannot name the type `(iterator (ref int))` here
 error[L0458]: Rust cannot name the type `(iterator (ref int))` here
  --> check/closure_iterator_receiver.knv:9:10
   |
-9 |     (fn (it) (local items it) (count items)))
+9 |     (fn (it)
   |          ^^ this parameter holds `(iterator (ref int))`, and the closure calls a method on it
   |
   = note: Rust names this type only as the type of a function's own parameter or result
@@ -37,9 +37,9 @@ error[L0458]: Rust cannot name the type `(iterator (ref int))` here
   = note: run `knave doc L0458` for an explanation
 
 error[L0458]: Rust cannot name the type `(iterator (ref int))` here
-  --> check/closure_iterator_receiver.knv:12:10
+  --> check/closure_iterator_receiver.knv:14:10
    |
-12 |     (fn (it)
+14 |     (fn (it)
    |          ^^ this parameter holds `(iterator (ref int))`, and the closure calls a method on it
    |
    = note: Rust names this type only as the type of a function's own parameter or result

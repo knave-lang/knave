@@ -10,6 +10,7 @@ impl SyntheticTemplate {
     pub const ITERATE: Self = Self::borrowing("{0}.iter()");
     pub const ITERATE_COPIED: Self = Self::borrowing("{0}.iter().copied()");
     pub const LOOK_UP: Self = Self::borrowing("{0}.get({1})");
+    pub const SLICE_LOOK_UP: Self = Self::borrowing("{0}.get({index? 1})");
     pub const KEYS: Self = Self::borrowing("{0}.keys()");
     pub const VALUES: Self = Self::borrowing("{0}.values()");
     pub const PUSH: Self = Self::untied("{0}.push({1})");
@@ -20,10 +21,11 @@ impl SyntheticTemplate {
         held: &[0, 1],
     };
 
-    pub const ALL: [&'static Self; 8] = [
+    pub const ALL: [&'static Self; 9] = [
         &Self::ITERATE,
         &Self::ITERATE_COPIED,
         &Self::LOOK_UP,
+        &Self::SLICE_LOOK_UP,
         &Self::KEYS,
         &Self::VALUES,
         &Self::PUSH,

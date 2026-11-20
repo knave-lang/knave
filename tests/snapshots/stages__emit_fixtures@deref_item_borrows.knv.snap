@@ -27,34 +27,52 @@ fn is_recent(y: &&i64) -> bool {
 }
 
 fn report_signed(years: &[i64]) {
-    println!("{}", years.iter().filter(|y: &&i64| **y > 2020).count())
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| **y > 2020))
+    )
 }
 
 fn report_years(years: &[i64], floor: i64) {
-    println!("{}", years.iter().filter(|y: &&i64| 2020 < **y).count());
-    println!("{}", years.iter().filter(|y: &&i64| **y == 2021).count());
-    println!("{}", years.iter().filter(|y: &&i64| **y > floor).count());
-    println!("{}", years.iter().filter(|y: &&i64| **y + 1 > 2022).count());
-    println!("{}", years.iter().filter(|y: &&i64| is_later(**y)).count());
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| 2020 < **y))
+    );
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| **y == 2021))
+    );
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| **y > floor))
+    );
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| **y + 1 > 2022))
+    );
+    println!(
+        "{}",
+        crate::rt::count(years.iter().filter(|y: &&i64| is_later(**y)))
+    );
     println!(
         "{}",
         crate::rt::Shown(&years.iter().max_by_key(|y: &&i64| **y - 2020))
     );
     println!(
         "{}",
-        years.iter().filter(|y: &&i64| year_of(y) > 2020).count()
+        crate::rt::count(years.iter().filter(|y: &&i64| year_of(y) > 2020))
     );
     println!(
         "{}",
-        years
-            .iter()
-            .filter(|argument: &&i64| is_recent(argument))
-            .count()
+        crate::rt::count(years.iter().filter(|argument: &&i64| is_recent(argument)))
     )
 }
 
 fn report_cars(cars: &[Car], wanted: &Car) {
-    println!("{}", cars.iter().filter(|c: &&Car| wanted == *c).count())
+    println!(
+        "{}",
+        crate::rt::count(cars.iter().filter(|c: &&Car| wanted == *c))
+    )
 }
 
 fn main() {
@@ -64,7 +82,10 @@ fn main() {
     report_years(&years, 2020);
     let leaf = make_car("Nissan".to_string(), 2024);
     let cars = vec![leaf.clone(), make_car("Honda".to_string(), 2019)];
-    println!("{}", cars.iter().filter(|c: &&Car| leaf == **c).count());
+    println!(
+        "{}",
+        crate::rt::count(cars.iter().filter(|c: &&Car| leaf == **c))
+    );
     report_cars(&cars, &leaf)
 }
 
@@ -320,5 +341,22 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

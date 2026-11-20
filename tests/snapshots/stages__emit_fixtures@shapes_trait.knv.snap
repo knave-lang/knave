@@ -64,8 +64,8 @@ fn main() {
 
 trait Shape {
     fn area(&self) -> f64;
-    fn label_length(&self) -> usize;
-    fn label_details(&self) -> usize;
+    fn label_length(&self) -> i64;
+    fn label_details(&self) -> i64;
     fn wait(&self);
 }
 
@@ -73,10 +73,10 @@ impl Shape for Circle {
     fn area(&self) -> f64 {
         3.0 * self.radius * self.radius
     }
-    fn label_length(&self) -> usize {
+    fn label_length(&self) -> i64 {
         0
     }
-    fn label_details(&self) -> usize {
+    fn label_details(&self) -> i64 {
         0
     }
     fn wait(&self) {
@@ -88,10 +88,10 @@ impl Shape for Rect {
     fn area(&self) -> f64 {
         self.width * self.height
     }
-    fn label_length(&self) -> usize {
+    fn label_length(&self) -> i64 {
         0
     }
-    fn label_details(&self) -> usize {
+    fn label_details(&self) -> i64 {
         0
     }
     fn wait(&self) {}
@@ -101,11 +101,11 @@ impl Shape for Labeled {
     fn area(&self) -> f64 {
         self.size * 1.0
     }
-    fn label_length(&self) -> usize {
-        self.text.len()
+    fn label_length(&self) -> i64 {
+        crate::rt::length(self.text.len())
     }
-    fn label_details(&self) -> usize {
-        self.text.len()
+    fn label_details(&self) -> i64 {
+        crate::rt::length(self.text.len())
     }
     fn wait(&self) {}
 }
@@ -114,10 +114,10 @@ impl Shape for Point {
     fn area(&self) -> f64 {
         0.0
     }
-    fn label_length(&self) -> usize {
+    fn label_length(&self) -> i64 {
         0
     }
-    fn label_details(&self) -> usize {
+    fn label_details(&self) -> i64 {
         0
     }
     fn wait(&self) {}
@@ -138,4 +138,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

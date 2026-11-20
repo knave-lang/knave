@@ -1,6 +1,6 @@
 (type sample-of
   (where (a)
-    (fn ((ref a) (ref (vec a))) usize)))
+    (fn ((ref a) (ref (vec a))) int)))
 
 (defn sample-of (sample items) (len items))
 

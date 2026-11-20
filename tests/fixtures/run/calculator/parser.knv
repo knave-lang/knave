@@ -4,13 +4,13 @@
 
 (defstruct parsed
   :value i64
-  :next usize)
+  :next int)
 
 (defn evaluate (tokens)
   (:value (parse-expression tokens 0)))
 
 (type parse-expression
-  (fn ((ref (vec token)) usize) parsed))
+  (fn ((ref (vec token)) int) parsed))
 
 (defn parse-expression (tokens position)
   (parse-sums tokens (parse-term tokens position)))

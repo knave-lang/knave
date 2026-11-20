@@ -7,16 +7,16 @@ fn first_letter(text: &str) -> &str {
     &text[0..1]
 }
 
-fn counted(values: &mut Vec<i64>, letter: &str) -> usize {
+fn counted(values: &mut Vec<i64>, letter: &str) -> i64 {
     values.push(1);
-    values.len() + letter.len()
+    crate::rt::length(values.len()) + crate::rt::length(letter.len())
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
     let mut values: Vec<i64> = vec![7_i64, 8_i64];
     println!("{}", {
-        let owner = values.len().to_string();
+        let owner = crate::rt::length(values.len()).to_string();
         let call_argument_1 = first_letter(owner.as_str());
         counted(&mut values, call_argument_1)
     })
@@ -37,4 +37,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

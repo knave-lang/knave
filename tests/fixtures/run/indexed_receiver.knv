@@ -19,7 +19,7 @@
   (upper-case (at names 0)))
 
 (type trimmed-length
-  (fn ((ref (vec string))) usize))
+  (fn ((ref (vec string))) int))
 
 (defn trimmed-length (names)
   (len (trim (at names 0))))

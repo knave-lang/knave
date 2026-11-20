@@ -94,7 +94,7 @@ fn main() {
     let mut add = |x: i64| items.push(x);
     call_twice(|| add(2));
     keep(|value: i64| value + 1);
-    println!("{}", items.len());
+    println!("{}", crate::rt::length(items.len()));
     println!("{}", alias(|value: i64| value + 1, 2));
     println!("{}", call_inside(|value: i64| value + 1, 3));
     nested_mover();
@@ -131,4 +131,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

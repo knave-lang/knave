@@ -72,7 +72,7 @@ fn total_weight(crates: Vec<Box<dyn Weighed>>) -> i64 {
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    let is_several = std::env::args().skip(1).collect::<Vec<String>>().len() > 5;
+    let is_several = crate::rt::length(std::env::args().skip(1).collect::<Vec<String>>().len()) > 5;
     let odometer: i64 = 2024;
     println!("{}", crate::rt::Shown(&twice(3000000000_i64)));
     println!("{}", crate::rt::Shown(&twice(2.5)));
@@ -131,7 +131,7 @@ fn main() {
         crate::rt::Shown(
             &({
                 let mut value = vec![7_i64, 8_i64];
-                value[first_of(0, 3000000000_i64)] = 6;
+                value[crate::rt::index(first_of(0, 3000000000_i64))] = 6;
                 value
             })
         )
@@ -151,7 +151,10 @@ fn main() {
     println!("{}", larger(2.5, 1.5));
     println!("{}", crate::rt::Shown(&wrap("Leaf")));
     println!("{}", square(2.5));
-    println!("{}", apply_to("Leaf", |model: &str| model.len()));
+    println!(
+        "{}",
+        apply_to("Leaf", |model: &str| crate::rt::length(model.len()))
+    );
     println!("{}", first_of("Leaf", 2.5));
     println!("{}", same("Leaf"))
 }
@@ -458,5 +461,37 @@ mod rt {
             Ok(value) => value,
             Err(error) => panic!("called unwrap-ok on (err {})", Shown(&error)),
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

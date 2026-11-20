@@ -35,7 +35,7 @@ fn main() {
     println!("{}", Spare { maker: None }.maker.is_none());
     {
         let Line::Stations(steps) = Line::Stations(Vec::new());
-        println!("{}", steps.len())
+        println!("{}", crate::rt::length(steps.len()))
     }
     let backup = Spare {
         maker: Some(build_leaf),
@@ -45,7 +45,7 @@ fn main() {
         Spare { maker: None } => println!("no spare"),
     }
     let Line::Stations(steps) = Line::Stations(vec![count_doors]);
-    println!("{}", steps.len())
+    println!("{}", crate::rt::length(steps.len()))
 }
 
 mod rt {
@@ -63,4 +63,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

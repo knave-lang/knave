@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/negative_index_in_assoc_in.knv
+---
+error[L0466]: the value `-1` is negative
+ --> check/negative_index_in_assoc_in.knv:3:28
+  |
+3 |     (prn (assoc-in grid (0 -1) 7))))
+  |                            ^^ an index or a size is at least 0
+  |
+  = help: count the position from the front, starting at 0
+  = note: run `knave doc L0466` for an explanation

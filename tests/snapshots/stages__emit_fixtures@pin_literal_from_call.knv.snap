@@ -3,13 +3,13 @@ source: tests/stages.rs
 expression: "Fixture::load(path).emit_report()"
 input_file: tests/fixtures/emit/pin_literal_from_call.knv
 ---
-fn count_up(limit: usize) -> i64 {
-    (0..limit).fold(0, |total: i64, _: usize| total + 1)
+fn count_up(limit: i64) -> i64 {
+    (0..limit).fold(0, |total: i64, _: i64| total + 1)
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", count_up("abc".len()))
+    println!("{}", count_up(crate::rt::length("abc".len())))
 }
 
 mod rt {
@@ -27,4 +27,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

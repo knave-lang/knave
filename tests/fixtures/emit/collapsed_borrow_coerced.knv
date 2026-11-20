@@ -11,7 +11,7 @@
 (defn total (value) (+ value 1))
 
 (type count-items
-  (where (a) (fn ((ref (vec a))) usize)))
+  (where (a) (fn ((ref (vec a))) int)))
 
 (defn count-items (items) (len items))
 

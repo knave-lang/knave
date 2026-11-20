@@ -7,9 +7,9 @@ fn main() {
     crate::rt::restore_default_sigpipe();
     let years: Vec<i64> = vec![2019_i64, 2021_i64, 2024_i64];
     let is_recent = |y: &&i64| **y > 2020;
-    println!("{}", years.iter().filter(is_recent).count());
+    println!("{}", crate::rt::count(years.iter().filter(is_recent)));
     let is_late = |y: &&i64| 2020 < **y;
-    println!("{}", years.iter().filter(is_late).count());
+    println!("{}", crate::rt::count(years.iter().filter(is_late)));
     let is_launch = |y: &&i64| **y == 2021;
     println!("{}", crate::rt::Shown(&years.iter().find(is_launch)));
     let first_year = |y: &&i64| **y > 2018;
@@ -270,5 +270,22 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

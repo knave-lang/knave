@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/range_over_generic_integer.knv
 ---
-fn count_to<N: crate::rt::Integer>(n: N) -> usize
+fn count_to<N: crate::rt::Integer>(n: N) -> i64
 where
     std::ops::Range<N>: Iterator<Item = N>,
 {
-    (N::from_literal(0)..n).count()
+    crate::rt::count(N::from_literal(0)..n)
 }
 
 fn main() {
@@ -85,4 +85,21 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
+    }
 }

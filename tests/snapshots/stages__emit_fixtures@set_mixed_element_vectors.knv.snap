@@ -3,8 +3,8 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/set_mixed_element_vectors.knv
 ---
-fn replace_at<A>(items: &mut [A], index: usize, item: A) {
-    items[index] = item
+fn replace_at<A>(items: &mut [A], index: i64, item: A) {
+    items[crate::rt::index(index)] = item
 }
 
 fn main() {
@@ -31,4 +31,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn index(value: i64) -> usize {
+        match usize::try_from(value) {
+            Ok(index) => index,
+            Err(_) => negative(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn negative(value: i64) -> ! {
+        panic!("attempt to use a negative value as an index or a size: {value}")
+    }
 }

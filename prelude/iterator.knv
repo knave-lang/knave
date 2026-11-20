@@ -65,10 +65,10 @@
         unit))))
 
 (def enumerate
-  (rust "{0}.enumerate()"
+  (rust "(0_i64..).zip({0})"
     (where (a)
       (fn ((iterator a))
-        (iterator (pair usize a))))))
+        (iterator (pair int a))))))
 
 (def zip
   (rust "{0}.zip({1})"
@@ -95,12 +95,12 @@
   (reduce values 0 +))
 
 (def count-items
-  (rust "{0}.count()"
-    (where (a) (fn ((iterator a)) usize))))
+  (rust "crate::rt::count({0})"
+    (where (a) (fn ((iterator a)) int))))
 
 (def count-function
-  (rust "Iterator::count"
-    (where (a) (fn ((iterator a)) usize))))
+  (rust "crate::rt::count"
+    (where (a) (fn ((iterator a)) int))))
 
 (def iter-form?
   (fn (form)
@@ -188,9 +188,9 @@
         (option a)))))
 
 (def take
-  (rust "{0}.take({1})"
+  (rust "{0}.take({index 1})"
     (where (a)
-      (fn ((iterator a) usize) (iterator a)))))
+      (fn ((iterator a) int) (iterator a)))))
 
 (def take-while
   (rust "{0}.take_while({1})"
@@ -265,7 +265,7 @@
 (document (enumerate items)
   "Returns an iterator that pairs each item's index with the item.
 
-  Each result is a `(pair usize a)`, and the index starts at 0. A vector or a
+  Each result is a `(pair int a)`, and the index starts at 0. A vector or a
   map passes as its [iter].
 
   (-> (range 5 7) enumerate collect)
@@ -283,7 +283,7 @@
   => (vec (pair 0 5) (pair 1 6))")
 
 (document (count items)
-  "Returns the number of items of an iterator as a [usize].
+  "Returns the number of items of an iterator as an [int].
 
   `(count (iter collection))` emits the collection's [len], and any other call
   runs through the items. A vector or a map passes as its [iter].
@@ -383,8 +383,7 @@
 (document (take items limit)
   "Returns an iterator over at most the first `limit` items.
 
-  `limit` is a [usize], so an [int] is an error. A vector or a map passes as
-  its [iter].
+  It panics when `limit` is negative. A vector or a map passes as its [iter].
 
   (-> (range 0 9) (take 2) collect)
   => (vec 0 1)")

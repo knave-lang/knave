@@ -5,7 +5,7 @@ input_file: tests/fixtures/emit/optional_index_beside_generic.knv
 ---
 fn main() {
     crate::rt::restore_default_sigpipe();
-    let wide = "ab".len() == 2;
+    let wide = crate::rt::length("ab".len()) == 2;
     let at: i64 = 0;
     println!(
         "{}",
@@ -280,5 +280,21 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

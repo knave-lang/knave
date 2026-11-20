@@ -4,7 +4,7 @@
 
 (defstruct parsed
   :value i64
-  :next usize)
+  :next int)
 
 (defn evaluate (tokens)
   (then-ok (parse-expression tokens 0)
@@ -16,7 +16,7 @@
     (err (str "unexpected token at " (:next result)))))
 
 (type parse-expression
-  (fn ((ref (vec token)) usize)
+  (fn ((ref (vec token)) int)
     (result parsed string)))
 
 (defn parse-expression (tokens position)

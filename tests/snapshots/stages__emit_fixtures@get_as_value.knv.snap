@@ -4,7 +4,7 @@ expression: reports.report(path)
 input_file: tests/fixtures/emit/get_as_value.knv
 ---
 fn second_of<'a>(
-    reader: impl FnOnce(&'a [i64], usize) -> Option<&'a i64>,
+    reader: impl FnOnce(&'a [i64], i64) -> Option<&'a i64>,
     items: &'a [i64],
 ) -> Option<&'a i64> {
     reader(items, 1)
@@ -16,7 +16,8 @@ fn main() {
     println!(
         "{}",
         second_of(
-            |argument_0: &[i64], argument_1: usize| argument_0.get(argument_1),
+            |argument_0: &[i64], argument_1: i64| argument_0
+                .get(usize::try_from(argument_1).unwrap_or(usize::MAX)),
             &years
         )
         .unwrap()

@@ -125,7 +125,7 @@
   "Reads a slice by index or a map by key.
 
   It returns an [option] of a borrow, and `none` for a missing index or
-  key. `get` as a value is the slice reader.
+  key. A negative index is missing too. `get` as a value is the slice reader.
 
   (get (vec 10 20) 1)
   => (some (ref 20))
@@ -134,9 +134,9 @@
   => none")
 
 (def slice-get
-  (rust "{0}.get({1})"
+  (rust "{0}.get({index? 1})"
     (where (a)
-      (fn ((ref (slice a)) usize)
+      (fn ((ref (slice a)) int)
         (option (ref a))))))
 
 (defrule keys ((m) (map-at keys m)))

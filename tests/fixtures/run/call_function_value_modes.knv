@@ -1,5 +1,5 @@
 (type call-it
-  (fn ((fn ((vec i64)) usize)) usize))
+  (fn ((fn ((vec i64)) int)) int))
 
 (defn call-it (f) (f (vec)))
 

@@ -3,8 +3,8 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/sorted_map.knv
 ---
-fn size_of(collection: &std::collections::BTreeMap<&str, i64>) -> usize {
-    collection.len()
+fn size_of(collection: &std::collections::BTreeMap<&str, i64>) -> i64 {
+    crate::rt::length(collection.len())
 }
 
 fn main() {
@@ -39,7 +39,7 @@ fn main() {
         changed.insert("a", function(old));
         changed
     };
-    println!("{} {}", next.len(), empty.is_empty());
+    println!("{} {}", crate::rt::length(next.len()), empty.is_empty());
     println!("{}", next.get("a").unwrap());
     next.keys().for_each(|key: &&str| println!("{}", key));
     next.values().for_each(|value: &i64| println!("{}", value));
@@ -47,7 +47,7 @@ fn main() {
         let (key, value) = entry;
         println!("{} {}", key, value)
     });
-    println!("{}", collected.len());
+    println!("{}", crate::rt::length(collected.len()));
     println!("{}", size_of(&next))
 }
 
@@ -66,4 +66,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

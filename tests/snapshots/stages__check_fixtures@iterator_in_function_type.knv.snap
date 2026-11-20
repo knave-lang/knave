@@ -6,8 +6,8 @@ input_file: tests/fixtures/check/iterator_in_function_type.knv
 error[L0458]: Rust cannot name the type `(iterator (ref int))` here
  --> check/iterator_in_function_type.knv:2:12
   |
-2 |   :counter (fn ((iterator (ref i64))) usize))
-  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator (ref int))` inside a function type
+2 |   :counter (fn ((iterator (ref i64))) int))
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator (ref int))` inside a function type
   |
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: pass a value whose type Rust can name instead, such as the collection the items come from
@@ -16,8 +16,8 @@ error[L0458]: Rust cannot name the type `(iterator (ref int))` here
 error[L0458]: Rust cannot name the type `(iterator int)` here
  --> check/iterator_in_function_type.knv:5:12
   |
-5 |   (counted (option (fn ((option (iterator i64))) usize)))
-  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator int)` inside a function type
+5 |   (counted (option (fn ((option (iterator i64))) int)))
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator int)` inside a function type
   |
   = note: Rust names this type only as the type of a function's own parameter or result
   = help: pass a value whose type Rust can name instead, such as the collection the items come from
@@ -46,18 +46,18 @@ error[L0458]: Rust cannot name the type `(iterator a)` here
 error[L0458]: Rust cannot name the type `(iterator (ref int))` here
   --> check/iterator_in_function_type.knv:16:8
    |
-16 |   (fn ((fn ((iterator (ref i64))) usize)
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator (ref int))` inside a function type
+16 |   (fn ((fn ((iterator (ref i64))) int)
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator (ref int))` inside a function type
    |
    = note: Rust names this type only as the type of a function's own parameter or result
    = help: pass a value whose type Rust can name instead, such as the collection the items come from
    = note: run `knave doc L0458` for an explanation
 
 error[L0458]: Rust cannot name the type `(iterator (ref int))` here
-  --> check/iterator_in_function_type.knv:25:5
+  --> check/iterator_in_function_type.knv:24:10
    |
-25 |     (fn ((iterator (ref i64))) usize)))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator (ref int))` inside a function type
+24 |   (fn () (fn ((iterator (ref i64))) int)))
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this holds `(iterator (ref int))` inside a function type
    |
    = note: Rust names this type only as the type of a function's own parameter or result
    = help: pass a value whose type Rust can name instead, such as the collection the items come from

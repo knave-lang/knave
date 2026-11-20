@@ -43,10 +43,10 @@
   form such as `(at (:items order) 0)`, or a `(mut a)`. A field of an `at`
   form, as in `(:x (at points 0))`, is an error, and so is any other target.
 
-  An [at] index is a [usize], so an [int] is an error, and a vector panics
-  when the index is out of bounds. A map panics on a missing key. A map key
-  must fit the map's key type: a `(ref str)` key takes a literal or
-  `(as-str name)`, and a [string] is an error.
+  An [at] index is an [int], and a vector panics when the index is negative or
+  out of bounds. A map panics on a missing key. A map key must fit the map's
+  key type: a `(ref str)` key takes a literal or `(as-str name)`, and a
+  [string] is an error.
 
   A `set!` of a whole parameter changes the caller's variable, for every
   type, unless the function also moves it: then the caller gives the value

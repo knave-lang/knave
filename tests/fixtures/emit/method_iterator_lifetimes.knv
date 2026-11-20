@@ -1,14 +1,14 @@
 (defstruct depot
-  :size usize)
+  :size int)
 
 (trait counter
   (tally
     (fn ((ref self) (iterator (ref str)))
-      usize))
+      int))
 
   (total
     (fn ((iterator (ref str)) (ref self))
-      usize)))
+      int)))
 
 (impl counter depot
   (tally (lot names)

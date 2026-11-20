@@ -5,5 +5,5 @@
     (fn (total _) (+ total 1))))
 
 (defn main ()
-  (println (count-up (len "abc")))
-  (println (count-up (len "abcd"))))
+  (println (count-up (the usize 3)))
+  (println (count-up (the usize 4))))

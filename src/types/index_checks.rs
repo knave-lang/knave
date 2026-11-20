@@ -1,10 +1,12 @@
+use super::collection::Collection;
 use super::negative_index_literals::NegativeIndexLiterals;
 use super::rust_types::RustTypeTable;
 use super::template_signature::TemplateSignature;
 use super::templates::TemplateBorrows;
+use super::ty::Type;
 use super::type_declarations::TypeDeclarations;
 use super::typed::{TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
-use crate::core::RustTemplate;
+use crate::core::{RustTemplate, TypeExprKind};
 use crate::diagnostic::Diagnostics;
 
 pub(super) struct IndexChecks<'t> {
@@ -23,11 +25,22 @@ impl<'t> IndexChecks<'t> {
     pub(super) fn problems(&self, expr: &TypedExpr) -> Diagnostics {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => self.negative_literals(callee, arguments),
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
+            TypedExprKind::Assoc(_, keys, _) if self.indexes_a_sequence(&expr.ty) => {
+                NegativeIndexLiterals::in_values(keys)
+            }
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) if Self::has_written_type(template) => {
                 self.signature_problems(expr, template)
             }
             _ => Diagnostics::default(),
         }
+    }
+
+    fn indexes_a_sequence(&self, ty: &Type) -> bool {
+        Collection::of(ty, self.rust_types).is_some_and(|collection| !collection.is_map())
+    }
+
+    fn has_written_type(template: &RustTemplate) -> bool {
+        !matches!(template.type_expr.kind(), TypeExprKind::Hole)
     }
 
     fn negative_literals(&self, callee: &TypedExpr, arguments: &[TypedArgument]) -> Diagnostics {

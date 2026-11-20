@@ -33,7 +33,7 @@ impl Showroom for Depot {
         println!("{}", lot.size);
         let pick = |build: &mut dyn FnMut() -> Car<'a>| build().make;
         pick(&mut || Car {
-            make: if first.len() > second.len() {
+            make: if crate::rt::length(first.len()) > crate::rt::length(second.len()) {
                 first
             } else {
                 second
@@ -58,4 +58,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

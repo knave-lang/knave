@@ -3,6 +3,6 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/match_moves_in_every_arm.knv
 ---
-(type consume (fn ((vec int)) usize))
-(type choose (fn (bool) usize))
+(type consume (fn ((vec int)) int))
+(type choose (fn (bool) int))
 (type main (fn () unit))

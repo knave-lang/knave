@@ -8,7 +8,7 @@
   dup
   swap
   over
-  (jump usize)
-  (jump-if-zero usize)
+  (jump int)
+  (jump-if-zero int)
   print
   halt)

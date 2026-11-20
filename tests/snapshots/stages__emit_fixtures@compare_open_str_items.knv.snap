@@ -3,12 +3,12 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/emit/compare_open_str_items.knv
 ---
-fn leaves(models: &[&str]) -> usize {
-    models.iter().filter(|m: &&&str| **m == "Leaf").count()
+fn leaves(models: &[&str]) -> i64 {
+    crate::rt::count(models.iter().filter(|m: &&&str| **m == "Leaf"))
 }
 
-fn leaf_models(models: &[&str]) -> usize {
-    models.iter().filter(|m: &&&str| **m == "Leaf").count()
+fn leaf_models(models: &[&str]) -> i64 {
+    crate::rt::count(models.iter().filter(|m: &&&str| **m == "Leaf"))
 }
 
 fn first_leaf<'a>(models: &'a [&'a str]) -> Option<&'a &'a str> {
@@ -275,5 +275,22 @@ mod rt {
                 })
                 .close()
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn count(items: impl Iterator) -> i64 {
+        let counted = items.count();
+        match i64::try_from(counted) {
+            Ok(count) => count,
+            Err(_) => count_overflow(counted),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn count_overflow(counted: usize) -> ! {
+        panic!("attempt to count with overflow: the count is {counted}")
     }
 }

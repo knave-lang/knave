@@ -36,7 +36,7 @@ fn main() {
     println!("{}", make_meter(2).total(&readings));
     log(make_odometer(10), &mut readings);
     log(make_meter(2), &mut readings);
-    println!("{} {}", readings[0], readings.len())
+    println!("{} {}", readings[0], crate::rt::length(readings.len()))
 }
 
 trait Mileage {
@@ -83,4 +83,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

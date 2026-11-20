@@ -136,10 +136,10 @@ fn captured_before_the_call() -> i64 {
     read_count()
 }
 
-fn borrowed_argument() -> usize {
+fn borrowed_argument() -> i64 {
     let readings: Vec<i64> = vec![1_i64, 2_i64];
     let readings_2: &Vec<i64> = &readings;
-    readings_2.len()
+    crate::rt::length(readings_2.len())
 }
 
 fn changed_in_place() -> Vec<i64> {
@@ -148,7 +148,7 @@ fn changed_in_place() -> Vec<i64> {
     readings
 }
 
-fn borrowed_into_a_container() -> usize {
+fn borrowed_into_a_container() -> i64 {
     let mut refs = Vec::new();
     let count: i64 = 0;
     refs.push(&count);
@@ -163,7 +163,7 @@ fn borrowed_into_a_container() -> usize {
             }
         }
     };
-    refs.len()
+    crate::rt::length(refs.len())
 }
 
 fn borrowed_through_a_second_binder() -> i64 {
@@ -228,7 +228,7 @@ fn main() {
     println!("{}", borrowed_and_read_after_the_call());
     println!("{}", captured_before_the_call());
     println!("{}", borrowed_argument());
-    println!("{}", changed_in_place().len());
+    println!("{}", crate::rt::length(changed_in_place().len()));
     println!("{}", borrowed_into_a_container());
     println!("{}", borrowed_through_a_second_binder());
     println!("{}", borrowed_by_an_argument());
@@ -495,5 +495,21 @@ mod rt {
             Ok(value) => value,
             Err(error) => panic!("called unwrap-ok on (err {})", Shown(&error)),
         }
+    }
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
     }
 }

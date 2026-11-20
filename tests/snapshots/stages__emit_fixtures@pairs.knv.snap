@@ -5,10 +5,9 @@ input_file: tests/fixtures/emit/pairs.knv
 ---
 fn main() {
     crate::rt::restore_default_sigpipe();
-    "alpha\nbeta"
-        .lines()
-        .enumerate()
-        .for_each(|entry: (usize, &str)| {
+    (0_i64..)
+        .zip("alpha\nbeta".lines())
+        .for_each(|entry: (i64, &str)| {
             let (index, line) = entry;
             println!("{}: {}", index, line)
         });

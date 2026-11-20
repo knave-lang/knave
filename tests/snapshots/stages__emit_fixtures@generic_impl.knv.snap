@@ -9,12 +9,12 @@ fn main() {
 }
 
 trait Sized2 {
-    fn size(&self) -> usize;
+    fn size(&self) -> i64;
 }
 
 impl<A> Sized2 for Vec<A> {
-    fn size(&self) -> usize {
-        self.len()
+    fn size(&self) -> i64 {
+        crate::rt::length(self.len())
     }
 }
 
@@ -33,4 +33,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

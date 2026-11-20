@@ -58,7 +58,7 @@ fn main() {
     println!("{}", words.right);
     let mut kept = vec![p];
     kept.push(p);
-    println!("{}", kept.len());
+    println!("{}", crate::rt::length(kept.len()));
     println!("{}", p.y);
     println!("{}", is_same_shape(p, make_point(1, 2)));
     println!("{}", is_same_shape(make_cube(1, 2, 3), make_cube(3, 2, 1)))
@@ -79,4 +79,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

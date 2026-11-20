@@ -5,7 +5,7 @@
 
 (type owned-size
   (where ((collection sequence))
-    (fn (collection) usize)))
+    (fn (collection) int)))
 
 (defn owned-size (collection) (len collection))
 

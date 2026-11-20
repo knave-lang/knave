@@ -1,5 +1,5 @@
 (defstruct limit
-  :n usize)
+  :n int)
 
 (defn counter! (x items)
   (set! x (+ x 1))

@@ -67,7 +67,7 @@ mod tests {
     use crate::types::ty::Bound;
 
     const SOURCE: &str = "
-        (trait shown (show (fn ((ref self)) usize)))
+        (trait shown (show (fn ((ref self)) int)))
         (impl shown (vec a) (show (items) (len items)))
         (defn main () (do))";
 

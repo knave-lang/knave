@@ -26,7 +26,7 @@
         (+ (at scores (deref (at2 order k))) 1))
   (deref (at scores 2)))
 
-(defn bump-at! (items (j usize))
+(defn bump-at! (items (j int))
   (set! (at items j)
         (+ (deref (at items j)) 1))
   (deref (at items j)))

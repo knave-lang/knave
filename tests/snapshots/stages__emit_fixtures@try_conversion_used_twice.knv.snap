@@ -7,10 +7,10 @@ enum AppError {
     Io(std::io::Error),
 }
 
-fn read_both(first: &str, second: &str) -> Result<usize, AppError> {
+fn read_both(first: &str, second: &str) -> Result<i64, AppError> {
     let head = std::fs::read_to_string(first)?;
     let tail = std::fs::read_to_string(second)?;
-    Ok(head.len() + tail.len())
+    Ok(crate::rt::length(head.len()) + crate::rt::length(tail.len()))
 }
 
 fn main() {
@@ -42,4 +42,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

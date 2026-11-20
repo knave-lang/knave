@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 
-use crate::core::{BindingId, Expr, PrimitiveType};
+use crate::core::{BindingId, Expr};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::Program;
 use crate::source::Span;
@@ -12,7 +12,6 @@ use crate::types::graph::DefinitionGraph;
 use crate::types::open_set_at::OpenSetAt;
 use crate::types::pinning::InstantiationReport;
 use crate::types::problems::{MismatchContext, TypeProblems};
-use crate::types::unifier::LiteralKind;
 use crate::types::{GenericId, Type, TypedExpr, TypedProgram};
 
 pub(in crate::types) struct OpenCollections {
@@ -156,7 +155,7 @@ impl TypeChecker {
         arguments.push(item.clone());
         self.deferred.open_set_ats.push(open);
         self.synthetic_call_with_value(
-            "{0}[{1}] = {2}",
+            "{0}[{index 1}] = {2}",
             parameters,
             Type::unit(),
             value,
@@ -200,9 +199,6 @@ impl TypeChecker {
     fn close_open_set_at(&mut self, open: &OpenSetAt) -> Result<(), Diagnostic> {
         let resolved = self.unifier.resolve(&open.collection);
         if matches!(resolved, Type::Var(_)) {
-            if self.is_integer_literal(&open.key) {
-                self.expect_index(open)?;
-            }
             self.deferred
                 .unsettled_collections
                 .push((open.collection.clone(), open.span));
@@ -221,21 +217,7 @@ impl TypeChecker {
         let target = self.prelude_types().slice_of(open.item.clone());
         self.unification()
             .expect(Expectation::plain(&target), collection.ty(), open.span)?;
-        self.expect_index(open)
-    }
-
-    fn expect_index(&mut self, open: &OpenSetAt) -> Result<(), Diagnostic> {
-        self.unification().expect(
-            Expectation::plain(&Type::Primitive(PrimitiveType::Usize)),
-            &open.key,
-            open.span,
-        )
-    }
-
-    fn is_integer_literal(&self, ty: &Type) -> bool {
-        matches!(
-            self.unifier.resolve(ty),
-            Type::Var(var) if self.unifier.literal_kind(var) == Some(LiteralKind::Integer)
-        )
+        self.unification()
+            .expect(Expectation::plain(&Collection::INDEX), &open.key, open.span)
     }
 }

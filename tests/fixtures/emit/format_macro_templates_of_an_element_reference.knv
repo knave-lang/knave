@@ -8,7 +8,7 @@
 
 (def checked
   (rust "{{ assert!({0} > 0, \"empty {{}}\", {1}); if {0} == 0 {{ panic!(\"empty {{}}\", {1}) }} }}"
-    (fn (usize (ref str)) unit)))
+    (fn (int (ref str)) unit)))
 
 (defn main ()
   (local tricks (vec "feint" "vanish"))

@@ -1,0 +1,4 @@
+(defn main ()
+  (let (v (vec 1 2))
+    (set! (at v -1) 9)
+    (prn v)))

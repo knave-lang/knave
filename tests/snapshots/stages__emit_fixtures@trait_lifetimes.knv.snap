@@ -44,7 +44,7 @@ trait Finder {
 
 impl<'a> Finder for Snippet<'a> {
     fn find(&self, needle: &str) -> &str {
-        if needle.len() > 0 {
+        if crate::rt::length(needle.len()) > 0 {
             self.text
         } else {
             self.text
@@ -57,7 +57,7 @@ impl<'a> Finder for Snippet<'a> {
 
 impl<'a> Finder for Label<'a> {
     fn find(&self, needle: &str) -> &str {
-        if needle.len() > 0 {
+        if crate::rt::length(needle.len()) > 0 {
             self.text
         } else {
             self.text
@@ -70,7 +70,7 @@ impl<'a> Finder for Label<'a> {
 
 impl<'a> Finder for Token<'a> {
     fn find(&self, needle: &str) -> &str {
-        if needle.len() > 0 {
+        if crate::rt::length(needle.len()) > 0 {
             self.text()
         } else {
             self.text()
@@ -99,4 +99,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

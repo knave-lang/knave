@@ -4,11 +4,19 @@ expression: "Fixture::load(path).emit_report()"
 input_file: tests/fixtures/emit/lifetimes.knv
 ---
 fn written_longer<'a>(a: &'a str, b: &'a str) -> &'a str {
-    if a.len() > b.len() { a } else { b }
+    if crate::rt::length(a.len()) > crate::rt::length(b.len()) {
+        a
+    } else {
+        b
+    }
 }
 
 fn longer<'a>(a: &'a str, b: &'a str) -> &'a str {
-    if a.len() > b.len() { a } else { b }
+    if crate::rt::length(a.len()) > crate::rt::length(b.len()) {
+        a
+    } else {
+        b
+    }
 }
 
 fn first<'a>(a: &'a str, b: &str) -> &'a str {
@@ -94,4 +102,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

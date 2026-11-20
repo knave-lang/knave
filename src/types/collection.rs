@@ -18,6 +18,8 @@ pub struct Collection {
 }
 
 impl Collection {
+    pub const INDEX: Type = Type::Primitive(PrimitiveType::I64);
+
     pub fn of_referent(ty: &Type, rust_types: &RustTypeTable) -> Option<Self> {
         match ty {
             Type::Ref(_, inner) | Type::Mut(_, inner) => Self::of_referent(inner, rust_types),
@@ -36,7 +38,7 @@ impl Collection {
             return Some(Self {
                 kind,
                 ty: ty.clone(),
-                key: Type::Primitive(PrimitiveType::Usize),
+                key: Self::INDEX,
                 value: value.clone(),
             });
         }

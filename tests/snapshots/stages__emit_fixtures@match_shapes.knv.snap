@@ -20,18 +20,18 @@ fn area(s: &Shape) -> f64 {
     }
 }
 
-fn label_length(s: &Shape) -> usize {
+fn label_length(s: &Shape) -> i64 {
     match s {
-        Shape::Labeled { text: t, .. } => t.len(),
+        Shape::Labeled { text: t, .. } => crate::rt::length(t.len()),
         Shape::Circle(_) => 0,
         Shape::Rect(_, _) => 0,
         Shape::Point => 0,
     }
 }
 
-fn label_details(s: &Shape) -> usize {
+fn label_details(s: &Shape) -> i64 {
     match s {
-        Shape::Labeled { text: t, size: s_2 } => t.len(),
+        Shape::Labeled { text: t, size: s_2 } => crate::rt::length(t.len()),
         Shape::Circle(_) => 0,
         Shape::Rect(_, _) => 0,
         Shape::Point => 0,
@@ -93,4 +93,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

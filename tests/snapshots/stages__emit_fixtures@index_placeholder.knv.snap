@@ -8,14 +8,14 @@ fn bump(items: &mut [i64], i: i64) -> i64 {
     items[crate::rt::index(i)]
 }
 
-fn bump_through(scores: &mut [i64], order: &[usize], k: i64) -> i64 {
-    scores[order[crate::rt::index(k)]] += 1;
+fn bump_through(scores: &mut [i64], order: &[i64], k: i64) -> i64 {
+    scores[crate::rt::index(order[crate::rt::index(k)])] += 1;
     scores[2]
 }
 
-fn bump_at(items: &mut [i64], j: usize) -> i64 {
-    items[j] += 1;
-    items[j]
+fn bump_at(items: &mut [i64], j: i64) -> i64 {
+    items[crate::rt::index(j)] += 1;
+    items[crate::rt::index(j)]
 }
 
 fn main() {
@@ -32,7 +32,7 @@ fn main() {
     println!("{}", items[1] + (if i == 1 { 5 } else { 6 }));
     println!("{}", bump(&mut items, i));
     {
-        let mut order: Vec<usize> = vec![2_usize, 0_usize];
+        let mut order: Vec<i64> = vec![2_i64, 0_i64];
         order.push(1);
         println!("{}", bump_through(&mut items, &order, 0))
     }

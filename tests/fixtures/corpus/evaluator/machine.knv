@@ -11,7 +11,7 @@
 
 (type execute-from
   (fn ((ref (vec statement))
-       usize
+       int
        (sorted-map string i64))
     (result (sorted-map string i64) string)))
 
@@ -68,7 +68,7 @@
 (type evaluate-all
   (fn ((ref (vec expr))
        (ref (sorted-map string i64))
-       usize
+       int
        (vec i64))
     (result (vec i64) string)))
 

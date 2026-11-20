@@ -3,19 +3,19 @@ source: tests/stages.rs
 expression: "Fixture::load(path).emit_report()"
 input_file: tests/fixtures/emit/conflicting_arguments.knv
 ---
-fn add_item(items: &mut Vec<usize>, n: usize) {
+fn add_item(items: &mut Vec<i64>, n: i64) {
     items.push(n)
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    let mut items: Vec<usize> = vec![1_usize];
+    let mut items: Vec<i64> = vec![1_i64];
     add_item(&mut items, 5);
     {
-        let call_argument_1 = items.len();
+        let call_argument_1 = crate::rt::length(items.len());
         add_item(&mut items, call_argument_1)
     }
-    println!("{}", items.len())
+    println!("{}", crate::rt::length(items.len()))
 }
 
 mod rt {
@@ -33,4 +33,20 @@ mod rt {
 
     #[cfg(not(unix))]
     pub fn restore_default_sigpipe() {}
+
+    #[inline]
+    #[track_caller]
+    pub fn length(value: usize) -> i64 {
+        match i64::try_from(value) {
+            Ok(length) => length,
+            Err(_) => too_long(value),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    #[track_caller]
+    fn too_long(value: usize) -> ! {
+        panic!("length does not fit in int: {value}")
+    }
 }

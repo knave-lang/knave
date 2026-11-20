@@ -3,6 +3,6 @@ source: tests/stages.rs
 expression: "Fixture::load(path).check_report()"
 input_file: tests/fixtures/check/mutual_recursion_modes.knv
 ---
-(type count-down (fn ((ref (slice int)) int) usize))
-(type step (fn ((ref (slice int)) int) usize))
+(type count-down (fn ((ref (slice int)) int) int))
+(type step (fn ((ref (slice int)) int) int))
 (type main (fn () unit))

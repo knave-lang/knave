@@ -36,9 +36,9 @@
   (when (> remaining 0) (pad-years! years year remaining)))
 
 (defn year-capacity (years)
-  ((rust "{0}.capacity()"
-     (where (a) (fn ((ref (vec a))) usize)))
-   years))
+  (convert ((rust "{0}.capacity()"
+              (where (a) (fn ((ref (vec a))) usize)))
+            years)))
 
 (defn year-count (years) (len years))
 

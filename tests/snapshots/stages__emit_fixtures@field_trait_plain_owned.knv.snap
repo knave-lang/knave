@@ -21,8 +21,8 @@ fn make_film(title: String) -> Film {
     Film { title }
 }
 
-fn measure<A: HasTitle>(x: &A) -> usize {
-    x.title().len()
+fn measure<A: field_traits::HasTitle>(x: &A) -> usize {
+    field_traits::HasTitle::title(x).len()
 }
 
 fn main() {
@@ -31,17 +31,19 @@ fn main() {
     println!("{}", measure(&make_film("jaws!".to_string())))
 }
 
-trait HasTitle {
-    fn title(&self) -> &String;
+mod field_traits {
+    pub trait HasTitle {
+        fn title(&self) -> &String;
+    }
 }
 
-impl HasTitle for Book {
+impl field_traits::HasTitle for Book {
     fn title(&self) -> &String {
         &self.title
     }
 }
 
-impl HasTitle for Film {
+impl field_traits::HasTitle for Film {
     fn title(&self) -> &String {
         &self.title
     }

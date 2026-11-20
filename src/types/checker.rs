@@ -81,6 +81,7 @@ use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::type_declaration_collector::TypeDeclarationCollector;
 use super::type_variables::TypeVariables;
 use super::typed_module_builder::TypedModuleBuilder;
+use super::unfit_reads::UnfitReads;
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Unifier};
 use super::user_trait::UserTrait;
@@ -578,6 +579,10 @@ impl TypeChecker {
             display: self.display(),
             derive_rules: self.derive_rules(),
         })
+    }
+
+    fn unfit_reads(&self) -> UnfitReads<'_> {
+        UnfitReads::new(&self.unifier, &self.declarations, self.copy_rules())
     }
 
     fn literal_settlement(&self) -> LiteralSettlement<'_> {
@@ -1083,7 +1088,8 @@ impl TypeChecker {
             },
             None => MismatchContext::Plain,
         };
-        self.infer_against(member.value, &expected, context)
+        let value = self.infer_against(member.value, &expected, context)?;
+        self.unfit_reads().refuse(&value).map(|()| value)
     }
 
     fn finish_scheme(

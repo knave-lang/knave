@@ -9,4 +9,5 @@ pub(super) struct FieldReader {
     pub(super) read: Type,
     pub(super) field: Rc<str>,
     pub(super) trait_binding: BindingId,
+    pub(super) written: bool,
 }

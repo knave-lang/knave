@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_trait_named_like_trait.knv
+---
+u
+hello ana
+hello rex

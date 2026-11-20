@@ -23,11 +23,26 @@ pub struct FieldTraitPlan {
     pub implementors: Vec<Type>,
 }
 
-impl FieldTraits {
-    pub fn record(&mut self, field: Rc<str>, binding: BindingId) {
-        self.by_binding.insert(binding, Rc::clone(&field));
-        self.by_field.insert(field, binding);
+impl Extend<(Rc<str>, BindingId)> for FieldTraits {
+    fn extend<Entries: IntoIterator<Item = (Rc<str>, BindingId)>>(&mut self, entries: Entries) {
+        for (field, binding) in entries {
+            self.by_binding.insert(binding, Rc::clone(&field));
+            self.by_field.insert(field, binding);
+        }
     }
+}
+
+impl<'a> IntoIterator for &'a FieldTraits {
+    type Item = (&'a Rc<str>, &'a BindingId);
+    type IntoIter = std::collections::hash_map::Iter<'a, Rc<str>, BindingId>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.by_field.iter()
+    }
+}
+
+impl FieldTraits {
+    pub const MODULE: &'static str = "field_traits";
 
     pub fn trait_of(&self, field: &str) -> Option<BindingId> {
         self.by_field.get(field).copied()
@@ -109,7 +124,7 @@ mod tests {
     impl FieldTraitsFixture {
         fn new() -> Self {
             let mut field_traits = FieldTraits::default();
-            field_traits.record("name".into(), HAS_NAME);
+            field_traits.extend([("name".into(), HAS_NAME)]);
             Self {
                 field_traits,
                 unifier: Unifier::default(),

@@ -1,0 +1,15 @@
+(defstruct point
+  :x int
+  :y int)
+
+(defstruct line
+  :start point)
+
+(defstruct span
+  :start point)
+
+(defn start-x (l) (+ (:x (:start l)) 1))
+
+(defn main ()
+  (println (start-x (->line (->point 1 2))))
+  (println (start-x (->span (->point 5 6)))))

@@ -149,7 +149,7 @@ mod selfless_method;
 mod selfless_methods;
 mod shared_call;
 mod shared_group;
-mod shared_passing_order;
+mod shared_member_passing;
 mod shared_variable_group;
 mod size;
 mod string_view;

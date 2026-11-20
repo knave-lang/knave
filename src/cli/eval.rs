@@ -136,22 +136,28 @@ impl EvalCommand {
         }
         let path = self.module.path().to_path_buf();
         match &self.root {
-            Some(root) => {
-                let project = LocatedProject::enter_from(
-                    &ProgramFile::directory_of(&path),
-                    terminal,
-                    FetchingStore::default(),
-                )?;
-                Self::refuse_crates(project.as_ref(), terminal)?;
-                let file = ProgramFile::within(path, root.clone());
-                Ok(LocatedProject::lend_libraries(project.as_ref(), file))
-            }
+            Some(root) => Self::file_within(path, root, terminal),
             None => {
                 let program = LocatedProgram::of_file(path, terminal)?;
                 Self::refuse_crates(program.project(), terminal)?;
                 Ok(program.into_file())
             }
         }
+    }
+
+    fn file_within(
+        path: PathBuf,
+        root: &Path,
+        terminal: &mut Terminal,
+    ) -> Result<ProgramFile, ExitStatus> {
+        let project = LocatedProject::enter_from(
+            &ProgramFile::directory_of(&path),
+            terminal,
+            FetchingStore::default(),
+        )?;
+        Self::refuse_crates(project.as_ref(), terminal)?;
+        let file = ProgramFile::within(path, root.to_path_buf());
+        Ok(LocatedProject::lend_libraries(project.as_ref(), file))
     }
 
     fn refuse_crates(

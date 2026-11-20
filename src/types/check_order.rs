@@ -1,13 +1,14 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::core::{BindingId, ImplMethod, ItemKind, References, TypeExpr, TypeExprKind};
+use crate::core::{BindingId, ImplMethod, ItemKind, TypeExpr, TypeExprKind};
 use crate::expand::Program;
 
 use super::constructed_types::ConstructedTypes;
 use super::contained_types::ContainedTypes;
+use super::dependency_graph::DependencyGraph;
 
 pub(super) struct CheckOrder<'a> {
-    references: &'a FxHashMap<BindingId, References>,
+    dependencies: &'a DependencyGraph,
     impl_methods_of_trait: FxHashMap<BindingId, Vec<BindingId>>,
     trait_of_impl_method: FxHashMap<BindingId, BindingId>,
     same_trait_callees: FxHashMap<BindingId, Vec<BindingId>>,
@@ -29,22 +30,22 @@ enum Step {
 impl<'a> CheckOrder<'a> {
     pub(super) fn of(
         program: &Program,
-        references: &'a FxHashMap<BindingId, References>,
+        dependencies: &'a DependencyGraph,
         definitions: impl Iterator<Item = BindingId>,
     ) -> Vec<BindingId> {
         let impls = Self::impl_entries(program);
         let mut walk = Self {
-            references,
+            dependencies,
             impl_methods_of_trait: Self::impl_methods_by_trait(&impls),
             trait_of_impl_method: Self::trait_of_impl_method(&impls),
             same_trait_callees: SameTraitCallees::new(
                 &impls,
                 &ContainedTypes::of(program),
-                references,
+                &ConstructedTypes::new(program, dependencies),
             )
-            .of(&ConstructedTypes::of(program, references)),
+            .of(dependencies),
             visited: FxHashSet::default(),
-            order: Vec::with_capacity(references.len()),
+            order: Vec::new(),
         };
         let (methods, others): (Vec<BindingId>, Vec<BindingId>) =
             definitions.partition(|binding| walk.trait_of_impl_method.contains_key(binding));
@@ -137,7 +138,7 @@ impl<'a> CheckOrder<'a> {
         if let Some(implementing) = self.impl_methods_of_trait.get(&binding) {
             return implementing.clone();
         }
-        let Some(references) = self.references.get(&binding) else {
+        let Some(references) = self.dependencies.references(binding) else {
             return Vec::new();
         };
         let own_trait = self.trait_of_impl_method.get(&binding);
@@ -162,29 +163,29 @@ impl<'a> CheckOrder<'a> {
 struct SameTraitCallees<'i, 'p> {
     impls: &'i [ImplEntry<'p>],
     contained: &'i ContainedTypes,
-    references: &'i FxHashMap<BindingId, References>,
+    constructed: &'i ConstructedTypes<'i>,
 }
 
 impl<'i, 'p> SameTraitCallees<'i, 'p> {
     fn new(
         impls: &'i [ImplEntry<'p>],
         contained: &'i ContainedTypes,
-        references: &'i FxHashMap<BindingId, References>,
+        constructed: &'i ConstructedTypes<'i>,
     ) -> Self {
         Self {
             impls,
             contained,
-            references,
+            constructed,
         }
     }
 
-    fn of(&self, constructed: &ConstructedTypes<'_>) -> FxHashMap<BindingId, Vec<BindingId>> {
+    fn of(&self, dependencies: &DependencyGraph) -> FxHashMap<BindingId, Vec<BindingId>> {
         let methods_by_impl = self.methods_by_trait_and_implementor();
         let mut callees = FxHashMap::default();
         for entry in self.impls {
             for method in entry.methods {
                 let reached = self
-                    .types_reached(entry, method, constructed)
+                    .types_reached(entry, method, dependencies)
                     .into_iter()
                     .filter_map(|named| methods_by_impl.get(&(entry.trait_binding, named)))
                     .flatten()
@@ -216,22 +217,21 @@ impl<'i, 'p> SameTraitCallees<'i, 'p> {
         &self,
         entry: &ImplEntry<'_>,
         method: &ImplMethod,
-        constructed: &ConstructedTypes<'_>,
+        dependencies: &DependencyGraph,
     ) -> Vec<BindingId> {
         let contained = entry
             .implementor
             .map(|implementor| self.contained.in_type(implementor))
             .unwrap_or_default();
-        let written = self
-            .references
-            .get(&method.binding)
+        let written = dependencies
+            .references(method.binding)
             .map(|references| references.written_types().named())
             .unwrap_or_default();
         contained
             .iter()
             .chain(written)
             .copied()
-            .chain(constructed.by_method(method))
+            .chain(self.constructed.by_method(method.binding))
             .collect()
     }
 }

@@ -1,12 +1,15 @@
 use rustc_hash::FxHashMap;
 
 use super::written_types::WrittenTypes;
-use super::{BindingArena, BindingId, BindingKind, Control, Expr, ExprKind, Leaf, Pattern};
+use super::{
+    BindingArena, BindingId, BindingKind, Control, Expr, ExprKind, Leaf, Pattern, StructExpr,
+};
 
 #[derive(Default)]
 pub struct References {
     globals: Vec<BindingId>,
     written: WrittenTypes,
+    constructions: Vec<BindingId>,
     uses_compile_time_code: bool,
     arm_outers: FxHashMap<BindingId, BindingId>,
 }
@@ -26,6 +29,10 @@ impl References {
         &self.written
     }
 
+    pub fn constructions(&self) -> &[BindingId] {
+        &self.constructions
+    }
+
     pub fn into_globals(self) -> Vec<BindingId> {
         self.globals
     }
@@ -39,6 +46,9 @@ impl References {
         match expr.kind() {
             ExprKind::Leaf(Leaf::Var(binding)) => self.note_read(*binding, bindings),
             ExprKind::Leaf(Leaf::Quote(_)) => self.uses_compile_time_code = true,
+            ExprKind::Struct(StructExpr::New(binding, _))
+            | ExprKind::Variant(binding, _)
+            | ExprKind::LabeledVariant(binding, _) => self.constructions.push(*binding),
             ExprKind::Control(Control::Match(_, arms)) => {
                 for arm in arms {
                     self.collect_arm_outers(&arm.pattern);

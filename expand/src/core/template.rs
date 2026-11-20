@@ -181,6 +181,7 @@ pub struct ParsedTemplate {
 
 impl ParsedTemplate {
     const DEREFERENCE: &'static str = "*";
+    const CALL_OPENING: char = '(';
 
     pub fn parse(text: &str) -> Result<Self, MalformedPlaceholder> {
         let mut pieces = Vec::new();
@@ -334,7 +335,11 @@ impl ParsedTemplate {
 
     pub fn receives(&self, argument: usize) -> bool {
         let pieces = match self.pieces.as_slice() {
-            [Piece::Literal(dereference), rest @ ..] if dereference == Self::DEREFERENCE => rest,
+            [Piece::Literal(opening), rest @ ..]
+                if opening == Self::DEREFERENCE || opening.ends_with(Self::CALL_OPENING) =>
+            {
+                rest
+            }
             pieces => pieces,
         };
         matches!(
@@ -484,7 +489,7 @@ mod tests {
 
     #[test]
     fn receives_an_argument_before_a_method_call() {
-        for text in ["{0}.len()", "*{0}.len()"] {
+        for text in ["{0}.len()", "*{0}.len()", "crate::rt::length({0}.len())"] {
             let parsed = ParsedTemplate::parse(text).expect("a valid template");
             assert!(parsed.receives(0), "{text}");
             assert!(!parsed.receives(1), "{text}");
@@ -496,6 +501,7 @@ mod tests {
         for text in [
             "{&0}.len()",
             "{1} + {0}.len()",
+            "f({1}, {0}.len())",
             "{0} .len()",
             "{0}[1]",
             "{0}",

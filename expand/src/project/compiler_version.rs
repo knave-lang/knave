@@ -5,11 +5,15 @@ use crate::source::Span;
 
 #[derive(Debug)]
 pub struct CompilerVersion {
-    pub version: ReleaseVersion,
-    pub span: Span,
+    version: ReleaseVersion,
+    span: Span,
 }
 
 impl CompilerVersion {
+    pub fn new(version: ReleaseVersion, span: Span) -> Self {
+        Self { version, span }
+    }
+
     pub fn warning(&self, running: ReleaseVersion) -> Option<Diagnostic> {
         (self.version < running)
             .then(|| CompilerVersionProblems::newer_compiler(self.version, running, self.span))

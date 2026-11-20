@@ -57,6 +57,7 @@ The project owner decided on 2026-11-18:
 - A compiler older than `:knave` refuses to lower it in `knave upgrade`, with the same install help.
 - A well-formed `:knave` above the running compiler in the root project file reports `L0736` alone, in place of every other problem that loading the project finds, a library's problems included.
 - A library's `:knave` is never compared with the running compiler.
+- `knave fmt` compares the `:knave` of the project around each starting point, and never a project root that it reaches below one.
 - The workflow's read step drops each line from its first `;` outside a string, and a string may span lines.
 - The template history holds only texts that a release wrote. `cargo xtask prepush` checks each kept text against the template at its release's tag, and takes the latest `v*` tag reachable from `HEAD` as the release a change must keep.
 - `knave upgrade` takes no flag. Adding a skipped component later and a `setup-knave` action are out of scope.

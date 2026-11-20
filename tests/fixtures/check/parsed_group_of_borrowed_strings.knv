@@ -1,0 +1,12 @@
+(type first-parsed
+  (where ((a from-str))
+    (fn (a a) a)))
+
+(defn first-parsed (x y) x)
+
+(defn pick ((x (ref string)) (y (ref string)))
+  (first-parsed x y))
+
+(defn main ()
+  (local word (str "7"))
+  (println (pick (ref word) (ref word))))

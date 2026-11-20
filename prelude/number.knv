@@ -425,7 +425,7 @@
   (+ 1 2 3)
   => 6
 
-  (reduce (iter (vec 1 2 3)) 0 +)
+  (-> (vec 1 2 3) iter (reduce 0 +))
   => 6")
 
 (document (- number more ...)

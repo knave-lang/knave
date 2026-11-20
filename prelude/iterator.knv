@@ -244,7 +244,7 @@
   itself. A vector or a map passes as its [iter]. Its items are borrows, so
   the first form takes `(copied items)` for a step such as [+].
 
-  (reduce (copied (vec 1 2 3)) +)
+  (-> (vec 1 2 3) copied (reduce +))
   => (some 6)
 
   (reduce (vec 1 2 3) 10 +)
@@ -291,7 +291,7 @@
   (-> (range 0 3) count)
   => 3
 
-  (count (iter (vec 1 2)))
+  (-> (vec 1 2) iter count)
   => 2")
 
 (document (max items-or-value more ...)

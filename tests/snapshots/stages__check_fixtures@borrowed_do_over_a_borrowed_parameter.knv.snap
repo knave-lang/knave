@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/borrowed_do_over_a_borrowed_parameter.knv
+---
+error[L0510]: cannot return a borrow of a temporary value
+ --> check/borrowed_do_over_a_borrowed_parameter.knv:2:3
+  |
+2 |   (ref (do (println 1) p)))
+  |   ^^^^^------------------^
+  |   |    |
+  |   |    this temporary value is dropped when the function returns
+  |   this borrows a temporary value
+  |
+  = help: return an owned value, or borrow from a parameter or a top-level `def`
+  = note: run `knave doc L0510` for an explanation

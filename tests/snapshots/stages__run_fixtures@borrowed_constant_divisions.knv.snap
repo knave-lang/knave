@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/borrowed_constant_divisions.knv
+---
+3
+-4611686018427387904

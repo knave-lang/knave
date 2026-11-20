@@ -1,0 +1,5 @@
+(def base 0)
+
+(defn ratio () (ref (/ 7 base)))
+
+(defn main () (println (ratio)))

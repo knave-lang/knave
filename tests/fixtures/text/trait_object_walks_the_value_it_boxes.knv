@@ -8,7 +8,7 @@
   (name-of (d) (str (:name d))))
 
 (type count-named
-  (fn ((vec (box named))) usize))
+  (fn ((vec (box named))) int))
 
 (defn count-named (all) (len all))
 

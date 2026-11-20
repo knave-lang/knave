@@ -1,4 +1,4 @@
-(type size-of (fn (string) usize))
+(type size-of (fn (string) int))
 
 (defn size-of (text) (len text))
 

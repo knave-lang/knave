@@ -4,6 +4,7 @@ use super::field_changes::FieldChanges;
 use super::field_reader::FieldReader;
 use super::field_trait_names::FieldTraitNames;
 use super::field_traits::FieldTraitPlan;
+use super::open_read_holders::OpenReadHolders;
 use super::owner_uses::OwnerUses;
 use super::read_ties::ReadTies;
 use super::ty::Type;
@@ -45,8 +46,16 @@ impl<'p> ReaderShape<'p> {
         emitted_read
             && settled_read
             && !self.bounds_the_read(reader, plan)
+            && !self.reads_through_open_holder(reader)
             && !self.changes_a_field(reader)
             && self.passes_owner(reader, plan)
+    }
+
+    fn reads_through_open_holder(&self, reader: &FieldReader) -> bool {
+        let definition = self.definition(reader);
+        definition.is_some_and(|definition| {
+            OpenReadHolders::of(reader).are_read_within(&definition.value)
+        })
     }
 
     fn bounds_the_read(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {

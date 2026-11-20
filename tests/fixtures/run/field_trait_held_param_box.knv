@@ -1,0 +1,6 @@
+(defstruct (box t)
+  :v t)
+
+(defn f (n) (:v (->box (+ n 1))))
+
+(defn main () (println (f 2)))

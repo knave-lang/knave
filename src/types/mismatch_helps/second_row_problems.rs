@@ -8,9 +8,9 @@ impl SecondRowProblems {
         Diagnostic::error(
             DiagnosticCode::SECOND_MISMATCH_HELP,
             "a `mismatch-help` already states the help for these two types",
-            Label::new(span, "second help for the same types"),
+            Label::new(span, "second row for the same types"),
         )
-        .with_label(Label::new(first, "first help"))
+        .with_label(Label::new(first, "first row"))
         .with_help("remove this row")
     }
 }

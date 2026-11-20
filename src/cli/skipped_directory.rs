@@ -13,8 +13,9 @@ impl SkippedDirectory {
     const HIDDEN_PREFIX: char = '.';
 
     pub fn for_walk_of(walk_root: &Path) -> Self {
-        let build_base =
-            ProjectRoot::canonical_of(walk_root).or_else(|| ProgramFile::canonical(walk_root));
+        let build_base = ProjectRoot::around(walk_root)
+            .map(ProjectRoot::into_path)
+            .or_else(|| ProgramFile::canonical(walk_root));
         Self {
             build_parent: build_base.map(|base| base.join(BuildDirectory::PARENT)),
         }

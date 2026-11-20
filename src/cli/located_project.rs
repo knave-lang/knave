@@ -32,7 +32,9 @@ impl LocatedProject {
         terminal: &mut Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
-        CompilerCheck::refuse_before_loading(directory, terminal)?;
+        if let Some(root) = ProjectRoot::around(directory) {
+            CompilerCheck::new(terminal).refuse_before_loading(&root)?;
+        }
         let located = Self::enter_unchecked(directory, terminal, store)?;
         Self::check_compiler(located.as_ref(), terminal)?;
         Ok(located)
@@ -53,9 +55,8 @@ impl LocatedProject {
 
     fn check_compiler(located: Option<&Self>, terminal: &Terminal) -> Result<(), ExitStatus> {
         match located {
-            Some(entered) => {
-                CompilerCheck::report_located(&entered.project, &entered.project_file(), terminal)
-            }
+            Some(entered) => CompilerCheck::new(terminal)
+                .report_located(&entered.project, &entered.project_file()),
             None => Ok(()),
         }
     }
@@ -65,9 +66,10 @@ impl LocatedProject {
         terminal: &Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
-        let Some(root) = ProjectRoot::shown_of(directory)? else {
+        let Some(root) = ProjectRoot::around(directory) else {
             return Ok(None);
         };
+        let root = root.shown()?;
         let mut scratch = terminal.scratch();
         let walked = LibraryWalk::walk(&mut scratch, &root, store)?;
         let crates = ProjectCrates::new(

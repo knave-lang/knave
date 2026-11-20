@@ -131,8 +131,9 @@ impl FmtCommand {
             return Ok(paths);
         }
         let working_directory = WorkingDirectory::resolved()?;
-        let root = ProjectRoot::canonical_of(&working_directory)
-            .ok_or_else(WorkingDirectory::report_no_project)?;
+        let root = ProjectRoot::around(&working_directory)
+            .ok_or_else(WorkingDirectory::report_no_project)?
+            .into_path();
         Ok(vec![Self::upward_path(&working_directory, &root)])
     }
 
@@ -365,7 +366,7 @@ impl NearbyProjects {
         directory: &Path,
         terminal: &Terminal,
     ) -> Option<&LocatedProject> {
-        let root = ProjectRoot::canonical_of(directory)?;
+        let root = ProjectRoot::around(directory)?.into_path();
         if !self.projects.contains_key(&root) {
             let output = terminal.diagnostic_output();
             let files = Rc::clone(&self.formatted_files);

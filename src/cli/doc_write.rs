@@ -119,7 +119,9 @@ impl DocWriteCommand {
     }
 
     fn compiler_pages_folder(&self) -> PathBuf {
-        let root = ProjectRoot::canonical_of(WorkingDirectory::path()).unwrap_or_default();
+        let root = ProjectRoot::around(WorkingDirectory::path())
+            .map(ProjectRoot::into_path)
+            .unwrap_or_default();
         self.folder_in(&root)
     }
 

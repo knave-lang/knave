@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/set_at_query_adds_nothing_to_its_keys.knv
+---
+defn credit!
+  balances[0]: owned
+  name: a view
+defn main
+  local balances[0]: owned

@@ -1,0 +1,16 @@
+(defstruct has-name
+  :id int)
+
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(defn main ()
+  (println (:id (->has-name 1)))
+  (println (hello (->user "ana")))
+  (println (hello (->animal "rex"))))

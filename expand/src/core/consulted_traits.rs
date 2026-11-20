@@ -2,6 +2,7 @@ pub struct CopyTrait;
 
 impl CopyTrait {
     pub const PATH: &'static str = "Copy";
+    pub const BROUGHT_METHODS: [&'static str; 2] = ["clone", "clone_from"];
 }
 
 pub struct OrderTrait;

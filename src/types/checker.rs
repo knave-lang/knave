@@ -29,6 +29,7 @@ use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
 use super::enum_item::EnumItem;
 use super::explanation_sources::ExplanationSources;
+use super::field_read_selection::FieldReadSelection;
 use super::generalization::Generalization;
 use super::generalization_rules::GeneralizationRules;
 use super::generic_declarations::GenericDeclarations;
@@ -897,6 +898,7 @@ impl TypeChecker {
     ) {
         if let (Some(argument), Some(expected)) = (argument, &bound.argument)
             && self.unifier.unify(expected, &argument, site.span).is_err()
+            && !FieldReadSelection::settles_later(&self.declarations.traits().table, &bound)
         {
             self.report_missing_trait(&bound, implementor, site.span);
             return;

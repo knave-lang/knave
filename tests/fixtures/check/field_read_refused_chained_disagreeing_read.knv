@@ -1,0 +1,18 @@
+(defstruct cat
+  :name str)
+
+(defstruct dog
+  :name str)
+
+(defstruct owner
+  :pet cat)
+
+(defstruct keeper
+  :pet dog)
+
+(defn pet-name (x)
+  (str (:name (:pet x))))
+
+(defn main ()
+  (println (pet-name (->owner (->cat "tom"))))
+  (println (pet-name (->keeper (->dog "rex")))))

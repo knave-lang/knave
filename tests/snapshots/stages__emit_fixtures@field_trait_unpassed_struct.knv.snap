@@ -21,8 +21,8 @@ fn make_dog(age: i64) -> Dog {
     Dog { age }
 }
 
-fn age_of<A: HasAge + Copy>(x: A) -> i64 {
-    x.age()
+fn age_of<A: field_traits::HasAge + Copy>(x: A) -> i64 {
+    field_traits::HasAge::age(&x)
 }
 
 fn main() {
@@ -31,17 +31,19 @@ fn main() {
     println!("{}", age_of(make_dog(4)))
 }
 
-trait HasAge {
-    fn age(&self) -> i64;
+mod field_traits {
+    pub trait HasAge {
+        fn age(&self) -> i64;
+    }
 }
 
-impl HasAge for Cat {
+impl field_traits::HasAge for Cat {
     fn age(&self) -> i64 {
         self.age
     }
 }
 
-impl HasAge for Dog {
+impl field_traits::HasAge for Dog {
     fn age(&self) -> i64 {
         self.age
     }

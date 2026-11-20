@@ -70,7 +70,7 @@ impl<'u> FieldReadSelection<'u> {
         reads_field && !Self::is_written(bound)
     }
 
-    fn is_written(bound: &Bound) -> bool {
+    pub(super) fn is_written(bound: &Bound) -> bool {
         bound.origins.is_written()
     }
 }

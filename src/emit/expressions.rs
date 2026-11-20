@@ -2705,7 +2705,8 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn field_place(&mut self, value: &TypedExpr, label: &FieldLabel) -> Code {
         if FieldGetter::reads_generic_owner(&value.ty) {
-            return FieldGetter::call(self.field_owner(value), label);
+            let receiver = self.field_owner(value);
+            return FieldGetter::new(self.program, self.module).call(value, receiver, label);
         }
         let value = self.field_owner(value);
         let value = if value.is_atomic() {

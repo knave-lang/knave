@@ -17,7 +17,11 @@ impl<'p> EscapingBorrow<'p> {
     }
 
     pub(super) fn escapes(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
-        if plan.kind == ReadKind::BorrowOfStruct || !self.holds_borrow(&plan.read) {
+        plan.kind != ReadKind::BorrowOfStruct && self.escapes_copied_owner(reader, plan)
+    }
+
+    pub(super) fn escapes_copied_owner(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
+        if !self.holds_borrow(&plan.read) {
             return false;
         }
         let settled: FxHashMap<GenericId, Type> = match reader.read {

@@ -6,6 +6,7 @@ use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
 use super::field_read::FieldRead;
+use super::field_read_selection::FieldReadSelection;
 use super::field_reader::FieldReader;
 use super::field_traits::FieldTraitPlan;
 use super::open_read::OpenRead;
@@ -28,6 +29,7 @@ enum Outcome {
     Unreached,
     Agreed(FieldTraitPlan),
     Disagreed,
+    Unsupported,
 }
 
 #[derive(Default)]
@@ -75,7 +77,9 @@ impl<'r> FieldReadSettlement<'r> {
                 }
                 tally.agree(reader, plan);
             }
-            Outcome::Agreed(_) | Outcome::Disagreed => tally.refuse(program, &reader),
+            Outcome::Agreed(_) | Outcome::Disagreed | Outcome::Unsupported => {
+                tally.refuse(program, &reader)
+            }
             Outcome::Unreached => {}
         }
     }
@@ -96,6 +100,7 @@ impl<'r> FieldReadSettlement<'r> {
                         read: bound.argument.clone()?,
                         field: Rc::clone(field),
                         trait_binding: bound.binding,
+                        written: FieldReadSelection::is_written(bound),
                     })
                 })
             })
@@ -105,7 +110,7 @@ impl<'r> FieldReadSettlement<'r> {
     fn outcome(&self, program: &TypedProgram, reader: &FieldReader) -> Outcome {
         let Some(structs) = ReachingStructs::new(self.report).of(reader.binding, reader.owner)
         else {
-            return Outcome::Disagreed;
+            return Outcome::Unsupported;
         };
         let reads = OpenRead::new(CopyRules::new(&program.declarations, &program.generics));
         let mut found: Vec<FieldRead> = Vec::new();
@@ -116,7 +121,7 @@ impl<'r> FieldReadSettlement<'r> {
             let read =
                 definition.and_then(|found| reads.instantiated(found, &reader.field, &arguments));
             let Some(read) = read else {
-                return Outcome::Disagreed;
+                return Outcome::Unsupported;
             };
             let implementor = Type::Named(owner, arguments);
             if !found.contains(&read) {
@@ -140,7 +145,8 @@ impl<'r> FieldReadSettlement<'r> {
     }
 
     fn meets_reader(reader: &FieldReader, read: &Type) -> bool {
-        ReadView::of(read).is_used_as(&reader.read)
+        let view = ReadView::of(read);
+        view.is_used_as(&reader.read) || (reader.written && view.is_written_as(&reader.read))
     }
 
     fn ambiguous_reads(program: &TypedProgram, reader: &FieldReader) -> Diagnostics {

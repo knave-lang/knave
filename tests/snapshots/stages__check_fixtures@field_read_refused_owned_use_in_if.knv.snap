@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_owned_use_in_if.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_refused_owned_use_in_if.knv:8:16
+  |
+8 |   (if (> 1 0) (:title x) (str "none")))
+  |                ^^^^^^ cannot tell which struct's `title` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

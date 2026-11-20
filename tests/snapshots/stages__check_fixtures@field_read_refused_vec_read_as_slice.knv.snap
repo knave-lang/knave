@@ -4,25 +4,10 @@ expression: report
 input_file: tests/fixtures/check/field_read_refused_vec_read_as_slice.knv
 ---
 error[L0407]: type annotations needed
-  --> check/field_read_refused_vec_read_as_slice.knv:14:8
-   |
-14 |   (prn (first-item (->bag (vec 7))))
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the type `(option (ref _))` of this value
-   |
-help: write the type with `the`, and replace each `_` with a type
-   |
-14 |   (prn (the (option (ref _)) (first-item (->bag (vec 7)))))
-   |        +++++++++++++++++++++                             +
-   = note: run `knave doc L0407` for an explanation
-
-error[L0407]: type annotations needed
-  --> check/field_read_refused_vec_read_as_slice.knv:15:8
-   |
-15 |   (prn (first-item (->sack (vec 8)))))
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the type `(option (ref _))` of this value
-   |
-help: write the type with `the`, and replace each `_` with a type
-   |
-15 |   (prn (the (option (ref _)) (first-item (->sack (vec 8))))))
-   |        +++++++++++++++++++++                              +
-   = note: run `knave doc L0407` for an explanation
+ --> check/field_read_refused_vec_read_as_slice.knv:9:28
+  |
+9 | (defn first-item (x) (get (:items x) 0))
+  |                            ^^^^^^ cannot tell which struct's `items` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

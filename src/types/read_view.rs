@@ -16,13 +16,18 @@ impl<'t> ReadView<'t> {
     }
 
     pub(super) fn is_used_as(&self, used: &Type) -> bool {
-        let viewed = self.views_as(used) && used.reference_depth() <= self.read.reference_depth();
-        viewed || Self::fits(self.read, used)
+        Self::fits(self.read, used) || self.is_borrowed_as_unsized(used)
+    }
+
+    fn is_borrowed_as_unsized(&self, used: &Type) -> bool {
+        let borrowed_place =
+            used.is_unsized() && used.reference_depth() < self.read.reference_depth();
+        borrowed_place && self.views_as(used)
     }
 
     fn fits(read: &Type, used: &Type) -> bool {
         match (read, used) {
-            (_, Type::Generic(_)) => true,
+            (_, Type::Generic(_) | Type::Var(_)) | (Type::Generic(_), _) => true,
             (Type::Ref(_, read), Type::Ref(_, used)) | (Type::Mut(_, read), Type::Mut(_, used)) => {
                 Self::fits(read, used)
             }

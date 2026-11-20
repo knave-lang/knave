@@ -27,9 +27,18 @@ impl<'p> ReaderShape<'p> {
     pub(super) fn emits(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
         let names = FieldTraitNames::new(self.program);
         self.allows(reader, plan)
-            && !EscapingBorrow::new(self.program).escapes(reader, plan)
+            && !self.escapes(reader, plan)
             && names.are_free(reader)
             && !(self.copies_owner(plan) && names.copy_takes_getter(reader))
+    }
+
+    fn escapes(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
+        let escaping = EscapingBorrow::new(self.program);
+        if self.copies_owner(plan) {
+            escaping.escapes_copied_owner(reader, plan)
+        } else {
+            escaping.escapes(reader, plan)
+        }
     }
 
     fn allows(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {

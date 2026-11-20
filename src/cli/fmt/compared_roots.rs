@@ -28,8 +28,7 @@ impl ComparedRoots {
             CompilerCheck::refuse_before_loading(root, terminal)?;
         }
         for root in &self.roots {
-            CompilerCheck::EVERY_MISMATCH
-                .report(&root.join(Language::project_file_name()), terminal)?;
+            CompilerCheck::report(&root.join(Language::project_file_name()), terminal)?;
         }
         Ok(())
     }

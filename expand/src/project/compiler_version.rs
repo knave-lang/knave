@@ -10,11 +10,9 @@ pub struct CompilerVersion {
 }
 
 impl CompilerVersion {
-    pub fn problem(&self, running: ReleaseVersion) -> Option<Diagnostic> {
-        self.refusal(running).or_else(|| {
-            (self.version < running)
-                .then(|| CompilerVersionProblems::newer_compiler(self.version, running, self.span))
-        })
+    pub fn warning(&self, running: ReleaseVersion) -> Option<Diagnostic> {
+        (self.version < running)
+            .then(|| CompilerVersionProblems::newer_compiler(self.version, running, self.span))
     }
 
     pub fn refusal(&self, running: ReleaseVersion) -> Option<Diagnostic> {

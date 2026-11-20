@@ -119,7 +119,7 @@ impl Fixture {
         let reader = ProjectReader::new(EmbeddedPrelude::project_vocabulary());
         Reader::new(file)
             .read()
-            .and_then(|forms| reader.read_root(&forms, whole_file))
+            .and_then(|forms| reader.read(&forms, whole_file))
     }
 
     pub fn format_report(&self) -> String {

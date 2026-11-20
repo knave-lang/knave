@@ -276,7 +276,7 @@
 
   (let (start (now))
     (sleep (millis 1))
-    (>= (elapsed start) (millis 1)))
+    (-> start elapsed (>= (millis 1))))
   => true")
 
 (document (now)
@@ -286,7 +286,7 @@
   run. It does not tell the time of day.
 
   (let (start (now))
-    (<= (elapsed start) (elapsed start)))
+    (-> start elapsed (<= (elapsed start))))
   => true")
 
 (document (elapsed start)
@@ -294,5 +294,5 @@
 
   (let (start (now))
     (sleep (millis 5))
-    (>= (elapsed start) (millis 5)))
+    (-> start elapsed (>= (millis 5))))
   => true")

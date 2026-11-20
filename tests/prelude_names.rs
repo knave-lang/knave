@@ -305,6 +305,10 @@ impl ExampleRules {
         "pair",
         "box",
         "char",
+        "seconds",
+        "millis",
+        "micros",
+        "nanos",
     ];
     const TEST: &str = "deftest";
     const THREADS: &[&str] = &["->", "->>"];

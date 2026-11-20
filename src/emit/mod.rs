@@ -2,6 +2,7 @@ mod argument_role;
 mod argument_start;
 mod assigned_in_place;
 mod bound_before;
+mod call_order;
 mod callee_definitions;
 mod callee_parameters;
 mod constant_definitions;

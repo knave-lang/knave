@@ -1,0 +1,15 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(type title-len
+  (where ((a (has :title (ref str))))
+    (fn ((ref a)) usize)))
+
+(defn title-len (x) (len (:title x)))
+
+(defn main ()
+  (println (title-len (->book (str "dune"))))
+  (println (title-len (->film (str "jaws")))))

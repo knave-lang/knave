@@ -1,0 +1,16 @@
+(defstruct big
+  :a int
+  :b int
+  :c int)
+
+(defstruct cat
+  :pos big)
+
+(defstruct dog
+  :pos big)
+
+(defn pos-of (x) (let (p (:pos x)) p))
+
+(defn main ()
+  (println (:a (pos-of (->cat (->big 1 2 3)))))
+  (println (:b (pos-of (->dog (->big 4 5 6))))))

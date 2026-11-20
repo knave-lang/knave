@@ -1,0 +1,12 @@
+(defstruct user
+  :tags (vec string))
+
+(defstruct animal
+  :tags (vec string))
+
+(defn tagged? (x t)
+  (contains? (:tags x) t))
+
+(defn main ()
+  (println (tagged? (->user (vec (str "a"))) "a"))
+  (println (tagged? (->animal (vec)) "b")))

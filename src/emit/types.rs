@@ -5,6 +5,7 @@ use knave_expand::mangle::NameMangler;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::emitted_types::EmittedTypes;
+use super::field_trait_path::FieldTraitPath;
 use super::fresh_lifetimes::FreshLifetimes;
 use super::function_borrow::FunctionBorrow;
 use super::opaque_borrows::OpaqueBorrows;
@@ -410,6 +411,9 @@ impl<'a> RustTypes<'a> {
 
     fn trait_path(&self, bound: &Bound) -> Option<String> {
         let rust_trait = self.traits.get(bound.binding)?;
+        if rust_trait.reads_field {
+            return FieldTraitPath::new(self.program).of(bound.binding, self.module);
+        }
         let path = rust_trait.path.to_string();
         Some(match (&bound.argument, &rust_trait.associated) {
             (Some(argument), Some(associated)) => format!(

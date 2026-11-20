@@ -1,0 +1,79 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/emit/field_trait_unpassed_struct.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Cat {
+    age: i64,
+}
+
+fn make_cat(age: i64) -> Cat {
+    Cat { age }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Dog {
+    age: i64,
+}
+
+fn make_dog(age: i64) -> Dog {
+    Dog { age }
+}
+
+fn age_of<A: field_traits::HasAge + Copy>(x: A) -> i64 {
+    field_traits::HasAge::age(&x)
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", age_of(make_cat(3)));
+    println!("{}", age_of(make_dog(4)))
+}
+
+mod field_traits {
+    pub trait HasAge {
+        fn age(&self) -> i64;
+    }
+
+    impl<T: HasAge + ?Sized> HasAge for &T {
+        fn age(&self) -> i64 {
+            T::age(self)
+        }
+    }
+
+    impl<T: HasAge + ?Sized> HasAge for &mut T {
+        fn age(&self) -> i64 {
+            T::age(self)
+        }
+    }
+}
+
+impl field_traits::HasAge for Cat {
+    fn age(&self) -> i64 {
+        self.age
+    }
+}
+
+impl field_traits::HasAge for Dog {
+    fn age(&self) -> i64 {
+        self.age
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

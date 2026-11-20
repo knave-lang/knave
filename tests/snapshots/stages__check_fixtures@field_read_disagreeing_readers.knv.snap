@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/field_read_disagreeing_readers.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_disagreeing_readers.knv:13:24
+   |
+13 | (defn age-of (x) (str (:age x)))
+   |                        ^^^^ cannot tell which struct's `age` this is
+   |
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation
+
+error[L0407]: type annotations needed
+  --> check/field_read_disagreeing_readers.knv:15:26
+   |
+15 | (defn label-of (x) (str (:age x)))
+   |                          ^^^^ cannot tell which struct's `age` this is
+   |
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation

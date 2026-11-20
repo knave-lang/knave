@@ -1,0 +1,24 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(defn next-age (x) (+ (:age x) 1))
+
+(defn title-length (x) (len (:title x)))
+
+(defn describe-age (x)
+  (str "age " (next-age x)))
+
+(defn main ()
+  (println (next-age (->cat 3)))
+  (println (describe-age (->dog 4)))
+  (println (title-length (->book (str "dune"))))
+  (println (title-length (->film (str "jaws!")))))

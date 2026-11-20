@@ -1,0 +1,15 @@
+(defstruct cat
+  :a int)
+
+(defstruct dog
+  :a int)
+
+(defstruct (pair t)
+  :l t
+  :r t)
+
+(defn f (x) (:l (->pair (:a x) (:a x))))
+
+(defn main ()
+  (println (f (->cat 1)))
+  (println (f (->dog 2))))

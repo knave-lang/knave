@@ -1,0 +1,12 @@
+(defstruct user
+  :p (pair int bool))
+
+(defstruct animal
+  :p (pair int bool))
+
+(defn left-or (x d)
+  (match (:p x) ((pair l r) (if r l d))))
+
+(defn main ()
+  (println (left-or (->user (pair 1 true)) 5))
+  (println (left-or (->animal (pair 2 false)) "z")))

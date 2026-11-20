@@ -1,0 +1,17 @@
+(defstruct cat
+  :a string)
+
+(defstruct dog
+  :a string)
+
+(defstruct fox
+  :b str)
+
+(defstruct owl
+  :b str)
+
+(defn f (x y) (= (:a x) (:b y)))
+
+(defn main ()
+  (println (f (->cat (str "a")) (->fox "a")))
+  (println (f (->dog (str "b")) (->owl "c"))))

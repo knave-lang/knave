@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_call_open_param_generic_caller_wrong.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_call_open_param_generic_caller_wrong.knv:7:25
+  |
+7 | (defn same-n? (x y) (= (:n x) (some y)))
+  |                         ^^ cannot tell which struct's `n` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation
+
+error[L0407]: type annotations needed
+ --> check/field_read_case_call_open_param_generic_caller_wrong.knv:9:1
+  |
+9 | (defn relay (x y) (same-n? x y))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot tell which struct's `n` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

@@ -1,0 +1,89 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/emit/field_trait_struct_read.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Point {
+    x: i64,
+    y: i64,
+}
+
+fn make_point(x: i64, y: i64) -> Point {
+    Point { x, y }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Line {
+    start: Point,
+}
+
+fn make_line(start: Point) -> Line {
+    Line { start }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Span {
+    start: Point,
+}
+
+fn make_span(start: Point) -> Span {
+    Span { start }
+}
+
+fn start_x<A: field_traits::HasStart + Copy>(l: A) -> i64 {
+    field_traits::HasStart::start(&l).x + 1
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", start_x(make_line(make_point(1, 2))));
+    println!("{}", start_x(make_span(make_point(5, 6))))
+}
+
+mod field_traits {
+    pub trait HasStart {
+        fn start(&self) -> crate::Point;
+    }
+
+    impl<T: HasStart + ?Sized> HasStart for &T {
+        fn start(&self) -> crate::Point {
+            T::start(self)
+        }
+    }
+
+    impl<T: HasStart + ?Sized> HasStart for &mut T {
+        fn start(&self) -> crate::Point {
+            T::start(self)
+        }
+    }
+}
+
+impl field_traits::HasStart for Line {
+    fn start(&self) -> Point {
+        self.start
+    }
+}
+
+impl field_traits::HasStart for Span {
+    fn start(&self) -> Point {
+        self.start
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

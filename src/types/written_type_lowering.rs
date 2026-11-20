@@ -1,9 +1,13 @@
 use rustc_hash::FxHashMap;
 
+use super::bound_origins::{BoundOrigin, BoundOrigins};
 use super::checking_facts::CheckingFacts;
+use super::copy::CopyRules;
 use super::declarations::Declarations;
+use super::field_owner_problems::FieldOwnerProblems;
 use super::generic_declarations::GenericDeclarations;
 use super::lowered_binders::LoweredBinders;
+use super::open_read::OpenRead;
 use super::problems::TypeProblems;
 use super::trait_boxing::TraitBoxing;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Type};
@@ -76,9 +80,37 @@ impl<'l> WrittenTypeLowering<'l> {
         let Some(argument) = &bound.argument else {
             return Ok(Bound::plain(bound.binding));
         };
+        if let Some(field) = &bound.field {
+            let field_traits = &self.declarations.traits().rust_paths().field_traits();
+            let field_trait = (field_traits.bindings().trait_of(field))
+                .ok_or_else(|| self.unregistered_field(field, argument.span()))?;
+            let written = self.lower_type(argument, scope)?;
+            let no_generics = FxHashMap::default();
+            let read =
+                OpenRead::new(CopyRules::new(self.declarations, &no_generics)).of_written(&written);
+            let closed = read.is_concrete();
+            let written = Bound::with_argument(field_trait, read);
+            if !closed {
+                return Ok(written);
+            }
+            let mut origins = BoundOrigins::none();
+            origins.add(BoundOrigin::Written);
+            return Ok(written.from_origins(origins));
+        }
         self.check_trait_argument(bound.binding, argument.span())?;
         let argument = self.lower_type(argument, scope)?;
         Ok(Bound::with_argument(bound.binding, argument))
+    }
+
+    fn unregistered_field(&self, field: &str, span: Span) -> Diagnostic {
+        let structs = &self.declarations.types().structs;
+        match structs.with_field(field).as_slice() {
+            [owner] => {
+                let owner = self.bindings.get(*owner).name();
+                FieldOwnerProblems::unshared_written(field, owner, span)
+            }
+            _ => FieldOwnerProblems::undeclared_written(field, span),
+        }
     }
 
     pub(super) fn lower_binders(

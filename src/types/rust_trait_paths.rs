@@ -3,11 +3,13 @@ use std::rc::Rc;
 use knave_expand::rust_trait_path::RustTraitPath;
 use rustc_hash::FxHashMap;
 
+use super::field_traits::FieldTraits;
 use crate::core::{BindingId, RustTraitDeclaration};
 
 #[derive(Default)]
 pub struct RustTraitPaths {
     recorded: FxHashMap<BindingId, RecordedPath>,
+    pub(super) field_traits: FieldTraits,
 }
 
 pub(super) struct RecordedPath {
@@ -16,6 +18,10 @@ pub(super) struct RecordedPath {
 }
 
 impl RustTraitPaths {
+    pub fn field_traits(&self) -> &FieldTraits {
+        &self.field_traits
+    }
+
     pub fn written(&self, binding: BindingId) -> Option<&Rc<str>> {
         Some(&self.recorded.get(&binding)?.written)
     }

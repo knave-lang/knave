@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_holder_disagree.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_case_holder_disagree.knv:10:29
+   |
+10 | (defn has-v (x) (some? (:v (:h x))))
+   |                             ^^ cannot tell which struct's `h` this is
+   |
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation

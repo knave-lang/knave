@@ -1,0 +1,17 @@
+(defstruct cat
+  :a (option int))
+
+(defstruct dog
+  :a (option int))
+
+(defstruct fox
+  :b (option float))
+
+(defstruct owl
+  :b (option float))
+
+(defn f (x y) (= (:a x) (:b y)))
+
+(defn main ()
+  (println (f (->cat none) (->fox none)))
+  (println (f (->dog (some 1)) (->owl none))))

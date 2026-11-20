@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_case_written_has_and_display.knv
+---
+ana1
+rex2

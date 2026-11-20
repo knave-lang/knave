@@ -264,6 +264,7 @@ pub enum KernelType {
     Reference(ReferenceKind),
     Where,
     With,
+    Has,
     Hole,
     Primitive(PrimitiveType),
 }
@@ -293,6 +294,7 @@ impl KernelType {
             KernelType::Reference(ReferenceKind::Mutable),
             KernelType::Where,
             KernelType::With,
+            KernelType::Has,
             KernelType::Hole,
         ]
         .into_iter()
@@ -306,6 +308,7 @@ impl KernelType {
             KernelType::Reference(ReferenceKind::Mutable) => "(mut type)",
             KernelType::Where => "(where (variable (variable trait ...) ...) type)",
             KernelType::With => "(with type type)",
+            KernelType::Has => "(has :field type)",
             KernelType::Hole | KernelType::Primitive(_) => self.name(),
         }
     }
@@ -316,6 +319,7 @@ impl KernelType {
             KernelType::Reference(kind) => kind.keyword(),
             KernelType::Where => "where",
             KernelType::With => "with",
+            KernelType::Has => "has",
             KernelType::Hole => "_",
             KernelType::Primitive(primitive) => primitive.names().shown(),
         }
@@ -381,5 +385,22 @@ impl StructDerives {
             || Self::REQUIRED
                 .iter()
                 .any(|(requirer, required)| *requirer == listed && Self::brings(required, derived))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::KernelType;
+    use crate::core::PrimitiveType;
+
+    #[test]
+    fn a_primitive_type_has_its_name_as_shape() {
+        let integer = KernelType::Primitive(PrimitiveType::I64);
+        assert_eq!(integer.shape(), integer.name());
+    }
+
+    #[test]
+    fn a_field_bound_shows_its_field_and_type() {
+        assert_eq!(KernelType::Has.shape(), "(has :field type)");
     }
 }

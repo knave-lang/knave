@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_written_open_option.knv
+---
+error[L0201]: cannot find type `b` in this scope
+ --> check/field_read_case_written_open_option.knv:8:30
+  |
+8 |   (where ((a (has :n (option b))))
+  |                              ^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

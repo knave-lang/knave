@@ -2,7 +2,7 @@
 source: tests/cli.rs
 expression: test.assert_silent_success().stdout()
 ---
-untested in prelude (57 of 260): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display duration enum eprint eprintln eq exit export field floating fmt fn-once from-str hash impl instant integer io-error macro mismatch-help module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
+untested in prelude (58 of 261): copy debug def defenum defmacro defn defrule defstruct deftask deftest deftrait deftype derive display duration enum eprint eprintln eq exit export field floating fmt fn-once from-str has hash impl instant integer io-error macro mismatch-help module new number ord partial-eq partial-ord pattern quote run-tests rust-trait rust-type sequence show signed source struct template trait type unit use where with write-form
 running 240 tests
 test number/inc-adds-one-to-any-number ... ok
 test number/dec-subtracts-one-from-any-number ... ok

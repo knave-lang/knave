@@ -7,6 +7,7 @@ pub struct RustTrait {
     pub path: Rc<str>,
     pub help: Option<Rc<str>>,
     pub associated: Option<Rc<str>>,
+    pub reads_field: bool,
     rows: TraitRowsReach,
 }
 
@@ -16,6 +17,7 @@ impl RustTrait {
             path: Rc::clone(&declaration.path),
             help: declaration.help.clone(),
             associated: None,
+            reads_field: false,
             rows: TraitRowsReach::unreached(),
         }
     }
@@ -32,7 +34,15 @@ impl RustTrait {
             path,
             help: None,
             associated,
+            reads_field: false,
             rows: TraitRowsReach::lowered(rows),
+        }
+    }
+
+    pub fn field_read(path: Rc<str>, read: Rc<str>, rows: LoweredRows) -> Self {
+        Self {
+            reads_field: true,
+            ..Self::written(path, Some(read), rows)
         }
     }
 

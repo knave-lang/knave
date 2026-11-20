@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_written_owned_for_borrowed_read.knv
+---
+error[L0401]: mismatched types
+  --> check/field_bound_written_owned_for_borrowed_read.knv:11:20
+   |
+ 7 | / (type title-of
+ 8 | |   (where ((a (has :title string)))
+ 9 | |     (fn ((ref a)) string)))
+   | |___________________________- expected because of this signature
+10 |
+11 |   (defn title-of (x) (:title x))
+   |                      ^^^^^^^^^^ expected `string`, found `(ref string)`
+   |
+   = note: run `knave doc L0401` for an explanation

@@ -7,9 +7,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::EmissionWork;
 use super::emitted_types::EmittedTypes;
 use super::expressions::ExpressionEmitter;
+use super::field_trait_items::FieldTraitItems;
 use super::fragment::{Code, Fragment};
 use super::fresh_lifetimes::FreshLifetimes;
 use super::generic_callees::GenericCallees;
+use super::item_lifetimes::ItemLifetimes;
 use super::literal_generics::LiteralGenerics;
 use super::local_closures::LocalClosures;
 use super::locals::LocalNames;
@@ -177,6 +179,7 @@ impl<'a> ItemEmitter<'a> {
         items.extend(self.traits(module));
         items.extend(self.trait_impls(module));
         items.extend(self.structural_impls.of_module(module));
+        items.extend(FieldTraitItems::new(self.program, self.plan, self.types).of_module(module));
         items.extend(self.conversions(module));
         items
     }
@@ -1077,7 +1080,7 @@ impl<'a> ItemEmitter<'a> {
             .expect("a reached struct has a definition");
         let inferred = (definition.lifetimes.is_empty()
             && self.program.definition_holds_borrow(binding))
-        .then(|| Self::unused_lifetime_name(self.program, &definition.lifetimes));
+        .then(|| ItemLifetimes::new(self.program).unused_name(&definition.lifetimes));
         let lifetimes = self.declared_lifetimes(inferred.as_deref(), &definition.lifetimes);
         let scope =
             self.lifetime_scope(&definition.lifetimes, lifetimes.first().map(String::as_str));
@@ -1127,7 +1130,7 @@ impl<'a> ItemEmitter<'a> {
             .expect("a reached enum has a definition");
         let inferred = (definition.lifetimes.is_empty()
             && self.program.definition_holds_borrow(binding))
-        .then(|| Self::unused_lifetime_name(self.program, &definition.lifetimes));
+        .then(|| ItemLifetimes::new(self.program).unused_name(&definition.lifetimes));
         let lifetimes = self.declared_lifetimes(inferred.as_deref(), &definition.lifetimes);
         let scope =
             self.lifetime_scope(&definition.lifetimes, lifetimes.first().map(String::as_str));
@@ -1428,14 +1431,6 @@ impl<'a> ItemEmitter<'a> {
         FreshLifetimes::unused_name(&used)
     }
 
-    fn unused_lifetime_name(program: &TypedProgram, lifetimes: &[BindingId]) -> String {
-        let used: Vec<String> = lifetimes
-            .iter()
-            .map(|binding| RustTypes::binding_lifetime(program, *binding))
-            .collect();
-        FreshLifetimes::unused_name(&used)
-    }
-
     fn used_written_lifetimes(&self, value: &TypedExpr) -> FxHashSet<BindingId> {
         let mut used = Self::linking_written_lifetimes(&value.ty);
         used.extend(OpaqueBorrows::new(self.program).written_lifetimes(&value.ty));
@@ -1535,34 +1530,7 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn implementor_lifetime(&self, implementor: &Type) -> Option<String> {
-        Self::implementor_lifetime_of(self.program, implementor)
-    }
-
-    pub(super) fn implementor_lifetime_of(
-        program: &TypedProgram,
-        implementor: &Type,
-    ) -> Option<String> {
-        let Type::Named(binding, _) = implementor else {
-            return None;
-        };
-        if !program.has_lifetime_parameter(*binding) {
-            return None;
-        }
-        let written = if let Some(definition) = program.declarations.types().structs().get(*binding)
-        {
-            definition.lifetimes.first().copied()
-        } else {
-            program
-                .declarations
-                .types()
-                .enums()
-                .get(*binding)
-                .and_then(|definition| definition.lifetimes.first().copied())
-        };
-        Some(written.map_or_else(
-            || Self::unused_lifetime_name(program, &[]),
-            |binding| RustTypes::binding_lifetime(program, binding),
-        ))
+        ItemLifetimes::new(self.program).of_implementor(implementor)
     }
 
     fn receiver_lifetime(&self, first: &TypedBinder, scope: &LifetimeScope) -> Option<String> {

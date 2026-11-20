@@ -1,0 +1,11 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(defn measure (x) (len (:title x)))
+
+(defn main ()
+  (println (measure (->book (str "dune"))))
+  (println (measure (->film (str "jaws!")))))

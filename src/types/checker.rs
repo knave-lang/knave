@@ -29,6 +29,7 @@ use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
 use super::enum_item::EnumItem;
 use super::explanation_sources::ExplanationSources;
+use super::field_read_selection::FieldReadSelection;
 use super::generalization::Generalization;
 use super::generalization_rules::GeneralizationRules;
 use super::generic_declarations::GenericDeclarations;
@@ -46,6 +47,7 @@ use super::index_checks::IndexChecks;
 use super::instantiation::Instantiation;
 use super::literal_parameters::LiteralParameters;
 use super::literal_settlement::LiteralSettlement;
+use super::mentioned_generics::MentionedGenerics;
 use super::method_receivers::MethodReceivers;
 use super::missing_trait::MissingTrait;
 use super::missing_trait_explanation::MissingTraitExplanation;
@@ -71,12 +73,14 @@ use super::shared_group::SharedGroup;
 use super::shared_member_passing::SharedMemberPassing;
 use super::shared_variable_group::SharedVariableGroup;
 use super::string_views::StringViews;
+use super::struct_field_traits::StructFieldTraits;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::type_declaration_collector::TypeDeclarationCollector;
 use super::type_variables::TypeVariables;
 use super::typed_module_builder::TypedModuleBuilder;
+use super::unfit_reads::UnfitReads;
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
 use super::user_trait::UserTrait;
@@ -241,6 +245,8 @@ impl TypeChecker {
         self.collect_trait_impls(modules);
         self.record_structural_traits(modules);
         self.register_derived_traits(modules);
+        let fields = StructFieldTraits::new(&self.declarations, self.generics.params()).traits();
+        (self.declarations.builder().traits()).enter_field_traits(fields, &mut self.bindings);
         self.report_supertraits();
         self.check_trait_claims(modules, reached);
         self.copy_trait = self
@@ -590,6 +596,10 @@ impl TypeChecker {
         })
     }
 
+    fn unfit_reads(&self) -> UnfitReads<'_> {
+        UnfitReads::new(&self.unifier, &self.declarations, self.copy_rules())
+    }
+
     fn literal_settlement(&self) -> LiteralSettlement<'_> {
         LiteralSettlement::new(&self.unifier, &self.declarations.traits().table)
     }
@@ -822,7 +832,9 @@ impl TypeChecker {
 
     fn discharge(&mut self, obligation: Obligation, pass: ObligationPass) {
         let bound = self.resolve_bound(&obligation.bound);
-        let implementor = self.unifier.resolve(&obligation.implementor);
+        let resolved = self.unifier.resolve(&obligation.implementor);
+        let traits = &self.declarations.traits().table;
+        let implementor = FieldReadSelection::owner(traits, &bound, &resolved).clone();
         match implementor {
             Type::Var(var) => self.unifier.add_bound(var, bound),
             Type::Generic(generic) => {
@@ -884,6 +896,7 @@ impl TypeChecker {
     ) {
         if let (Some(argument), Some(expected)) = (argument, &bound.argument)
             && self.unifier.unify(expected, &argument, site.span).is_err()
+            && !FieldReadSelection::reads_field(&self.declarations.traits().table, &bound)
         {
             self.report_missing_trait(&bound, implementor, site.span);
             return;
@@ -1126,9 +1139,8 @@ impl TypeChecker {
     }
 
     fn open_unpinned_parameters(&mut self, pinned: &Type) -> Type {
-        let mut unpinned = Vec::new();
-        Self::collect_generics(pinned, &mut unpinned);
-        let fresh = unpinned
+        let fresh = MentionedGenerics::of(pinned)
+            .into_ids()
             .into_iter()
             .map(|generic| (generic, self.unifier.fresh()))
             .collect();
@@ -1157,7 +1169,8 @@ impl TypeChecker {
             },
             None => MismatchContext::Plain,
         };
-        self.infer_against(member.value, &expected, context)
+        let value = self.infer_against(member.value, &expected, context)?;
+        self.unfit_reads().refuse(&value).map(|()| value)
     }
 
     fn finish_scheme(
@@ -1276,28 +1289,19 @@ impl TypeChecker {
                 vars.push(var);
             }
         }
+        let fields = &self.declarations.traits().rust_paths().field_traits();
+        fields.add_read_vars(vars, &self.unifier, |read| self.free_vars(read));
     }
 
     fn mentioned_generics(&self, inferred: &Type) -> Vec<GenericParam> {
-        let mut ids = Vec::new();
-        Self::collect_generics(inferred, &mut ids);
-        ids.into_iter()
+        let mut mentioned = MentionedGenerics::of(inferred);
+        let fields = &self.declarations.traits().rust_paths().field_traits();
+        fields.add_read_generics(&mut mentioned, |id| self.generics.param(id), &self.unifier);
+        mentioned
+            .into_ids()
+            .into_iter()
             .filter_map(|id| self.generics.param(id).cloned())
             .collect()
-    }
-
-    fn collect_generics(value: &Type, ids: &mut Vec<GenericId>) {
-        match value {
-            Type::Generic(id) => {
-                if !ids.contains(id) {
-                    ids.push(*id);
-                }
-            }
-            _ => value
-                .parts()
-                .into_iter()
-                .for_each(|part| Self::collect_generics(part, ids)),
-        }
     }
 
     pub(super) fn default_literal(&mut self, var: TypeVar, literal: LiteralKind, span: Span) {

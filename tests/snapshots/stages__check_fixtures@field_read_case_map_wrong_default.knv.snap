@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_map_wrong_default.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_map_wrong_default.knv:11:26
+   |
+11 |     (println (count (map (fn (u) (n-or u "z")) us))))
+   |                          ^^^^^^^^^^^^^^^^^^^^^ expected `(iterator _)`, found `(fn (_) (ref str))`
+   |
+   = note: run `knave doc L0401` for an explanation

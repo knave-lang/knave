@@ -4,6 +4,7 @@ use crate::source::Span;
 pub enum BoundOrigin {
     BorrowCopied(Span),
     ImplBody(Span),
+    Written,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -16,6 +17,10 @@ impl BoundOrigins {
 
     pub fn borrow_copied(copied: Span) -> Self {
         Self(vec![BoundOrigin::BorrowCopied(copied)])
+    }
+
+    pub fn is_written(&self) -> bool {
+        (self.0.iter()).any(|origin| matches!(origin, BoundOrigin::Written))
     }
 
     pub fn add(&mut self, origin: BoundOrigin) {

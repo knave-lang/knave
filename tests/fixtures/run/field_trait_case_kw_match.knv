@@ -1,0 +1,11 @@
+(defstruct user
+  :match int)
+
+(defstruct animal
+  :match int)
+
+(defn get-it (x) (+ (:match x) 1))
+
+(defn main ()
+  (println (get-it (->user 1)))
+  (println (get-it (->animal 2))))

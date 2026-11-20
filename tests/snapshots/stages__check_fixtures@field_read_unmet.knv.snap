@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_unmet.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_unmet.knv:11:16
+   |
+11 |   (upper-case (:name x)))
+   |                ^^^^^ cannot tell which struct's `name` this is
+   |
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation

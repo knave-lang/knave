@@ -1,0 +1,12 @@
+(defstruct cat
+  :name str)
+
+(defstruct dog
+  :name str)
+
+(defn has? (x s)
+  (contains? (:name x) s))
+
+(defn main ()
+  (println (has? (->cat "tom") "o"))
+  (println (has? (->dog "rex") "z")))

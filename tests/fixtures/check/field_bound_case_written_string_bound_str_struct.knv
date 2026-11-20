@@ -1,0 +1,15 @@
+(defstruct user
+  :name string)
+
+(defstruct animal
+  :name str)
+
+(type name-len
+  (where ((a (has :name string)))
+    (fn ((ref a)) usize)))
+
+(defn name-len (x) (len (:name x)))
+
+(defn main ()
+  (println (name-len (->user (str "ana"))))
+  (println (name-len (->animal "rex"))))

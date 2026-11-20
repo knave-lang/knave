@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_vec_of_borrows_read_as_slice.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_refused_vec_of_borrows_read_as_slice.knv:8:24
+  |
+8 |   (deref (unwrap (get (:names x) 0))))
+  |                        ^^^^^^ cannot tell which struct's `names` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

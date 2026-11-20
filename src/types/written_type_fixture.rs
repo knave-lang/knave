@@ -89,10 +89,7 @@ impl WrittenTypeFixture {
             variable,
             bounds: bounds
                 .iter()
-                .map(|binding| TypeBound {
-                    binding: *binding,
-                    argument: None,
-                })
+                .map(|binding| TypeBound::new(*binding, None))
                 .collect(),
             span: Self::span(),
             lifetime: false,
@@ -132,10 +129,7 @@ impl WrittenTypeFixture {
     }
 
     pub(super) fn bound_with_argument(binding: BindingId) -> TypeBound {
-        TypeBound {
-            binding,
-            argument: Some(Self::integer()),
-        }
+        TypeBound::new(binding, Some(Self::integer()))
     }
 
     pub(super) fn holding_trait(

@@ -4,9 +4,10 @@ use super::checking_facts::CheckingFacts;
 use super::collected_impl::CollectedImpl;
 use super::collected_rust_trait::CollectedRustTrait;
 use super::collected_trait::CollectedTrait;
+use super::field_trait::FieldTrait;
 use super::structural_trait::StructuralTrait;
 use super::trait_declarations::TraitDeclarations;
-use crate::core::BindingId;
+use crate::core::{BindingArena, BindingId};
 
 pub(super) struct TraitDeclarationsBuilder<'a> {
     traits: &'a mut TraitDeclarations,
@@ -36,6 +37,21 @@ impl<'a> TraitDeclarationsBuilder<'a> {
             traits.methods.insert(method.binding, info);
         }
         traits.definitions.push(collected.definition);
+    }
+
+    pub(super) fn enter_field_traits(
+        self,
+        field_traits: Vec<FieldTrait>,
+        bindings: &mut BindingArena,
+    ) {
+        for field_trait in field_traits {
+            let info = field_trait.binding_info(bindings);
+            let binding = bindings.add(info);
+            let (field, rust_trait) = field_trait.into_rust_trait();
+            self.traits.table.add(binding, rust_trait);
+            let field_traits = &mut self.traits.rust_paths.field_traits;
+            field_traits.bindings_mut().record(field, binding);
+        }
     }
 
     pub(super) fn enter_rust_trait(

@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 
+use super::field_read_selection::FieldReadSelection;
 use super::selection::Selection;
 use super::traits::TraitTable;
 use super::ty::{Bound, Type, TypeVar};
@@ -16,6 +17,9 @@ impl<'c> LiteralSettlement<'c> {
     }
 
     pub fn select(&self, bound: &Bound, implementor: &Type) -> Selection {
+        if FieldReadSelection::reads_field(self.traits, bound) {
+            return FieldReadSelection::new(self.unifier).select(self.traits, bound, implementor);
+        }
         match self.traits.rows(bound.binding).select(bound, implementor) {
             Selection::Undecided => self.settle(bound, implementor),
             decided => decided,

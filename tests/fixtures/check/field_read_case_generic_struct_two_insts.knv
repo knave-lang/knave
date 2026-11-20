@@ -1,0 +1,12 @@
+(defstruct (holder a)
+  :n (option a))
+
+(defstruct solo
+  :n (option int))
+
+(defn has-n (x) (some? (:n x)))
+
+(defn main ()
+  (println (has-n (->holder (some 1))))
+  (println (has-n (->holder (some "s"))))
+  (println (has-n (->solo none))))

@@ -1,0 +1,10 @@
+(def quoted
+  (rust "format!(\"{{}}\", \"a,{0})\")"
+    (fn ((ref str)) string)))
+
+(defn main ()
+  (local tricks (vec "feint" "vanish"))
+  (for-each (iter tricks)
+    (fn (trick) (println (quoted trick))))
+  (push! tricks "dash")
+  (println (len tricks)))

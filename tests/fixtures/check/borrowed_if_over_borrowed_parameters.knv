@@ -1,0 +1,7 @@
+(defn pick (c (a (ref int)) (b (ref int)))
+  (ref (if c a b)))
+
+(defn main ()
+  (local x 1)
+  (local y 2)
+  (println (pick true (ref x) (ref y))))

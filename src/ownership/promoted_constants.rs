@@ -1,5 +1,7 @@
 use super::local_borrows::LocalBorrows;
-use crate::core::{Division, Literal, Operand, ParsedTemplate, PrimitiveType, TemplateOperation};
+use crate::core::{
+    BindingId, Division, Literal, Operand, ParsedTemplate, PrimitiveType, TemplateOperation,
+};
 use crate::reader::NumberValue;
 use crate::types::{
     ClauseChoice, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
@@ -36,6 +38,9 @@ impl<'p> PromotedConstants<'p> {
             TypedExprKind::Control(TypedControl::Block(block)) => {
                 LocalBorrows::tail_of(block).is_none_or(|tail| self.promotes(tail))
             }
+            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => self
+                .definition_value(*binding)
+                .is_some_and(|value| self.promotes(value)),
             TypedExprKind::Leaf(TypedLeaf::Local(_)) | TypedExprKind::Control(_) => false,
             _ => value
                 .children()
@@ -157,9 +162,9 @@ impl<'p> PromotedConstants<'p> {
 
     fn is_constant_dividend(&self, dividend: Option<Operand>, arguments: &[TypedArgument]) -> bool {
         match dividend {
-            Some(Operand::Argument(position)) => arguments
-                .get(position)
-                .is_some_and(|argument| self.is_constant_operand(&argument.value)),
+            Some(Operand::Argument(position)) => arguments.get(position).is_some_and(|argument| {
+                self.is_constant_operand(&argument.value) && !self.is_type_minimum(&argument.value)
+            }),
             Some(Operand::Constant(_)) | None => true,
         }
     }
@@ -171,11 +176,39 @@ impl<'p> PromotedConstants<'p> {
         }
     }
 
+    fn is_type_minimum(&self, operand: &TypedExpr) -> bool {
+        self.primitive(&operand.ty)
+            .and_then(PrimitiveType::integer_range)
+            .is_some_and(|(minimum, _)| minimum < Self::ZERO && self.has_value(operand, minimum))
+    }
+
     fn has_value(&self, operand: &TypedExpr, value: i128) -> bool {
+        let operand = self.resolved(operand);
         Self::is_literal_of(operand, value)
             || self
                 .negated(operand)
                 .is_some_and(|negated| Self::is_literal_of(negated, -value))
+    }
+
+    fn resolved<'e>(&self, operand: &'e TypedExpr) -> &'e TypedExpr
+    where
+        'p: 'e,
+    {
+        match &operand.kind {
+            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
+                self.definition_value(*binding).unwrap_or(operand)
+            }
+            _ => operand,
+        }
+    }
+
+    fn definition_value(&self, binding: BindingId) -> Option<&'p TypedExpr> {
+        self.program
+            .modules
+            .iter()
+            .flat_map(|module| &module.definitions)
+            .find(|definition| definition.binding == binding)
+            .map(|definition| &definition.value)
     }
 
     fn negated<'e>(&self, operand: &'e TypedExpr) -> Option<&'e TypedExpr> {

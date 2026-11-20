@@ -1,0 +1,6 @@
+(defn pass ((p (ref int)))
+  (ref (do (println 1) p)))
+
+(defn main ()
+  (local x 1)
+  (println (pass (ref x))))

@@ -1,0 +1,10 @@
+(def base 2)
+
+(defn ratio () (ref (/ 7 base)))
+
+(defn halved-minimum ()
+  (ref (/ -9223372036854775808 2)))
+
+(defn main ()
+  (println (ratio))
+  (println (halved-minimum)))

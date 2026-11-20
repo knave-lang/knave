@@ -1,0 +1,4 @@
+(defn ratio ()
+  (ref (/ -9223372036854775808 -1)))
+
+(defn main () (println (ratio)))

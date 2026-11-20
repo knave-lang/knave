@@ -100,7 +100,7 @@ impl<'e> LocalBorrows<'e> {
                 .lent_reference(*binding)
                 .map(|lent| LocalBorrow::new(expr.span, lent)),
             TypedExprKind::Borrow(_, inner) => self
-                .dropped_root(inner)
+                .written_borrow_root(inner)
                 .map(|dropped| LocalBorrow::new(expr.span, dropped)),
             TypedExprKind::Call(callee, arguments) if expr.ty.holds_reference() => {
                 self.borrowing_call(expr.span, callee, arguments)
@@ -197,6 +197,16 @@ impl<'e> LocalBorrows<'e> {
                 .arms
                 .iter()
                 .find_map(|arm| self.returned(Self::tail_of(&arm.body)?)),
+        }
+    }
+
+    fn written_borrow_root(&self, borrowed: &TypedExpr) -> Option<DroppedValue> {
+        let BorrowRoots::Dropped(owner, constants) = self.roots else {
+            return None;
+        };
+        match borrowed.place_root() {
+            Some(root) => self.dropped_value(root, owner),
+            None => Self::temporary(borrowed, constants),
         }
     }
 

@@ -6,7 +6,6 @@ use super::derivable_traits::DerivableTraits;
 use super::enum_trait_help::EnumTraitHelp;
 use super::explanation_sources::ExplanationSources;
 use super::implementor_listing::ImplementorListing;
-use super::included_trait_help::IncludedTraitHelp;
 use super::missing_trait::MissingTrait;
 use super::problems::TypeProblems;
 use super::struct_trait_help::StructTraitHelp;
@@ -49,19 +48,20 @@ impl<'a> MissingTraitExplanation<'a> {
         implementor: &Type,
     ) -> Diagnostic {
         let table = &self.sources.declarations.traits().table;
-        let mut including = bound
+        let implemented = |including: &BindingId| {
+            table.satisfies(&Bound::plain(*including), implementor, &|_, _| false)
+        };
+        let help = bound
             .origins
             .as_slice()
             .iter()
-            .filter_map(BoundOrigin::including_trait);
-        let printed = |including: BindingId| {
-            table.satisfies(&Bound::plain(including), implementor, &|_, _| false)
-        };
-        if !including.any(printed) {
-            return diagnostic;
+            .filter_map(BoundOrigin::including_trait)
+            .filter(implemented)
+            .find_map(|including| table.get(including)?.help.clone());
+        match help {
+            Some(help) => diagnostic.with_help(&*help),
+            None => diagnostic,
         }
-        let included = self.sources.bindings.get(bound.binding).name();
-        diagnostic.with_help(IncludedTraitHelp::generic_print(included))
     }
 
     fn diagnostic(&self, missing: MissingTrait<'_>) -> Diagnostic {

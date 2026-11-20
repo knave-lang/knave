@@ -67,6 +67,7 @@
 
 (rust-trait printable "std::fmt::Display"
   (includes display)
+  (help "a generic function prints only `display` types: give the parameter a type, or print the value with `prn`")
   duration)
 
 (rust-trait debug "std::fmt::Debug"

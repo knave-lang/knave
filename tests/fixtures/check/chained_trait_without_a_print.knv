@@ -1,0 +1,24 @@
+(rust-type label "String")
+
+(def make-label
+  (rust "{0}.to_string()"
+    (fn ((ref str)) label)))
+
+(rust-trait middle-text "std::fmt::Display"
+  (includes display)
+  char)
+
+(rust-trait outer-text "std::fmt::Display"
+  (includes middle-text)
+  bool label)
+
+(def outer-of
+  (rust "{0}.to_string()"
+    (where ((a outer-text))
+      (fn ((ref a)) string))))
+
+(defn via-outer (x) (outer-of x))
+
+(defn main ()
+  (println (outer-of (make-label "direct")))
+  (println (via-outer (make-label "lab"))))

@@ -1,0 +1,19 @@
+(rust-type label "String")
+
+(def make-label
+  (rust "{0}.to_string()"
+    (fn ((ref str)) label)))
+
+(rust-trait shown-text "std::fmt::Display"
+  (includes display)
+  label)
+
+(def text-of
+  (rust "{0}.to_string()"
+    (where ((a shown-text))
+      (fn ((ref a)) string))))
+
+(defn via (x) (text-of x))
+
+(defn main ()
+  (println (via (make-label "lab"))))

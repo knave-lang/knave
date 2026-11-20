@@ -93,7 +93,6 @@ mod implementation_collector;
 mod implementation_verdict;
 mod implementor_listing;
 mod implied_bounds;
-mod included_trait_help;
 mod index_checks;
 mod index_problems;
 mod infer;

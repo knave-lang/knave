@@ -355,7 +355,7 @@ mod tests {
     fn an_impl_that_writes_a_type_checks_after_that_type_impl() {
         assert!(ChainFixture::checks_in_one_round_holding(
             ChainFixture::WRITTEN_CHAIN,
-            "usize"
+            "i64"
         ));
     }
 

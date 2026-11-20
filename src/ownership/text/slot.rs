@@ -32,8 +32,8 @@ impl Slot {
         matches!(self.owner, SlotOwner::Field(..) | SlotOwner::Written(_))
     }
 
-    pub fn is_variable(&self) -> bool {
-        matches!(self.owner, SlotOwner::Variable(..))
+    pub fn owner(&self) -> &SlotOwner {
+        &self.owner
     }
 
     pub fn parameter(&self) -> Option<BindingId> {

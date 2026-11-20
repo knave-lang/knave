@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use super::registered_template::RegisteredTemplate;
 use super::synthetic_template::SyntheticTemplate;
 use super::template_ties::TemplateTies;
-use crate::core::{RustTemplate, TypeExprKind};
+use crate::core::RustTemplate;
 
 #[derive(Default)]
 pub struct InlineTemplates {
@@ -50,8 +50,7 @@ impl InlineTemplates {
     }
 
     fn is_compiler(template: &RustTemplate) -> bool {
-        matches!(template.type_expr.kind(), TypeExprKind::Hole)
-            && SyntheticTemplate::named(&template.template).is_some()
+        !template.has_written_type() && SyntheticTemplate::named(&template.template).is_some()
     }
 }
 

@@ -12,6 +12,7 @@ use crate::types::graph::DefinitionGraph;
 use crate::types::open_set_at::OpenSetAt;
 use crate::types::pinning::InstantiationReport;
 use crate::types::problems::{MismatchContext, TypeProblems};
+use crate::types::synthetic_template::SyntheticTemplate;
 use crate::types::{GenericId, Type, TypedExpr, TypedProgram};
 
 pub(in crate::types) struct OpenCollections {
@@ -127,7 +128,7 @@ impl<'a> SequenceUses<'a> {
             Type::Generic(caller_generic) => OpenCollections::owner(self.typed, *caller_generic)
                 .is_some_and(|caller| self.reach_only_sequences(caller, *caller_generic)),
             passed => Collection::of_referent(passed, self.typed.declarations.types().rust_types())
-                .is_some_and(|collection| collection.is_sequence()),
+                .is_some_and(|collection| collection.key_conversion().is_some()),
         }
     }
 }
@@ -155,7 +156,7 @@ impl TypeChecker {
         arguments.push(item.clone());
         self.deferred.open_set_ats.push(open);
         self.synthetic_call_with_value(
-            "{0}[{index 1}] = {2}",
+            &SyntheticTemplate::set_at(1),
             parameters,
             Type::unit(),
             value,

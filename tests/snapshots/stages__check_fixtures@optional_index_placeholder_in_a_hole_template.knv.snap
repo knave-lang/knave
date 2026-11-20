@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/check/optional_index_placeholder_in_a_hole_template.knv
+---
+error[L0218]: this Rust template has a malformed placeholder
+ --> check/optional_index_placeholder_in_a_hole_template.knv:5:27
+  |
+5 |                   (deref ((rust "&{0}[{index? 1}]" _) (ref xs) i))))))
+  |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `{index? 1}` converts an `int`, and the template takes no such parameter
+  |
+  = help: write an `int` parameter for it in the template's type
+  = note: run `knave doc L0218` for an explanation

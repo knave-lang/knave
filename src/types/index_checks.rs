@@ -1,12 +1,13 @@
 use super::collection::Collection;
 use super::negative_index_literals::NegativeIndexLiterals;
 use super::rust_types::RustTypeTable;
+use super::synthetic_template::SyntheticTemplate;
 use super::template_signature::TemplateSignature;
 use super::templates::TemplateBorrows;
 use super::ty::Type;
 use super::type_declarations::TypeDeclarations;
 use super::typed::{TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
-use crate::core::{RustTemplate, TypeExprKind};
+use crate::core::RustTemplate;
 use crate::diagnostic::Diagnostics;
 
 pub(super) struct IndexChecks<'t> {
@@ -25,22 +26,23 @@ impl<'t> IndexChecks<'t> {
     pub(super) fn problems(&self, expr: &TypedExpr) -> Diagnostics {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => self.negative_literals(callee, arguments),
-            TypedExprKind::Assoc(_, keys, _) if self.indexes_a_sequence(&expr.ty) => {
-                NegativeIndexLiterals::in_values(keys)
-            }
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) if Self::has_written_type(template) => {
+            TypedExprKind::Assoc(_, keys, _) => self.assoc_key_problems(&expr.ty, keys),
+            TypedExprKind::Leaf(TypedLeaf::Rust(template))
+                if !SyntheticTemplate::builds(template) =>
+            {
                 self.signature_problems(expr, template)
             }
             _ => Diagnostics::default(),
         }
     }
 
-    fn indexes_a_sequence(&self, ty: &Type) -> bool {
-        Collection::of(ty, self.rust_types).is_some_and(|collection| !collection.is_map())
-    }
-
-    fn has_written_type(template: &RustTemplate) -> bool {
-        !matches!(template.type_expr.kind(), TypeExprKind::Hole)
+    fn assoc_key_problems(&self, ty: &Type, keys: &[TypedExpr]) -> Diagnostics {
+        Collection::of(ty, self.rust_types)
+            .and_then(|collection| collection.key_conversion())
+            .filter(|conversion| conversion.rejects_negative_literal())
+            .map_or_else(Diagnostics::default, |_| {
+                NegativeIndexLiterals::in_values(keys)
+            })
     }
 
     fn negative_literals(&self, callee: &TypedExpr, arguments: &[TypedArgument]) -> Diagnostics {

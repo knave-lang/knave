@@ -34,6 +34,10 @@ impl<'t> CallTarget<'t> for TemplateCall<'t> {
         Some(SlotOwner::Argument(call))
     }
 
+    fn changes_in_place(&self) -> bool {
+        true
+    }
+
     fn made(
         &self,
         written: Representation,

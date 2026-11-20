@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/push_onto_a_parameter_makes_it_owned.knv
+---
+defn add-text!
+  message: owned, written mutable
+  text: a view
+defn main
+  local message: owned

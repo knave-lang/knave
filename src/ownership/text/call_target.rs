@@ -30,6 +30,10 @@ pub trait CallTarget<'t> {
         None
     }
 
+    fn changes_in_place(&self) -> bool {
+        false
+    }
+
     fn result(&self) -> Option<SlotOwner> {
         None
     }

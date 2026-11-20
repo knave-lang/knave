@@ -19,10 +19,6 @@ impl BoundOrigins {
         Self(vec![BoundOrigin::BorrowCopied(copied)])
     }
 
-    pub fn written() -> Self {
-        Self(vec![BoundOrigin::Written])
-    }
-
     pub fn is_written(&self) -> bool {
         (self.0.iter()).any(|origin| matches!(origin, BoundOrigin::Written))
     }

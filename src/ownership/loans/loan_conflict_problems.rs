@@ -1,6 +1,5 @@
-use super::conflict_parts::ConflictParts;
+use super::conflict_parts::{ConflictParts, NamedHolder};
 use super::conflict_wording::ConflictWording;
-use super::loan_holder::LoanHolder;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 
 pub struct LoanConflictProblems {
@@ -57,34 +56,34 @@ impl LoanConflictProblems {
     }
 
     fn holder(&self) -> String {
-        match (&self.parts.holder, &self.parts.holder_name) {
-            (LoanHolder::Value(_), Some(name)) => format!("`{name}`"),
-            (LoanHolder::Call, _) => "the call".to_string(),
-            _ => "the result".to_string(),
+        match &self.parts.holder {
+            NamedHolder::Value(name) => format!("`{name}`"),
+            NamedHolder::Call => "the call".to_string(),
+            NamedHolder::Result => "the result".to_string(),
         }
     }
 
     fn help(&self, acting: &str) -> String {
         let finishing = self.finishing_help(acting);
-        match self.parts.holder {
-            LoanHolder::Value(_) => format!(
+        match &self.parts.holder {
+            NamedHolder::Value(_) => format!(
                 "{finishing}, or copy what you need out of `{}` first",
                 self.parts.lent_place
             ),
-            LoanHolder::Call | LoanHolder::Result => finishing,
+            NamedHolder::Call | NamedHolder::Result => finishing,
         }
     }
 
     fn finishing_help(&self, acting: &str) -> String {
         let (place, lent) = (&self.parts.place, &self.parts.lent_place);
-        match self.parts.holder {
-            LoanHolder::Value(_) => {
+        match &self.parts.holder {
+            NamedHolder::Value(_) => {
                 format!("finish using {} before {acting} `{place}`", self.holder())
             }
-            LoanHolder::Call => {
+            NamedHolder::Call => {
                 format!("bind a `clone` of `{lent}` to a local before the call, and pass the local")
             }
-            LoanHolder::Result => format!(
+            NamedHolder::Result => format!(
                 "the result keeps this borrow of `{lent}` on every path, so `{place}` cannot change while it lives; return a fresh borrow made after the change instead"
             ),
         }

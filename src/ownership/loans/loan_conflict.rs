@@ -1,5 +1,5 @@
 use super::access::Access;
-use super::conflict_parts::ConflictParts;
+use super::conflict_parts::{ConflictParts, NamedHolder};
 use super::labeled_spans::LabeledSpans;
 use super::lending::Lending;
 use super::loan_conflict_problems::LoanConflictProblems;
@@ -42,7 +42,7 @@ impl<'b> LoanConflict<'b> {
 
     pub fn spans(&self) -> [Span; 2] {
         let mut spans = [self.access.span(), self.lending.span()];
-        spans.sort_by_key(|span| (span.source().index(), span.range().start, span.range().end));
+        spans.sort();
         spans
     }
 
@@ -57,11 +57,13 @@ impl<'b> LoanConflict<'b> {
             lent_place: self.lending.named(bindings),
             access_span: self.access.span(),
             lent_span: self.lending.span(),
-            holder: self.holder,
-            holder_name: self
-                .holder
-                .value()
-                .map(|value| bindings.get(value).name().to_string()),
+            holder: match self.holder {
+                LoanHolder::Value(value) => {
+                    NamedHolder::Value(bindings.get(value).name().to_string())
+                }
+                LoanHolder::Call => NamedHolder::Call,
+                LoanHolder::Result => NamedHolder::Result,
+            },
             later_use: self.later_use,
         }
     }

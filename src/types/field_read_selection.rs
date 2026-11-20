@@ -19,14 +19,7 @@ impl<'u> FieldReadSelection<'u> {
         bound: &Bound,
         implementor: &Type,
     ) -> Selection {
-        let open = Bound {
-            argument: None,
-            ..bound.clone()
-        };
-        match traits
-            .rows(bound.binding)
-            .select(&open, Unborrowed::of(implementor))
-        {
+        match Self::open_selection(traits, bound, implementor) {
             Selection::Implemented {
                 requirements,
                 argument: Some(read),
@@ -41,9 +34,22 @@ impl<'u> FieldReadSelection<'u> {
         }
     }
 
+    pub(super) fn open_selection(
+        traits: &TraitTable,
+        bound: &Bound,
+        implementor: &Type,
+    ) -> Selection {
+        let open = Bound {
+            argument: None,
+            ..bound.clone()
+        };
+        traits
+            .rows(bound.binding)
+            .select(&open, Unborrowed::of(implementor))
+    }
+
     pub(super) fn owner<'t>(traits: &TraitTable, bound: &Bound, implementor: &'t Type) -> &'t Type {
-        let reads_field = (traits.get(bound.binding)).is_some_and(|known| known.reads_field);
-        if reads_field {
+        if Self::reads_field(traits, bound) {
             Unborrowed::of(implementor)
         } else {
             implementor
@@ -65,8 +71,11 @@ impl<'u> FieldReadSelection<'u> {
     }
 
     pub(super) fn settles_later(traits: &TraitTable, bound: &Bound) -> bool {
-        let reads_field = (traits.get(bound.binding)).is_some_and(|known| known.reads_field);
-        reads_field && !Self::is_written(bound)
+        Self::reads_field(traits, bound)
+    }
+
+    fn reads_field(traits: &TraitTable, bound: &Bound) -> bool {
+        (traits.get(bound.binding)).is_some_and(|known| known.reads_field)
     }
 
     pub(super) fn is_written(bound: &Bound) -> bool {

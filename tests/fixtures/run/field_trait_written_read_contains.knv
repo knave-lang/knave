@@ -1,0 +1,16 @@
+(defstruct cat
+  :name string)
+
+(defstruct dog
+  :name string)
+
+(type has?
+  (where ((a (has :name string)))
+    (fn ((ref a) (ref str)) bool)))
+
+(defn has? (x s)
+  (contains? (:name x) s))
+
+(defn main ()
+  (println (has? (->cat (str "tom")) "o"))
+  (println (has? (->dog (str "rex")) "z")))

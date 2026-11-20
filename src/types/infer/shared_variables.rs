@@ -171,8 +171,12 @@ impl TypeChecker {
             self.unification()
                 .expect(Expectation::plain(&Type::Var(member.var)), &chosen, span)?;
         }
+        let passing = self.shared_member_passing(callee);
         for argument in depths.arguments() {
-            arguments[argument.position].borrow = target.borrow_from(argument.depth);
+            let at = argument.position;
+            let borrow = target.borrow_from(argument.depth);
+            arguments[at].borrow =
+                passing.dereference_where_rust_borrows(at, borrow, &arguments[at]);
         }
         Ok(())
     }

@@ -75,7 +75,7 @@ impl<'a> SharedVariableGroup<'a> {
         } else if depths.depths_agree() {
             let depth = depths.first().depth;
             if self.reference_blocks_bounds(referent, depth) {
-                ReferenceDepth::VALUE
+                self.value_depth(referent)
             } else {
                 ReferenceDepth::new(depth)
             }
@@ -140,6 +140,14 @@ impl<'a> SharedVariableGroup<'a> {
         depth > 0
             && !self.group_fails_bounds(referent)
             && self.group_fails_bounds(&ReferenceDepth::new(depth).wrap(referent.clone()))
+    }
+
+    fn value_depth(&self, referent: &Type) -> ReferenceDepth {
+        if self.tables.copy_rules().is_copy(referent) {
+            ReferenceDepth::VALUE
+        } else {
+            ReferenceDepth::VALUE_THROUGH_BORROW
+        }
     }
 
     fn copies_out(&self, referent: &Type) -> bool {

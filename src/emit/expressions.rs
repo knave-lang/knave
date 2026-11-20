@@ -1668,6 +1668,7 @@ impl<'a> ExpressionEmitter<'a> {
         if Self::is_inline_with_clauses(callee) {
             return self.report_inline_clauses(callee.span);
         }
+        super::call_order::CallOrder::of(&template.template, arguments).assert_kept();
         let types = self.callee_type_arguments(callee);
         self.template_call(template, arguments, types, span)
     }

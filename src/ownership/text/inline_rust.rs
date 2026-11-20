@@ -54,6 +54,10 @@ impl<'t> CallTarget<'t> for InlineRust<'t> {
         self.template.owned_argument(call)
     }
 
+    fn changes_in_place(&self) -> bool {
+        self.template.changes_in_place()
+    }
+
     fn made(
         &self,
         written: Representation,

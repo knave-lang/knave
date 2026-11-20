@@ -141,11 +141,23 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
                     self.unite_with_variable(*generic, inner, argument);
                 }
             }
-            SchemePosition::Written {
-                written: Representation::Owned,
-                path,
-            } if path.is_top() => self.pour_owned_argument(target, value),
+            SchemePosition::Written { written, path } if path.is_top() => {
+                self.top_written_argument(target, *written, value)
+            }
             SchemePosition::Written { .. } => {}
+        }
+    }
+
+    fn top_written_argument(
+        &mut self,
+        target: &dyn CallTarget<'_>,
+        written: Representation,
+        value: &TextValue,
+    ) {
+        match written {
+            Representation::Owned => self.pour_owned_argument(target, value),
+            Representation::Mutable if target.changes_in_place() => self.change_in_place(value),
+            _ => {}
         }
     }
 
@@ -154,6 +166,17 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             let argument = Slot::from(owner);
             self.pour(&argument, value);
             self.context.require(argument, Need::Owned);
+        }
+    }
+
+    fn change_in_place(&mut self, place: &TextValue) {
+        let changed = Slot::from(SlotOwner::Written(self.call.span));
+        self.context.require(changed.clone(), Need::Owned);
+        let node = self.context.node(changed);
+        for (source, _, _) in place.sources() {
+            if let Source::Slot(slot) = source {
+                self.context.unite(node, *slot);
+            }
         }
     }
 

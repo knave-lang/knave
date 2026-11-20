@@ -13,10 +13,10 @@ struct Place {
 }
 
 impl Place {
-    fn referenced(&self) -> Self {
+    fn behind(&self, access: Access) -> Self {
         Self {
             path: self.path.clone(),
-            access: Access::Referenced,
+            access,
         }
     }
 
@@ -46,9 +46,11 @@ impl SchemePositions {
     fn visit(&mut self, declared: &Type, instantiated: &Type, place: Place) {
         match (declared, instantiated) {
             (Type::Generic(generic), _) => self.visit_generic(*generic, instantiated, place),
-            (Type::Ref(_, inner) | Type::Mut(_, inner), _) => {
-                self.visit(inner, Self::referent(instantiated), place.referenced())
-            }
+            (Type::Ref(_, inner) | Type::Mut(_, inner), _) => self.visit(
+                inner,
+                Self::referent(instantiated),
+                place.behind(Self::access_behind(declared)),
+            ),
             (_, Type::Ref(_, inner) | Type::Mut(_, inner)) => self.visit(declared, inner, place),
             (Type::Primitive(primitive), _) => self.visit_written(*primitive, place),
             (Type::Named(_, declared_parts), Type::Named(_, parts)) => {
@@ -58,6 +60,13 @@ impl SchemePositions {
                 }
             }
             _ => {}
+        }
+    }
+
+    fn access_behind(reference: &Type) -> Access {
+        match reference {
+            Type::Mut(..) => Access::Mutable,
+            _ => Access::Referenced,
         }
     }
 
@@ -151,6 +160,18 @@ mod tests {
             vec![SchemePosition::Written {
                 path: TypePath::default(),
                 written: Representation::Lent,
+            }]
+        );
+    }
+
+    #[test]
+    fn a_written_mutable_string_is_mutable() {
+        let positions = SchemePositions::of(&Type::mutable(Types::text()), &Types::text());
+        assert_eq!(
+            positions,
+            vec![SchemePosition::Written {
+                path: TypePath::default(),
+                written: Representation::Mutable,
             }]
         );
     }

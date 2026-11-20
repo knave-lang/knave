@@ -12,6 +12,7 @@ mod borrowing_types;
 mod bound_fit;
 mod bound_origin_problems;
 mod bound_origins;
+mod bound_proof;
 mod boxed_payload;
 mod boxes;
 mod callee_borrows;
@@ -78,6 +79,10 @@ mod generalization;
 #[cfg(test)]
 mod generalization_fixture;
 mod generalization_rules;
+mod generic_bound_check;
+#[cfg(test)]
+mod generic_bound_fixture;
+mod generic_bound_tables;
 mod generic_declarations;
 mod generic_registry;
 mod graph;

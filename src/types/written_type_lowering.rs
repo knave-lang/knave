@@ -2,10 +2,12 @@ use rustc_hash::FxHashMap;
 
 use super::bound_origins::BoundOrigins;
 use super::checking_facts::CheckingFacts;
+use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
 use super::generic_declarations::GenericDeclarations;
 use super::lowered_binders::LoweredBinders;
+use super::open_read::OpenRead;
 use super::problems::TypeProblems;
 use super::trait_boxing::TraitBoxing;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Type};
@@ -82,7 +84,10 @@ impl<'l> WrittenTypeLowering<'l> {
             let field_traits = &self.declarations.traits().rust_paths().field_traits();
             let field_trait = (field_traits.bindings().trait_of(field))
                 .ok_or_else(|| self.unregistered_field(field, argument.span()))?;
-            let read = self.lower_type(argument, scope)?;
+            let written = self.lower_type(argument, scope)?;
+            let no_generics = FxHashMap::default();
+            let read =
+                OpenRead::new(CopyRules::new(self.declarations, &no_generics)).of_written(&written);
             let written = Bound::with_argument(field_trait, read);
             return Ok(written.from_origins(BoundOrigins::written()));
         }

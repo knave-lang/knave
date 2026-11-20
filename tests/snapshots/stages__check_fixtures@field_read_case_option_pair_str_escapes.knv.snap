@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_option_pair_str_escapes.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_option_pair_str_escapes.knv:8:11
+  |
+8 |   (match (:p x)
+  |           ^^ cannot tell which struct's `p` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

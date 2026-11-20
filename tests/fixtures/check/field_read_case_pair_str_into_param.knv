@@ -1,0 +1,15 @@
+(defstruct user
+  :p (pair str int))
+
+(defstruct animal
+  :p (pair str int))
+
+(defn put (x out)
+  (match (:p x)
+    ((pair l r) (push! out l))))
+
+(defn main ()
+  (let (v (vec))
+    (put (->user (pair "a" 1)) (mut v))
+    (put (->animal (pair "b" 2)) (mut v))
+    (println (count v))))

@@ -6,7 +6,6 @@ use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
 use super::field_read::FieldRead;
-use super::field_read_selection::FieldReadSelection;
 use super::field_reader::FieldReader;
 use super::field_traits::FieldTraitPlan;
 use super::open_read::OpenRead;
@@ -100,7 +99,6 @@ impl<'r> FieldReadSettlement<'r> {
                         read: bound.argument.clone()?,
                         field: Rc::clone(field),
                         trait_binding: bound.binding,
-                        written: FieldReadSelection::is_written(bound),
                     })
                 })
             })
@@ -133,7 +131,9 @@ impl<'r> FieldReadSettlement<'r> {
         }
         match found.as_slice() {
             [] => Outcome::Unreached,
-            [FieldRead { read, kind }] if Self::meets_reader(reader, read) => {
+            [FieldRead { read, kind }]
+                if Self::meets_reader(reader, read) && self.calls_pass(reader, read) =>
+            {
                 Outcome::Agreed(FieldTraitPlan {
                     read: read.clone(),
                     kind: *kind,
@@ -145,8 +145,16 @@ impl<'r> FieldReadSettlement<'r> {
     }
 
     fn meets_reader(reader: &FieldReader, read: &Type) -> bool {
-        let view = ReadView::of(read);
-        view.is_used_as(&reader.read) || (reader.written && view.is_written_as(&reader.read))
+        ReadView::of(read).is_used_as(&reader.read)
+    }
+
+    fn calls_pass(&self, reader: &FieldReader, read: &Type) -> bool {
+        let Type::Generic(open) = reader.read else {
+            return true;
+        };
+        let uses = self.report.sited_uses_of(reader.binding, open);
+        let mut passed = uses.iter().filter_map(|(_, passed)| passed.as_ref());
+        passed.all(|passed| ReadView::of(read).is_used_as(passed))
     }
 
     fn ambiguous_reads(program: &TypedProgram, reader: &FieldReader) -> Diagnostics {

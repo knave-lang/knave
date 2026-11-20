@@ -30,6 +30,22 @@ impl FieldOwnerProblems {
         TypeProblems::with_similar_field(absent, label, similar)
     }
 
+    pub(super) fn read_mismatch(
+        (owner, field): (&str, &str),
+        (read, passed): (String, String),
+        span: Span,
+    ) -> Diagnostic {
+        let field = format!("{}{field}", Keyword::MARKER);
+        Diagnostic::error(
+            DiagnosticCode::MISSING_TRAIT,
+            format!("`{owner}` reads `{field}` as `{read}`, but this call passes `{passed}`"),
+            Label::new(span, format!("this `{owner}` reads `{field}` as `{read}`")),
+        )
+        .with_help(format!(
+            "pass a `{read}`, or write `{read}` as the read of the bound"
+        ))
+    }
+
     pub(super) fn undeclared_written(field: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::UNKNOWN_FIELD,

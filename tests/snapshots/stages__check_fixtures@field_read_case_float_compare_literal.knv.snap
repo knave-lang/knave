@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_float_compare_literal.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_float_compare_literal.knv:7:22
+  |
+7 | (defn heavy? (x) (> (:w x) 2.5))
+  |                      ^^ cannot tell which struct's `w` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

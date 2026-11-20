@@ -1,0 +1,15 @@
+(defstruct user
+  :n int)
+
+(defstruct animal
+  :n bool)
+
+(type get-n
+  (where ((a (has :n int)))
+    (fn ((ref a)) int)))
+
+(defn get-n (x) (:n x))
+
+(defn main ()
+  (println (get-n (->user 1)))
+  (println (get-n (->animal true))))

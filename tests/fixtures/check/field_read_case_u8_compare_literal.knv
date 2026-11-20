@@ -1,0 +1,11 @@
+(defstruct user
+  :n u8)
+
+(defstruct animal
+  :n u8)
+
+(defn big? (x) (> (:n x) 3))
+
+(defn main ()
+  (println (big? (->user 5)))
+  (println (big? (->animal 1))))

@@ -1,0 +1,12 @@
+(defstruct user
+  :name string)
+
+(defstruct animal
+  :name string)
+
+(defn named? (x y) (= (:name x) y))
+
+(defn main ()
+  (let (s (str "ana"))
+    (println (named? (->user (str "ana")) (ref s)))
+    (println (named? (->animal (str "rex")) "rex"))))

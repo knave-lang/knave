@@ -1,0 +1,11 @@
+(defstruct user
+  :p (vec (pair str int)))
+
+(defstruct animal
+  :p (vec (pair str int)))
+
+(defn ps (x) (:p x))
+
+(defn main ()
+  (println (count (ps (->user (vec (pair "a" 1))))))
+  (println (count (ps (->animal (vec))))))

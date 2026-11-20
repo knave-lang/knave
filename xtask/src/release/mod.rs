@@ -14,7 +14,7 @@ use clap::Args;
 use crate::failure::TaskFailure;
 use crate_version::CrateVersion;
 use release_notes::ReleaseNotes;
-use release_version::ReleaseVersion;
+pub use release_version::ReleaseVersion;
 use version_bump::VersionBump;
 
 #[derive(Args)]

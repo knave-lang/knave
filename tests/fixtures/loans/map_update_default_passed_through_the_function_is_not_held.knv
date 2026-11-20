@@ -1,0 +1,10 @@
+(defn main ()
+  (local s (str "v"))
+  (local m
+    (map-at update
+            (hash-map 1 "x")
+            2
+            (fn (n) "z")
+            (as-str s)))
+  (set! s (str "j"))
+  (println (len m)))

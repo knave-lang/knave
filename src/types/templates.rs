@@ -6,6 +6,7 @@ use super::inline_templates::InlineTemplates;
 use super::pipelines::Pipelines;
 use super::registered_template::RegisteredTemplate;
 use super::rust_types::RustTypeTable;
+use super::template_author::TemplateAuthor;
 use super::template_ties::TemplateTies;
 use super::ty::Scheme;
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
@@ -14,8 +15,17 @@ use crate::core::{BindingId, Conversion, ParsedTemplate, Piece, ReferenceKind};
 pub type Conversions = Rc<[(usize, Conversion)]>;
 
 pub enum TemplateName<'a> {
-    Declared(BindingId, &'a Rc<str>),
+    Declared(BindingId, &'a Rc<str>, TemplateAuthor),
     Inline(&'a Rc<str>),
+}
+
+impl TemplateName<'_> {
+    fn author(&self) -> TemplateAuthor {
+        match self {
+            Self::Declared(_, _, author) => *author,
+            Self::Inline(_) => TemplateAuthor::User,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -32,9 +42,9 @@ impl TemplateBorrows {
         scheme: &Scheme,
         rust_types: &RustTypeTable,
     ) {
-        let ties = TemplateTies::of(scheme, Pipelines::new(rust_types));
+        let ties = TemplateTies::of(scheme, Pipelines::new(rust_types), name.author());
         match name {
-            TemplateName::Declared(binding, text) => {
+            TemplateName::Declared(binding, text, _) => {
                 let registered = RegisteredTemplate::declared(text, ties);
                 let conversions =
                     registered.read(None, |parsed, _| Self::written_conversions(parsed));

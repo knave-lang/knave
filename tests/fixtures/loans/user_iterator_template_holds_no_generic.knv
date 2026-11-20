@@ -1,0 +1,8 @@
+(defn main ()
+  (local s (str "abc"))
+  (local it
+    ((rust "0..{0}.len()"
+       (where (a) (fn (a) (iterator usize))))
+     (as-str s)))
+  (set! s (str "b"))
+  (println (count it)))

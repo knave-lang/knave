@@ -1,11 +1,14 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::selfless_methods::SelflessMethods;
-use crate::core::{BindingArena, BindingId};
+use super::template_author::TemplateAuthor;
+use crate::core::{BindingArena, BindingId, CoreModule};
+use crate::expand::PendingDefinitions;
+use crate::modules::ModuleSources;
 
 #[derive(Default)]
 pub(super) struct CheckingFacts {
-    pub(super) prelude_definitions: Vec<BindingId>,
+    pub(super) prelude_definitions: FxHashSet<BindingId>,
     pub(super) written_parameters: FxHashMap<BindingId, Vec<bool>>,
     pub(super) trait_arguments: FxHashSet<BindingId>,
     pub(super) selfless_methods: SelflessMethods,
@@ -20,6 +23,19 @@ impl CheckingFacts {
         self.prelude_definitions
             .iter()
             .any(|binding| bindings.get(*binding).name() == name)
+    }
+
+    pub(super) fn record_prelude(&mut self, modules: &[CoreModule], saved: &PendingDefinitions) {
+        let defined = modules
+            .iter()
+            .filter(|module| ModuleSources::is_prelude(&module.path))
+            .flat_map(CoreModule::definitions)
+            .map(|(binding, _)| binding);
+        self.prelude_definitions = defined.chain(saved.saved_bindings()).collect();
+    }
+
+    pub(super) fn template_author(&self, binding: BindingId) -> TemplateAuthor {
+        TemplateAuthor::of(binding, &self.prelude_definitions)
     }
 
     pub(super) fn written_at(&self, callee: BindingId, position: usize) -> bool {
@@ -58,7 +74,7 @@ mod tests {
             let sum = Self::global(&mut bindings, Self::PRELUDE_VALUE);
             let pick = Self::global(&mut bindings, Self::USER_VALUE);
             let facts = CheckingFacts {
-                prelude_definitions: vec![sum],
+                prelude_definitions: FxHashSet::from_iter([sum]),
                 written_parameters: FxHashMap::from_iter([(pick, vec![true, false])]),
                 ..CheckingFacts::default()
             };

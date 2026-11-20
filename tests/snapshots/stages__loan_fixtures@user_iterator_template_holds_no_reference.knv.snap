@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/user_iterator_template_holds_no_reference.knv
+---
+main
+  9:11 borrow `v`: no live loan
+  10:11 borrow `n`: no live loan
+  11:9 change `n`: no live loan
+  12:19 move `it`: no live loan
+  12:23 borrow `n`: no live loan

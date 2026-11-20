@@ -8,6 +8,7 @@ use crate::core::BindingId;
 pub(super) struct ReachingStructs<'r> {
     report: &'r InstantiationReport,
     visited: FxHashSet<(BindingId, GenericId)>,
+    unhandled: bool,
 }
 
 impl<'r> ReachingStructs<'r> {
@@ -15,6 +16,7 @@ impl<'r> ReachingStructs<'r> {
         Self {
             report,
             visited: FxHashSet::default(),
+            unhandled: false,
         }
     }
 
@@ -22,8 +24,9 @@ impl<'r> ReachingStructs<'r> {
         mut self,
         binding: BindingId,
         generic: GenericId,
-    ) -> Vec<(BindingId, Vec<Type>)> {
-        self.collect(binding, generic)
+    ) -> Option<Vec<(BindingId, Vec<Type>)>> {
+        let structs = self.collect(binding, generic);
+        (!self.unhandled).then_some(structs)
     }
 
     fn collect(&mut self, binding: BindingId, generic: GenericId) -> Vec<(BindingId, Vec<Type>)> {
@@ -31,10 +34,12 @@ impl<'r> ReachingStructs<'r> {
         for (enclosing, used) in self.report.sited_uses_of(binding, generic) {
             match used.as_ref().map(Unborrowed::of) {
                 Some(Type::Named(owner, arguments)) => structs.push((*owner, arguments.clone())),
-                Some(Type::Generic(caller)) if self.visited.insert((enclosing, *caller)) => {
-                    structs.extend(self.collect(enclosing, *caller));
+                Some(Type::Generic(caller)) => {
+                    if self.visited.insert((enclosing, *caller)) {
+                        structs.extend(self.collect(enclosing, *caller));
+                    }
                 }
-                _ => {}
+                _ => self.unhandled = true,
             }
         }
         structs

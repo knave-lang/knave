@@ -1,4 +1,5 @@
 use super::bound_proof::BoundProof;
+use super::field_read_selection::FieldReadSelection;
 use super::generic_bound_check::GenericBoundCheck;
 use super::generic_bound_tables::GenericBoundTables;
 use super::implied_bounds::ImpliedBounds;
@@ -120,6 +121,7 @@ impl<'a> ObligationSolver<'a> {
         } = obligation;
         if let (Some(argument), Some(expected)) = (argument, &bound.argument)
             && self.unifier.unify(expected, &argument, site.span).is_err()
+            && !FieldReadSelection::settles_later(&self.sources.declarations.traits().table, &bound)
         {
             self.report_missing_trait(&bound, &implementor, site.span);
             return;

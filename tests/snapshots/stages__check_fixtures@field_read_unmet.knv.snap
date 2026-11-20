@@ -1,12 +1,13 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/check/field_read_unmet.knv
 ---
-error[L0404]: `product` does not implement `(has :name str)`
-  --> check/field_read_unmet.knv:15:28
+error[L0407]: type annotations needed
+  --> check/field_read_unmet.knv:11:16
    |
-15 |   (println (uppercase-name (->product 7))))
-   |                            ^^^^^^^^^^^^^ this needs `(has :name str)`
+11 |   (upper-case (:name x)))
+   |                ^^^^^ cannot tell which struct's `name` this is
    |
-   = note: run `knave doc L0404` for an explanation
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation

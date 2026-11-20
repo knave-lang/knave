@@ -10,7 +10,8 @@ impl BoundOriginProblems {
         let labeled = origins.iter().fold(diagnostic, Self::with_origin_label);
         match origins.first() {
             Some(BoundOrigin::BorrowCopied(_)) => labeled.with_help(Self::clone_copied_help()),
-            Some(BoundOrigin::ImplBody(_) | BoundOrigin::Included(_)) | None => labeled,
+            Some(BoundOrigin::ImplBody(_) | BoundOrigin::Included(_) | BoundOrigin::Written)
+            | None => labeled,
         }
     }
 
@@ -22,7 +23,7 @@ impl BoundOriginProblems {
             BoundOrigin::ImplBody(needed) => {
                 diagnostic.with_label(Self::needed_by_impl_body(*needed))
             }
-            BoundOrigin::Included(_) => diagnostic,
+            BoundOrigin::Included(_) | BoundOrigin::Written => diagnostic,
         }
     }
 

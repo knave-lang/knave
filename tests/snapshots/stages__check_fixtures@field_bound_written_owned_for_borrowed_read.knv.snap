@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_written_owned_for_borrowed_read.knv
+---
+error[L0404]: `book` does not implement `(has :title string)`
+  --> check/field_bound_written_owned_for_borrowed_read.knv:14:22
+   |
+14 |   (println (title-of (->book (str "dune"))))
+   |                      ^^^^^^^^^^^^^^^^^^^^^ this needs `(has :title string)`
+   |
+   = note: run `knave doc L0404` for an explanation
+
+error[L0404]: `film` does not implement `(has :title string)`
+  --> check/field_bound_written_owned_for_borrowed_read.knv:15:22
+   |
+15 |   (println (title-of (->film (str "jaws")))))
+   |                      ^^^^^^^^^^^^^^^^^^^^^ this needs `(has :title string)`
+   |
+   = note: run `knave doc L0404` for an explanation

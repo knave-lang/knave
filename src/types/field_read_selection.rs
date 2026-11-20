@@ -1,9 +1,9 @@
+use super::read_view::ReadView;
 use super::selection::Selection;
 use super::traits::TraitTable;
 use super::ty::{Bound, Type};
 use super::unborrowed::Unborrowed;
 use super::unifier::Unifier;
-use crate::core::PrimitiveType;
 
 pub(super) struct FieldReadSelection<'u> {
     unifier: &'u Unifier,
@@ -24,7 +24,10 @@ impl<'u> FieldReadSelection<'u> {
             argument: None,
             ..bound.clone()
         };
-        match traits.rows(bound.binding).select(&open, implementor) {
+        match traits
+            .rows(bound.binding)
+            .select(&open, self.owner(bound, implementor))
+        {
             Selection::Implemented {
                 requirements,
                 argument: Some(read),
@@ -39,6 +42,14 @@ impl<'u> FieldReadSelection<'u> {
         }
     }
 
+    fn owner<'t>(&self, bound: &Bound, implementor: &'t Type) -> &'t Type {
+        if Self::is_written(bound) {
+            implementor
+        } else {
+            Unborrowed::of(implementor)
+        }
+    }
+
     fn met_read(&self, read: Type, bound: &Bound) -> Option<Type> {
         let Some(expected) = bound
             .argument
@@ -50,18 +61,16 @@ impl<'u> FieldReadSelection<'u> {
         if expected.has_vars() || expected == read {
             return Some(read);
         }
-        Self::adjusts_to(&read, &expected).then_some(expected)
+        let met = !Self::is_written(bound) || ReadView::of(&read).is_written_as(&expected);
+        met.then_some(expected)
     }
 
-    fn adjusts_to(read: &Type, expected: &Type) -> bool {
-        let viewed = Self::viewed(Unborrowed::of(read)) == Self::viewed(Unborrowed::of(expected));
-        viewed && expected.reference_depth() <= read.reference_depth()
+    pub(super) fn settles_later(traits: &TraitTable, bound: &Bound) -> bool {
+        let reads_field = (traits.get(bound.binding)).is_some_and(|known| known.reads_field);
+        reads_field && !Self::is_written(bound)
     }
 
-    fn viewed(value: &Type) -> Type {
-        match value {
-            Type::Primitive(PrimitiveType::String) => Type::Primitive(PrimitiveType::Str),
-            other => other.clone(),
-        }
+    fn is_written(bound: &Bound) -> bool {
+        bound.origins.is_written()
     }
 }

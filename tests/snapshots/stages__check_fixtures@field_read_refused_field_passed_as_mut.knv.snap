@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_field_passed_as_mut.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_refused_field_passed_as_mut.knv:12:15
+   |
+12 |   (add! (mut (:tags x)))
+   |               ^^^^^ cannot tell which struct's `tags` this is
+   |
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation

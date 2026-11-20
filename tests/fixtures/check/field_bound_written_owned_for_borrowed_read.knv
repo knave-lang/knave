@@ -1,0 +1,15 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(type title-of
+  (where ((a (has :title string)))
+    (fn ((ref a)) string)))
+
+(defn title-of (x) (:title x))
+
+(defn main ()
+  (println (title-of (->book (str "dune"))))
+  (println (title-of (->film (str "jaws")))))

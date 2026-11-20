@@ -1,0 +1,65 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/emit/field_trait_fixed_read_viewed.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Book {
+    title: String,
+}
+
+fn make_book(title: String) -> Book {
+    Book { title }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Film {
+    title: String,
+}
+
+fn make_film(title: String) -> Film {
+    Film { title }
+}
+
+fn shout<A: HasTitle>(x: &A) -> String {
+    x.title().to_uppercase()
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", shout(&make_book("dune".to_string())));
+    println!("{}", shout(&make_film("jaws".to_string())))
+}
+
+trait HasTitle {
+    fn title(&self) -> &String;
+}
+
+impl HasTitle for Book {
+    fn title(&self) -> &String {
+        &self.title
+    }
+}
+
+impl HasTitle for Film {
+    fn title(&self) -> &String {
+        &self.title
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

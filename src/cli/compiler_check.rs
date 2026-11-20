@@ -33,7 +33,9 @@ impl CompilerCheck {
 
     pub fn report(&self, project_file: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
         let mut scratch = terminal.scratch();
-        let project = scratch.sources().projects().load(project_file)?;
+        let Some(project) = scratch.sources().projects().read_quietly(project_file) else {
+            return Ok(());
+        };
         self.report_located(&project, project_file, terminal)
     }
 

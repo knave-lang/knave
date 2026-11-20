@@ -37,6 +37,14 @@ impl<'a> ProjectLoader<'a> {
         self.read_with(source, ProjectReader::read_root)
     }
 
+    pub fn read_quietly(&mut self, project_file: &Path) -> Option<Project> {
+        let source = self.added(project_file).ok()?;
+        let forms = self.forms(source).ok()?;
+        Self::reader()
+            .read_root(&forms, self.whole_file(source))
+            .ok()
+    }
+
     pub fn version_refusal(&mut self, project_file: &Path) -> Option<Diagnostic> {
         let source = self.added(project_file).ok()?;
         let forms = self.forms(source).ok()?;

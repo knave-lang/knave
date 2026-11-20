@@ -9420,16 +9420,22 @@ fn a_compiler_older_than_the_app_reports_only_the_version_before_its_libraries()
 #[test]
 fn a_compiler_newer_than_the_project_warns_once_per_command() {
     let sandbox = Sandbox::with_recorded_version("version_newer_compiler", FILLED_VERSION);
-    for command in [["check"], ["run"], ["test"]] {
+    for command in [
+        &["check"][..],
+        &["run"],
+        &["test"],
+        &["fmt", "project.knv"],
+        &["fmt", "--check", "project.knv"],
+    ] {
         let stderr = sandbox
-            .compiler_in("demo-app", &command)
+            .compiler_in("demo-app", command)
             .assert_exit_code(0)
             .stderr();
         assert_eq!(
             stderr.matches(NEWER_COMPILER_WARNING).count(),
             1,
             "`knave {}` printed:\n{stderr}",
-            command[0]
+            command.join(" ")
         );
     }
 }

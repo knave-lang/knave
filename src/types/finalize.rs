@@ -6,6 +6,7 @@ use super::admissible::Admissible;
 use super::checker::TypeChecker;
 use super::literal_fit::LiteralFit;
 use super::problems::TypeProblems;
+use super::template_result_borrows::TemplateResultBorrows;
 use super::ty::{GenericId, Type, TypeVar};
 use super::type_text_writer::TypeTextWriter;
 use super::typed::{ClosureType, LetValue, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf};
@@ -82,6 +83,9 @@ impl<'c> Finalizer<'c> {
     }
 
     pub fn definition(&mut self, definition: &mut TypedDefinition) {
+        if let Some(unnamed) = self.result_borrows().declared_problem(definition) {
+            self.checker.diagnostics.push(unnamed);
+        }
         self.enclosure = Some(Enclosure::Form(definition.span));
         self.expr(&mut definition.value);
         self.enclosure = None;
@@ -160,6 +164,10 @@ impl<'c> Finalizer<'c> {
         self.checker.diagnostics.extend(problems);
     }
 
+    fn result_borrows(&self) -> TemplateResultBorrows<'_> {
+        TemplateResultBorrows::new(self.checker.declarations.traits())
+    }
+
     fn children(&mut self, expr: &mut TypedExpr) {
         let parent_span = expr.span;
         expr.visit_children_mut(&mut |let_value, child| {
@@ -172,6 +180,9 @@ impl<'c> Finalizer<'c> {
     }
 
     fn child(&mut self, expr: &mut TypedExpr) {
+        if let Some(unnamed) = self.result_borrows().inline_problem(expr) {
+            self.checker.diagnostics.push(unnamed);
+        }
         self.expr(expr);
         self.note_closure(expr);
     }

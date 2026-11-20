@@ -270,7 +270,9 @@
 
 (def second
   (rust "[{0}, {1}][1]"
-    (fn ((ref str) (ref str)) (ref str))))
+    (where ('a)
+      (fn ((ref 'a str) (ref 'a str))
+        (ref 'a str)))))
 
 (defn underscore-ahead ()
   (local t

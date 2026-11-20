@@ -1,0 +1,12 @@
+(defn main ()
+  (local a (str "ab"))
+  (local b (str "cd"))
+  (local v
+    ((rust "{0}.trim_start_matches({1})"
+       (where ('a)
+         (fn ((ref 'a str) (ref str))
+           (ref 'a str))))
+     (as-str a)
+     (as-str b)))
+  (set! b (str "z"))
+  (prn v))

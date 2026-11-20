@@ -1,0 +1,10 @@
+(defn main ()
+  (local s (str "ab"))
+  (local names (vec (as-str s)))
+  (local v
+    ((rust "{0}"
+       (fn ((ref (vec (ref str))))
+         (ref (vec (ref str)))))
+     (ref names)))
+  (push! names "b")
+  (prn v))

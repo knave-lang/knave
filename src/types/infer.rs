@@ -17,7 +17,9 @@ use super::enums::VariantPayload;
 use super::expectation::Expectation;
 use super::field_bound::FieldBound;
 use super::field_owner_problems::FieldOwnerProblems;
+use super::field_read_expr::FieldReadExpr;
 use super::inferred_span::InferredSpan;
+use super::open_read::OpenRead;
 use super::parameter_call_request::ParameterCallRequest;
 use super::pending::DecidedBorrows;
 use super::positional_read::PositionalRead;
@@ -3074,18 +3076,13 @@ impl TypeChecker {
         let bound_read =
             FieldBound::new(&mut self.unifier, &self.declarations).read(&value.ty, &label.name);
         if let Some(ty) = bound_read {
-            let kind =
-                TypedExprKind::Struct(TypedStructExpr::Field(Box::new(value), label.clone()));
-            return Ok(TypedExpr { kind, ty, span });
+            return Ok(FieldReadExpr::new(value, label).typed(ty, span));
         }
         let (owner, arguments) = self.field_owner(&value, label)?;
-        let declared = self
-            .declarations
-            .types()
-            .structs
-            .get(owner)
-            .and_then(|definition| definition.instantiated_field(&label.name, &arguments));
-        let Some(ty) = declared else {
+        let reads = OpenRead::new(self.copy_rules());
+        let declared = (self.declarations.types().structs.get(owner))
+            .and_then(|definition| reads.instantiated(definition, &label.name, &arguments));
+        let Some(read) = declared else {
             let struct_name = self.bindings.get(owner).name().to_string();
             let structs = &self.declarations.types().structs;
             let similar = structs
@@ -3093,33 +3090,8 @@ impl TypeChecker {
                 .and_then(|found| found.closest_field(&label.name));
             return Err(TypeProblems::unknown_field(&struct_name, label, similar));
         };
-        let ty = if self.reads_field_by_copy(owner, &label.name, &ty) {
-            ty
-        } else {
-            Type::shared(ty)
-        };
         self.record_macro_field_read(label, span);
-        Ok(TypedExpr {
-            kind: TypedExprKind::Struct(TypedStructExpr::Field(Box::new(value), label.clone())),
-            ty,
-            span,
-        })
-    }
-
-    fn reads_field_by_copy(&self, owner: BindingId, field: &str, field_type: &Type) -> bool {
-        self.declares_function_field(owner, field) || self.copy_rules().is_small_copy(field_type)
-    }
-
-    fn declares_function_field(&self, owner: BindingId, field: &str) -> bool {
-        self.declarations
-            .types()
-            .structs
-            .get(owner)
-            .is_some_and(|definition| {
-                definition.fields.iter().any(|(name, declared)| {
-                    &**name == field && matches!(declared, Type::Function(..))
-                })
-            })
+        Ok(FieldReadExpr::new(value, label).typed(read.read, span))
     }
 
     fn field_owner(

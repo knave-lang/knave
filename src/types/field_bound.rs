@@ -1,5 +1,6 @@
 use super::declarations::Declarations;
 use super::ty::{Bound, Type, TypeVar};
+use super::unborrowed::Unborrowed;
 use super::unifier::Unifier;
 use crate::core::BindingId;
 
@@ -21,14 +22,9 @@ impl<'c> FieldBound<'c> {
             return Some(read);
         }
         let var = self.open_owner(owner)?;
-        let shared = self.declarations.types().structs.with_field(field).len() > 1;
-        let binding = (self
-            .declarations
-            .traits()
-            .rust_paths
-            .field_traits
-            .trait_of(field))
-        .filter(|_| shared)?;
+
+        let field_traits = self.declarations.traits().rust_paths().field_traits();
+        let binding = field_traits.trait_of(field)?;
         Some(match self.known_read(var, binding) {
             Some(read) => read,
             None => self.new_read(var, binding),
@@ -36,36 +32,28 @@ impl<'c> FieldBound<'c> {
     }
 
     fn declared_read(&self, owner: &Type, field: &str) -> Option<Type> {
-        let Type::Generic(generic) = Self::without_borrows(owner) else {
+        let Type::Generic(generic) = Unborrowed::of(owner) else {
             return None;
         };
-        let binding = self
-            .declarations
-            .traits()
-            .rust_paths
-            .field_traits
-            .trait_of(field)?;
+        let field_traits = self.declarations.traits().rust_paths().field_traits();
+        let binding = field_traits.trait_of(field)?;
         let bounds = self.unifier.generic_bounds(*generic).iter();
         bounds
             .filter(|bound| bound.binding == binding)
             .find_map(|bound| bound.argument.clone())
     }
 
-    fn without_borrows(owner: &Type) -> &Type {
-        match owner {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => Self::without_borrows(inner),
-            _ => owner,
+    fn open_owner(&self, owner: &Type) -> Option<TypeVar> {
+        match self.shallow_without_borrows(owner) {
+            Type::Var(var) if self.unifier.literal_kind(var).is_none() => Some(var),
+            _ => None,
         }
     }
 
-    fn open_owner(&self, owner: &Type) -> Option<TypeVar> {
-        let mut owner = self.unifier.shallow(owner);
-        while let Type::Ref(_, inner) | Type::Mut(_, inner) = owner {
-            owner = self.unifier.shallow(&inner);
-        }
-        match owner {
-            Type::Var(var) if self.unifier.literal_kind(var).is_none() => Some(var),
-            _ => None,
+    fn shallow_without_borrows(&self, owner: &Type) -> Type {
+        match self.unifier.shallow(owner) {
+            Type::Ref(_, inner) | Type::Mut(_, inner) => self.shallow_without_borrows(&inner),
+            resolved => resolved,
         }
     }
 

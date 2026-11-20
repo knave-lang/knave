@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/emit/field_trait_plain_value.knv
 ---
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -21,7 +21,7 @@ fn make_dog(age: i64) -> Dog {
     Dog { age }
 }
 
-fn next_age<A: HasAge>(x: A) -> i64 {
+fn next_age<A: HasAge + Copy>(x: A) -> i64 {
     x.age() + 1
 }
 

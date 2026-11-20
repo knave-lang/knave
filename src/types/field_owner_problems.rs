@@ -38,6 +38,17 @@ impl FieldOwnerProblems {
         )
     }
 
+    pub(super) fn unshared_written(field: &str, owner: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::UNSHARED_FIELD_BOUND,
+            format!("only `{owner}` has a field `{}{field}`", Keyword::MARKER),
+            Label::new(span, "this bound names it"),
+        )
+        .with_help(format!(
+            "write `{owner}` in the signature in place of the bound variable"
+        ))
+    }
+
     pub(super) fn literal_owner(literal: LiteralKind, span: Span) -> Diagnostic {
         TypeProblems::no_fields(literal.default_type().names().shown(), span)
     }

@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::copy::CopyRules;
 use super::declarations::Declarations;
-use super::field_traits::FieldTrait;
+use super::field_trait::FieldTrait;
 use super::open_read::OpenRead;
 use super::structs::{StructDefinition, StructTable};
 use super::trait_rows_reach::Implementor;
@@ -30,10 +30,7 @@ impl<'a> StructFieldTraits<'a> {
     pub(super) fn traits(&self) -> Vec<FieldTrait> {
         self.shared_names()
             .into_iter()
-            .map(|field| FieldTrait {
-                implementors: self.implementors(&field),
-                field,
-            })
+            .map(|field| FieldTrait::new(Rc::clone(&field), self.implementors(&field)))
             .collect()
     }
 
@@ -44,12 +41,10 @@ impl<'a> StructFieldTraits<'a> {
             .flat_map(|(_, definition)| definition.fields.iter().map(|(name, _)| name.clone()))
             .collect();
         names.sort();
-        let mut shared: Vec<Rc<str>> = names
+        let shared = names
             .chunk_by(|left, right| left == right)
-            .map(|group| group[0].clone())
-            .collect();
-        shared.dedup();
-        shared
+            .filter(|group| group.len() > 1);
+        shared.map(|group| Rc::clone(&group[0])).collect()
     }
 
     fn implementors(&self, field: &str) -> Vec<(BindingId, Implementor)> {
@@ -57,7 +52,7 @@ impl<'a> StructFieldTraits<'a> {
             .structs
             .iter()
             .filter_map(|(binding, definition)| {
-                let (read, _) = self.reads.of(definition, field)?;
+                let read = self.reads.of(definition, field)?.read;
                 Some((binding, Self::implementor(binding, definition, read)))
             })
             .collect();

@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/impl_body_bound_unmet_through_a_generic_function_in_an_impl_cycle.knv
+---
+error[L0404]: `tag` does not implement `partial-eq`
+  --> check/impl_body_bound_unmet_through_a_generic_function_in_an_impl_cycle.knv:38:17
+   |
+35 | (derive tag clone)
+   | ------------------ this `derive` leaves out `partial-eq`
+...
+38 |   (println (hop (->tag :n 1) 3)))
+   |                 ^^^^^^^^^^^^ this needs `partial-eq`
+   |
+   = help: add `partial-eq` to the struct's `derive`
+   = note: run `knave doc L0404` for an explanation

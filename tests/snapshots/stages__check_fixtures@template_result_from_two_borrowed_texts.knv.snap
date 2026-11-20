@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/check/template_result_from_two_borrowed_texts.knv
 ---
 error[L0469]: this template's result borrows, and its parameters hold more than one reference
@@ -9,5 +9,5 @@ error[L0469]: this template's result borrows, and its parameters hold more than 
 6 |        (fn ((ref str) (ref str)) (ref str)))
   |                                  ^^^^^^^^^ borrows from which parameter?
   |
-  = help: name the parameter it borrows from with a lifetime, as in `(where ('a) (fn ((ref 'a str) (ref str)) (ref 'a str)))`
+  = help: write one lifetime on the result and on every parameter it can borrow from, as in `(where ('a) (fn ((ref 'a str) (ref 'a str)) (ref 'a str)))`
   = note: run `knave doc L0469` for an explanation

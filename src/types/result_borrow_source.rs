@@ -1,5 +1,6 @@
 use super::lifetime_problems::LifetimeProblems;
-use crate::core::{TypeExpr, TypeExprKind};
+use super::trait_declarations::TraitDeclarations;
+use crate::core::{BindingId, TypeExpr, TypeExprKind};
 use crate::diagnostic::Diagnostic;
 
 pub struct ResultBorrowSource<'t> {
@@ -21,14 +22,25 @@ impl<'t> ResultBorrowSource<'t> {
         }
     }
 
+    pub fn declared(
+        written: &'t TypeExpr,
+        binding: BindingId,
+        traits: &TraitDeclarations,
+    ) -> Result<(), Diagnostic> {
+        if traits.methods().contains_key(&binding) {
+            return Ok(());
+        }
+        Self::of(written).map_or(Ok(()), |source| source.check())
+    }
+
     pub fn check(&self) -> Result<(), Diagnostic> {
-        if self.is_named() {
+        if self.names_its_source() {
             return Ok(());
         }
         Err(LifetimeProblems::unnamed_result_borrow(self.result.span()))
     }
 
-    fn is_named(&self) -> bool {
+    fn names_its_source(&self) -> bool {
         let inputs: usize = self
             .parameters
             .iter()

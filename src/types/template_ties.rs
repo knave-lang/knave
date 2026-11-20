@@ -153,7 +153,7 @@ impl<'p> IteratorTies<'p> {
             .filter(|(_, parameter)| pipelines.holds_an_iterator(parameter))
             .map(|(position, _)| position)
             .collect();
-        self.certain(sources, parameters)
+        self.keep_if_decided(sources, parameters)
     }
 
     fn kept_references(&self, parameters: &[Type], result: &Type) -> Vec<usize> {
@@ -176,10 +176,10 @@ impl<'p> IteratorTies<'p> {
             })
             .map(|(position, _)| position)
             .collect();
-        self.certain(sources, parameters)
+        self.keep_if_decided(sources, parameters)
     }
 
-    fn certain(&self, sources: Vec<usize>, parameters: &[Type]) -> Vec<usize> {
+    fn keep_if_decided(&self, sources: Vec<usize>, parameters: &[Type]) -> Vec<usize> {
         if self.author.knows_what_an_iterator_captures() {
             return sources;
         }

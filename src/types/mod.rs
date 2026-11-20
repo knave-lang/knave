@@ -185,7 +185,6 @@ mod structural_uses;
 mod synthetic_template;
 mod template_author;
 mod template_clauses;
-mod template_result_borrows;
 mod template_signature;
 mod template_spelling;
 mod template_ties;

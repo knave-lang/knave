@@ -201,7 +201,7 @@ impl<'v> ProjectReader<'v> {
                 .push(CompilerVersionProblems::malformed_version(mismatch));
             return None;
         };
-        let recorded = CompilerVersion { version, span };
+        let recorded = CompilerVersion::new(version, span);
         self.refusal = recorded.refusal(ReleaseVersion::running());
         Some(recorded)
     }

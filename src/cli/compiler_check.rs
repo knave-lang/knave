@@ -7,15 +7,18 @@ use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::project::{Project, ReleaseVersion};
 
-pub struct CompilerCheck;
+pub struct CompilerCheck<'t> {
+    terminal: &'t Terminal,
+}
 
-impl CompilerCheck {
-    pub fn refuse_before_loading(directory: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
-        let Some(root) = ProjectRoot::shown_of(directory)? else {
-            return Ok(());
-        };
-        let mut scratch = terminal.scratch();
-        let project_file = root.join(Language::project_file_name());
+impl CompilerCheck<'_> {
+    pub fn new(terminal: &Terminal) -> CompilerCheck<'_> {
+        CompilerCheck { terminal }
+    }
+
+    pub fn refuse_before_loading(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
+        let mut scratch = self.terminal.scratch();
+        let project_file = root.shown()?.join(Language::project_file_name());
         let Some(recorded) = scratch.sources().projects().recorded_version(&project_file) else {
             return Ok(());
         };
@@ -27,23 +30,20 @@ impl CompilerCheck {
             .print(&Diagnostics::from_iter([refusal])))
     }
 
-    pub fn report(project_file: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
-        let mut scratch = terminal.scratch();
-        let Some(project) = scratch.sources().projects().read_quietly(project_file) else {
+    pub fn report(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
+        let project_file = root.project_file();
+        let mut scratch = self.terminal.scratch();
+        let Some(project) = scratch.sources().projects().read_quietly(&project_file) else {
             return Ok(());
         };
-        Self::report_located(&project, project_file, terminal)
+        self.report_located(&project, &project_file)
     }
 
-    pub fn report_located(
-        project: &Project,
-        project_file: &Path,
-        terminal: &Terminal,
-    ) -> Result<(), ExitStatus> {
+    pub fn report_located(&self, project: &Project, project_file: &Path) -> Result<(), ExitStatus> {
         if Self::problem_in(project).is_none() {
             return Ok(());
         }
-        let mut scratch = terminal.scratch();
+        let mut scratch = self.terminal.scratch();
         let located_project = scratch.sources().projects().load(project_file)?;
         let Some(problem) = Self::problem_in(&located_project) else {
             return Ok(());

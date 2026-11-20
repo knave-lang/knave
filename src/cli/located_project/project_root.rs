@@ -5,30 +5,36 @@ use crate::cli::program_file::ProgramFile;
 use crate::cli::working_directory::WorkingDirectory;
 use crate::language::Language;
 
-pub struct ProjectRoot;
+#[derive(PartialEq, Eq)]
+pub struct ProjectRoot {
+    path: PathBuf,
+}
 
 impl ProjectRoot {
-    pub fn shown_of(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
-        match Self::canonical_of(directory) {
-            Some(root) => Ok(Some(Self::shown(&root)?)),
-            None => Ok(None),
-        }
-    }
-
-    pub fn canonical_of(directory: &Path) -> Option<PathBuf> {
+    pub fn around(directory: &Path) -> Option<Self> {
         let start = ProgramFile::canonical(directory)?;
         let file_name = Language::project_file_name();
-        start
+        let path = start
             .ancestors()
-            .find(|ancestor| ancestor.join(&file_name).is_file())
-            .map(Path::to_path_buf)
+            .find(|ancestor| ancestor.join(&file_name).is_file())?
+            .to_path_buf();
+        Some(Self { path })
     }
 
-    fn shown(root: &Path) -> Result<PathBuf, ExitStatus> {
+    pub fn shown(&self) -> Result<PathBuf, ExitStatus> {
         let working_directory = WorkingDirectory::resolved()?;
-        Ok(root
+        Ok(self
+            .path
             .strip_prefix(&working_directory)
-            .unwrap_or(root)
+            .unwrap_or(&self.path)
             .to_path_buf())
+    }
+
+    pub fn project_file(&self) -> PathBuf {
+        self.path.join(Language::project_file_name())
+    }
+
+    pub fn into_path(self) -> PathBuf {
+        self.path
     }
 }

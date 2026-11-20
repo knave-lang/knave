@@ -6,7 +6,7 @@ use super::crate_section::CrateSection;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::library_walk::FetchingStore;
-use super::located_project::LocatedProject;
+use super::located_project::{LocatedProject, ProjectRoot};
 use super::program_file::ProgramFile;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
@@ -34,7 +34,9 @@ impl ProjectFileEdit {
 
     pub fn to_upgrade(terminal: &mut Terminal, command: &str) -> Result<Self, ExitStatus> {
         let working_directory = WorkingDirectory::path();
-        CompilerCheck::refuse_before_loading(working_directory, terminal)?;
+        if let Some(root) = ProjectRoot::around(working_directory) {
+            CompilerCheck::new(terminal).refuse_before_loading(&root)?;
+        }
         let located =
             LocatedProject::enter_unchecked(working_directory, terminal, FetchingStore::default())?;
         Self::of_located(located, command)

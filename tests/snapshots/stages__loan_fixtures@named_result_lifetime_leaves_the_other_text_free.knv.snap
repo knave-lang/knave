@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/loans/named_result_lifetime_leaves_the_other_text_free.knv
+---
+main
+  9:14 borrow `a`: no live loan
+  10:14 borrow `b`: no live loan
+  11:9 change `b`: `a` lent at 9:14, held by `v`

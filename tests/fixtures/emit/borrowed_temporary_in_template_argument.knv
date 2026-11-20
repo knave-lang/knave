@@ -9,7 +9,9 @@
 
 (def longer
   (rust "if {1}.len() > {0}.len() {{ {1} }} else {{ {0} }}"
-    (fn ((ref str) (ref str)) (ref str))))
+    (where ('a)
+      (fn ((ref 'a str) (ref 'a str))
+        (ref 'a str)))))
 
 (type announced (fn ((ref str)) string))
 

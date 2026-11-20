@@ -66,8 +66,9 @@
 
 (def pick
   (rust "if {0} {{ {1} }} else {{ {2} }}"
-    (fn (bool (ref str) (ref str))
-      (ref str))))
+    (where ('a)
+      (fn (bool (ref 'a str) (ref 'a str))
+        (ref 'a str)))))
 
 (def logged
   (rust "{{ println!(\"before\"); {0} }}"

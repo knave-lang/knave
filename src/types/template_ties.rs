@@ -4,6 +4,7 @@ use super::pipelines::Pipelines;
 use super::position_tie::PositionTie;
 use super::tied_positions::TiedPositions;
 use super::ty::{GenericId, Lifetime, Scheme, Type};
+use super::type_lifetimes::TypeLifetimes;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TemplateTies {
@@ -130,7 +131,7 @@ impl TemplateTies {
 
     fn lifetime_ties(parameters: &[Type], result: &Type) -> Option<Vec<usize>> {
         let mut tied = BTreeSet::new();
-        for output in Self::lifetimes_in(result) {
+        for output in TypeLifetimes::of(result).all() {
             tied.extend(Self::sources_of(output, parameters)?);
         }
         Some(tied.into_iter().collect())
@@ -141,7 +142,8 @@ impl TemplateTies {
             .iter()
             .enumerate()
             .flat_map(|(position, parameter)| {
-                Self::lifetimes_in(parameter)
+                TypeLifetimes::of(parameter)
+                    .all()
                     .into_iter()
                     .map(move |lifetime| (position, lifetime))
             })
@@ -159,17 +161,6 @@ impl TemplateTies {
                 _ => None,
             },
         }
-    }
-
-    fn lifetimes_in(ty: &Type) -> Vec<Lifetime> {
-        let own = match ty {
-            Type::Function(..) => return Vec::new(),
-            Type::Ref(lifetime, _) | Type::Mut(lifetime, _) => Some(*lifetime),
-            _ => None,
-        };
-        own.into_iter()
-            .chain(ty.parts().into_iter().flat_map(Self::lifetimes_in))
-            .collect()
     }
 }
 

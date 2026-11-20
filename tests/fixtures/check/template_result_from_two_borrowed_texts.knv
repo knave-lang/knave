@@ -1,0 +1,10 @@
+(defn main ()
+  (local a (str "ab"))
+  (local b (str "cd"))
+  (local v
+    ((rust "{0}.max({1})"
+       (fn ((ref str) (ref str)) (ref str)))
+     (as-str a)
+     (as-str b)))
+  (set! a (str "z"))
+  (prn v))

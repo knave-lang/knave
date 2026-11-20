@@ -1,0 +1,10 @@
+(def pick
+  (rust "std::cmp::max({0}, {1})"
+    (fn ((ref str) (ref str)) (ref str))))
+
+(defn main ()
+  (local a (str "ab"))
+  (local b (str "cde"))
+  (local v (pick (as-str a) (as-str b)))
+  (set! b (str "z"))
+  (prn v))

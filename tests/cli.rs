@@ -9119,6 +9119,22 @@ fn new_writes_a_workflow_that_reads_past_an_escaped_quote_in_a_string() {
 }
 
 #[test]
+fn new_writes_a_workflow_that_reads_past_a_semicolon_in_a_string_across_lines() {
+    let sandbox = Sandbox::new("new_workflow_semicolon_in_string_across_lines");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let sandbox = sandbox.with_file(
+        "demo-app/project.knv",
+        "(defproject d :description \"a\n b ; c\" :knave \"0.19.0\")\n",
+    );
+    assert_eq!(
+        sandbox.run_version_step("demo-app"),
+        (true, "KNAVE_VERSION=0.19.0\n".to_string(), String::new())
+    );
+}
+
+#[test]
 fn new_writes_a_workflow_that_fails_on_two_recorded_versions() {
     let sandbox = Sandbox::new("new_workflow_two_versions");
     sandbox

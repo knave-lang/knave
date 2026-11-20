@@ -1750,6 +1750,40 @@ fn fmt_reads_standard_input_and_writes_the_formatted_text() {
 }
 
 #[test]
+fn fmt_of_standard_input_refuses_under_an_older_compiler() {
+    let sandbox = Sandbox::with_recorded_version("fmt_standard_input_older", NEWER_VERSION)
+        .with_file(
+            "demo-app/project.knv",
+            &format!("(defproject demo-app :knave \"{NEWER_VERSION}\" :newkey \"x\")\n"),
+        );
+    let formatted = sandbox.compiler_reading_in("demo-app", UNFORMATTED, &["fmt", "-"]);
+    let stderr = formatted.assert_exit_code(1).stderr();
+    assert_eq!(stderr.matches(OLDER_COMPILER_ERROR).count(), 1, "{stderr}");
+    assert!(!stderr.contains("cannot load the project"), "{stderr}");
+    assert_eq!(formatted.stdout(), "");
+}
+
+#[test]
+fn fmt_refuses_an_older_compiler_before_it_writes_another_project() {
+    let unformatted_project = format!(
+        "(defproject first :description \"{}\")\n",
+        "a description long enough that fmt lays out one key per line"
+    );
+    let sandbox = Sandbox::new("fmt_older_second_project")
+        .with_file("first/project.knv", &unformatted_project)
+        .with_file(
+            "second/project.knv",
+            &format!("(defproject second :knave \"{NEWER_VERSION}\")\n"),
+        );
+    let stderr = sandbox
+        .compiler(&["fmt", "first", "second"])
+        .assert_exit_code(1)
+        .stderr();
+    assert_eq!(stderr.matches(OLDER_COMPILER_ERROR).count(), 1, "{stderr}");
+    assert_eq!(sandbox.contents("first/project.knv"), unformatted_project);
+}
+
+#[test]
 fn fmt_of_standard_input_reads_shapes_from_modules_beside_its_stdin_path() {
     let sandbox =
         Sandbox::new("fmt_standard_input_shapes").with_file("shapes/loops.knv", LOOP_SHAPE);
@@ -9278,10 +9312,19 @@ fn a_compiler_older_than_a_project_with_an_unknown_key_reports_only_the_version(
     let sandbox = Sandbox::with_recorded_version("version_older_unknown_key", NEWER_VERSION)
         .with_file(
             "demo-app/project.knv",
-            &format!("(defproject demo-app :knave \"{NEWER_VERSION}\" :newkey \"x\")\n"),
+            &format!(
+                "(defproject demo-app :knave \"{NEWER_VERSION}\" :newkey \"x\" :description \"{}\")\n",
+                "a description long enough that fmt lays out one key per line"
+            ),
         );
     let before = sandbox.files_with_contents("demo-app");
-    for command in [&["check"][..], &["upgrade"], &["fmt"], &["fmt", "--check"]] {
+    for command in [
+        &["check"][..],
+        &["upgrade"],
+        &["fmt"],
+        &["fmt", "--check"],
+        &["fmt", "project.knv"],
+    ] {
         let stderr = sandbox
             .compiler_in("demo-app", command)
             .assert_exit_code(1)

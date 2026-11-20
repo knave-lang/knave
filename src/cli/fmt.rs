@@ -6,7 +6,7 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::compiler_check::CompilerCheck;
 use super::embedded_prelude::EmbeddedPrelude;
@@ -51,6 +51,7 @@ struct SourceFiles {
 
 struct NearbyProjects {
     projects: FxHashMap<PathBuf, Option<LocatedProject>>,
+    checked_roots: FxHashSet<PathBuf>,
     formatted_files: Rc<FormattedFiles>,
 }
 
@@ -154,6 +155,9 @@ impl FmtCommand {
         }
         files.sort_by_key(|file| !ProgramFile::is_project_file(file));
         let mut lookups = NearbyProjects::new(FormattedFiles::of(&files));
+        if let Err(refused) = lookups.refuse_older_compilers(&files, terminal) {
+            return refused;
+        }
         for file in &files {
             match self.format_file(terminal, file, &mut lookups) {
                 Ok(status) => worst.record(status),
@@ -321,11 +325,23 @@ impl NearbyProjects {
     fn new(formatted_files: FormattedFiles) -> Self {
         Self {
             projects: FxHashMap::default(),
+            checked_roots: FxHashSet::default(),
             formatted_files: Rc::new(formatted_files),
         }
     }
 
+    fn refuse_older_compilers(
+        &mut self,
+        files: &[PathBuf],
+        terminal: &Terminal,
+    ) -> Result<(), ExitStatus> {
+        files
+            .iter()
+            .try_for_each(|file| self.refuse_an_older_compiler_around(file, terminal))
+    }
+
     fn lookup_for(&mut self, path: &Path, terminal: &Terminal) -> Result<ModuleLookup, ExitStatus> {
+        self.refuse_an_older_compiler_around(path, terminal)?;
         let directory = Self::absolute_directory_of(path);
         if ProgramFile::is_project_file(path) {
             return Ok(ModuleLookup::beside_project_file(&directory));
@@ -337,6 +353,21 @@ impl NearbyProjects {
             }
             None => ModuleLookup::beside(&directory),
         })
+    }
+
+    fn refuse_an_older_compiler_around(
+        &mut self,
+        path: &Path,
+        terminal: &Terminal,
+    ) -> Result<(), ExitStatus> {
+        let directory = Self::absolute_directory_of(path);
+        let Some(root) = ProjectRoot::canonical_of(&directory) else {
+            return Ok(());
+        };
+        if !self.checked_roots.insert(root.clone()) {
+            return Ok(());
+        }
+        Self::refuse_an_older_compiler(&root, terminal)
     }
 
     fn absolute_directory_of(path: &Path) -> PathBuf {
@@ -369,7 +400,6 @@ impl NearbyProjects {
         warning: &Rc<ProjectLoadWarning>,
         terminal: &Terminal,
     ) -> Result<Option<LocatedProject>, ExitStatus> {
-        Self::refuse_an_older_compiler(root, terminal)?;
         let mut loading = Terminal::new(TerminalSettings::reporting_to(warning.clone()));
         let loaded = LocatedProject::enter_unchecked(root, &mut loading, CacheOnlyStore::default());
         let Ok(located) = loaded else {

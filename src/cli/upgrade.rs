@@ -24,7 +24,7 @@ impl UpgradeCommand {
     }
 
     fn upgrade(terminal: &mut Terminal) -> Result<(), ExitStatus> {
-        let edit = ProjectFileEdit::to_upgrade(terminal, Self::COMMAND)?;
+        let edit = ProjectFileEdit::of_root_file(terminal, Self::COMMAND)?;
         let mut changed = Self::record_version(&edit, terminal)?;
         for file in NewComponents::every()
             .iter()

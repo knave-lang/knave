@@ -4,7 +4,6 @@ mod project_root;
 use std::path::{Path, PathBuf};
 
 use super::compiler_check::CompilerCheck;
-use super::crate_section::CrateSection;
 use super::exit_status::ExitStatus;
 use super::library_walk::{LibraryStore, LibraryWalk};
 use super::lint_levels::LintLevels;
@@ -14,7 +13,7 @@ use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::LibraryTable;
-use crate::project::{CrateDependency, Project, ProjectProblems};
+use crate::project::{Project, ProjectProblems};
 use file_placement::FilePlacement;
 pub use project_root::ProjectRoot;
 
@@ -136,13 +135,6 @@ impl LocatedProject {
             .expect("a project with crates and no crate of its own lists a library that adds them");
         let label = format!("library `{}` adds crates", library.name);
         ProjectProblems::crates_unavailable_to(command, library.name_span, label)
-    }
-
-    pub fn own_crate(&self, section: CrateSection, name: &str) -> Option<&CrateDependency> {
-        section
-            .listed(&self.project)
-            .iter()
-            .find(|dependency| dependency.name == name)
     }
 
     pub fn project_file(&self) -> PathBuf {

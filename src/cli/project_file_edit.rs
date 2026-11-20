@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::compiler_check::CompilerCheck;
 use super::crate_section::CrateSection;
@@ -13,10 +13,11 @@ use super::terminal::Terminal;
 use super::working_directory::WorkingDirectory;
 use crate::format::ModuleLookup;
 use crate::language::Language;
-use crate::project::{CrateDependency, ProjectEditor};
+use crate::project::{CrateDependency, Project, ProjectEditor};
 
 pub struct ProjectFileEdit {
-    project: LocatedProject,
+    root: PathBuf,
+    project: Project,
 }
 
 impl ProjectFileEdit {
@@ -29,32 +30,37 @@ impl ProjectFileEdit {
         let working_directory = WorkingDirectory::path();
         let located =
             LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?;
-        Self::of_located(located, command)
+        let Some(located) = located else {
+            return Err(Self::report_no_project(command));
+        };
+        Self::of_root(located.root().to_path_buf(), terminal)
     }
 
-    pub fn to_upgrade(terminal: &mut Terminal, command: &str) -> Result<Self, ExitStatus> {
-        let working_directory = WorkingDirectory::path();
-        if let Some(root) = ProjectRoot::around(working_directory) {
-            CompilerCheck::new(terminal).refuse_before_loading(&root)?;
-        }
-        let located =
-            LocatedProject::enter_unchecked(working_directory, terminal, FetchingStore::default())?;
-        Self::of_located(located, command)
+    pub fn of_root_file(terminal: &Terminal, command: &str) -> Result<Self, ExitStatus> {
+        let root = ProjectRoot::around(WorkingDirectory::path())
+            .ok_or_else(|| Self::report_no_project(command))?;
+        CompilerCheck::new(terminal).refuse_before_loading(&root)?;
+        Self::of_root(root.shown()?, terminal)
     }
 
-    fn of_located(located: Option<LocatedProject>, command: &str) -> Result<Self, ExitStatus> {
-        match located {
-            Some(project) => Ok(Self { project }),
-            None => Err(Self::report_no_project(command)),
-        }
+    fn of_root(root: PathBuf, terminal: &Terminal) -> Result<Self, ExitStatus> {
+        let mut scratch = terminal.scratch();
+        let project = scratch
+            .sources()
+            .projects()
+            .load(&Self::project_file_in(&root))?;
+        Ok(Self { root, project })
     }
 
     pub fn root(&self) -> &Path {
-        self.project.root()
+        &self.root
     }
 
     pub fn listed_crate(&self, section: CrateSection, name: &str) -> Option<&CrateDependency> {
-        self.project.own_crate(section, name)
+        section
+            .listed(&self.project)
+            .iter()
+            .find(|dependency| dependency.name == name)
     }
 
     pub fn apply(
@@ -62,7 +68,7 @@ impl ProjectFileEdit {
         terminal: &Terminal,
         edit: impl Fn(&ProjectEditor<'_>) -> Option<String>,
     ) -> Result<bool, ExitStatus> {
-        let path = self.project.project_file();
+        let path = Self::project_file_in(&self.root);
         let mut scratch = terminal.scratch();
         let source = scratch.sources().load(&path)?;
         let text = scratch.source_file(source).text().to_string();
@@ -75,6 +81,10 @@ impl ProjectFileEdit {
         let formatted = self.formatted(&mut scratch, &path, edited);
         Self::replace(&path, &formatted)?;
         Ok(true)
+    }
+
+    fn project_file_in(root: &Path) -> PathBuf {
+        root.join(Language::project_file_name())
     }
 
     fn replace(path: &Path, text: &str) -> Result<(), ExitStatus> {

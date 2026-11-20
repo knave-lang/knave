@@ -9642,6 +9642,42 @@ fn upgrade_keeps_a_comment_after_the_project_name_on_its_line() {
 }
 
 #[test]
+fn upgrade_reads_only_the_root_project_file() {
+    let unreachable_libraries = [
+        (
+            "upgrade_uncached_git_library",
+            "(libraries (gone :git \"https://example.invalid/x.git\" :rev \"0123456789abcdef0123456789abcdef01234567\"))",
+        ),
+        (
+            "upgrade_missing_path_library",
+            "(libraries (gone :path \"../gone\"))",
+        ),
+    ];
+    for (test_name, libraries) in unreachable_libraries {
+        let sandbox = Sandbox::with_released_project(test_name, &[]).with_file(
+            "demo-app/project.knv",
+            &format!("(defproject demo-app {libraries})\n"),
+        );
+        sandbox
+            .compiler_in("demo-app", &["upgrade"])
+            .assert_exit_code(0);
+        let recorded = format!(":knave \"{}\"", env!("CARGO_PKG_VERSION"));
+        let project = sandbox.contents("demo-app/project.knv");
+        assert!(project.contains(&recorded), "{project}");
+        sandbox
+            .compiler(&["new", "fresh-app"])
+            .assert_silent_success();
+        for path in EVERY_OWNED_FILE {
+            assert_eq!(
+                sandbox.contents(&format!("demo-app/{path}")),
+                sandbox.contents(&format!("fresh-app/{path}")),
+                "`{path}` holds an earlier text"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_project_without_a_recorded_version_reports_no_version() {
     let sandbox = Sandbox::new("version_unrecorded");
     sandbox

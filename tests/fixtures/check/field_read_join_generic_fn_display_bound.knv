@@ -1,0 +1,16 @@
+(defstruct toy
+  :size int)
+
+(defstruct cat
+  :toy toy)
+
+(defstruct dog
+  :toy toy)
+
+(defn say (v) (println v))
+
+(defn show (x) (say (:toy x)))
+
+(defn main ()
+  (show (->cat (->toy 1)))
+  (show (->dog (->toy 2))))

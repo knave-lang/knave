@@ -1,0 +1,13 @@
+(defstruct cat
+  :a int
+  :b float)
+
+(defstruct dog
+  :a int
+  :b float)
+
+(defn f (x) (= (:a x) (:b x)))
+
+(defn main ()
+  (println (f (->cat 1 1.0)))
+  (println (f (->dog 2 3.0))))

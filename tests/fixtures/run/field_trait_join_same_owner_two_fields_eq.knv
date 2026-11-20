@@ -1,0 +1,13 @@
+(defstruct cat
+  :a int
+  :b int)
+
+(defstruct dog
+  :a int
+  :b int)
+
+(defn even? (x) (= (:a x) (:b x)))
+
+(defn main ()
+  (println (even? (->cat 1 1)))
+  (println (even? (->dog 2 3))))

@@ -1,0 +1,12 @@
+(defstruct cat
+  :name string)
+
+(defstruct dog
+  :name string)
+
+(defn tally (x)
+  (len (hash-map (:name x) 1)))
+
+(defn main ()
+  (println (tally (->cat (str "tom"))))
+  (println (tally (->dog (str "rex")))))

@@ -70,7 +70,10 @@ impl<'r> FieldReadSettlement<'r> {
     fn count(&self, program: &TypedProgram, reader: FieldReader, tally: &mut Tally) {
         let shape = ReaderShape::new(program);
         match self.outcome(program, &reader) {
-            Outcome::Agreed(plan) if shape.emits(&reader, &plan) => {
+            Outcome::Agreed(plan)
+                if shape.emits(&reader, &plan)
+                    && !tally.settlements.settles_otherwise(&reader, &plan.read) =>
+            {
                 if shape.copies_owner(&plan) {
                     tally.settlements.require_copy(&reader);
                 }

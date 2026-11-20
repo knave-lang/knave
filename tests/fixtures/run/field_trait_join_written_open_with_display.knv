@@ -1,0 +1,15 @@
+(defstruct cat
+  :n int)
+
+(defstruct dog
+  :n int)
+
+(type show
+  (where ((b display) (a (has :n b)))
+    (fn ((ref a)) unit)))
+
+(defn show (x) (println (:n x)))
+
+(defn main ()
+  (show (->cat 1))
+  (show (->dog 2)))

@@ -125,7 +125,6 @@ error[L0208]: `struct` can only appear at module level
 65 | (defn malformed-struct () (struct))
    |                           ^^^^^^^^ not allowed inside an expression
    |
-   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0201]: cannot find `hidden` in this scope
@@ -142,7 +141,6 @@ error[L0208]: `struct` can only appear at module level
 73 |     (struct inner-point (x i64))
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not allowed inside an expression
    |
-   = help: use `let` to bind a name inside a body
    = note: run `knave doc L0208` for an explanation
 
 error[L0208]: `def` can only appear at module level

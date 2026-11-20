@@ -64,7 +64,7 @@ impl<'w> BodyWalk<'w> {
     fn value(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
-                let point = self.builder.read(at, *binding);
+                let point = self.builder.read(at, *binding, expr.span);
                 Walked::holding(point, Holdings::of_value(*binding))
             }
             TypedExprKind::Fn(lambda) => {

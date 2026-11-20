@@ -9,6 +9,7 @@ use super::loop_scope::LoopScope;
 use super::point_id::PointId;
 use super::value_regions::ValueRegions;
 use crate::core::BindingId;
+use crate::source::Span;
 use crate::types::TypedBinder;
 
 #[derive(Default)]
@@ -24,9 +25,9 @@ impl<'w> BodyBuilder<'w> {
         self.graph.join(before)
     }
 
-    pub fn read(&mut self, at: PointId, binding: BindingId) -> PointId {
+    pub fn read(&mut self, at: PointId, binding: BindingId, span: Span) -> PointId {
         let point = self.graph.join(&[at]);
-        self.graph.point_mut(point).using(binding);
+        self.graph.point_mut(point).using(binding, span);
         point
     }
 

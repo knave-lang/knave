@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/change_while_the_result_borrows_an_element.knv
+---
+error[L0518]: `v` changes while the result still borrows it
+ --> check/change_while_the_result_borrows_an_element.knv:5:16
+  |
+2 |   (local r (at v 0))
+  |                - the result borrows `v` here
+...
+5 |     (do (push! v 1) (at v 0))))
+  |                ^ `v` changes here
+  |
+  = help: finish changing `v` before borrowing the result from `v`
+  = note: run `knave doc L0518` for an explanation

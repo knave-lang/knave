@@ -11,6 +11,10 @@ impl<'n> LoanNames<'n> {
         Self { bindings, sources }
     }
 
+    pub fn bindings(&self) -> &'n BindingArena {
+        self.bindings
+    }
+
     pub fn name(&self, binding: BindingId) -> &'n str {
         self.bindings.get(binding).name()
     }

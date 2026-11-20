@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/move_while_an_element_is_borrowed.knv
+---
+error[L0519]: `names` moves while `first` still borrows it
+ --> check/move_while_an_element_is_borrowed.knv:5:16
+  |
+4 |   (local first (at names 0))
+  |                    ----- `first` borrows `names` here
+5 |   (local moved names)
+  |                ^^^^^ `names` moves here
+6 |   (println first)
+  |            ----- `first` is used here, after the move
+  |
+  = help: finish using `first` before moving `names`, or copy what you need out of `names` first
+  = note: run `knave doc L0519` for an explanation

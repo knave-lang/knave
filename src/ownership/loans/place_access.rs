@@ -28,6 +28,18 @@ impl PlaceAccess {
         }
     }
 
+    pub fn place(&self) -> &LoanPlace {
+        &self.place
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn access(&self) -> &'static dyn Access {
+        self.access
+    }
+
     pub fn is_lent_as(&self, loan: LoanId) -> bool {
         self.lent == Some(loan)
     }

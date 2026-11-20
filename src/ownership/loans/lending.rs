@@ -15,6 +15,18 @@ impl Lending {
         Self { place, kind, span }
     }
 
+    pub fn place(&self) -> &LoanPlace {
+        &self.place
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn is_exclusive(&self) -> bool {
+        self.kind.is_exclusive()
+    }
+
     pub fn access(&self) -> PlaceAccess {
         PlaceAccess::new(self.place.clone(), self.kind.access(), self.span)
     }

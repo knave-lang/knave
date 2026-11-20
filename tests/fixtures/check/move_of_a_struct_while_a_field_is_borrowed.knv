@@ -1,0 +1,14 @@
+(defstruct book
+  :title string)
+
+(defn keep (b)
+  (local c b)
+  1)
+
+(defn f (b)
+  (local r (:title b))
+  (keep b)
+  (len r))
+
+(defn main ()
+  (println (f (->book (str "abc")))))

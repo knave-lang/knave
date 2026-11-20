@@ -1,7 +1,11 @@
+use std::collections::VecDeque;
+
 use rustc_hash::FxHashSet;
 
 use super::point_id::PointId;
 use super::program_point::{PointFacts, ProgramPoint};
+use crate::core::BindingId;
+use crate::source::Span;
 
 pub struct ControlFlowGraph {
     points: Vec<ProgramPoint>,
@@ -42,6 +46,26 @@ impl ControlFlowGraph {
             .iter()
             .enumerate()
             .map(|(index, point)| (PointId::new(index), point.facts()))
+    }
+
+    pub fn first_use_after(&self, start: PointId, binding: BindingId) -> Option<Span> {
+        let mut reached = FxHashSet::default();
+        let mut pending: VecDeque<PointId> = self.facts(start).successors().collect();
+        while let Some(point) = pending.pop_front() {
+            if !reached.insert(point) {
+                continue;
+            }
+            let facts = self.facts(point);
+            if let Some(span) = facts.use_of(binding) {
+                return Some(span);
+            }
+            pending.extend(facts.successors());
+        }
+        None
+    }
+
+    fn facts(&self, point: PointId) -> PointFacts<'_> {
+        self.points[point.index()].facts()
     }
 
     pub fn reachable_from(&self, start: PointId) -> FxHashSet<PointId> {

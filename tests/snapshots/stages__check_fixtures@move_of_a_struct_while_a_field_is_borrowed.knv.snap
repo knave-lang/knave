@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/move_of_a_struct_while_a_field_is_borrowed.knv
+---
+error[L0519]: `b` moves while `r` still borrows it
+  --> check/move_of_a_struct_while_a_field_is_borrowed.knv:10:9
+   |
+ 9 |   (local r (:title b))
+   |            ---------- `r` borrows `b.title` here
+10 |   (keep b)
+   |         ^ `b` moves here
+11 |   (len r))
+   |        - `r` is used here, after the move
+   |
+   = help: finish using `r` before moving `b`, or copy what you need out of `b.title` first
+   = note: run `knave doc L0519` for an explanation

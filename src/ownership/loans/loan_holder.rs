@@ -1,5 +1,5 @@
 use super::loan_names::LoanNames;
-use crate::core::BindingId;
+use crate::core::{BindingArena, BindingId};
 
 #[derive(Clone, Copy)]
 pub enum LoanHolder {
@@ -14,6 +14,21 @@ impl LoanHolder {
             Self::Value(binding) => format!("held by `{}`", names.name(binding)),
             Self::Call => "passed to the call".to_string(),
             Self::Result => "returned".to_string(),
+        }
+    }
+
+    pub fn subject(self, bindings: &BindingArena) -> String {
+        match self {
+            Self::Value(binding) => format!("`{}`", bindings.get(binding).name()),
+            Self::Call => "the call".to_string(),
+            Self::Result => "the result".to_string(),
+        }
+    }
+
+    pub fn value(self) -> Option<BindingId> {
+        match self {
+            Self::Value(binding) => Some(binding),
+            Self::Call | Self::Result => None,
         }
     }
 }

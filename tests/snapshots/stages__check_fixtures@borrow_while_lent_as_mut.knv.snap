@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/borrow_while_lent_as_mut.knv
+---
+error[L0518]: `items` is borrowed while `m` still borrows it as `mut`
+  --> check/borrow_while_lent_as_mut.knv:9:16
+   |
+ 8 |   (local m (mut items))
+   |                 ----- `m` borrows `items` here
+ 9 |   (println (at items 0))
+   |                ^^^^^ `items` is borrowed here
+10 |   (push-one! m))
+   |              - `m` is used here, after this borrow
+   |
+   = help: finish using `m` before borrowing `items`
+   = note: run `knave doc L0518` for an explanation

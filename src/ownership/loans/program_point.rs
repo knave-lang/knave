@@ -4,11 +4,12 @@ use super::loan_id::LoanId;
 use super::place_access::PlaceAccess;
 use super::point_id::PointId;
 use crate::core::BindingId;
+use crate::source::Span;
 
 #[derive(Default)]
 pub struct ProgramPoint {
     defined: Vec<BindingId>,
-    used: Vec<BindingId>,
+    used: Vec<ValueUse>,
     received: Vec<LoanId>,
     accesses: Vec<PlaceAccess>,
     successors: Vec<PointId>,
@@ -19,8 +20,8 @@ impl ProgramPoint {
         self.defined.push(binding);
     }
 
-    pub fn using(&mut self, binding: BindingId) {
-        self.used.push(binding);
+    pub fn using(&mut self, binding: BindingId, span: Span) {
+        self.used.push(ValueUse { binding, span });
     }
 
     pub fn receive(&mut self, loans: impl IntoIterator<Item = LoanId>) {
@@ -40,6 +41,11 @@ impl ProgramPoint {
     }
 }
 
+struct ValueUse {
+    binding: BindingId,
+    span: Span,
+}
+
 pub struct PointFacts<'p> {
     point: &'p ProgramPoint,
 }
@@ -49,8 +55,16 @@ impl<'p> PointFacts<'p> {
         for defined in &self.point.defined {
             live.remove(defined);
         }
-        live.extend(self.point.used.iter().copied());
+        live.extend(self.point.used.iter().map(|used| used.binding));
         live
+    }
+
+    pub fn use_of(&self, binding: BindingId) -> Option<Span> {
+        self.point
+            .used
+            .iter()
+            .find(|used| used.binding == binding)
+            .map(|used| used.span)
     }
 
     pub fn received(&self) -> &'p [LoanId] {

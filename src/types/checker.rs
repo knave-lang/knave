@@ -238,10 +238,10 @@ impl TypeChecker {
         self.check_written_projections();
         self.declarations.builder().types().plan_boxes();
         self.collect_trait_impls(modules);
-        let fields = StructFieldTraits::new(&self.declarations, self.generics.params()).traits();
-        (self.declarations.builder().traits()).enter_field_traits(fields, &mut self.bindings);
         self.record_structural_traits(modules);
         self.register_derived_traits(modules);
+        let fields = StructFieldTraits::new(&self.declarations, self.generics.params()).traits();
+        (self.declarations.builder().traits()).enter_field_traits(fields, &mut self.bindings);
         self.report_supertraits();
         self.check_trait_claims(modules, reached);
         self.copy_trait = self

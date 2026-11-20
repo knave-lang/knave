@@ -27,6 +27,13 @@ impl ReadSettlements {
         };
     }
 
+    pub(super) fn settles_otherwise(&self, reader: &FieldReader, read: &Type) -> bool {
+        let Type::Generic(open) = reader.read else {
+            return false;
+        };
+        self.reads.get(&open).is_some_and(|settled| settled != read)
+    }
+
     pub(super) fn require_copy(&mut self, reader: &FieldReader) {
         self.copied.insert(reader.owner);
     }

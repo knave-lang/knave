@@ -69,6 +69,20 @@ impl<'c> UnfitReads<'c> {
     fn gives(&self, owner: BindingId, field: &str, used: &Type) -> bool {
         let definition = self.declarations.types().structs.get(owner);
         let read = definition.and_then(|definition| self.reads.of(definition, field));
-        read.is_some_and(|read| ReadView::of(&read.read).is_used_as(used))
+        read.is_some_and(|read| {
+            ReadView::of(&read.read).is_used_as(used) && self.meets_bounds(&read.read, used)
+        })
+    }
+
+    fn meets_bounds(&self, read: &Type, used: &Type) -> bool {
+        let Type::Var(var) = used else {
+            return true;
+        };
+        let traits = self.declarations.traits();
+        let field_traits = traits.rust_paths().field_traits();
+        let mut plain = (self.unifier.bounds(*var).iter()).filter(|bound| {
+            bound.argument.is_none() && !field_traits.bindings().is_field_bound(bound)
+        });
+        plain.all(|bound| traits.table().satisfies(bound, read, &|_, _| false))
     }
 }

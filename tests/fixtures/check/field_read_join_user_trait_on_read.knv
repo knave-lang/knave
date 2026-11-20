@@ -1,0 +1,17 @@
+(deftrait shout
+  (loud (fn ((ref self)) string)))
+
+(impl shout string
+  (loud (self) (upper-case self)))
+
+(defstruct cat
+  :name string)
+
+(defstruct dog
+  :name string)
+
+(defn yell (x) (loud (:name x)))
+
+(defn main ()
+  (println (yell (->cat (str "tom"))))
+  (println (yell (->dog (str "rex")))))

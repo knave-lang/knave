@@ -4,25 +4,10 @@ expression: report
 input_file: tests/fixtures/check/field_read_case_holder_value_disagree.knv
 ---
 error[L0407]: type annotations needed
-  --> check/field_read_case_holder_value_disagree.knv:13:12
+  --> check/field_read_case_holder_value_disagree.knv:10:21
    |
-13 |   (println (v-of (->user (->holder 1))))
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the type `(ref _)` of this value
+10 | (defn v-of (x) (:v (:h x)))
+   |                     ^^ cannot tell which struct's `h` this is
    |
-help: write the type with `the`, and replace each `_` with a type
-   |
-13 |   (println (the (ref _) (v-of (->user (->holder 1)))))
-   |            ++++++++++++                             +
-   = note: run `knave doc L0407` for an explanation
-
-error[L0407]: type annotations needed
-  --> check/field_read_case_holder_value_disagree.knv:14:12
-   |
-14 |   (println (v-of (->animal (->holder true)))))
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the type `(ref _)` of this value
-   |
-help: write the type with `the`, and replace each `_` with a type
-   |
-14 |   (println (the (ref _) (v-of (->animal (->holder true))))))
-   |            ++++++++++++                                  +
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
    = note: run `knave doc L0407` for an explanation

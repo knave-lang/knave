@@ -1,0 +1,12 @@
+(defstruct cat
+  :w float)
+
+(defstruct dog
+  :w float)
+
+(defn tally (x)
+  (len (hash-map (:w x) 1)))
+
+(defn main ()
+  (println (tally (->cat 1.0)))
+  (println (tally (->dog 2.0))))

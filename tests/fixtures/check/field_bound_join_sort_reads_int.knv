@@ -1,0 +1,13 @@
+(defstruct cat
+  :w int)
+
+(defstruct dog
+  :w int)
+
+(defn sorted (x y)
+  (let (v (vec (:w x) (:w y)))
+    (sort! v)
+    v))
+
+(defn main ()
+  (println (sorted (->cat 3) (->dog 2))))

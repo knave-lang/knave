@@ -1,4 +1,5 @@
-(trait ranked (rank (fn (self) i64)))
+(trait ranked
+  (rank (fn ((ref self)) i64)))
 
 (struct ledger
         (opened i64)
@@ -8,7 +9,10 @@
 (derive ledger copy clone)
 
 (impl ranked ledger
-  (rank (entry) (field entry balance)))
+  (rank (entry)
+    (+ (field entry opened)
+       (field entry closed)
+       (field entry balance))))
 
 (type higher
   (where ((a ranked)) (fn (a a) a)))

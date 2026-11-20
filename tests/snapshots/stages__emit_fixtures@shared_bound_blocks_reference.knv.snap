@@ -34,12 +34,12 @@ fn main() {
 }
 
 trait Ranked {
-    fn rank(self) -> i64;
+    fn rank(&self) -> i64;
 }
 
 impl Ranked for Ledger {
-    fn rank(self) -> i64 {
-        self.balance
+    fn rank(&self) -> i64 {
+        self.opened + self.closed + self.balance
     }
 }
 

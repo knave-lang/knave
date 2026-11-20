@@ -17,11 +17,7 @@ impl<'c> LiteralSettlement<'c> {
     }
 
     pub fn select(&self, bound: &Bound, implementor: &Type) -> Selection {
-        if self
-            .traits
-            .get(bound.binding)
-            .is_some_and(|known| known.reads_field)
-        {
+        if FieldReadSelection::reads_field(self.traits, bound) {
             return FieldReadSelection::new(self.unifier).select(self.traits, bound, implementor);
         }
         match self.traits.rows(bound.binding).select(bound, implementor) {

@@ -79,7 +79,7 @@ impl FieldTraits {
 
     fn reads<'b>(&'b self, bounds: &'b [Bound]) -> impl Iterator<Item = &'b Type> {
         (bounds.iter())
-            .filter(|bound| self.bindings.field_of(bound.binding).is_some())
+            .filter(|bound| self.bindings.is_field_bound(bound))
             .filter_map(|bound| bound.argument.as_ref())
     }
 }

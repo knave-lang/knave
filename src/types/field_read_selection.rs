@@ -70,11 +70,7 @@ impl<'u> FieldReadSelection<'u> {
         (!Self::is_written(bound)).then_some(expected)
     }
 
-    pub(super) fn settles_later(traits: &TraitTable, bound: &Bound) -> bool {
-        Self::reads_field(traits, bound)
-    }
-
-    fn reads_field(traits: &TraitTable, bound: &Bound) -> bool {
+    pub(super) fn reads_field(traits: &TraitTable, bound: &Bound) -> bool {
         (traits.get(bound.binding)).is_some_and(|known| known.reads_field)
     }
 

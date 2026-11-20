@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::ty::Bound;
 use crate::core::BindingId;
 
 #[derive(Default)]
@@ -22,6 +23,10 @@ impl FieldTraitBindings {
 
     pub fn field_of(&self, binding: BindingId) -> Option<&Rc<str>> {
         self.by_binding.get(&binding)
+    }
+
+    pub fn is_field_bound(&self, bound: &Bound) -> bool {
+        self.by_binding.contains_key(&bound.binding)
     }
 
     pub fn is_empty(&self) -> bool {

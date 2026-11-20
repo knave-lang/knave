@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use super::pipelines::Pipelines;
 use super::position_tie::PositionTie;
+use super::template_author::TemplateAuthor;
 use super::tied_positions::TiedPositions;
 use super::ty::{GenericId, Lifetime, Scheme, Type};
 use super::type_lifetimes::TypeLifetimes;
@@ -30,17 +31,17 @@ impl TemplateTies {
         }
     }
 
-    pub fn of(scheme: &Scheme, pipelines: Pipelines) -> Option<Self> {
+    pub fn of(scheme: &Scheme, pipelines: Pipelines, author: TemplateAuthor) -> Option<Self> {
         let Type::Function(_, parameters, result) = &scheme.body else {
             return Some(Self::default());
         };
         let generics: Vec<GenericId> = scheme.params.iter().map(|param| param.id).collect();
+        let iterators = IteratorTies::new(pipelines, author);
         let lifetime = TiedPositions::of(Self::lifetime_ties(parameters, result)?).union(
-            &TiedPositions::of(Self::kept_references(parameters, result, pipelines)),
+            &TiedPositions::of(iterators.kept_references(parameters, result)),
         );
-        let held = TiedPositions::of(Self::held_ties(parameters, result, &generics)).union(
-            &TiedPositions::of(Self::adapted_iterators(parameters, result, pipelines)),
-        );
+        let held = TiedPositions::of(Self::held_ties(parameters, result, &generics))
+            .union(&TiedPositions::of(iterators.adapted(parameters, result)));
         let beneath = TiedPositions::of(held.positions().filter(|position| {
             !lifetime.contains(*position)
                 && matches!(parameters[*position], Type::Ref(..) | Type::Mut(..))
@@ -96,39 +97,6 @@ impl TemplateTies {
             .collect()
     }
 
-    fn adapted_iterators(parameters: &[Type], result: &Type, pipelines: Pipelines) -> Vec<usize> {
-        if !pipelines.holds_an_iterator(result) {
-            return Vec::new();
-        }
-        parameters
-            .iter()
-            .enumerate()
-            .filter(|(_, parameter)| pipelines.holds_an_iterator(parameter))
-            .map(|(position, _)| position)
-            .collect()
-    }
-
-    fn kept_references(parameters: &[Type], result: &Type, pipelines: Pipelines) -> Vec<usize> {
-        if !pipelines.holds_an_iterator(result) {
-            return Vec::new();
-        }
-        let sourced = parameters
-            .iter()
-            .any(|parameter| pipelines.holds_an_iterator(parameter));
-        parameters
-            .iter()
-            .enumerate()
-            .filter(|(_, parameter)| match parameter {
-                Type::Ref(Lifetime::Elided, _) | Type::Generic(_) => !sourced,
-                Type::Mut(Lifetime::Elided, referent) => {
-                    !sourced || pipelines.holds_an_iterator(referent)
-                }
-                _ => false,
-            })
-            .map(|(position, _)| position)
-            .collect()
-    }
-
     fn lifetime_ties(parameters: &[Type], result: &Type) -> Option<Vec<usize>> {
         let mut tied = BTreeSet::new();
         for output in TypeLifetimes::of(result).all() {
@@ -164,6 +132,64 @@ impl TemplateTies {
     }
 }
 
+struct IteratorTies<'p> {
+    pipelines: Pipelines<'p>,
+    author: TemplateAuthor,
+}
+
+impl<'p> IteratorTies<'p> {
+    fn new(pipelines: Pipelines<'p>, author: TemplateAuthor) -> Self {
+        Self { pipelines, author }
+    }
+
+    fn adapted(&self, parameters: &[Type], result: &Type) -> Vec<usize> {
+        let pipelines = self.pipelines;
+        if !pipelines.holds_an_iterator(result) {
+            return Vec::new();
+        }
+        let sources = parameters
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| pipelines.holds_an_iterator(parameter))
+            .map(|(position, _)| position)
+            .collect();
+        self.certain(sources, parameters)
+    }
+
+    fn kept_references(&self, parameters: &[Type], result: &Type) -> Vec<usize> {
+        let pipelines = self.pipelines;
+        if !pipelines.holds_an_iterator(result) {
+            return Vec::new();
+        }
+        let sourced = parameters
+            .iter()
+            .any(|parameter| pipelines.holds_an_iterator(parameter));
+        let sources = parameters
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| match parameter {
+                Type::Ref(Lifetime::Elided, _) | Type::Generic(_) => !sourced,
+                Type::Mut(Lifetime::Elided, referent) => {
+                    !sourced || pipelines.holds_an_iterator(referent)
+                }
+                _ => false,
+            })
+            .map(|(position, _)| position)
+            .collect();
+        self.certain(sources, parameters)
+    }
+
+    fn certain(&self, sources: Vec<usize>, parameters: &[Type]) -> Vec<usize> {
+        if self.author.knows_what_an_iterator_captures() {
+            return sources;
+        }
+        match sources[..] {
+            [only] if !matches!(parameters[only], Type::Generic(_)) => sources,
+            _ => Vec::new(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::rc::Rc;
@@ -173,6 +199,7 @@ mod tests {
     use crate::types::PositionTie;
     use crate::types::pipelines::Pipelines;
     use crate::types::rust_types::RustTypeTable;
+    use crate::types::template_author::TemplateAuthor;
     use crate::types::ty::{GenericId, GenericParam, Lifetime, Scheme, Type};
 
     struct TiesFixture;
@@ -204,7 +231,11 @@ mod tests {
                 params: vec![Self::param(0, "a"), Self::param(1, "b")],
                 body: Type::Function(ClosureKind::Fn, parameters, Box::new(result)),
             };
-            TemplateTies::of(&scheme, Pipelines::new(&RustTypeTable::default()))
+            TemplateTies::of(
+                &scheme,
+                Pipelines::new(&RustTypeTable::default()),
+                TemplateAuthor::Prelude,
+            )
         }
     }
 

@@ -17,7 +17,7 @@ impl SyntheticTemplate {
     pub const MAP_UPDATE: Self = Self {
         text: "@map-update",
         lifetime: &[],
-        held: &[0, 1, 3],
+        held: &[0, 1],
     };
 
     pub const ALL: [&'static Self; 8] = [

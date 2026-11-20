@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/map_update_default_passed_through_the_function_is_not_held.knv
+---
+main
+  8:21 borrow `s`: no live loan
+  9:9 change `s`: no live loan
+  10:17 borrow `m`: no live loan

@@ -1,0 +1,12 @@
+(defn main ()
+  (local v (vec 1 2 3))
+  (local n (the usize 2))
+  (local it
+    ((rust "{0}.iter().copied().take(*{1})"
+       (where (a)
+         (fn ((ref (vec a)) (ref usize))
+           (iterator a))))
+     (ref v)
+     (ref n)))
+  (set! n 5)
+  (println (count it) n))

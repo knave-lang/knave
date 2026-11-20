@@ -91,8 +91,7 @@ use crate::core::{
     TypeExprKind,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
-use crate::expand::{MacroCallLookup, PendingDefinitions};
-use crate::modules::ModuleSources;
+use crate::expand::MacroCallLookup;
 use crate::source::Span;
 
 #[derive(Clone, Copy)]
@@ -254,15 +253,6 @@ impl TypeChecker {
         let written = graph.reach().written_bodies().clone();
         self.declarations.builder().record_written_bodies(written);
         self.declarations.freeze();
-    }
-
-    fn record_prelude_definitions(&mut self, modules: &[CoreModule], saved: &PendingDefinitions) {
-        let defined = modules
-            .iter()
-            .filter(|module| ModuleSources::is_prelude(&module.path))
-            .flat_map(CoreModule::definitions)
-            .map(|(binding, _)| binding);
-        self.checking_facts.prelude_definitions = defined.chain(saved.saved_bindings()).collect();
     }
 
     fn record_definition_facts(&mut self, definitions: &[Definition]) {
@@ -1039,7 +1029,8 @@ impl TypeChecker {
             self.generic_declarations().failed_scheme()
         });
         self.collect_clauses(member.binding, template, &scheme);
-        let name = super::TemplateName::Declared(member.binding, &template.template);
+        let author = self.checking_facts.template_author(member.binding);
+        let name = super::TemplateName::Declared(member.binding, &template.template, author);
         let rust_types = &self.declarations.types().rust_types;
         self.template_borrows.register(name, &scheme, rust_types);
         self.schemes.insert(member.binding, scheme);
@@ -1635,7 +1626,8 @@ impl TypeChecker {
         facts: &RoundFacts,
     ) -> CheckRound {
         self.outcomes = DefinitionOutcomes::new(graph.reach().unreached());
-        self.record_prelude_definitions(&program.modules, &program.pending_definitions);
+        self.checking_facts
+            .record_prelude(&program.modules, &program.pending_definitions);
         self.collect_declarations(&program.modules, graph);
         self.impl_bounds().seed(facts.seeds());
         let mut round = ImplAbsorption::new(self.declarations.traits().impls());

@@ -1,0 +1,11 @@
+(defn main ()
+  (local v (vec 1 2))
+  (local w (vec 3 4))
+  (local it
+    ((rust "{1}"
+       (fn ((iterator i64) (iterator i64))
+         (iterator i64)))
+     (the (iterator i64) (take v 1))
+     (the (iterator i64) (take w 1))))
+  (set! v (vec 3))
+  (println (count it)))

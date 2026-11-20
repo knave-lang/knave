@@ -4,23 +4,29 @@ use super::typed::Borrow;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct ReferenceDepth {
     target: usize,
-    through_borrow: bool,
+    deeper_reference: DeeperReference,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DeeperReference {
+    Reduced,
+    PassedThrough,
 }
 
 impl ReferenceDepth {
     pub(super) const VALUE: Self = Self {
         target: 0,
-        through_borrow: false,
+        deeper_reference: DeeperReference::Reduced,
     };
     pub(super) const VALUE_THROUGH_BORROW: Self = Self {
         target: 0,
-        through_borrow: true,
+        deeper_reference: DeeperReference::PassedThrough,
     };
 
     pub(super) fn new(target: usize) -> Self {
         Self {
             target,
-            through_borrow: false,
+            deeper_reference: DeeperReference::Reduced,
         }
     }
 
@@ -34,7 +40,7 @@ impl ReferenceDepth {
             Borrow::None
         } else if depth < target {
             Borrow::Shared
-        } else if self.through_borrow {
+        } else if self.deeper_reference == DeeperReference::PassedThrough {
             Borrow::Passthrough
         } else if target == 0 {
             Borrow::Deref(depth)

@@ -38,6 +38,7 @@ impl CrateEntry {
 impl<'t> ProjectEditor<'t> {
     const LINE_SPACE: [char; 2] = [' ', '\t'];
     const NEWLINE: char = '\n';
+    const COMMENT: char = ';';
     const LINE_BREAKS: [&'static str; 2] = ["\r\n", "\n"];
 
     pub fn of(text: &'t str, forms: &'t [Form], vocabulary: &'t ProjectVocabulary) -> Option<Self> {
@@ -71,8 +72,7 @@ impl<'t> ProjectEditor<'t> {
 
     pub fn with_field(&self, key: &str, value: &str) -> Option<String> {
         let Some(listed) = self.field_value(key) else {
-            let field = format!(" :{key} {value}");
-            return Some(self.splice(Self::after_name(self.project), &field));
+            return Some(self.with_new_field(&format!(":{key} {value}")));
         };
         let range = listed.span().range();
         let holds_value = self.text[range.clone()] == *value;
@@ -124,14 +124,32 @@ impl<'t> ProjectEditor<'t> {
             .is_some_and(|head| head.name() == name)
     }
 
-    fn after_name(project: &Form) -> Range<usize> {
-        let name_end = Self::entries(project)
+    fn with_new_field(&self, field: &str) -> String {
+        let name_end = Self::name_end(self.project);
+        match self.comment_end_after(name_end) {
+            Some(comment_end) => self.splice(
+                comment_end..comment_end,
+                &format!("{}{field}", Self::NEWLINE),
+            ),
+            None => self.splice(name_end..name_end, &format!(" {field}")),
+        }
+    }
+
+    fn name_end(project: &Form) -> usize {
+        Self::entries(project)
             .first()
             .expect("a loaded project form has a name")
             .span()
             .range()
-            .end;
-        name_end..name_end
+            .end
+    }
+
+    fn comment_end_after(&self, position: usize) -> Option<usize> {
+        let line = self.text[position..].lines().next()?;
+        let commented = line
+            .trim_start_matches(Self::LINE_SPACE)
+            .starts_with(Self::COMMENT);
+        commented.then_some(position + line.len())
     }
 
     fn before_close(form: &Form) -> Range<usize> {
@@ -320,6 +338,18 @@ mod tests {
         assert_eq!(
             text.as_deref(),
             Some("(defproject demo :knave \"0.19.0\" (dependencies (other \"1.0\")))\n")
+        );
+    }
+
+    #[test]
+    fn setting_a_field_after_a_commented_name_keeps_the_comment_on_the_name() {
+        let text = edited(
+            "(defproject demo ; the name\n  :version \"1.0.0\")\n",
+            |editor| editor.with_field("knave", "\"0.19.0\""),
+        );
+        assert_eq!(
+            text.as_deref(),
+            Some("(defproject demo ; the name\n:knave \"0.19.0\"\n  :version \"1.0.0\")\n")
         );
     }
 

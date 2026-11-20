@@ -21,12 +21,12 @@ fn make_animal(name: &str) -> Animal<'_> {
     Animal { name }
 }
 
-fn uppercase_name<A: HasName + Copy>(x: A) -> String {
-    x.name().to_uppercase()
+fn uppercase_name<A: field_traits::HasName + Copy>(x: A) -> String {
+    field_traits::HasName::name(&x).to_uppercase()
 }
 
-fn hello<A: HasName + Copy>(x: A) -> String {
-    format!("hello {}", x.name())
+fn hello<A: field_traits::HasName + Copy>(x: A) -> String {
+    format!("hello {}", field_traits::HasName::name(&x))
 }
 
 fn main() {
@@ -37,17 +37,19 @@ fn main() {
     println!("{}", hello(make_animal("rex")))
 }
 
-trait HasName {
-    fn name(&self) -> &str;
+mod field_traits {
+    pub trait HasName {
+        fn name(&self) -> &str;
+    }
 }
 
-impl<'a> HasName for User<'a> {
+impl<'a> field_traits::HasName for User<'a> {
     fn name(&self) -> &str {
         self.name
     }
 }
 
-impl<'a> HasName for Animal<'a> {
+impl<'a> field_traits::HasName for Animal<'a> {
     fn name(&self) -> &str {
         self.name
     }

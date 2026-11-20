@@ -1,13 +1,12 @@
-use knave_expand::mangle::NameMangler;
-
 use super::emitted_types::EmittedTypes;
 use super::field_trait_path::FieldTraitPath;
 use super::fragment::Fragment;
 use super::item_lifetimes::ItemLifetimes;
+use super::module_tree::ModuleTree;
 use super::plan::EmitPlan;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
 use crate::core::{BindingId, ModuleId};
-use crate::types::{FieldTraitPlan, Type, TypedProgram};
+use crate::types::{FieldGetterName, FieldTraitPlan, FieldTraits, Type, TypedProgram};
 
 pub struct FieldTraitItems<'a> {
     program: &'a TypedProgram,
@@ -16,13 +15,15 @@ pub struct FieldTraitItems<'a> {
 }
 
 struct FieldTrait<'p> {
-    binding: BindingId,
+    name: String,
     path: String,
     getter: String,
     plan: &'p FieldTraitPlan,
 }
 
 impl<'a> FieldTraitItems<'a> {
+    const CRATE_ITEMS: &'static str = "use super::*;";
+
     pub fn new(program: &'a TypedProgram, plan: &'a EmitPlan<'a>, types: EmittedTypes<'a>) -> Self {
         Self {
             program,
@@ -42,10 +43,58 @@ impl<'a> FieldTraitItems<'a> {
             .traits()
             .rust_paths()
             .field_traits();
-        (field_traits.plans())
+        let traits: Vec<FieldTrait> = (field_traits.plans())
             .filter_map(|(binding, plan)| self.field_trait(binding, plan))
-            .flat_map(|field_trait| self.items(&types, &field_trait))
+            .collect();
+        if traits.is_empty() {
+            return Vec::new();
+        }
+        let implementations = (traits.iter()).flat_map(|field_trait| {
+            (field_trait.plan.implementors.iter())
+                .map(|implementor| self.implementation(&types, field_trait, implementor))
+        });
+        std::iter::once(self.trait_module(&types, &traits))
+            .chain(implementations)
             .collect()
+    }
+
+    fn trait_module(&self, types: &RustTypes, traits: &[FieldTrait]) -> Vec<Fragment> {
+        let mut inner = vec![Fragment::Newline];
+        if traits
+            .iter()
+            .any(|field_trait| self.reads_crate_type(&field_trait.plan.read))
+        {
+            inner.extend([
+                Fragment::Text(Self::CRATE_ITEMS.to_string()),
+                Fragment::Newline,
+                Fragment::Newline,
+            ]);
+        }
+        let declarations = traits
+            .iter()
+            .map(|field_trait| self.declaration(types, field_trait));
+        inner.extend(ModuleTree::separated(declarations.collect()));
+        let visibility = FieldTraitPath::new(self.program).visibility();
+        vec![
+            Fragment::Text(format!("{visibility}mod {} {{", FieldTraits::MODULE)),
+            Fragment::Indented(inner),
+            Fragment::Newline,
+            Fragment::Text("}".to_string()),
+        ]
+    }
+
+    fn reads_crate_type(&self, read: &Type) -> bool {
+        let declared = |binding: &BindingId| {
+            (self.program.modules.iter())
+                .any(|module| module.structs.contains(binding) || module.enums.contains(binding))
+        };
+        match read {
+            Type::Named(binding, _) if declared(binding) => true,
+            _ => read
+                .parts()
+                .into_iter()
+                .any(|part| self.reads_crate_type(part)),
+        }
     }
 
     fn field_trait<'p>(
@@ -54,30 +103,20 @@ impl<'a> FieldTraitItems<'a> {
         plan: &'p FieldTraitPlan,
     ) -> Option<FieldTrait<'p>> {
         let traits = self.program.declarations.traits();
-        let path = traits.table().get(binding)?.path.to_string();
+        let name = traits.table().get(binding)?.path.to_string();
         let field = traits.rust_paths().field_traits().field_of(binding)?;
         Some(FieldTrait {
-            binding,
-            path,
-            getter: NameMangler::value(field),
+            name,
+            path: FieldTraitPath::new(self.program).of(binding, self.program.entry)?,
+            getter: FieldGetterName::of(field),
             plan,
         })
     }
 
-    fn items(&self, types: &RustTypes, field_trait: &FieldTrait) -> Vec<Vec<Fragment>> {
-        let declaration = self.declaration(types, field_trait);
-        let implementations = (field_trait.plan.implementors.iter())
-            .map(|implementor| self.implementation(types, field_trait, implementor));
-        std::iter::once(declaration)
-            .chain(implementations)
-            .collect()
-    }
-
     fn declaration(&self, types: &RustTypes, field_trait: &FieldTrait) -> Vec<Fragment> {
         let read = Self::trait_read(types, field_trait.plan);
-        let visibility = FieldTraitPath::new(self.program).visibility(field_trait.binding);
         vec![
-            Fragment::Text(format!("{visibility}trait {} {{", field_trait.path)),
+            Fragment::Text(format!("pub trait {} {{", field_trait.name)),
             Fragment::Indented(vec![Fragment::Text(format!(
                 "fn {}(&self) -> {read};",
                 field_trait.getter

@@ -1,0 +1,21 @@
+(defstruct big
+  :a int
+  :b int
+  :c int)
+
+(defstruct cat
+  :pos big)
+
+(defstruct dog
+  :pos big)
+
+(defn push-pos! (out x)
+  (push! out (:pos x)))
+
+(defn main ()
+  (let (v (vec))
+    (push-pos! (mut v)
+               (->cat (->big 1 2 3)))
+    (push-pos! (mut v)
+               (->dog (->big 4 5 6)))
+    (println (len v))))

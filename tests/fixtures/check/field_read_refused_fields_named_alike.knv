@@ -1,0 +1,21 @@
+(defstruct user
+  :full-name str)
+
+(defstruct animal
+  :full-name str)
+
+(defstruct cat
+  :full_name str)
+
+(defstruct dog
+  :full_name str)
+
+(defn a (x) (str "a " (:full-name x)))
+
+(defn b (x) (str "b " (:full_name x)))
+
+(defn main ()
+  (println (a (->user "ana")))
+  (println (a (->animal "rex")))
+  (println (b (->cat "tom")))
+  (println (b (->dog "fido"))))

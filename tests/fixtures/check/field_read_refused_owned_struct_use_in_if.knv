@@ -1,0 +1,17 @@
+(defstruct pet
+  :name string)
+
+(defstruct user
+  :pet pet)
+
+(defstruct owner
+  :pet pet)
+
+(defn pet-or (x)
+  (if (> 1 0)
+    (:pet x)
+    (->pet (str "none"))))
+
+(defn main ()
+  (println (:name (pet-or (->user (->pet (str "rex"))))))
+  (println (:name (pet-or (->owner (->pet (str "tom")))))))

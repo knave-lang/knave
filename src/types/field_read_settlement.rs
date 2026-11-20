@@ -1,29 +1,26 @@
 use std::rc::Rc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
-use super::field_traits::{FieldTraitPlan, FieldTraits};
+use super::field_read::FieldRead;
+use super::field_reader::FieldReader;
+use super::field_traits::FieldTraitPlan;
 use super::open_read::OpenRead;
 use super::pinning::InstantiationReport;
-use super::read_kind::ReadKind;
-use super::ty::{Bound, GenericId, Type};
-use super::typed::{TypedDefinition, TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
-use crate::core::BindingId;
+use super::reaching_structs::ReachingStructs;
+use super::read_settlements::ReadSettlements;
+use super::reader_shape::ReaderShape;
+use super::ty::{GenericId, Type};
+use super::typed::{TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
+use super::unborrowed::Unborrowed;
+use crate::core::{BindingId, FieldLabel};
 use crate::diagnostic::Diagnostics;
 
 pub struct FieldReadSettlement<'r> {
     report: &'r InstantiationReport,
-}
-
-struct Reader {
-    binding: BindingId,
-    owner: GenericId,
-    read: Type,
-    field: Rc<str>,
-    trait_binding: BindingId,
 }
 
 enum Outcome {
@@ -32,19 +29,17 @@ enum Outcome {
     Disagreed,
 }
 
-type Settled = FxHashMap<GenericId, Type>;
-
 #[derive(Default)]
 struct Tally {
-    settlements: Settlements,
+    settlements: ReadSettlements,
     errors: Diagnostics,
-    plans: FxHashMap<BindingId, (FieldTraitPlan, Vec<Reader>)>,
+    agreements: FxHashMap<BindingId, TraitAgreement>,
 }
 
-#[derive(Default)]
-struct Settlements {
-    reads: Settled,
-    fixed: FxHashMap<(BindingId, GenericId), Type>,
+struct TraitAgreement {
+    plan: FieldTraitPlan,
+    readers: Vec<FieldReader>,
+    disagrees: bool,
 }
 
 impl<'r> FieldReadSettlement<'r> {
@@ -61,28 +56,28 @@ impl<'r> FieldReadSettlement<'r> {
         if !tally.errors.is_empty() {
             return Err(tally.errors);
         }
-        Self::apply(program, &tally.settlements);
+        tally.settlements.apply_to(program);
         tally.record_plans(&mut program.declarations);
         Ok(())
     }
 
-    fn count(&self, program: &TypedProgram, reader: Reader, tally: &mut Tally) {
-        match (self.outcome(program, &reader), &reader.read) {
-            (Outcome::Agreed(plan), _) if Self::escapes(program, &reader, &plan) => {
-                tally.refuse(program, &reader);
+    fn count(&self, program: &TypedProgram, reader: FieldReader, tally: &mut Tally) {
+        let shape = ReaderShape::new(program);
+        match self.outcome(program, &reader) {
+            Outcome::Agreed(plan) if shape.emits(&reader, &plan) => {
+                if shape.copies_owner(&plan) {
+                    tally.settlements.require_copy(&reader);
+                }
+                tally.agree(reader, plan);
             }
-            (Outcome::Agreed(plan), _) => tally.agree(reader, plan),
-            (Outcome::Disagreed, Type::Generic(_)) => tally.refuse(program, &reader),
-            (Outcome::Disagreed | Outcome::Unreached, _) => {}
+            Outcome::Agreed(_) | Outcome::Disagreed => tally.refuse(program, &reader),
+            Outcome::Unreached => {}
         }
     }
 
-    fn readers(program: &TypedProgram) -> Vec<Reader> {
-        let field_traits = &program.declarations.traits().rust_paths.field_traits;
-        let definitions = program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions);
+    fn readers(program: &TypedProgram) -> Vec<FieldReader> {
+        let field_traits = program.declarations.traits().rust_paths().field_traits();
+        let definitions = (program.modules.iter()).flat_map(|module| &module.definitions);
         let params = definitions.flat_map(|definition| {
             (definition.scheme.params.iter()).map(move |param| (definition.binding, param))
         });
@@ -90,7 +85,7 @@ impl<'r> FieldReadSettlement<'r> {
             .flat_map(|(binding, param)| {
                 param.bounds.iter().filter_map(move |bound| {
                     let field = field_traits.field_of(bound.binding)?;
-                    Some(Reader {
+                    Some(FieldReader {
                         binding,
                         owner: param.id,
                         read: bound.argument.clone()?,
@@ -102,24 +97,19 @@ impl<'r> FieldReadSettlement<'r> {
             .collect()
     }
 
-    fn outcome(&self, program: &TypedProgram, reader: &Reader) -> Outcome {
-        let mut visited = FxHashSet::default();
-        let structs = self.reaching_structs(reader.binding, reader.owner, &mut visited);
+    fn outcome(&self, program: &TypedProgram, reader: &FieldReader) -> Outcome {
+        let structs = ReachingStructs::new(self.report).of(reader.binding, reader.owner);
         let reads = OpenRead::new(CopyRules::new(&program.declarations, &program.generics));
-        let mut found: Vec<(Type, ReadKind)> = Vec::new();
+        let mut found: Vec<FieldRead> = Vec::new();
         let mut implementors: Vec<Type> = Vec::new();
         for (owner, arguments) in structs {
             let definition = program.declarations.types().structs.get(owner);
-            let Some((read, kind)) = definition.and_then(|found| reads.of(found, &reader.field))
-            else {
+            let read =
+                definition.and_then(|found| reads.instantiated(found, &reader.field, &arguments));
+            let Some(read) = read else {
                 continue;
             };
-            let replacements = (definition.into_iter())
-                .flat_map(|found| found.params.iter().map(|param| param.id))
-                .zip(arguments.iter().cloned())
-                .collect();
-            let implementor = Type::Named(owner, arguments.clone());
-            let read = (read.substitute(&replacements), kind);
+            let implementor = Type::Named(owner, arguments);
             if !found.contains(&read) {
                 found.push(read);
             }
@@ -129,209 +119,99 @@ impl<'r> FieldReadSettlement<'r> {
         }
         match found.as_slice() {
             [] => Outcome::Unreached,
-            [(read, kind)] => {
-                Outcome::Agreed(FieldTraitPlan::new(read.clone(), *kind, implementors))
-            }
+            [FieldRead { read, kind }] => Outcome::Agreed(FieldTraitPlan {
+                read: read.clone(),
+                kind: *kind,
+                implementors,
+            }),
             _ => Outcome::Disagreed,
         }
     }
 
-    fn reaching_structs(
-        &self,
-        binding: BindingId,
-        generic: GenericId,
-        visited: &mut FxHashSet<(BindingId, GenericId)>,
-    ) -> Vec<(BindingId, Vec<Type>)> {
-        let mut structs = Vec::new();
-        for (enclosing, used) in self.report.sited_uses_of(binding, generic) {
-            match used.map(Self::without_borrows) {
-                Some(Type::Named(owner, arguments)) => structs.push((owner, arguments)),
-                Some(Type::Generic(caller)) if visited.insert((enclosing, caller)) => {
-                    structs.extend(self.reaching_structs(enclosing, caller, visited));
-                }
-                _ => {}
-            }
-        }
-        structs
+    fn ambiguous_reads(program: &TypedProgram, reader: &FieldReader) -> Diagnostics {
+        let definitions = (program.modules.iter()).flat_map(|module| &module.definitions);
+        let refused = definitions.filter(|definition| definition.binding == reader.binding);
+        refused
+            .map(
+                |definition| match Self::first_read(&definition.value, reader.owner) {
+                    Some(label) => FieldOwnerProblems::ambiguous(&label.name, label.span),
+                    None => FieldOwnerProblems::ambiguous(&reader.field, definition.span),
+                },
+            )
+            .collect()
     }
 
-    fn without_borrows(mut used: Type) -> Type {
-        while let Type::Ref(_, inner) | Type::Mut(_, inner) = used {
-            used = *inner;
-        }
-        used
-    }
-
-    fn escapes(program: &TypedProgram, reader: &Reader, plan: &FieldTraitPlan) -> bool {
-        if plan.kind == ReadKind::BorrowOfStruct || !Self::holds_borrow(program, &plan.read) {
-            return false;
-        }
-        let definitions = program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions);
-        let exits = definitions
-            .filter(|definition| definition.binding == reader.binding)
-            .find_map(|definition| match &definition.scheme.body {
-                Type::Function(_, parameters, result) => {
-                    let changed = parameters
-                        .iter()
-                        .filter(|parameter| matches!(parameter, Type::Mut(..)));
-                    Some(
-                        changed
-                            .chain(std::iter::once(result.as_ref()))
-                            .collect::<Vec<_>>(),
-                    )
-                }
-                _ => None,
-            });
-        let settled: Settled = match reader.read {
-            Type::Generic(open) => std::iter::once((open, plan.read.clone())).collect(),
-            _ => Settled::default(),
-        };
-        let mut exits = exits.into_iter().flatten();
-        exits.any(|exit| Self::holds_borrow(program, &exit.substitute(&settled)))
-    }
-
-    fn holds_borrow(program: &TypedProgram, read: &Type) -> bool {
-        match read {
-            Type::Ref(..) | Type::Mut(..) => true,
-            Type::Named(binding, arguments) => {
-                program.has_lifetime_parameter(*binding)
-                    || arguments
-                        .iter()
-                        .any(|argument| Self::holds_borrow(program, argument))
-            }
-            _ => false,
-        }
-    }
-
-    fn ambiguous_reads(program: &TypedProgram, reader: &Reader) -> Diagnostics {
-        let mut found = Diagnostics::default();
-        let definitions = program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions);
-        for definition in definitions.filter(|definition| definition.binding == reader.binding) {
-            Self::collect_reads(&definition.value, reader.owner, &mut found);
-        }
-        found
-    }
-
-    fn collect_reads(expr: &TypedExpr, owner: GenericId, found: &mut Diagnostics) {
+    fn first_read(expr: &TypedExpr, owner: GenericId) -> Option<&FieldLabel> {
         if let TypedExprKind::Struct(TypedStructExpr::Field(value, label)) = &expr.kind
-            && Self::without_borrows(value.ty.clone()) == Type::Generic(owner)
+            && Unborrowed::of(&value.ty) == &Type::Generic(owner)
         {
-            found.push(FieldOwnerProblems::ambiguous(&label.name, label.span));
+            return Some(label);
         }
-        for child in expr.children() {
-            Self::collect_reads(child, owner, found);
-        }
-    }
-
-    fn apply(program: &mut TypedProgram, settled: &Settlements) {
-        let field_traits = &program.declarations.traits().rust_paths.field_traits;
-        for (id, param) in &mut program.generics {
-            for bound in &mut param.bounds {
-                *bound = bound.substituted(&settled.reads);
-            }
-            Self::fix_reads(field_traits, &mut param.bounds, settled.fixed_for(*id));
-        }
-        let definitions = program
-            .modules
-            .iter_mut()
-            .flat_map(|module| &mut module.definitions);
-        definitions
-            .for_each(|definition| Self::settle_definition(field_traits, definition, settled));
-    }
-
-    fn fix_reads(field_traits: &FieldTraits, bounds: &mut [Bound], fixed: Option<&Type>) {
-        let Some(read) = fixed else {
-            return;
-        };
-        for bound in bounds
-            .iter_mut()
-            .filter(|bound| field_traits.field_of(bound.binding).is_some())
-        {
-            bound.argument = Some(read.clone());
-        }
-    }
-
-    fn settle_definition(
-        field_traits: &FieldTraits,
-        definition: &mut TypedDefinition,
-        settled: &Settlements,
-    ) {
-        let scheme = &mut definition.scheme;
-        scheme
-            .params
-            .retain(|param| !settled.reads.contains_key(&param.id));
-        for param in &mut scheme.params {
-            for bound in &mut param.bounds {
-                *bound = bound.substituted(&settled.reads);
-            }
-            let fixed = settled.fixed.get(&(definition.binding, param.id));
-            Self::fix_reads(field_traits, &mut param.bounds, fixed);
-        }
-        scheme.body = scheme.body.substitute(&settled.reads);
-        Self::settle_expr(&mut definition.value, &settled.reads);
-    }
-
-    fn settle_expr(expr: &mut TypedExpr, settled: &Settled) {
-        expr.ty = expr.ty.substitute(settled);
-        if let TypedExprKind::Fn(lambda) = &mut expr.kind {
-            for param in &mut Rc::make_mut(lambda).params {
-                param.ty = param.ty.substitute(settled);
-            }
-        }
-        for child in expr.children_mut() {
-            Self::settle_expr(child, settled);
-        }
-    }
-}
-
-impl Settlements {
-    fn settle(&mut self, reader: &Reader, read: Type) {
-        match reader.read {
-            Type::Generic(open) => self.reads.insert(open, read),
-            _ => self.fixed.insert((reader.binding, reader.owner), read),
-        };
-    }
-
-    fn fixed_for(&self, owner: GenericId) -> Option<&Type> {
-        (self.fixed.iter())
-            .find_map(|((_, fixed_owner), read)| (*fixed_owner == owner).then_some(read))
+        (expr.children().into_iter()).find_map(|child| Self::first_read(child, owner))
     }
 }
 
 impl Tally {
-    fn refuse(&mut self, program: &TypedProgram, reader: &Reader) {
+    fn refuse(&mut self, program: &TypedProgram, reader: &FieldReader) {
         (self.errors).extend(FieldReadSettlement::ambiguous_reads(program, reader));
     }
 
-    fn agree(&mut self, reader: Reader, plan: FieldTraitPlan) {
+    fn agree(&mut self, reader: FieldReader, plan: FieldTraitPlan) {
         self.settlements.settle(&reader, plan.read.clone());
-        let (known, readers) = (self.plans)
-            .entry(reader.trait_binding)
-            .or_insert_with(|| (plan.clone(), Vec::new()));
-        if known.read == plan.read {
-            known.merge(plan);
-        } else {
-            known.disagrees = true;
+        match self.agreements.get_mut(&reader.trait_binding) {
+            Some(agreement) => agreement.join(reader, plan),
+            None => {
+                let binding = reader.trait_binding;
+                self.agreements
+                    .insert(binding, TraitAgreement::new(reader, plan));
+            }
         }
-        readers.push(reader);
     }
 
     fn refuse_disagreeing_readers(&mut self, program: &TypedProgram) {
-        let disagreeing = (self.plans.values()).filter(|(plan, _)| plan.disagrees);
-        for reader in disagreeing.flat_map(|(_, readers)| readers) {
-            (self.errors).extend(FieldReadSettlement::ambiguous_reads(program, reader));
+        for agreement in self.agreements.values() {
+            self.errors.extend(agreement.refusals(program));
         }
     }
 
     fn record_plans(self, declarations: &mut Declarations) {
-        for (binding, (plan, _)) in self.plans {
-            declarations.settle_field_trait(binding, plan);
+        for (binding, agreement) in self.agreements {
+            declarations.settle_field_trait(binding, agreement.into_plan());
         }
+    }
+}
+
+impl TraitAgreement {
+    fn new(reader: FieldReader, plan: FieldTraitPlan) -> Self {
+        Self {
+            plan,
+            readers: vec![reader],
+            disagrees: false,
+        }
+    }
+
+    fn join(&mut self, reader: FieldReader, plan: FieldTraitPlan) {
+        if self.plan.read != plan.read {
+            self.disagrees = true;
+        }
+        for implementor in plan.implementors {
+            if !self.plan.implementors.contains(&implementor) {
+                self.plan.implementors.push(implementor);
+            }
+        }
+        self.readers.push(reader);
+    }
+
+    fn refusals(&self, program: &TypedProgram) -> Diagnostics {
+        let mut refusals = Diagnostics::default();
+        let refused = self.readers.iter().filter(|_| self.disagrees);
+        for reader in refused {
+            refusals.extend(FieldReadSettlement::ambiguous_reads(program, reader));
+        }
+        refusals
+    }
+
+    fn into_plan(self) -> FieldTraitPlan {
+        self.plan
     }
 }

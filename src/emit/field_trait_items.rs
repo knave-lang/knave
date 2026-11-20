@@ -1,22 +1,22 @@
 use knave_expand::mangle::NameMangler;
 
 use super::emitted_types::EmittedTypes;
+use super::field_trait_path::FieldTraitPath;
 use super::fragment::Fragment;
+use super::item_lifetimes::ItemLifetimes;
 use super::plan::EmitPlan;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
 use crate::core::{BindingId, ModuleId};
-use crate::types::{FieldTraitPlan, ReadKind, Type, TypedProgram};
-
-pub type ImplementorLifetime = fn(&TypedProgram, &Type) -> Option<String>;
+use crate::types::{FieldTraitPlan, Type, TypedProgram};
 
 pub struct FieldTraitItems<'a> {
     program: &'a TypedProgram,
     plan: &'a EmitPlan<'a>,
     types: EmittedTypes<'a>,
-    lifetime_of: ImplementorLifetime,
 }
 
 struct FieldTrait<'p> {
+    binding: BindingId,
     path: String,
     getter: String,
     plan: &'p FieldTraitPlan,
@@ -28,14 +28,6 @@ impl<'a> FieldTraitItems<'a> {
             program,
             plan,
             types,
-            lifetime_of: |_, _| None,
-        }
-    }
-
-    pub fn with_lifetimes(self, lifetime_of: ImplementorLifetime) -> Self {
-        Self {
-            lifetime_of,
-            ..self
         }
     }
 
@@ -65,6 +57,7 @@ impl<'a> FieldTraitItems<'a> {
         let path = traits.table().get(binding)?.path.to_string();
         let field = traits.rust_paths().field_traits().field_of(binding)?;
         Some(FieldTrait {
+            binding,
             path,
             getter: NameMangler::value(field),
             plan,
@@ -72,7 +65,7 @@ impl<'a> FieldTraitItems<'a> {
     }
 
     fn items(&self, types: &RustTypes, field_trait: &FieldTrait) -> Vec<Vec<Fragment>> {
-        let declaration = Self::declaration(types, field_trait);
+        let declaration = self.declaration(types, field_trait);
         let implementations = (field_trait.plan.implementors.iter())
             .map(|implementor| self.implementation(types, field_trait, implementor));
         std::iter::once(declaration)
@@ -80,10 +73,11 @@ impl<'a> FieldTraitItems<'a> {
             .collect()
     }
 
-    fn declaration(types: &RustTypes, field_trait: &FieldTrait) -> Vec<Fragment> {
+    fn declaration(&self, types: &RustTypes, field_trait: &FieldTrait) -> Vec<Fragment> {
         let read = Self::trait_read(types, field_trait.plan);
+        let visibility = FieldTraitPath::new(self.program).visibility(field_trait.binding);
         vec![
-            Fragment::Text(format!("trait {} {{", field_trait.path)),
+            Fragment::Text(format!("{visibility}trait {} {{", field_trait.path)),
             Fragment::Indented(vec![Fragment::Text(format!(
                 "fn {}(&self) -> {read};",
                 field_trait.getter
@@ -99,16 +93,12 @@ impl<'a> FieldTraitItems<'a> {
         field_trait: &FieldTrait,
         implementor: &Type,
     ) -> Vec<Fragment> {
-        let lifetime = (self.lifetime_of)(self.program, implementor);
+        let lifetime = ItemLifetimes::new(self.program).of_implementor(implementor);
         let scope = LifetimeScope::default().with_elided(lifetime.clone());
         let implementor_name = types.show_in(implementor, TypePosition::Signature, &scope);
         let read = Self::trait_read(types, field_trait.plan);
         let impl_generics = lifetime.map(|name| format!("<{name}>")).unwrap_or_default();
-        let borrow = if field_trait.plan.kind == ReadKind::BorrowOfStruct {
-            "&"
-        } else {
-            ""
-        };
+        let borrow = field_trait.plan.kind.getter_prefix();
         vec![
             Fragment::Text(format!(
                 "impl{impl_generics} {} for {implementor_name} {{",

@@ -1,0 +1,13 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defn namer (x) (fn () (:name x)))
+
+(defn main ()
+  (local f (namer (->user "ana")))
+  (println (f))
+  (local g (namer (->animal "rex")))
+  (println (g)))

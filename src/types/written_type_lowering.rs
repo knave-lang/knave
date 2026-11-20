@@ -78,9 +78,9 @@ impl<'l> WrittenTypeLowering<'l> {
             return Ok(Bound::plain(bound.binding));
         };
         if let Some(field) = &bound.field {
-            let field_traits = &self.declarations.traits().rust_paths.field_traits;
+            let field_traits = &self.declarations.traits().rust_paths().field_traits();
             let field_trait = (field_traits.trait_of(field))
-                .ok_or_else(|| FieldOwnerProblems::undeclared_written(field, argument.span()))?;
+                .ok_or_else(|| self.unregistered_field(field, argument.span()))?;
             return Ok(Bound::with_argument(
                 field_trait,
                 self.lower_type(argument, scope)?,
@@ -89,6 +89,17 @@ impl<'l> WrittenTypeLowering<'l> {
         self.check_trait_argument(bound.binding, argument.span())?;
         let argument = self.lower_type(argument, scope)?;
         Ok(Bound::with_argument(bound.binding, argument))
+    }
+
+    fn unregistered_field(&self, field: &str, span: Span) -> Diagnostic {
+        let structs = &self.declarations.types().structs;
+        match structs.with_field(field).as_slice() {
+            [owner] => {
+                let owner = self.bindings.get(*owner).name();
+                FieldOwnerProblems::unshared_written(field, owner, span)
+            }
+            _ => FieldOwnerProblems::undeclared_written(field, span),
+        }
     }
 
     pub(super) fn lower_binders(

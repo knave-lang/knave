@@ -360,11 +360,7 @@ mod tests {
             let variable = self.binding("value");
             let binder = TypeBinder {
                 variable,
-                bounds: vec![TypeBound {
-                    binding: bound,
-                    argument: None,
-                    field: None,
-                }],
+                bounds: vec![TypeBound::new(bound, None)],
                 span: Self::span(),
                 lifetime: false,
             };
@@ -541,11 +537,7 @@ mod tests {
     #[test]
     fn a_written_trait_reaches_its_supertraits_and_method_types() {
         assert!(DeclaredTraits::new().reaches_through(|traits, named| {
-            let supertrait = TypeBound {
-                binding: named,
-                argument: None,
-                field: None,
-            };
+            let supertrait = TypeBound::new(named, None);
             let self_variable = traits.binding("self");
             ItemKind::Trait(
                 traits.binding("shown"),

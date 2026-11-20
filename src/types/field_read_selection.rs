@@ -1,6 +1,7 @@
 use super::selection::Selection;
 use super::traits::TraitTable;
 use super::ty::{Bound, Type};
+use super::unborrowed::Unborrowed;
 use super::unifier::Unifier;
 use crate::core::PrimitiveType;
 
@@ -53,15 +54,8 @@ impl<'u> FieldReadSelection<'u> {
     }
 
     fn adjusts_to(read: &Type, expected: &Type) -> bool {
-        let read = Self::viewed(Self::without_borrows(read));
-        read == Self::viewed(Self::without_borrows(expected))
-    }
-
-    fn without_borrows(value: &Type) -> &Type {
-        match value {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => Self::without_borrows(inner),
-            _ => value,
-        }
+        let viewed = Self::viewed(Unborrowed::of(read)) == Self::viewed(Unborrowed::of(expected));
+        viewed && expected.reference_depth() <= read.reference_depth()
     }
 
     fn viewed(value: &Type) -> Type {

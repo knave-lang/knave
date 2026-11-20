@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/emit/field_trait_plain_owned.knv
 ---
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -21,18 +21,14 @@ fn make_film(title: String) -> Film {
     Film { title }
 }
 
-fn loud(title: &String) -> String {
-    title.to_uppercase()
-}
-
-fn shout<A: HasTitle>(x: &A) -> String {
-    loud(&x.title())
+fn measure<A: HasTitle>(x: &A) -> usize {
+    x.title().len()
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", shout(&make_book("dune".to_string())));
-    println!("{}", shout(&make_film("jaws".to_string())))
+    println!("{}", measure(&make_book("dune".to_string())));
+    println!("{}", measure(&make_film("jaws!".to_string())))
 }
 
 trait HasTitle {

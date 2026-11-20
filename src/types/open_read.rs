@@ -1,4 +1,5 @@
 use super::copy::CopyRules;
+use super::field_read::FieldRead;
 use super::read_kind::ReadKind;
 use super::structs::StructDefinition;
 use super::ty::Type;
@@ -12,17 +13,33 @@ impl<'a> OpenRead<'a> {
         Self { copy }
     }
 
-    pub(super) fn of(
+    pub(super) fn of(&self, definition: &StructDefinition, field: &str) -> Option<FieldRead> {
+        let declared = definition.field(field)?;
+        Some(self.classified(declared, declared.without_written_lifetimes()))
+    }
+
+    pub(super) fn instantiated(
         &self,
         definition: &StructDefinition,
         field: &str,
-    ) -> Option<(Type, ReadKind)> {
-        let declared = definition.field(field)?.without_written_lifetimes();
-        Some(match declared {
-            Type::Ref(..) => (declared, ReadKind::StoredBorrow),
-            Type::Function(..) => (declared, ReadKind::Value),
-            _ if self.copy.is_small_copy(&declared) => (declared, ReadKind::Value),
-            _ => (Type::shared(declared), ReadKind::BorrowOfStruct),
-        })
+        arguments: &[Type],
+    ) -> Option<FieldRead> {
+        let declared = definition.field(field)?;
+        let field_type = definition.instantiated_field(field, arguments)?;
+        Some(self.classified(declared, field_type))
+    }
+
+    fn classified(&self, declared: &Type, field_type: Type) -> FieldRead {
+        let kind = match declared {
+            Type::Ref(..) => ReadKind::StoredBorrow,
+            Type::Function(..) => ReadKind::Value,
+            _ if self.copy.is_small_copy(&field_type) => ReadKind::Value,
+            _ => ReadKind::BorrowOfStruct,
+        };
+        let read = match kind {
+            ReadKind::BorrowOfStruct => Type::shared(field_type),
+            ReadKind::Value | ReadKind::StoredBorrow => field_type,
+        };
+        FieldRead { read, kind }
     }
 }

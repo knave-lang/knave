@@ -1,0 +1,4 @@
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(export hello)

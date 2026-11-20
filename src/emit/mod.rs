@@ -69,6 +69,7 @@ mod template_arguments;
 mod temporary_scope;
 #[cfg(test)]
 mod test_program;
+mod trait_use_search;
 mod tree_position;
 mod type_anchor;
 mod type_context;

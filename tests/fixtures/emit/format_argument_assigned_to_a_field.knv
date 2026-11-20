@@ -1,0 +1,10 @@
+(def show-assignment
+  (rust "{{ struct Shown<'a> {{ y: &'a str }} let mut x = Shown {{ y: \"\" }}; println!(\"{{:?}} {{}}\", x.y = {0}, x.y); }}"
+    (fn ((ref str)) unit)))
+
+(defn main ()
+  (local tricks (vec "feint" "vanish"))
+  (for-each (iter tricks)
+    (fn (trick) (show-assignment trick)))
+  (push! tricks "dash")
+  (println (len tricks)))

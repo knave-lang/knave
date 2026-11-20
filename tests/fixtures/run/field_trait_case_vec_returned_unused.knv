@@ -1,0 +1,12 @@
+(defstruct user
+  :p (vec int))
+
+(defstruct animal
+  :p (vec int))
+
+(defn ps (x) (:p x))
+
+(defn main ()
+  (ps (->user (vec 1)))
+  (ps (->animal (vec)))
+  (println "ok"))

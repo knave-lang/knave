@@ -1,0 +1,12 @@
+(defstruct user
+  :n int)
+
+(defstruct animal
+  :n int)
+
+(defn both (x y)
+  (+ (:n x) (* 10 (:n y))))
+
+(defn main ()
+  (println (both (->user 1) (->animal 2)))
+  (println (both (->animal 3) (->user 4))))

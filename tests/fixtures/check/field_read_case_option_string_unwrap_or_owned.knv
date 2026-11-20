@@ -1,0 +1,12 @@
+(defstruct user
+  :n (option string))
+
+(defstruct animal
+  :n (option string))
+
+(defn n-or (x d) (unwrap-or (:n x) d))
+
+(defn main ()
+  (println (n-or (->user (some (str "a")))
+                 (str "z")))
+  (println (n-or (->animal none) (str "w"))))

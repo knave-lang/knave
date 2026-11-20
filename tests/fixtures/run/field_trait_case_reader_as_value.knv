@@ -1,0 +1,13 @@
+(defstruct user
+  :n int)
+
+(defstruct animal
+  :n int)
+
+(defn n-of (x) (:n x))
+
+(defn main ()
+  (let (us (vec (->user 1) (->user 2))
+        as (vec (->animal 5)))
+    (println (sum (map (iter us) n-of)))
+    (println (sum (map (iter as) n-of)))))

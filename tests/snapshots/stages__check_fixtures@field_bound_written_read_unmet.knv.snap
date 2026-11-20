@@ -3,18 +3,20 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/check/field_bound_written_read_unmet.knv
 ---
-error[L0404]: `cat` does not implement `(has :age (ref int))`
+error[L0404]: `cat` reads `:age` as `int`, but this call passes `(ref int)`
   --> check/field_bound_written_read_unmet.knv:14:20
    |
 14 |   (println (age-of (->cat 1)))
-   |                    ^^^^^^^^^ this needs `(has :age (ref int))`
+   |                    ^^^^^^^^^ this `cat` reads `:age` as `int`
    |
+   = help: pass a `int`, or write `int` as the read of the bound
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `dog` does not implement `(has :age (ref int))`
+error[L0404]: `dog` reads `:age` as `int`, but this call passes `(ref int)`
   --> check/field_bound_written_read_unmet.knv:15:20
    |
 15 |   (println (age-of (->dog 2))))
-   |                    ^^^^^^^^^ this needs `(has :age (ref int))`
+   |                    ^^^^^^^^^ this `dog` reads `:age` as `int`
    |
+   = help: pass a `int`, or write `int` as the read of the bound
    = note: run `knave doc L0404` for an explanation

@@ -1,0 +1,11 @@
+(defstruct user
+  :loop int)
+
+(defstruct animal
+  :loop int)
+
+(defn get-it (x) (+ (:loop x) 1))
+
+(defn main ()
+  (println (get-it (->user 1)))
+  (println (get-it (->animal 2))))

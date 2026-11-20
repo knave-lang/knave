@@ -4,6 +4,7 @@ use super::declared_types::DeclaredTypes;
 use super::derivable_traits::DerivableTraits;
 use super::enum_trait_help::EnumTraitHelp;
 use super::explanation_sources::ExplanationSources;
+use super::field_read_mismatch::FieldReadMismatch;
 use super::implementor_listing::ImplementorListing;
 use super::missing_trait::MissingTrait;
 use super::problems::TypeProblems;
@@ -25,6 +26,9 @@ impl<'a> MissingTraitExplanation<'a> {
     }
 
     pub(super) fn explain(&self, missing: MissingTrait<'_>) -> Diagnostic {
+        if let Some(mismatch) = FieldReadMismatch::new(&self.sources).explain(&missing) {
+            return mismatch;
+        }
         let (bound, implementor) = (missing.bound, missing.implementor);
         let mut diagnostic = self.diagnostic(missing);
         if let Type::Named(binding, _) = implementor {

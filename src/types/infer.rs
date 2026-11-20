@@ -2735,11 +2735,7 @@ impl TypeChecker {
         let mut parameters = vec![Type::mutable(target)];
         parameters.extend((0..depth).map(|_| Collection::INDEX));
         parameters.push(item_type);
-        let mut template = "{0}".to_string();
-        for index in 1..=depth {
-            template.push_str(&format!("[{{index {index}}}]"));
-        }
-        template.push_str(&format!(" = {{{}}}", depth + 1));
+        let template = SyntheticTemplate::set_at(depth);
         let mut arguments = Vec::with_capacity(keys.len() + 1);
         arguments.extend(keys.iter().cloned());
         arguments.push(item.clone());

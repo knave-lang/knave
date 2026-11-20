@@ -5,7 +5,6 @@ use rustc_hash::FxHashSet;
 
 use super::argument_role::ArgumentRole;
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
-use super::converted_argument::ConvertedArgument;
 use super::destructured_wrapper::DestructuredWrapper;
 use super::double_negation::DoubleNegation;
 use super::emitted_types::EmittedTypes;
@@ -1382,9 +1381,10 @@ impl<'a> ExpressionEmitter<'a> {
         inner.extend(value_code.fragments);
         inner.push(Fragment::Text(";".to_string()));
         inner.push(Fragment::Newline);
-        if let Some(collection) = Collection::of(&value.ty, self.types.rust_types())
-            && collection.is_map()
-        {
+        let Some(converted) = Collection::of(&value.ty, self.types.rust_types())
+            .and_then(|collection| collection.key_conversion())
+            .map(super::converted_argument::ConvertedArgument::new)
+        else {
             let key_code = self.expr(&keys[0]);
             inner.push(Fragment::Text(format!("{name}.insert(")));
             inner.extend(key_code.fragments);
@@ -1394,11 +1394,11 @@ impl<'a> ExpressionEmitter<'a> {
             inner.push(Fragment::Newline);
             inner.push(Fragment::Text(name.to_string()));
             return inner;
-        }
+        };
         inner.push(Fragment::Text(name.to_string()));
         for key in keys {
             inner.push(Fragment::Text("[".to_string()));
-            inner.extend(ConvertedArgument::INDEX.code(&self.expr(key)).fragments);
+            inner.extend(converted.code(&self.expr(key)).fragments);
             inner.push(Fragment::Text("]".to_string()));
         }
         inner.push(Fragment::Text(" = ".to_string()));

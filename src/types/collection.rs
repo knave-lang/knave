@@ -1,6 +1,6 @@
 use super::rust_types::RustTypeTable;
 use super::ty::Type;
-use crate::core::{BindingId, PrimitiveType};
+use crate::core::{BindingId, Conversion};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CollectionKind {
@@ -18,7 +18,7 @@ pub struct Collection {
 }
 
 impl Collection {
-    pub const INDEX: Type = Type::Primitive(PrimitiveType::I64);
+    pub const INDEX: Type = Type::Primitive(Conversion::ARGUMENT);
 
     pub fn of_referent(ty: &Type, rust_types: &RustTypeTable) -> Option<Self> {
         match ty {
@@ -87,8 +87,9 @@ impl Collection {
         &self.value
     }
 
-    pub fn is_sequence(&self) -> bool {
+    pub fn key_conversion(&self) -> Option<Conversion> {
         matches!(self.kind, CollectionKind::Vector | CollectionKind::Slice)
+            .then_some(Conversion::Index)
     }
 
     pub fn is_map(&self) -> bool {

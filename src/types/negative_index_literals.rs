@@ -16,19 +16,15 @@ impl<'c> NegativeIndexLiterals<'c> {
     }
 
     pub(super) fn problems(&self, arguments: &[TypedArgument]) -> Diagnostics {
-        let mut problems = Diagnostics::default();
         let checked = self
             .conversions
             .iter()
             .filter(|(_, conversion)| conversion.rejects_negative_literal())
             .filter_map(|(position, _)| arguments.get(*position));
-        for argument in checked {
-            Self::report_tails(&argument.value, &mut problems);
-        }
-        problems
+        Self::in_values(checked.map(|argument| &argument.value))
     }
 
-    pub(super) fn in_values(values: &[TypedExpr]) -> Diagnostics {
+    pub(super) fn in_values<'v>(values: impl IntoIterator<Item = &'v TypedExpr>) -> Diagnostics {
         let mut problems = Diagnostics::default();
         for value in values {
             Self::report_tails(value, &mut problems);

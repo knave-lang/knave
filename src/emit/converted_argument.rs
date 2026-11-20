@@ -6,9 +6,6 @@ pub struct ConvertedArgument {
 }
 
 impl ConvertedArgument {
-    pub const INDEX: Self = Self {
-        conversion: Conversion::Index,
-    };
     const INDEX_CALL: (&'static str, &'static str) = ("crate::rt::index(", ")");
     const OPTIONAL_INDEX_CALL: (&'static str, &'static str) =
         ("usize::try_from(", ").unwrap_or(usize::MAX)");

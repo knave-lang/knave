@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
-use super::{BindingId, DroppedBorrows, Keyword, PairPosition, ReferenceKind, TypeExpr};
+use super::{
+    BindingId, DroppedBorrows, Keyword, PairPosition, ReferenceKind, TypeExpr, TypeExprKind,
+};
 use crate::mangle::NameMangler;
 use crate::reader::{Form, Number};
 use crate::source::Span;
@@ -285,6 +287,12 @@ pub struct RustTemplate {
     pub template: Rc<str>,
     pub type_expr: TypeExpr,
     pub clauses: Vec<RustClause>,
+}
+
+impl RustTemplate {
+    pub fn has_written_type(&self) -> bool {
+        !matches!(self.type_expr.kind(), TypeExprKind::Hole)
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]

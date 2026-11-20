@@ -1,4 +1,5 @@
 use super::template_ties::TemplateTies;
+use crate::core::{Conversion, RustTemplate};
 
 pub struct SyntheticTemplate {
     text: &'static str,
@@ -47,6 +48,19 @@ impl SyntheticTemplate {
             lifetime: &[],
             held: &[],
         }
+    }
+
+    pub fn set_at(depth: usize) -> String {
+        let indexes: String = (1..=depth)
+            .map(|index| format!("[{}]", Conversion::Index.placeholder(index)))
+            .collect();
+        format!("{{0}}{indexes} = {{{}}}", depth + 1)
+    }
+
+    pub fn builds(template: &RustTemplate) -> bool {
+        let text = &*template.template;
+        !template.has_written_type()
+            && (Self::named(text).is_some() || text == Self::set_at(text.matches('[').count()))
     }
 
     pub fn named(text: &str) -> Option<&'static Self> {

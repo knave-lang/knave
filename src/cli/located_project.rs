@@ -72,6 +72,7 @@ impl LocatedProject {
         let Some(root) = Self::nearest_root(directory)? else {
             return Ok(None);
         };
+        CompilerCheck::refuse_before_loading(&root, terminal)?;
         let mut scratch = terminal.scratch();
         let walked = LibraryWalk::walk(&mut scratch, &root, store)?;
         let crates = ProjectCrates::new(

@@ -21,7 +21,6 @@ use super::terminal::Terminal;
 use super::terminal_settings::TerminalSettings;
 use super::unreadable_file::UnreadableFile;
 use super::working_directory::WorkingDirectory;
-use crate::diagnostic::Diagnostics;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::modules::ModuleSources;
@@ -367,7 +366,7 @@ impl NearbyProjects {
         if !self.checked_roots.insert(root.clone()) {
             return Ok(());
         }
-        Self::refuse_an_older_compiler(&root, terminal)
+        CompilerCheck::refuse_before_loading(&root, terminal)
     }
 
     fn absolute_directory_of(path: &Path) -> PathBuf {
@@ -410,16 +409,5 @@ impl NearbyProjects {
             CompilerCheck::EVERY_MISMATCH.report(&project.project_file(), terminal)?;
         }
         Ok(located)
-    }
-
-    fn refuse_an_older_compiler(root: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
-        let mut scratch = terminal.scratch();
-        let project_file = root.join(Language::project_file_name());
-        let Some(refusal) = scratch.sources().projects().version_refusal(&project_file) else {
-            return Ok(());
-        };
-        Err(scratch
-            .source_report()
-            .print(&Diagnostics::from_iter([refusal])))
     }
 }

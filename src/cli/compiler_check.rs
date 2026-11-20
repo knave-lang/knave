@@ -3,6 +3,7 @@ use std::path::Path;
 use super::exit_status::ExitStatus;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::language::Language;
 use crate::project::{CompilerVersion, Project, ReleaseVersion};
 
 type VersionProblem = fn(&CompilerVersion, ReleaseVersion) -> Option<Diagnostic>;
@@ -18,6 +19,17 @@ impl CompilerCheck {
     pub const OLDER_COMPILER: Self = Self {
         problem_of: CompilerVersion::refusal,
     };
+
+    pub fn refuse_before_loading(root: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
+        let mut scratch = terminal.scratch();
+        let project_file = root.join(Language::project_file_name());
+        let Some(refusal) = scratch.sources().projects().version_refusal(&project_file) else {
+            return Ok(());
+        };
+        Err(scratch
+            .source_report()
+            .print(&Diagnostics::from_iter([refusal])))
+    }
 
     pub fn report(&self, project_file: &Path, terminal: &Terminal) -> Result<(), ExitStatus> {
         let mut scratch = terminal.scratch();

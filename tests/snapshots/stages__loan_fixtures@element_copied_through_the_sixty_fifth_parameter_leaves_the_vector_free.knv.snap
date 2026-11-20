@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/element_copied_through_the_sixty_fifth_parameter_leaves_the_vector_free.knv
+---
+main
+  3:29 borrow `s`: no live loan
+  4:16 borrow `names`: `s` lent at 3:29, held by `names`
+  20:11 borrow `names`: `s` lent at 3:29, held by `names`
+  21:10 change `names`: `s` lent at 3:29, held by `names`

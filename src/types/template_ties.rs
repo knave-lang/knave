@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use super::first_positions::FirstPositions;
 use super::pipelines::Pipelines;
 use super::position_tie::PositionTie;
 use super::tied_positions::TiedPositions;
@@ -10,7 +9,7 @@ use super::ty::{GenericId, Lifetime, Scheme, Type};
 pub struct TemplateTies {
     lifetime: TiedPositions,
     held: TiedPositions,
-    beneath: FirstPositions,
+    beneath: TiedPositions,
 }
 
 impl TemplateTies {
@@ -18,14 +17,14 @@ impl TemplateTies {
         Self {
             lifetime: TiedPositions::of(lifetime.iter().copied()),
             held: TiedPositions::of(held.iter().copied()),
-            beneath: FirstPositions::default(),
+            beneath: TiedPositions::default(),
         }
     }
 
     #[cfg(test)]
     pub fn beneath(self, positions: &[usize]) -> Self {
         Self {
-            beneath: FirstPositions::of(positions.iter().copied()),
+            beneath: TiedPositions::of(positions.iter().copied()),
             ..self
         }
     }
@@ -41,7 +40,7 @@ impl TemplateTies {
         let held = TiedPositions::of(Self::held_ties(parameters, result, &generics)).union(
             &TiedPositions::of(Self::adapted_iterators(parameters, result, pipelines)),
         );
-        let beneath = FirstPositions::of(held.positions().filter(|position| {
+        let beneath = TiedPositions::of(held.positions().filter(|position| {
             !lifetime.contains(*position)
                 && matches!(parameters[*position], Type::Ref(..) | Type::Mut(..))
         }));
@@ -56,7 +55,7 @@ impl TemplateTies {
         let (known, other) = (known?, other?);
         let held = known.held.union(&other.held);
         let beneath =
-            FirstPositions::of(held.positions().filter(|position| {
+            TiedPositions::of(held.positions().filter(|position| {
                 known.reads_beneath(*position) && other.reads_beneath(*position)
             }));
         Some(Self {
@@ -282,6 +281,15 @@ mod tests {
         assert_eq!(pop.tie_at(0), Some(PositionTie::HeldBeneath));
         assert_eq!(either.tie_at(0), Some(PositionTie::Held));
         assert_eq!(pop.tie_at(1), None);
+    }
+
+    #[test]
+    fn a_reference_past_the_sixty_fourth_parameter_is_held_beneath() {
+        let mut parameters = vec![Type::Primitive(PrimitiveType::Usize); 64];
+        parameters.push(Type::shared(TiesFixture::generic()));
+        let element = TiesFixture::ties(parameters, TiesFixture::generic())
+            .expect("a type variable ties the result");
+        assert_eq!(element.tie_at(64), Some(PositionTie::HeldBeneath));
     }
 
     #[test]

@@ -35,10 +35,6 @@ impl TreeKind {
         matches!(self, Self::Tasks)
     }
 
-    fn refuses(self, file: &TreeFile) -> bool {
-        self.stays_inside() && file.is_unnamable()
-    }
-
     fn entry_name(self) -> &'static str {
         match self {
             Self::Tests => Self::TESTS_ENTRY,
@@ -150,7 +146,7 @@ impl EntryTree {
             .filter_map(|path| Some(TreeFile::new(self.module_path(path)?, path.clone())))
             .collect();
         files.sort();
-        match files.iter().find(|file| self.kind.refuses(file)) {
+        match files.iter().find(|file| file.is_unnamable()) {
             Some(file) => Err(file.report_unnamable()),
             None => Ok((files, walk)),
         }

@@ -65,17 +65,23 @@ impl InstantiationReport {
         self.substitutions.get(&binding).cloned()
     }
 
-    pub fn uses_of(&self, binding: BindingId, generic: GenericId) -> Vec<Option<Type>> {
+    pub fn sited_uses_of(
+        &self,
+        binding: BindingId,
+        generic: GenericId,
+    ) -> Vec<(BindingId, Option<Type>)> {
         let Some(entry) = self.entries.get(&binding) else {
             return Vec::new();
         };
         let Some(index) = entry.params.iter().position(|param| *param == generic) else {
             return Vec::new();
         };
+        let used = entry.uses.iter().map(|used| used.types[index].clone());
         entry
-            .uses
+            .sites
             .iter()
-            .map(|used| used.types[index].clone())
+            .map(|site| site.enclosing)
+            .zip(used)
             .collect()
     }
 

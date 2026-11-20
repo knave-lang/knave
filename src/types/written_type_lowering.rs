@@ -2,6 +2,7 @@ use rustc_hash::FxHashMap;
 
 use super::checking_facts::CheckingFacts;
 use super::declarations::Declarations;
+use super::field_owner_problems::FieldOwnerProblems;
 use super::generic_declarations::GenericDeclarations;
 use super::lowered_binders::LoweredBinders;
 use super::problems::TypeProblems;
@@ -76,6 +77,15 @@ impl<'l> WrittenTypeLowering<'l> {
         let Some(argument) = &bound.argument else {
             return Ok(Bound::plain(bound.binding));
         };
+        if let Some(field) = &bound.field {
+            let field_traits = &self.declarations.traits().rust_paths.field_traits;
+            let field_trait = (field_traits.trait_of(field))
+                .ok_or_else(|| FieldOwnerProblems::undeclared_written(field, argument.span()))?;
+            return Ok(Bound::with_argument(
+                field_trait,
+                self.lower_type(argument, scope)?,
+            ));
+        }
         self.check_trait_argument(bound.binding, argument.span())?;
         let argument = self.lower_type(argument, scope)?;
         Ok(Bound::with_argument(bound.binding, argument))

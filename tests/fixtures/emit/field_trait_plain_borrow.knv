@@ -1,0 +1,17 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defn uppercase-name (x)
+  (upper-case (:name x)))
+
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(defn main ()
+  (println (uppercase-name (->user "ana")))
+  (println (uppercase-name (->animal "rex")))
+  (println (hello (->user "ana")))
+  (println (hello (->animal "rex"))))

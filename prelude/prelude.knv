@@ -78,7 +78,7 @@
         elapsed empty? enum enumerate eprint eprintln eq err
         err? even? every? exit expect expect-ok export f32
         f64 false field filter find find-doc first float
-        floating fn fn-mut fn-once for-each from-str get
+        floating fn fn-mut fn-once for-each from-str get has
         hash hash-map i128 i16 i32 i64 i8 if impl inc
         infallible infer instant int integer into-hash-map
         into-sorted-map io-error isize iter iterator join
@@ -563,6 +563,19 @@
   ```
   (rust-trait borrowable \"std::borrow::Borrow\"
     (with string str))
+  ```")
+
+(document (has :field type)
+  "Requires a struct with a field, read as the given type.
+
+  `(a (has :name (ref str)))` holds for every struct whose `:name` reads as
+  `(ref str)`, so a function that reads `:name` from an owner it does not name
+  accepts each such struct.
+
+  ```
+  (type hello
+    (where ((a (has :name (ref str))))
+      (fn ((ref a)) string)))
   ```")
 
 (document _

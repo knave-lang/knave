@@ -13,6 +13,8 @@ mod emitted_types;
 mod emitted_value;
 mod entry_point;
 mod expressions;
+mod field_getter;
+mod field_trait_items;
 mod format_arguments;
 mod format_string;
 mod fragment;

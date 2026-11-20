@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{BindingId, PrimitiveType, ReferenceKind};
 use crate::source::Span;
 
@@ -79,9 +81,18 @@ impl TypeBinder {
 pub struct TypeBound {
     pub binding: BindingId,
     pub argument: Option<TypeExpr>,
+    pub field: Option<Rc<str>>,
 }
 
 impl TypeBound {
+    pub fn new(binding: BindingId, argument: Option<TypeExpr>) -> Self {
+        Self {
+            binding,
+            argument,
+            field: None,
+        }
+    }
+
     pub fn named_bindings(&self) -> Vec<BindingId> {
         let mut named = Vec::new();
         self.collect_named(&mut named);
@@ -222,6 +233,7 @@ mod named_binding_tests {
             TypeBound {
                 binding: BindingId::from_index(index),
                 argument,
+                field: None,
             }
         }
 

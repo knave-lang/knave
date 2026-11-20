@@ -92,6 +92,7 @@ impl WrittenTypeFixture {
                 .map(|binding| TypeBound {
                     binding: *binding,
                     argument: None,
+                    field: None,
                 })
                 .collect(),
             span: Self::span(),
@@ -135,6 +136,7 @@ impl WrittenTypeFixture {
         TypeBound {
             binding,
             argument: Some(Self::integer()),
+            field: None,
         }
     }
 

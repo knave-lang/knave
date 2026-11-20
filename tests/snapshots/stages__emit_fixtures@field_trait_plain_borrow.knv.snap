@@ -1,0 +1,71 @@
+---
+source: tests/stages.rs
+expression: reports.report(path)
+input_file: tests/fixtures/emit/field_trait_plain_borrow.knv
+---
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct User<'a> {
+    name: &'a str,
+}
+
+fn make_user(name: &str) -> User<'_> {
+    User { name }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Animal<'a> {
+    name: &'a str,
+}
+
+fn make_animal(name: &str) -> Animal<'_> {
+    Animal { name }
+}
+
+fn uppercase_name<A: HasName>(x: A) -> String {
+    x.name().to_uppercase()
+}
+
+fn hello<A: HasName>(x: A) -> String {
+    format!("hello {}", x.name())
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    println!("{}", uppercase_name(make_user("ana")));
+    println!("{}", uppercase_name(make_animal("rex")));
+    println!("{}", hello(make_user("ana")));
+    println!("{}", hello(make_animal("rex")))
+}
+
+trait HasName {
+    fn name(&self) -> &str;
+}
+
+impl<'a> HasName for User<'a> {
+    fn name(&self) -> &str {
+        self.name
+    }
+}
+
+impl<'a> HasName for Animal<'a> {
+    fn name(&self) -> &str {
+        self.name
+    }
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

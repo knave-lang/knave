@@ -25,6 +25,7 @@ pub(crate) mod expanded_module;
 mod expansion_limit;
 mod expression;
 mod failed_definition;
+mod field_bound_form;
 mod field_keyword;
 mod form_budget;
 mod generated_entry;

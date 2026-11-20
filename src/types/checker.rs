@@ -45,6 +45,7 @@ use super::index_checks::IndexChecks;
 use super::instantiation::Instantiation;
 use super::literal_parameters::LiteralParameters;
 use super::literal_settlement::LiteralSettlement;
+use super::mentioned_generics::MentionedGenerics;
 use super::method_receivers::MethodReceivers;
 use super::missing_trait::MissingTrait;
 use super::missing_trait_explanation::MissingTraitExplanation;
@@ -73,6 +74,7 @@ use super::solver_event::SolverEvent;
 use super::solver_sources::SolverSources;
 use super::solver_state::SolverState;
 use super::string_views::StringViews;
+use super::struct_field_traits::StructFieldTraits;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
@@ -235,6 +237,8 @@ impl TypeChecker {
         self.check_written_projections();
         self.declarations.builder().types().plan_boxes();
         self.collect_trait_impls(modules);
+        let fields = StructFieldTraits::new(&self.declarations, self.generics.params()).traits();
+        (self.declarations.builder().traits()).enter_field_traits(fields, &mut self.bindings);
         self.record_structural_traits(modules);
         self.register_derived_traits(modules);
         self.report_supertraits();
@@ -1049,9 +1053,8 @@ impl TypeChecker {
     }
 
     fn open_unpinned_parameters(&mut self, pinned: &Type) -> Type {
-        let mut unpinned = Vec::new();
-        Self::collect_generics(pinned, &mut unpinned);
-        let fresh = unpinned
+        let fresh = MentionedGenerics::of(pinned)
+            .into_ids()
             .into_iter()
             .map(|generic| (generic, self.unifier.fresh()))
             .collect();
@@ -1200,28 +1203,19 @@ impl TypeChecker {
                 vars.push(var);
             }
         }
+        let fields = &self.declarations.traits().rust_paths.field_traits;
+        fields.add_read_vars(vars, &self.unifier, |read| self.free_vars(read));
     }
 
     fn mentioned_generics(&self, inferred: &Type) -> Vec<GenericParam> {
-        let mut ids = Vec::new();
-        Self::collect_generics(inferred, &mut ids);
-        ids.into_iter()
+        let mut mentioned = MentionedGenerics::of(inferred);
+        let fields = &self.declarations.traits().rust_paths.field_traits;
+        fields.add_read_generics(&mut mentioned, |id| self.generics.param(id), &self.unifier);
+        mentioned
+            .into_ids()
+            .into_iter()
             .filter_map(|id| self.generics.param(id).cloned())
             .collect()
-    }
-
-    fn collect_generics(value: &Type, ids: &mut Vec<GenericId>) {
-        match value {
-            Type::Generic(id) => {
-                if !ids.contains(id) {
-                    ids.push(*id);
-                }
-            }
-            _ => value
-                .parts()
-                .into_iter()
-                .for_each(|part| Self::collect_generics(part, ids)),
-        }
     }
 
     pub(super) fn default_literal(&mut self, var: TypeVar, literal: LiteralKind, span: Span) {

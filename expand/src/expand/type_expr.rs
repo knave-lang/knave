@@ -1,4 +1,5 @@
 use super::Expander;
+use super::field_bound_form::FieldBoundForm;
 use super::namespace_problems::NamespaceProblems;
 use super::numeric_bound::NumericBound;
 use super::problems::ExpandProblems;
@@ -294,6 +295,9 @@ impl Expander<'_> {
     }
 
     pub(super) fn lower_bound(&mut self, bound: &Form) -> Result<TypeBound, Diagnostic> {
+        if let Some(field_bound) = FieldBoundForm::new(self).lower(bound) {
+            return field_bound;
+        }
         let (name, argument) = match bound.as_list() {
             Some([name, argument]) => (name, Some(argument)),
             _ => (bound, None),
@@ -314,6 +318,6 @@ impl Expander<'_> {
         let argument = argument
             .map(|argument| self.lower_type(argument))
             .transpose()?;
-        Ok(TypeBound { binding, argument })
+        Ok(TypeBound::new(binding, argument))
     }
 }

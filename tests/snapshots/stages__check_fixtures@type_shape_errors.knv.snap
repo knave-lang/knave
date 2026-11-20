@@ -3,15 +3,6 @@ source: tests/stages.rs
 expression: reports.report(path)
 input_file: tests/fixtures/check/type_shape_errors.knv
 ---
-error[L0407]: type annotations needed
- --> check/type_shape_errors.knv:9:35
-  |
-9 | (defn read-x (thing) (field thing x))
-  |                                   ^ cannot tell which struct's `x` this is
-  |
-  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
-  = note: run `knave doc L0407` for an explanation
-
 error[L0410]: `bool` has no fields
   --> check/type_shape_errors.knv:11:34
    |

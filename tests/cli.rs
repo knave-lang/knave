@@ -2699,7 +2699,7 @@ fn lint_keys_a_declaration_by_its_file_in_every_program() {
         )
         .with_file(
             "examples/z.knv",
-            "(use a/b ->applied describe)\n\n(defstruct attempt :move string)\n\n(defn main ()\n  (println (describe (ref (->applied :move (str \"a\") :after (str \"b\"))))))\n",
+            "(use a/b ->applied describe)\n\n(defstruct attempt :move string :after string)\n\n(defn main ()\n  (println (describe (ref (->applied :move (str \"a\") :after (str \"b\"))))))\n",
         );
     let lint = sandbox.compiler(&["lint"]).stderr();
     assert!(!lint.contains("L0809"), "{lint}");
@@ -2727,7 +2727,7 @@ impl WholeProject {
             )
             .with_file(
                 "tests/moves-test.knv",
-                "(use moves ->applied describe)\n\n(defstruct attempt :move string)\n\n(deftest describes-a-move\n  (let (unused 1)\n    (assert (= (describe (ref (->applied :move (str \"a\") :after (str \"b\")))) \"a then b\"))))\n",
+                "(use moves ->applied describe)\n\n(defstruct attempt :move string :after string)\n\n(deftest describes-a-move\n  (let (unused 1)\n    (assert (= (describe (ref (->applied :move (str \"a\") :after (str \"b\")))) \"a then b\"))))\n",
             )
             .with_file(
                 "tasks/hello.knv",

@@ -2,9 +2,10 @@ use std::cell::Cell;
 use std::path::{Path, PathBuf};
 
 use super::linted_program::LintedProgram;
-use super::needless_type_lint::NeedlessTypeLint;
+use super::needless_type_rule::NeedlessTypeRule;
 use super::program_position::ProgramPosition;
 use super::program_run::ProgramRun;
+use super::trial_lint::TrialLint;
 use crate::check::ProgramChecker;
 use crate::core::ModulePath;
 use crate::diagnostic::Diagnostics;
@@ -23,7 +24,7 @@ pub enum Emission {
 
 pub struct ScriptedRun {
     emission: Emission,
-    failing_check: Option<usize>,
+    failing_checks: Vec<usize>,
     checks: usize,
     emissions: Cell<usize>,
 }
@@ -32,27 +33,25 @@ impl ScriptedRun {
     pub fn emitting(emission: Emission) -> Self {
         Self {
             emission,
-            failing_check: None,
+            failing_checks: Vec::new(),
             checks: 0,
             emissions: Cell::new(0),
         }
     }
 
-    pub fn failing_check(self, trial_check: usize) -> Self {
-        Self {
-            failing_check: Some(trial_check),
-            ..self
-        }
+    pub fn failing_check(mut self, trial_check: usize) -> Self {
+        self.failing_checks.push(trial_check);
+        self
     }
 }
 
 impl ProgramRun for ScriptedRun {
     fn check(&mut self, program: &Program) -> Result<TypedProgram, Diagnostics> {
         self.checks += 1;
-        match self.failing_check {
-            Some(failing) if failing == self.checks => Err(Diagnostics::default()),
-            _ => ProgramChecker::check::<EnforcedOwnership>(program),
+        if self.failing_checks.contains(&self.checks) {
+            return Err(Diagnostics::default());
         }
+        ProgramChecker::check::<EnforcedOwnership>(program)
     }
 
     fn emit(&self, _typed: &TypedProgram) -> Option<String> {
@@ -119,7 +118,9 @@ impl NeedlessTypeFixture {
             program: &mut self.program,
             declared: &declared,
         }];
-        let warnings = NeedlessTypeLint::new(&mut run).warnings(written, &mut programs);
+        let mut lint = TrialLint::new(&mut run, &NeedlessTypeRule);
+        let candidates = lint.candidates(written, &programs);
+        let warnings = lint.outcome(candidates, &mut programs).warnings;
         let titles = warnings
             .into_iter()
             .map(|warning| warning.title().to_string())
@@ -147,8 +148,10 @@ impl NeedlessTypeFixture {
                 declared: &second_checked,
             },
         ];
-        NeedlessTypeLint::new(&mut run)
-            .warnings(Some(LintLevel::Warn), &mut programs)
+        let mut lint = TrialLint::new(&mut run, &NeedlessTypeRule);
+        let candidates = lint.candidates(Some(LintLevel::Warn), &programs);
+        lint.outcome(candidates, &mut programs)
+            .warnings
             .into_iter()
             .map(|warning| warning.title().to_string())
             .collect()

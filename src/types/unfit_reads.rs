@@ -1,6 +1,7 @@
 use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
+use super::open_field_owner::OpenFieldOwner;
 use super::open_read::OpenRead;
 use super::read_view::ReadView;
 use super::ty::Type;
@@ -30,7 +31,7 @@ impl<'c> UnfitReads<'c> {
 
     pub(super) fn refuse(&self, value: &TypedExpr) -> Result<(), Diagnostic> {
         let field_traits = self.declarations.traits().rust_paths().field_traits();
-        if field_traits.into_iter().next().is_none() {
+        if field_traits.bindings().is_empty() {
             return Ok(());
         }
         match self.first_unfit(value) {
@@ -59,30 +60,15 @@ impl<'c> UnfitReads<'c> {
     }
 
     fn open_read(&self, owner: &Type, field: &str) -> Option<Type> {
-        let Type::Var(var) = self.unborrowed(owner) else {
-            return None;
-        };
-        let field_trait = self
-            .declarations
-            .traits()
-            .rust_paths()
-            .field_traits()
-            .trait_of(field)?;
-        let bound = (self.unifier.bounds(var).iter()).find(|bound| bound.binding == field_trait)?;
-        let read = self.unifier.resolve(bound.argument.as_ref()?);
-        (!matches!(read, Type::Var(_))).then_some(read)
+        let field_traits = self.declarations.traits().rust_paths().field_traits();
+        let open = OpenFieldOwner::new(self.unifier);
+        let read = open.bound_read(open.var(owner)?, field_traits.bindings().trait_of(field)?)?;
+        Some(self.unifier.resolve(&read))
     }
 
     fn gives(&self, owner: BindingId, field: &str, used: &Type) -> bool {
         let definition = self.declarations.types().structs.get(owner);
         let read = definition.and_then(|definition| self.reads.of(definition, field));
         read.is_some_and(|read| ReadView::of(&read.read).is_used_as(used))
-    }
-
-    fn unborrowed(&self, owner: &Type) -> Type {
-        match self.unifier.shallow(owner) {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => self.unborrowed(&inner),
-            resolved => resolved,
-        }
     }
 }

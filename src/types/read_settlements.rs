@@ -5,8 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::field_reader::FieldReader;
 use super::field_traits::FieldTraits;
 use super::ty::{Bound, GenericId, Type};
-use super::typed::{TypedDefinition, TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
-use super::unborrowed::Unborrowed;
+use super::typed::{TypedDefinition, TypedExpr, TypedExprKind, TypedProgram};
 use crate::core::{BindingId, CopyTrait};
 
 type Settled = FxHashMap<GenericId, Type>;
@@ -62,7 +61,7 @@ impl ReadSettlements {
         };
         let field_bounds = bounds
             .iter_mut()
-            .filter(|bound| field_traits.field_of(bound.binding).is_some());
+            .filter(|bound| field_traits.bindings().field_of(bound.binding).is_some());
         for bound in field_bounds {
             bound.argument = Some(read.clone());
         }
@@ -92,16 +91,7 @@ impl ReadSettlements {
     }
 
     fn settle_expr(&self, expr: &mut TypedExpr) {
-        let fixed = match &expr.kind {
-            TypedExprKind::Struct(TypedStructExpr::Field(value, _)) => {
-                match Unborrowed::of(&value.ty) {
-                    Type::Generic(owner) => self.fixed.get(owner).cloned(),
-                    _ => None,
-                }
-            }
-            _ => None,
-        };
-        expr.ty = fixed.unwrap_or_else(|| expr.ty.substitute(&self.reads));
+        expr.ty = expr.ty.substitute(&self.reads);
         if let TypedExprKind::Fn(lambda) = &mut expr.kind {
             for param in &mut Rc::make_mut(lambda).params {
                 param.ty = param.ty.substitute(&self.reads);

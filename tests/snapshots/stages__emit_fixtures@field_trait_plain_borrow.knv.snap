@@ -41,6 +41,18 @@ mod field_traits {
     pub trait HasName {
         fn name(&self) -> &str;
     }
+
+    impl<T: HasName + ?Sized> HasName for &T {
+        fn name(&self) -> &str {
+            T::name(self)
+        }
+    }
+
+    impl<T: HasName + ?Sized> HasName for &mut T {
+        fn name(&self) -> &str {
+            T::name(self)
+        }
+    }
 }
 
 impl<'a> field_traits::HasName for User<'a> {

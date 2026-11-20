@@ -1,0 +1,16 @@
+(defstruct user
+  :name string)
+
+(defstruct animal
+  :name string)
+
+(defn hello (x) (len (:name x)))
+
+(defn first-hello (xs)
+  (hello (at xs 0)))
+
+(defn main ()
+  (local a (->user (str "ana")))
+  (println (first-hello (vec (ref a))))
+  (local r (->animal (str "rex")))
+  (println (first-hello (vec (ref r)))))

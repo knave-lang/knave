@@ -35,7 +35,7 @@ impl<'a> FieldTraitPath<'a> {
             .traits()
             .rust_paths()
             .field_traits();
-        let path = self.of(field_traits.trait_of(field)?, from)?;
+        let path = self.of(field_traits.bindings().trait_of(field)?, from)?;
         Some(format!("{path}::{}", FieldGetterName::of(field)))
     }
 
@@ -58,6 +58,6 @@ impl<'a> FieldTraitPath<'a> {
             .rust_paths()
             .field_traits();
         let mut bounds = (definition.scheme.params.iter()).flat_map(|param| &param.bounds);
-        bounds.any(|bound| field_traits.field_of(bound.binding).is_some())
+        bounds.any(|bound| field_traits.bindings().field_of(bound.binding).is_some())
     }
 }

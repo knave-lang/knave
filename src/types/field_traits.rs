@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
-use std::rc::Rc;
 
-use rustc_hash::FxHashMap;
-
+use super::field_trait_bindings::FieldTraitBindings;
 use super::mentioned_generics::MentionedGenerics;
 use super::read_kind::ReadKind;
 use super::ty::{Bound, GenericId, GenericParam, Type, TypeVar};
@@ -11,8 +9,7 @@ use crate::core::BindingId;
 
 #[derive(Default)]
 pub struct FieldTraits {
-    by_field: FxHashMap<Rc<str>, BindingId>,
-    by_binding: FxHashMap<BindingId, Rc<str>>,
+    bindings: FieldTraitBindings,
     plans: BTreeMap<BindingId, FieldTraitPlan>,
 }
 
@@ -23,33 +20,15 @@ pub struct FieldTraitPlan {
     pub implementors: Vec<Type>,
 }
 
-impl Extend<(Rc<str>, BindingId)> for FieldTraits {
-    fn extend<Entries: IntoIterator<Item = (Rc<str>, BindingId)>>(&mut self, entries: Entries) {
-        for (field, binding) in entries {
-            self.by_binding.insert(binding, Rc::clone(&field));
-            self.by_field.insert(field, binding);
-        }
-    }
-}
-
-impl<'a> IntoIterator for &'a FieldTraits {
-    type Item = (&'a Rc<str>, &'a BindingId);
-    type IntoIter = std::collections::hash_map::Iter<'a, Rc<str>, BindingId>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.by_field.iter()
-    }
-}
-
 impl FieldTraits {
     pub const MODULE: &'static str = "field_traits";
 
-    pub fn trait_of(&self, field: &str) -> Option<BindingId> {
-        self.by_field.get(field).copied()
+    pub fn bindings(&self) -> &FieldTraitBindings {
+        &self.bindings
     }
 
-    pub fn field_of(&self, binding: BindingId) -> Option<&Rc<str>> {
-        self.by_binding.get(&binding)
+    pub(super) fn bindings_mut(&mut self) -> &mut FieldTraitBindings {
+        &mut self.bindings
     }
 
     pub(super) fn settle(&mut self, binding: BindingId, plan: FieldTraitPlan) {
@@ -66,7 +45,7 @@ impl FieldTraits {
         unifier: &Unifier,
         free_vars: impl Fn(&Type) -> Vec<TypeVar>,
     ) {
-        if self.by_binding.is_empty() {
+        if self.bindings.is_empty() {
             return;
         }
         let mut position = 0;
@@ -86,7 +65,7 @@ impl FieldTraits {
         param_of: impl Fn(GenericId) -> Option<&'p GenericParam>,
         unifier: &Unifier,
     ) {
-        if self.by_binding.is_empty() {
+        if self.bindings.is_empty() {
             return;
         }
         let mut position = 0;
@@ -100,7 +79,7 @@ impl FieldTraits {
 
     fn reads<'b>(&'b self, bounds: &'b [Bound]) -> impl Iterator<Item = &'b Type> {
         (bounds.iter())
-            .filter(|bound| self.by_binding.contains_key(&bound.binding))
+            .filter(|bound| self.bindings.field_of(bound.binding).is_some())
             .filter_map(|bound| bound.argument.as_ref())
     }
 }
@@ -124,7 +103,7 @@ mod tests {
     impl FieldTraitsFixture {
         fn new() -> Self {
             let mut field_traits = FieldTraits::default();
-            field_traits.extend([("name".into(), HAS_NAME)]);
+            field_traits.bindings_mut().record("name".into(), HAS_NAME);
             Self {
                 field_traits,
                 unifier: Unifier::default(),
@@ -150,11 +129,15 @@ mod tests {
     #[test]
     fn finds_a_field_trait_by_field_and_by_binding() {
         let fixture = FieldTraitsFixture::new();
-        assert_eq!(fixture.field_traits.trait_of("name"), Some(HAS_NAME));
-        assert_eq!(fixture.field_traits.trait_of("age"), None);
+        assert_eq!(
+            fixture.field_traits.bindings().trait_of("name"),
+            Some(HAS_NAME)
+        );
+        assert_eq!(fixture.field_traits.bindings().trait_of("age"), None);
         assert_eq!(
             fixture
                 .field_traits
+                .bindings()
                 .field_of(HAS_NAME)
                 .map(|field| &**field),
             Some("name")

@@ -1,0 +1,19 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(type name-or
+  (where ((a (has :name (ref str))))
+    (fn ((option a)) string)))
+
+(defn name-or (o)
+  (match o
+    ((some x) (str (:name x)))
+    (none (str "-"))))
+
+(defn main ()
+  (local a (->user "ana"))
+  (println (name-or (some (ref a))))
+  (println (name-or (some (->animal "rex")))))

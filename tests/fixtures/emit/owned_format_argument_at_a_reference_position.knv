@@ -1,0 +1,8 @@
+(def show
+  (rust "println!(\"{{}}\", {0})"
+    (fn ((ref string)) unit)))
+
+(defn main ()
+  (local name (str "feint" "-dash"))
+  (show name)
+  (println name))

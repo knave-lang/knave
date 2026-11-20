@@ -34,6 +34,7 @@ impl ProjectFileEdit {
 
     pub fn to_upgrade(terminal: &mut Terminal, command: &str) -> Result<Self, ExitStatus> {
         let working_directory = WorkingDirectory::path();
+        CompilerCheck::refuse_before_loading(working_directory, terminal)?;
         let located =
             LocatedProject::enter_unchecked(working_directory, terminal, FetchingStore::default())?;
         if let Some(project) = &located {

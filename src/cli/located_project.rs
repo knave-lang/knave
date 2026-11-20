@@ -11,7 +11,6 @@ use super::lint_levels::LintLevels;
 use super::program_file::ProgramFile;
 use super::project_crates::ProjectCrates;
 use super::terminal::Terminal;
-use super::working_directory::WorkingDirectory;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::LibraryTable;
@@ -33,6 +32,7 @@ impl LocatedProject {
         terminal: &mut Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
+        CompilerCheck::refuse_before_loading(directory, terminal)?;
         let located = Self::enter_unchecked(directory, terminal, store)?;
         Self::check_compiler(located.as_ref(), terminal, &CompilerCheck::EVERY_MISMATCH)?;
         Ok(located)
@@ -69,10 +69,9 @@ impl LocatedProject {
         terminal: &Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
-        let Some(root) = Self::nearest_root(directory)? else {
+        let Some(root) = ProjectRoot::shown_of(directory)? else {
             return Ok(None);
         };
-        CompilerCheck::refuse_before_loading(&root, terminal)?;
         let mut scratch = terminal.scratch();
         let walked = LibraryWalk::walk(&mut scratch, &root, store)?;
         let crates = ProjectCrates::new(
@@ -88,21 +87,6 @@ impl LocatedProject {
             crates,
             crate_library: walked.crate_library,
         }))
-    }
-
-    fn nearest_root(directory: &Path) -> Result<Option<PathBuf>, ExitStatus> {
-        match ProjectRoot::canonical_of(directory) {
-            Some(root) => Ok(Some(Self::shown(&root)?)),
-            None => Ok(None),
-        }
-    }
-
-    fn shown(root: &Path) -> Result<PathBuf, ExitStatus> {
-        let working_directory = WorkingDirectory::resolved()?;
-        Ok(root
-            .strip_prefix(&working_directory)
-            .unwrap_or(root)
-            .to_path_buf())
     }
 
     pub fn lend_libraries(project: Option<&Self>, file: ProgramFile) -> ProgramFile {

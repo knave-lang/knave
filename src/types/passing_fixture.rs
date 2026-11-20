@@ -38,7 +38,7 @@ pub(super) struct PassingFixture {
 
 impl PassingFixture {
     const SOURCE: &'static str = "
-        (defn main () (do))";
+        (defn main () (do (the (result i64 (parse-error i64)) (parse \"7\"))))";
     pub(super) const BORROWING_SECOND: &'static str = "{0} == {&1}";
     pub(super) const BORROWING_BOTH: &'static str = "{&0} == {&1}";
 
@@ -227,6 +227,17 @@ impl PassingFixture {
         self.shared_target_at(Some(callee), referent, depths)
     }
 
+    pub(super) fn bounded_shared_target(
+        &mut self,
+        bound: Bound,
+        referent: Type,
+        depths: &[usize],
+    ) -> ReferenceDepth {
+        let group = self.shared_group(&vec![0; depths.len()]);
+        self.unifier.add_bound(group.root(), bound);
+        self.target_of_group(None, &group, referent, depths)
+    }
+
     fn shared_target_at(
         &mut self,
         callee: Option<&TypedExpr>,
@@ -234,11 +245,21 @@ impl PassingFixture {
         depths: &[usize],
     ) -> ReferenceDepth {
         let group = self.shared_group(&vec![0; depths.len()]);
+        self.target_of_group(callee, &group, referent, depths)
+    }
+
+    fn target_of_group(
+        &self,
+        callee: Option<&TypedExpr>,
+        group: &SharedGroup,
+        referent: Type,
+        depths: &[usize],
+    ) -> ReferenceDepth {
         let written: Vec<(Type, usize)> = (depths.iter())
             .map(|depth| (referent.clone(), *depth))
             .collect();
         let depths = Self::group_depths(&written);
-        self.shared_variable_group_for(callee, &group)
+        self.shared_variable_group_for(callee, group)
             .target_depth(&referent, &depths)
     }
 

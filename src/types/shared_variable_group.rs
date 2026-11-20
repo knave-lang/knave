@@ -200,6 +200,7 @@ mod tests {
     use crate::types::Type;
     use crate::types::passing_fixture::PassingFixture;
     use crate::types::reference_depth::ReferenceDepth;
+    use crate::types::ty::{Bound, GenericId};
 
     #[test]
     fn a_written_borrow_passes_the_group_as_written() {
@@ -383,5 +384,17 @@ mod tests {
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_BOTH);
         let target = fixture.shared_target_for(&callee, PassingFixture::string(), &[0, 2]);
         assert_eq!(target, ReferenceDepth::VALUE);
+    }
+
+    #[test]
+    fn a_referent_that_is_not_copy_passes_through_a_reference_its_bound_blocks() {
+        let mut fixture = PassingFixture::new();
+        let parse = Bound::plain(fixture.trait_named("from-str"));
+        let generic = GenericId::new(0);
+        fixture
+            .unifier()
+            .register_generic(generic, vec![parse.clone()]);
+        let target = fixture.bounded_shared_target(parse, Type::Generic(generic), &[1, 1]);
+        assert_eq!(target, ReferenceDepth::VALUE_THROUGH_BORROW);
     }
 }

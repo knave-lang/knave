@@ -52,6 +52,7 @@ impl<'g> TextDecisionTable<'g> {
 
 #[cfg(test)]
 mod tests {
+    use crate::core::BindingId;
     use crate::ownership::text::flow_fixture::FlowFixture;
     use crate::ownership::text::need::Need;
     use crate::ownership::text::reaching_text::ReachingText;
@@ -187,6 +188,30 @@ mod tests {
         assert_eq!(
             flows.representation(FlowFixture::PARAMETER),
             Representation::LentMixed
+        );
+    }
+
+    #[test]
+    fn a_result_decided_a_view_hands_its_caller_a_view() {
+        let result = SlotOwner::Result(BindingId::from_index(9));
+        let flows = FlowFixture::default()
+            .text(ReachingText::LENT, (result.clone(), 0))
+            .flow((result, FlowFixture::LOCAL), Transfer::Move, 1);
+        assert_eq!(
+            flows.representation(FlowFixture::LOCAL),
+            Representation::View
+        );
+    }
+
+    #[test]
+    fn a_reference_a_template_builds_hands_its_caller_a_lent_value() {
+        let built = SlotOwner::Value(FlowFixture::span(70));
+        let flows = FlowFixture::default()
+            .text(ReachingText::LENT, (built.clone(), 0))
+            .flow((built, FlowFixture::LOCAL), Transfer::Move, 1);
+        assert_eq!(
+            flows.representation(FlowFixture::LOCAL),
+            Representation::Lent
         );
     }
 

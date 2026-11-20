@@ -6,6 +6,7 @@ use super::flow_graph::FlowGraph;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::slot::Slot;
+use super::slot_owner::SlotOwner;
 use super::source::Source;
 use super::stored_parameters::StoredParameters;
 use crate::core::BindingId;
@@ -70,7 +71,7 @@ impl<'g> SlotClasses<'g> {
             .filter(|(_, members)| {
                 members
                     .iter()
-                    .any(|member| graph.slot(*member).is_variable())
+                    .any(|member| matches!(graph.slot(*member).owner(), SlotOwner::Variable(..)))
             })
             .map(|(class, _)| *class)
             .collect()
@@ -99,8 +100,19 @@ impl<'g> SlotClasses<'g> {
                 ClassRole::Parameter { tied }
             }
             _ if members.iter().all(|slot| slot.is_local()) => ClassRole::Local,
-            _ => ClassRole::Held,
+            _ if members.iter().any(|slot| Self::is_decided(slot)) => ClassRole::Held,
+            _ => ClassRole::Passing,
         }
+    }
+
+    fn is_decided(slot: &Slot) -> bool {
+        matches!(
+            slot.owner(),
+            SlotOwner::Parameter(_)
+                | SlotOwner::Result(_)
+                | SlotOwner::Local(_)
+                | SlotOwner::Field(..)
+        )
     }
 
     fn is_stored(&self, slot: &Slot) -> bool {

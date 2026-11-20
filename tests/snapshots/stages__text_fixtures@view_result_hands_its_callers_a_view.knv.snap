@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/view_result_hands_its_callers_a_view.knv
+---
+struct page
+  title: owned
+defn label-of
+  result: a view
+defn title-of
+  result: a view, written lent
+defn main
+  local label: a view
+  local title: a view, written lent
+  local copied: a view, written owned
+needs owned text
+  text/view_result_hands_its_callers_a_view.knv:15:12

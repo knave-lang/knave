@@ -1,25 +1,31 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::class_role::ClassRole;
 use super::flow::Flow;
 use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
+use super::representation::Representation;
 use super::slot_classes::SlotClasses;
 use super::source::Source;
 use super::transfer::Transfer;
 
 pub struct TextFacts<'c, 'g> {
     classes: &'c SlotClasses<'g>,
+    views: FxHashSet<NodeId>,
     reaching: FxHashMap<NodeId, ReachingText>,
 }
 
 impl<'c, 'g> TextFacts<'c, 'g> {
     pub fn spread(classes: &'c SlotClasses<'g>) -> Self {
-        let mut facts = Self {
-            classes,
-            reaching: FxHashMap::default(),
-        };
-        while facts.spread_once() {}
-        facts
+        let roles = classes.roles();
+        let mut facts = Self::spread_handing_views(classes, FxHashSet::default());
+        loop {
+            let views = facts.view_classes(&roles);
+            if views.len() == facts.views.len() {
+                return facts;
+            }
+            facts = Self::spread_handing_views(classes, views);
+        }
     }
 
     pub fn at(&self, class: NodeId) -> ReachingText {
@@ -28,6 +34,31 @@ impl<'c, 'g> TextFacts<'c, 'g> {
 
     pub fn arriving(&self, flow: &Flow) -> ReachingText {
         self.transfer(flow).carry(self.emitted(flow))
+    }
+
+    fn spread_handing_views(classes: &'c SlotClasses<'g>, views: FxHashSet<NodeId>) -> Self {
+        let mut facts = Self {
+            classes,
+            views,
+            reaching: FxHashMap::default(),
+        };
+        while facts.spread_once() {}
+        facts
+    }
+
+    fn view_classes(&self, roles: &[(NodeId, ClassRole)]) -> FxHashSet<NodeId> {
+        roles
+            .iter()
+            .filter(|(class, role)| self.hands_on_a_view(*class, *role))
+            .map(|(class, _)| *class)
+            .chain(self.views.iter().copied())
+            .collect()
+    }
+
+    fn hands_on_a_view(&self, class: NodeId, role: ClassRole) -> bool {
+        let decided = role.decide(self.at(class), |tied| self.at(tied));
+        role.hands_on_its_decision()
+            && matches!(decided, Representation::View | Representation::StaticView)
     }
 
     fn spread_once(&mut self) -> bool {
@@ -50,7 +81,16 @@ impl<'c, 'g> TextFacts<'c, 'g> {
             Source::Slot(node) if self.speaks_for_itself(node, flow.target) => {
                 ReachingText::BORROWED
             }
-            Source::Slot(node) => self.at(self.classes.class(node)),
+            Source::Slot(node) => self.handed_on(self.classes.class(node)),
+        }
+    }
+
+    fn handed_on(&self, class: NodeId) -> ReachingText {
+        let text = self.at(class);
+        if self.views.contains(&class) {
+            Transfer::View.carry(text)
+        } else {
+            text
         }
     }
 

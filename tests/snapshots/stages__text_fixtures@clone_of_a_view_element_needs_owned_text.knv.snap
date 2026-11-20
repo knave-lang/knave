@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/clone_of_a_view_element_needs_owned_text.knv
+---
+defn main
+  local s: owned
+  local views[0]: a view
+  local copied: a view
+needs owned text
+  text/clone_of_a_view_element_needs_owned_text.knv:5:12

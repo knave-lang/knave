@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_add_two_reads_int_float.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_join_add_two_reads_int_float.knv:13:30
+   |
+13 | (defn total (x y) (+ (:a x) (:b y)))
+   |                              ^^ cannot tell which struct's `b` this is
+   |
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation

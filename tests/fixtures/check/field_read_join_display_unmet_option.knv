@@ -1,0 +1,11 @@
+(defstruct cat
+  :n (option int))
+
+(defstruct dog
+  :n (option int))
+
+(defn show (x) (println (:n x)))
+
+(defn main ()
+  (show (->cat none))
+  (show (->dog (some 4))))

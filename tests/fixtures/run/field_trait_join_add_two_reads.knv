@@ -1,0 +1,10 @@
+(defstruct cat
+  :a int)
+
+(defstruct dog
+  :a int)
+
+(defn total (x y) (+ (:a x) (:a y)))
+
+(defn main ()
+  (println (total (->cat 3) (->dog 2))))

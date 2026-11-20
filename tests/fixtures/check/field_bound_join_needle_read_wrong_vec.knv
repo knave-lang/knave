@@ -1,0 +1,11 @@
+(defstruct cat
+  :n int)
+
+(defstruct dog
+  :n int)
+
+(defn in? (v x) (contains? v (:n x)))
+
+(defn main ()
+  (println (in? (vec 1.5) (->cat 1)))
+  (println (in? (vec 3.0) (->dog 4))))

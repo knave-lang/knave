@@ -1,0 +1,11 @@
+(defstruct car
+  :make string
+  :letters usize)
+
+(defn relabel! (c make)
+  (set! (:letters c) (len make)))
+
+(defn main ()
+  (local c (->car :make (str "Leaf") :letters 0))
+  (relabel! c (:make c))
+  (println (:letters c)))

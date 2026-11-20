@@ -1,0 +1,14 @@
+(defn keep (b)
+  (local c b)
+  1)
+
+(defn f (b)
+  (local r (ref b))
+  (keep b)
+  (local q r)
+  1)
+
+(defn main ()
+  (println (infer f))
+  (println (f 5))
+  (println (f (vec 1))))

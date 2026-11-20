@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/change_of_a_field_while_another_field_is_borrowed.knv
+---
+(derive car clone partial-eq eq hash show)
+(type ->car (fn (string int) car))
+(type main (fn () unit))

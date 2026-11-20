@@ -1,0 +1,7 @@
+(defn main ()
+  (local names
+    (vec (str "ada") (str "grace")))
+  (local first (at names 0))
+  (local moved names)
+  (println first)
+  (println (len moved)))

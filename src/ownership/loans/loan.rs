@@ -12,6 +12,10 @@ impl Loan {
         Self { lending, made_at }
     }
 
+    pub fn lending(&self) -> &Lending {
+        &self.lending
+    }
+
     pub fn made_at(&self) -> PointId {
         self.made_at
     }

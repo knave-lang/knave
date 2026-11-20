@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/change_while_an_element_is_borrowed.knv
+---
+error[L0518]: `v` changes while `first` still borrows it
+ --> check/change_while_an_element_is_borrowed.knv:4:10
+  |
+3 |   (local first (at v 0))
+  |                    - `first` borrows `v` here
+4 |   (push! v 3)
+  |          ^ `v` changes here
+5 |   (println first))
+  |            ----- `first` is used here, after the change
+  |
+  = help: finish using `first` before changing `v`, or copy what you need out of `v` first
+  = note: run `knave doc L0518` for an explanation

@@ -1,0 +1,10 @@
+(type push-one!
+  (fn ((mut (vec int))) unit))
+
+(defn push-one! (items) (push! items 1))
+
+(defn main ()
+  (local items (vec 4 5))
+  (local m (mut items))
+  (println (at items 0))
+  (push-one! m))

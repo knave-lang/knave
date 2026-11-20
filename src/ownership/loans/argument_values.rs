@@ -49,7 +49,7 @@ impl<'w> ArgumentValues<'w> {
             .zip(held)
             .map(|((argument, passing), held)| {
                 let passed = passing.pass(PassedArgument::new(argument, held), lender);
-                lender.receive(&passed.all());
+                lender.receive(&passed.all(), argument.value.span);
                 passed
             })
             .collect()

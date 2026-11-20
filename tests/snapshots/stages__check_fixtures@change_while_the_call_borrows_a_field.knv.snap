@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/change_while_the_call_borrows_a_field.knv
+---
+error[L0518]: `c` changes while the call still borrows it
+  --> check/change_while_the_call_borrows_a_field.knv:10:13
+   |
+10 |   (relabel! c (:make c))
+   |             ^ --------- the call borrows `c.make` here
+   |             |
+   |             `c` changes here
+   |
+   = help: bind a `clone` of `c.make` to a local before the call, and pass the local
+   = note: run `knave doc L0518` for an explanation

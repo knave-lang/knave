@@ -5,6 +5,7 @@ pub trait LoanKind {
     fn access(&self) -> &'static dyn Access;
 
     fn written_prefix(&self) -> &'static str;
+    fn is_exclusive(&self) -> bool;
 }
 
 pub struct SharedLoan;
@@ -28,6 +29,10 @@ impl LoanKind for SharedLoan {
     fn written_prefix(&self) -> &'static str {
         ""
     }
+
+    fn is_exclusive(&self) -> bool {
+        false
+    }
 }
 
 impl LoanKind for MutableLoan {
@@ -37,5 +42,9 @@ impl LoanKind for MutableLoan {
 
     fn written_prefix(&self) -> &'static str {
         "mut "
+    }
+
+    fn is_exclusive(&self) -> bool {
+        true
     }
 }

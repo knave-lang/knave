@@ -44,6 +44,7 @@ mod tests {
     use crate::core::BindingId;
     use crate::ownership::loans::control_flow_graph::ControlFlowGraph;
     use crate::ownership::loans::point_id::PointId;
+    use crate::source::{SourceId, Span};
 
     #[test]
     fn a_value_is_live_from_its_definition_to_its_last_use_and_around_a_loop() {
@@ -53,7 +54,9 @@ mod tests {
         graph.point_mut(defined).define(value);
         let head = graph.join(&[defined]);
         let used = graph.join(&[head]);
-        graph.point_mut(used).using(value);
+        graph
+            .point_mut(used)
+            .using(value, Span::new(SourceId::new(0), 0..1));
         let back = graph.join(&[used]);
         graph.link(back, head);
         let after = graph.join(&[back]);

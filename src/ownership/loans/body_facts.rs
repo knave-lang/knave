@@ -6,6 +6,7 @@ use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
 use super::live_loan::LiveLoan;
 use super::live_values::LiveValues;
+use super::loan_conflict::LoanConflict;
 use super::loan_holder::LoanHolder;
 use super::loan_id::LoanId;
 use super::loan_table::LoanTable;
@@ -70,6 +71,33 @@ impl<'w> BodyFacts<'w> {
                 })
             })
             .collect()
+    }
+
+    pub fn conflicts(&self) -> Vec<LoanConflict<'_>> {
+        let returned = self.regions.of_holdings(&self.returned);
+        let liveness = Liveness {
+            values: LiveValues::of(&self.graph),
+            result: ResultLoans::of(&self.graph, &self.loans, &returned),
+        };
+        let mut conflicts = Vec::new();
+        for (point, facts) in self.graph.points() {
+            if facts.accesses().is_empty() {
+                continue;
+            }
+            let loans = self.live_loans(point, &facts, &liveness);
+            for access in facts.accesses() {
+                let others = loans.iter().filter(|(loan, _)| !access.is_lent_as(*loan));
+                conflicts.extend(others.filter_map(|(loan, holder)| {
+                    let lending = self.loans.loan(*loan).lending();
+                    let conflict = LoanConflict::found(access, lending, *holder)?;
+                    let later_use = holder
+                        .value()
+                        .and_then(|value| self.graph.first_use_after(point, value));
+                    Some(conflict.used_later_at(later_use))
+                }));
+            }
+        }
+        conflicts
     }
 
     fn live_loans(

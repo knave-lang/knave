@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::loan_names::LoanNames;
-use crate::core::BindingId;
+use crate::core::{BindingArena, BindingId};
 use crate::types::TypedExpr;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -19,8 +19,21 @@ impl LoanPlace {
         })
     }
 
+    pub fn overlaps(&self, other: &Self) -> bool {
+        self.root == other.root
+            && self
+                .fields
+                .iter()
+                .zip(&other.fields)
+                .all(|(field, other_field)| field == other_field)
+    }
+
     pub fn written(&self, names: &LoanNames<'_>) -> String {
-        let mut written = String::from(names.name(self.root));
+        self.named(names.bindings())
+    }
+
+    pub fn named(&self, bindings: &BindingArena) -> String {
+        let mut written = String::from(bindings.get(self.root).name());
         for field in &self.fields {
             written.push('.');
             written.push_str(field);

@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/move_of_a_parameter_while_a_local_borrows_it.knv
+---
+error[L0519]: `b` moves while `r` still borrows it
+ --> check/move_of_a_parameter_while_a_local_borrows_it.knv:7:9
+  |
+6 |   (local r (ref b))
+  |                 - `r` borrows `b` here
+7 |   (keep b)
+  |         ^ `b` moves here
+8 |   (local q r)
+  |            - `r` is used here, after the move
+  |
+  = help: finish using `r` before moving `b`, or copy what you need out of `b` first
+  = note: run `knave doc L0519` for an explanation

@@ -65,7 +65,6 @@ use rustc_hash::FxHashMap;
 
 use crate::core::{BindingArena, BindingId};
 use crate::diagnostic::Diagnostics;
-use crate::source::Span;
 use crate::types::{
     CopyRules, InferredCopies, ParameterModes, PendingModeCheck, Pipelines, TypedExprKind,
     TypedProgram,
@@ -94,7 +93,7 @@ use values::FunctionValueModes;
 
 pub use changes::InPlaceChanges;
 pub use gate::{EnforcedOwnership, OwnershipGate, WaivedOwnership};
-pub use loans::{LoanConflicts, LoanFacts};
+pub use loans::{LabeledSpans, LoanConflicts, LoanFacts};
 pub use mutation::ChangedValues;
 pub use tail_calls::TailCalls;
 pub use text::TextDecisions;
@@ -226,12 +225,8 @@ impl OwnershipChecker {
                 .into_iter()
                 .for_each(|diagnostic| diagnostics.push(diagnostic));
         }
-        let reported: Vec<Span> = (&diagnostics)
-            .into_iter()
-            .flat_map(|problem| problem.labels().map(|label| label.span()))
-            .collect();
         LoanConflicts::of(program)
-            .check(&reported)
+            .check(&LabeledSpans::of(&diagnostics))
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
         OwnershipFindings {

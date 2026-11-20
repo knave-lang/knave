@@ -12,5 +12,5 @@ error[L0518]: `v` changes while the result still borrows it
 5 |     (do (push! v 1) (at v 0))))
   |                ^ `v` changes here
   |
-  = help: finish changing `v` before borrowing the result from `v`
+  = help: the result keeps this borrow of `v` on every path, so `v` cannot change while it lives; return a fresh borrow made after the change instead
   = note: run `knave doc L0518` for an explanation

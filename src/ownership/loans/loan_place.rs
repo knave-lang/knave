@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use super::loan_names::LoanNames;
 use crate::core::{BindingArena, BindingId};
 use crate::types::TypedExpr;
 
@@ -26,10 +25,6 @@ impl LoanPlace {
                 .iter()
                 .zip(&other.fields)
                 .all(|(field, other_field)| field == other_field)
-    }
-
-    pub fn written(&self, names: &LoanNames<'_>) -> String {
-        self.named(names.bindings())
     }
 
     pub fn named(&self, bindings: &BindingArena) -> String {
@@ -58,7 +53,7 @@ mod tests {
         let place = LoanPlace::of(field).expect("a field read is a place");
         let sources = SourceMap::default();
         let names = LoanNames::new(&source.program().bindings, &sources);
-        assert_eq!(place.written(&names), "c.make");
+        assert_eq!(place.named(names.bindings()), "c.make");
         assert_eq!(LoanPlace::of(source.bound("n")), None);
     }
 }

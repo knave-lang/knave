@@ -1,7 +1,9 @@
 use super::access::Access;
 use super::loan_id::LoanId;
+use super::loan_kind::LoanKind;
 use super::loan_names::LoanNames;
 use super::loan_place::LoanPlace;
+use crate::core::BindingArena;
 use crate::source::Span;
 
 pub struct PlaceAccess {
@@ -28,16 +30,17 @@ impl PlaceAccess {
         }
     }
 
-    pub fn place(&self) -> &LoanPlace {
-        &self.place
-    }
-
     pub fn span(&self) -> Span {
         self.span
     }
 
-    pub fn access(&self) -> &'static dyn Access {
-        self.access
+    pub fn named(&self, bindings: &BindingArena) -> String {
+        self.place.named(bindings)
+    }
+
+    pub fn excluding(&self, lent: &LoanPlace, kind: &dyn LoanKind) -> Option<&'static dyn Access> {
+        let excludes = kind.is_exclusive() || self.access.excludes_shared_loans();
+        (excludes && lent.overlaps(&self.place)).then_some(self.access)
     }
 
     pub fn is_lent_as(&self, loan: LoanId) -> bool {
@@ -49,7 +52,7 @@ impl PlaceAccess {
             "{} {} `{}`",
             names.position(self.span),
             self.access.verb(),
-            self.place.written(names)
+            self.place.named(names.bindings())
         )
     }
 }

@@ -1,5 +1,3 @@
-use rustc_hash::FxHashSet;
-
 use super::emitted_types::EmittedTypes;
 use super::field_trait_path::FieldTraitPath;
 use super::fragment::Fragment;
@@ -24,7 +22,6 @@ struct FieldTrait<'p> {
 }
 
 impl<'a> FieldTraitItems<'a> {
-    const CRATE_ITEMS: &'static str = "use super::*;";
     const REFERENCES: [&'static str; 2] = ["&", "&mut "];
 
     pub fn new(program: &'a TypedProgram, plan: &'a EmitPlan<'a>, types: EmittedTypes<'a>) -> Self {
@@ -56,26 +53,19 @@ impl<'a> FieldTraitItems<'a> {
             (field_trait.plan.implementors.iter())
                 .map(|implementor| self.implementation(&types, field_trait, implementor))
         });
-        std::iter::once(self.trait_module(&types, &traits))
+        std::iter::once(self.trait_module(&traits))
             .chain(implementations)
             .collect()
     }
 
-    fn trait_module(&self, types: &RustTypes, traits: &[FieldTrait]) -> Vec<Fragment> {
+    fn trait_module(&self, traits: &[FieldTrait]) -> Vec<Fragment> {
+        let rooted = FieldTraitPath::outside_every_module();
+        let types = RustTypes::new(self.program, self.plan, self.types, rooted);
         let mut inner = vec![Fragment::Newline];
-        let crate_types = self.crate_types();
-        let mut reads = traits.iter().map(|field_trait| &field_trait.plan.read);
-        if reads.any(|read| Self::reads_crate_type(read, &crate_types)) {
-            inner.extend([
-                Fragment::Text(Self::CRATE_ITEMS.to_string()),
-                Fragment::Newline,
-                Fragment::Newline,
-            ]);
-        }
         let declarations = traits.iter().flat_map(|field_trait| {
-            let declaration = self.declaration(types, field_trait);
+            let declaration = self.declaration(&types, field_trait);
             let references = (Self::REFERENCES.iter())
-                .map(|reference| Self::reference_impl(types, field_trait, reference));
+                .map(|reference| Self::reference_impl(&types, field_trait, reference));
             std::iter::once(declaration).chain(references)
         });
         inner.extend(ModuleTree::separated(declarations.collect()));
@@ -86,19 +76,6 @@ impl<'a> FieldTraitItems<'a> {
             Fragment::Newline,
             Fragment::Text("}".to_string()),
         ]
-    }
-
-    fn crate_types(&self) -> FxHashSet<BindingId> {
-        let modules = self.program.modules.iter();
-        let types = modules.flat_map(|module| module.structs.iter().chain(&module.enums));
-        types.copied().collect()
-    }
-
-    fn reads_crate_type(read: &Type, crate_types: &FxHashSet<BindingId>) -> bool {
-        match read {
-            Type::Named(binding, _) if crate_types.contains(binding) => true,
-            _ => (read.parts().into_iter()).any(|part| Self::reads_crate_type(part, crate_types)),
-        }
     }
 
     fn field_trait<'p>(

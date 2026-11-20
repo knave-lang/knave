@@ -42,20 +42,18 @@ fn main() {
 }
 
 mod field_traits {
-    use super::*;
-
     pub trait HasStart {
-        fn start(&self) -> Point;
+        fn start(&self) -> crate::Point;
     }
 
     impl<T: HasStart + ?Sized> HasStart for &T {
-        fn start(&self) -> Point {
+        fn start(&self) -> crate::Point {
             T::start(self)
         }
     }
 
     impl<T: HasStart + ?Sized> HasStart for &mut T {
-        fn start(&self) -> Point {
+        fn start(&self) -> crate::Point {
             T::start(self)
         }
     }

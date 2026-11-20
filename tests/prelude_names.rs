@@ -612,3 +612,37 @@ fn only_a_prelude_function_joins_the_functions_of_the_rules() {
     let functions = PreludeExamples::load().functions(&names);
     assert_eq!(functions, BTreeSet::from(["map".to_string()]));
 }
+
+#[test]
+fn a_last_paragraph_and_a_paragraph_before_a_fence_are_examples() {
+    let body = "(f 1)\n=> 2\n```\n(h 1)\n```\n(g 1)\n=> 3";
+    assert_eq!(ExampleBlocks::of(body), ["(f 1)\n", "(h 1)\n", "(g 1)\n"]);
+}
+
+#[test]
+fn an_unwrap_inside_a_thread_step_breaks_the_rules() {
+    assert_eq!(
+        RulesFixture::problems("(-> items (map (unwrap-ok item)))"),
+        ["calls `unwrap-ok` outside its own page"]
+    );
+}
+
+#[test]
+fn only_a_listed_name_is_excused() {
+    assert!(NamingException::excuses("set!"));
+    assert!(!NamingException::excuses("empty?"));
+}
+
+#[test]
+fn an_enum_case_names_its_enum_before_the_slash() {
+    assert!(PreludeNaming::is_enum_case("option/some"));
+    assert!(!PreludeNaming::is_enum_case("/"));
+    assert!(!PreludeNaming::is_enum_case("map"));
+}
+
+#[test]
+fn the_checked_names_leave_out_enum_cases() {
+    let names = PreludeNaming::load().exported_names();
+    assert!(names.iter().any(|name| name == "map"));
+    assert!(!names.iter().any(|name| PreludeNaming::is_enum_case(name)));
+}

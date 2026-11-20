@@ -1,0 +1,14 @@
+(defstruct (holder a)
+  :v a)
+
+(defstruct user
+  :h (holder int))
+
+(defstruct animal
+  :h (holder bool))
+
+(defn v-of (x) (:v (:h x)))
+
+(defn main ()
+  (println (v-of (->user (->holder 1))))
+  (println (v-of (->animal (->holder true)))))

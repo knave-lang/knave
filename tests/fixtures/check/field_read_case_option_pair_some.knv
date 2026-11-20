@@ -1,0 +1,11 @@
+(defstruct user
+  :p (option (pair int string)))
+
+(defstruct animal
+  :p (option (pair int string)))
+
+(defn has-p (x) (some? (:p x)))
+
+(defn main ()
+  (println (has-p (->user (some (pair 1 (str "a"))))))
+  (println (has-p (->animal none))))

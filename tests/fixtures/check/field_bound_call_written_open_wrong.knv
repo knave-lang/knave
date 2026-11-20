@@ -1,0 +1,15 @@
+(defstruct user
+  :n (option int))
+
+(defstruct animal
+  :n (option int))
+
+(type n-or
+  (where (b (a (has :n (option b))))
+    (fn ((ref a) b) b)))
+
+(defn n-or (x d) (unwrap-or (:n x) d))
+
+(defn main ()
+  (println (n-or (->user (some 1)) 4))
+  (println (n-or (->animal none) "w")))

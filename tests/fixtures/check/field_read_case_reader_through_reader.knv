@@ -1,0 +1,13 @@
+(defstruct user
+  :n (option int))
+
+(defstruct animal
+  :n (option int))
+
+(defn inner (x) (:n x))
+
+(defn outer (x) (some? (inner x)))
+
+(defn main ()
+  (println (outer (->user (some 1))))
+  (println (outer (->animal none))))

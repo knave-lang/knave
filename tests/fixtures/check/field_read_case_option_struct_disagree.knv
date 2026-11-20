@@ -1,0 +1,17 @@
+(defstruct item
+  :n int)
+
+(defstruct thing
+  :n int)
+
+(defstruct user
+  :it (option item))
+
+(defstruct animal
+  :it (option thing))
+
+(defn has-it (x) (some? (:it x)))
+
+(defn main ()
+  (println (has-it (->user (some (->item 1)))))
+  (println (has-it (->animal none))))

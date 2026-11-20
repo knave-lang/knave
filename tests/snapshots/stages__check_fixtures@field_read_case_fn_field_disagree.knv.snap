@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_fn_field_disagree.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_fn_field_disagree.knv:7:18
+  |
+7 | (defn call (x) ((:f x) 1))
+  |                  ^^ cannot tell which struct's `f` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

@@ -1,0 +1,12 @@
+(defstruct user
+  :xs (vec int))
+
+(defstruct animal
+  :xs (vec int))
+
+(defn doubled (x)
+  (collect (map (iter (:xs x)) (fn (v) (* v 2)))))
+
+(defn main ()
+  (println (doubled (->user (vec 1 2))))
+  (println (doubled (->animal (vec 3)))))

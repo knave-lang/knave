@@ -1,0 +1,15 @@
+(defstruct user
+  :n (option int))
+
+(defstruct animal
+  :n (option int))
+
+(type has-n
+  (where ((a (has :n (option b))))
+    (fn ((ref a)) bool)))
+
+(defn has-n (x) (some? (:n x)))
+
+(defn main ()
+  (println (has-n (->user (some 1))))
+  (println (has-n (->animal none))))

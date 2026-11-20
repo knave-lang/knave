@@ -1,0 +1,16 @@
+(defstruct inner
+  :xs (vec int)
+  :n int)
+
+(defstruct outer
+  :a inner
+  :b inner)
+
+(defn main ()
+  (local o
+    (->outer :a (->inner :xs (vec 1) :n 0)
+             :b (->inner :xs (vec 2) :n 0)))
+  (local r (at (:xs (:a o)) 0))
+  (push! (:xs (:b o)) 3)
+  (set! (:n (:a o)) 4)
+  (println r))

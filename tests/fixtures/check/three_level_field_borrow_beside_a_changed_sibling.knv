@@ -1,0 +1,16 @@
+(defstruct leaf
+  :s string
+  :n int)
+
+(defstruct mid
+  :l leaf)
+
+(defstruct top
+  :m mid)
+
+(defn main ()
+  (local t
+    (->top :m (->mid :l (->leaf :s (str "x") :n 0))))
+  (local r (:s (:l (:m t))))
+  (set! (:n (:l (:m t))) 4)
+  (println r))

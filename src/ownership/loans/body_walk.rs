@@ -102,11 +102,21 @@ impl<'w> BodyWalk<'w> {
     }
 
     fn field_read(&mut self, expr: &'w TypedExpr, owner: &'w TypedExpr, at: PointId) -> Walked {
-        let read = self.expr(owner, at);
+        let Some(place) = LoanPlace::of(expr) else {
+            return self.expr(owner, at);
+        };
+        let read = self.expr(Self::path_root(owner), at);
+        if !expr.ty.is_reference() {
+            return read;
+        }
         let shared = <dyn LoanKind>::of(ReferenceKind::Shared);
-        match LoanPlace::of(expr).filter(|_| expr.ty.is_reference()) {
-            Some(place) => self.lend_after(read, Lending::new(place, shared, expr.span)),
-            None => read,
+        self.lend_after(read, Lending::new(place, shared, expr.span))
+    }
+
+    fn path_root(owner: &'w TypedExpr) -> &'w TypedExpr {
+        match &owner.kind {
+            TypedExprKind::Struct(TypedStructExpr::Field(inner, _)) => Self::path_root(inner),
+            _ => owner,
         }
     }
 

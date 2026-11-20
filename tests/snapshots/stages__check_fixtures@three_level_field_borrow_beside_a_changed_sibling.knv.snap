@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/three_level_field_borrow_beside_a_changed_sibling.knv
+---
+(derive leaf clone partial-eq eq hash show)
+(derive mid clone partial-eq eq hash show)
+(derive top clone partial-eq eq hash show)
+(type ->leaf (fn (string int) leaf))
+(type ->mid (fn (leaf) mid))
+(type ->top (fn (mid) top))
+(type main (fn () unit))

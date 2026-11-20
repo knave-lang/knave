@@ -1,0 +1,15 @@
+(defstruct inner
+  :name string
+  :n int)
+
+(defstruct outer
+  :a inner
+  :b inner)
+
+(defn main ()
+  (local o
+    (->outer :a (->inner :name (str "x") :n 0)
+             :b (->inner :name (str "y") :n 0)))
+  (local r (:name (:a o)))
+  (set! (:n (:a o)) 4)
+  (println r))

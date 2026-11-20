@@ -7,6 +7,7 @@ use super::constant_definitions::ConstantDefinitions;
 use super::entry_point::EntryPoint;
 use super::item_visibilities::ItemVisibilities;
 use super::problems::EmitProblems;
+use super::trait_use_search::TraitUseSearch;
 use super::visibility::Visibility;
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, Diagnostics};
@@ -204,7 +205,7 @@ impl<'p> EmitPlan<'p> {
     fn collect_module_trait_uses(&self, module: ModuleId, uses: &mut BTreeSet<BindingId>) {
         for binding in self.items_of(module) {
             if let Some(definition) = self.definition(binding) {
-                Self::collect_expr_trait_uses(&definition.value, self.program, uses);
+                TraitUseSearch::new(self.program).collect(&definition.value, uses);
             }
         }
     }
@@ -225,25 +226,8 @@ impl<'p> EmitPlan<'p> {
             .filter_map(|method| method.default);
         for binding in impl_methods.chain(defaults) {
             if let Some(definition) = self.definition(binding) {
-                Self::collect_expr_trait_uses(&definition.value, self.program, uses);
+                TraitUseSearch::new(self.program).collect(&definition.value, uses);
             }
-        }
-    }
-
-    fn collect_expr_trait_uses(
-        expr: &TypedExpr,
-        program: &TypedProgram,
-        uses: &mut BTreeSet<BindingId>,
-    ) {
-        if let TypedExprKind::Call(callee, _) = &expr.kind
-            && let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &callee.kind
-            && let Some(info) = program.declarations.traits().methods().get(binding)
-            && info.receiver.is_some()
-        {
-            uses.insert(info.trait_binding);
-        }
-        for child in expr.children() {
-            Self::collect_expr_trait_uses(child, program, uses);
         }
     }
 

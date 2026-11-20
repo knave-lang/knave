@@ -1,0 +1,16 @@
+(def byte-count
+  (rust "{0}.len()"
+    (fn ((ref str)) usize)))
+
+(defmacro thunk (body)
+  (template (fn () (unquote body))))
+
+(defmacro thunk-size (s)
+  (template (thunk (byte-count (unquote s)))))
+
+(type run (fn ((fn () int)) int))
+
+(defn run (f) (f))
+
+(defn main ()
+  (println (run (thunk-size "x"))))

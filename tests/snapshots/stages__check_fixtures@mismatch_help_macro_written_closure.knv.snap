@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/mismatch_help_macro_written_closure.knv
+---
+error[L0401]: mismatched types
+  --> check/mismatch_help_macro_written_closure.knv:13:17
+   |
+13 |   (println (run (thunk-size "x"))))
+   |                 ^^^^^^^^^^^^^^^^ expected `int`, found `usize`
+   |
+   = note: run `knave doc L0401` for an explanation

@@ -260,6 +260,7 @@ pub use collection::{Collection, CollectionKind};
 pub use copied_out::CopiedOut;
 pub use copy::{CopyRules, InferredCopies};
 pub use declarations::Declarations;
+pub use derive_catalog::InferableDerives;
 pub use display::TypeDisplay;
 pub use enum_table::EnumTable;
 pub use enums::{EnumDefinition, VariantDefinition, VariantPayload};

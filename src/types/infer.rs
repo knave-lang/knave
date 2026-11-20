@@ -1199,7 +1199,9 @@ impl TypeChecker {
         let context = expected
             .as_ref()
             .map_or(MismatchContext::Plain, |expected| expected.context.clone());
+        let enclosing = self.inferring.replace(span);
         let inferred = self.infer_block_expecting(&lambda.body, &result, context.clone());
+        self.inferring = enclosing;
         self.recur_target = previous;
         self.checking_function_body = enclosing_body;
         self.try_target = previous_try;

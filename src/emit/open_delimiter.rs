@@ -1,4 +1,4 @@
-use super::identifier::Identifier;
+use super::macro_call::MacroCall;
 
 #[derive(Clone)]
 pub struct OpenDelimiter<'a> {
@@ -34,8 +34,7 @@ impl<'a> OpenDelimiter<'a> {
     }
 
     pub fn callee(&self) -> Option<&'a str> {
-        let path = self.called_after?.trim_end().strip_suffix('!')?;
-        Some(Identifier::ending(path).text())
+        MacroCall::ending(self.called_after?).map(|call| call.name())
     }
 
     pub fn passed_arguments(&self) -> usize {

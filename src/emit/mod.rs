@@ -34,6 +34,7 @@ mod literal_generics;
 mod loan;
 mod local_closures;
 mod locals;
+mod macro_call;
 mod method_elisions;
 mod module_tree;
 mod mutable_locals;

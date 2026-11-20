@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/push_to_a_nested_vector_while_its_element_is_borrowed.knv
+---
+error[L0518]: `o.a.xs` changes while `r` still borrows it
+  --> check/push_to_a_nested_vector_while_its_element_is_borrowed.knv:12:10
+   |
+11 |   (local r (at (:xs (:a o)) 0))
+   |                ------------ `r` borrows `o.a.xs` here
+12 |   (push! (:xs (:a o)) 3)
+   |          ^^^^^^^^^^^^ `o.a.xs` changes here
+13 |   (println r))
+   |            - `r` is used here, after the change
+   |
+   = help: finish using `r` before changing `o.a.xs`, or copy what you need out of `o.a.xs` first
+   = note: run `knave doc L0518` for an explanation

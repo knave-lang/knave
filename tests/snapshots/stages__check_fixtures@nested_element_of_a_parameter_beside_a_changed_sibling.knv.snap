@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/nested_element_of_a_parameter_beside_a_changed_sibling.knv
+---
+(derive inner clone partial-eq eq hash show)
+(derive outer clone partial-eq eq hash show)
+(type ->inner (fn ((vec string) int) inner))
+(type ->outer (fn (inner) outer))
+(type note! (fn ((mut outer)) unit))
+(type main (fn () unit))

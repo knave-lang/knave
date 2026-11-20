@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/nested_element_borrow_beside_a_push_to_another_field.knv
+---
+(derive inner clone partial-eq eq hash show)
+(derive outer clone partial-eq eq hash show)
+(type ->inner (fn ((vec int) int) inner))
+(type ->outer (fn (inner inner) outer))
+(type main (fn () unit))

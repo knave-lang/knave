@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/element_borrow_beside_a_changed_sibling_field.knv
+---
+(derive inner clone partial-eq eq hash show)
+(type ->inner (fn ((vec int) int) inner))
+(type main (fn () unit))

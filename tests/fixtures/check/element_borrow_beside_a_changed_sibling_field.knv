@@ -1,0 +1,9 @@
+(defstruct inner
+  :xs (vec int)
+  :n int)
+
+(defn main ()
+  (local i (->inner :xs (vec 1) :n 0))
+  (local r (at (:xs i) 0))
+  (set! (:n i) 4)
+  (println r))

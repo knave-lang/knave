@@ -1,0 +1,16 @@
+(defstruct inner
+  :xs (vec string)
+  :n int)
+
+(defstruct outer
+  :a inner)
+
+(defn note! (o)
+  (local r (at (:xs (:a o)) 0))
+  (set! (:n (:a o)) 4)
+  (println r))
+
+(defn main ()
+  (local o
+    (->outer :a (->inner :xs (vec (str "q")) :n 0)))
+  (note! o))

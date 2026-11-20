@@ -165,14 +165,14 @@ impl TypeChecker {
         }
         let referent = self.unify_referents(&depths, arguments)?;
         let target = (self.shared_variable_group(group, callee)).target_depth(&referent, &depths);
-        let span = arguments[depths.positions[0]].value.span;
+        let span = arguments[depths.first().position].value.span;
         let chosen = target.wrap(referent);
         for member in group.members() {
             self.unification()
                 .expect(Expectation::plain(&Type::Var(member.var)), &chosen, span)?;
         }
-        for (position, depth) in depths.positions.iter().zip(depths.depths) {
-            arguments[*position].borrow = target.borrow_from(depth);
+        for argument in depths.arguments() {
+            arguments[argument.position].borrow = target.borrow_from(argument.depth);
         }
         Ok(())
     }
@@ -246,10 +246,10 @@ impl TypeChecker {
         depths: &GroupDepths,
         arguments: &[TypedArgument],
     ) -> Result<Type, Diagnostic> {
-        let referent = depths.resolved[0].innermost_referent().clone();
-        for (position, argument) in depths.positions.iter().zip(&depths.resolved).skip(1) {
-            let span = arguments[*position].value.span;
-            let found = argument.innermost_referent();
+        let referent = depths.first().resolved.innermost_referent().clone();
+        for argument in depths.arguments().iter().skip(1) {
+            let span = arguments[argument.position].value.span;
+            let found = argument.resolved.innermost_referent();
             self.unification()
                 .expect(Expectation::plain(&referent), found, span)?;
         }

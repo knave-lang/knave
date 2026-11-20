@@ -11,6 +11,7 @@ use super::shared_group::SharedGroup;
 use super::ty::{Bound, Type, TypeVar};
 use super::typed::TypedArgument;
 use super::unifier::Unifier;
+use super::written_argument::WrittenArgument;
 
 pub(super) struct SharedVariableGroup<'a> {
     group: &'a SharedGroup,
@@ -51,33 +52,28 @@ impl<'a> SharedVariableGroup<'a> {
 
     pub(super) fn depths(&self, arguments: &[TypedArgument]) -> GroupDepths {
         let places = self.places();
-        let positions: Vec<usize> = self.group.positions().collect();
-        let resolved = positions
-            .iter()
-            .map(|position| self.unifier.resolve(&arguments[*position].value.ty))
-            .collect();
-        let depths = positions
-            .iter()
-            .map(|position| places.reference_depth_as_written(&arguments[*position].value))
-            .collect();
-        GroupDepths {
-            positions,
-            resolved,
-            depths,
-        }
+        let written = (self.group.positions()).map(|position| {
+            let value = &arguments[position].value;
+            WrittenArgument {
+                position,
+                resolved: self.unifier.resolve(&value.ty),
+                depth: places.reference_depth_as_written(value),
+            }
+        });
+        GroupDepths::new(written.collect())
     }
 
     pub(super) fn leaves_referent_to_each(&self, depths: &GroupDepths) -> bool {
-        (depths.resolved.iter()).any(|argument| self.facts().referent_unknown(argument))
+        (depths.arguments().iter())
+            .any(|argument| self.facts().referent_unknown(&argument.resolved))
             && !self.copies_known_referent(depths)
     }
 
     pub(super) fn target_depth(&self, referent: &Type, depths: &GroupDepths) -> ReferenceDepth {
-        let depths = &depths.depths;
         if self.copies_out(referent) {
             ReferenceDepth::VALUE
-        } else if depths.windows(2).all(|pair| pair[0] == pair[1]) {
-            let depth = depths[0];
+        } else if depths.depths_agree() {
+            let depth = depths.first().depth;
             if self.reference_blocks_bounds(referent, depth) {
                 ReferenceDepth::VALUE
             } else {
@@ -112,21 +108,8 @@ impl<'a> SharedVariableGroup<'a> {
     }
 
     fn written_depths_agree(&self, arguments: &[TypedArgument]) -> bool {
-        let resolved: Vec<Type> = (self.group.positions())
-            .map(|position| self.unifier.resolve(&arguments[position].value.ty))
-            .collect();
-        let referent = resolved[0].innermost_referent().clone();
-        if !resolved
-            .iter()
-            .all(|argument| argument.innermost_referent() == &referent)
-        {
-            return true;
-        }
-        let places = self.places();
-        let depths: Vec<usize> = (self.group.positions())
-            .map(|position| places.reference_depth_as_written(&arguments[position].value))
-            .collect();
-        depths.windows(2).all(|pair| pair[0] == pair[1])
+        let depths = self.depths(arguments);
+        !depths.referents_agree() || depths.depths_agree()
     }
 
     fn written_types_hold(&self, assignment: &FxHashMap<TypeVar, Type>) -> bool {
@@ -148,9 +131,9 @@ impl<'a> SharedVariableGroup<'a> {
 
     fn copies_known_referent(&self, depths: &GroupDepths) -> bool {
         let facts = self.facts();
-        depths.depths.windows(2).any(|pair| pair[0] != pair[1])
-            && (depths.resolved.iter())
-                .any(|argument| facts.holds_copy_value(argument.innermost_referent()))
+        !depths.depths_agree()
+            && (depths.arguments().iter())
+                .any(|argument| facts.holds_copy_value(argument.resolved.innermost_referent()))
     }
 
     fn reference_blocks_bounds(&self, referent: &Type, depth: usize) -> bool {
@@ -308,11 +291,15 @@ mod tests {
             fixture.argument(fixture.local(PassingFixture::int())),
         ];
         let depths = fixture.shared_variable_group(&group).depths(&arguments);
-        assert_eq!(depths.positions, vec![0, 1]);
-        assert_eq!(depths.depths, vec![1, 0]);
+        let written: Vec<_> = (depths.arguments().iter())
+            .map(|argument| (argument.position, argument.depth, argument.resolved.clone()))
+            .collect();
         assert_eq!(
-            depths.resolved,
-            vec![Type::shared(PassingFixture::int()), PassingFixture::int()]
+            written,
+            vec![
+                (0, 1, Type::shared(PassingFixture::int())),
+                (1, 0, PassingFixture::int())
+            ]
         );
     }
 

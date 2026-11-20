@@ -207,6 +207,7 @@ mod view_coercion;
 mod viewed_arguments;
 mod walk;
 mod wrapper;
+mod written_argument;
 mod written_bodies;
 mod written_borrows;
 mod written_derive;

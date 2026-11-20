@@ -24,6 +24,7 @@ use super::templates::TemplateBorrows;
 use super::ty::{Bound, Type};
 use super::typed::{Borrow, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
 use super::unifier::{LiteralKind, Unifier};
+use super::written_argument::WrittenArgument;
 use crate::core::{BindingId, PrimitiveType, ReferenceKind, RustTemplate, TypeExpr, TypeExprKind};
 use crate::source::{SourceId, Span};
 
@@ -233,13 +234,22 @@ impl PassingFixture {
         depths: &[usize],
     ) -> ReferenceDepth {
         let group = self.shared_group(&vec![0; depths.len()]);
-        let depths = GroupDepths {
-            positions: (0..depths.len()).collect(),
-            resolved: vec![referent.clone(); depths.len()],
-            depths: depths.to_vec(),
-        };
+        let written: Vec<(Type, usize)> = (depths.iter())
+            .map(|depth| (referent.clone(), *depth))
+            .collect();
+        let depths = Self::group_depths(&written);
         self.shared_variable_group_for(callee, &group)
             .target_depth(&referent, &depths)
+    }
+
+    pub(super) fn group_depths(written: &[(Type, usize)]) -> GroupDepths {
+        let arguments =
+            (written.iter().enumerate()).map(|(position, (resolved, depth))| WrittenArgument {
+                position,
+                resolved: resolved.clone(),
+                depth: *depth,
+            });
+        GroupDepths::new(arguments.collect())
     }
 
     pub(super) fn template_call(text: &str) -> TypedExpr {

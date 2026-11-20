@@ -15,7 +15,8 @@ use super::checker::{TypeChecker, VariantArmReference};
 use super::collection::{Collection, CollectionKind};
 use super::enums::VariantPayload;
 use super::expectation::Expectation;
-use super::field_read_problems::FieldReadProblems;
+use super::field_bound::FieldBound;
+use super::field_owner_problems::FieldOwnerProblems;
 use super::inferred_span::InferredSpan;
 use super::parameter_call_request::ParameterCallRequest;
 use super::pending::DecidedBorrows;
@@ -2981,7 +2982,7 @@ impl TypeChecker {
             })
             .collect();
         let [binding] = candidates.as_slice() else {
-            return Err(FieldReadProblems::ambiguous(&first.0.name, first.0.span));
+            return Err(FieldOwnerProblems::ambiguous(&first.0.name, first.0.span));
         };
         let arguments = self.fresh_arguments(*binding);
         let expected = Type::Named(*binding, arguments.clone());
@@ -3070,6 +3071,13 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         let value = self.infer(value)?;
+        let bound_read =
+            FieldBound::new(&mut self.unifier, &self.declarations).read(&value.ty, &label.name);
+        if let Some(ty) = bound_read {
+            let kind =
+                TypedExprKind::Struct(TypedStructExpr::Field(Box::new(value), label.clone()));
+            return Ok(TypedExpr { kind, ty, span });
+        }
         let (owner, arguments) = self.field_owner(&value, label)?;
         let declared = self
             .declarations
@@ -3128,7 +3136,7 @@ impl TypeChecker {
                 Ok((binding, arguments))
             }
             Type::Var(var) => match self.unifier.literal_kind(var) {
-                Some(literal) => Err(FieldReadProblems::literal_owner(literal, value.span)),
+                Some(literal) => Err(FieldOwnerProblems::literal_owner(literal, value.span)),
                 None => self.unique_owner(&owner, label),
             },
             other => Err(TypeProblems::no_fields(
@@ -3157,11 +3165,11 @@ impl TypeChecker {
                     .expect(Expectation::plain(&expected), owner, label.span)?;
                 Ok((*binding, arguments))
             }
-            [] => Err(FieldReadProblems::undeclared(
+            [] => Err(FieldOwnerProblems::undeclared(
                 label,
                 self.declarations.types().structs.closest_field(&label.name),
             )),
-            _ => Err(FieldReadProblems::ambiguous(&label.name, label.span)),
+            _ => Err(FieldOwnerProblems::ambiguous(&label.name, label.span)),
         }
     }
 

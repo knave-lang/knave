@@ -118,9 +118,9 @@ impl<'a> SequenceUses<'a> {
             return true;
         }
         self.report
-            .uses_of(owner, generic)
+            .sited_uses_of(owner, generic)
             .iter()
-            .all(|used| used.as_ref().is_some_and(|ty| self.is_sequence(ty)))
+            .all(|(_, used)| used.as_ref().is_some_and(|ty| self.is_sequence(ty)))
     }
 
     fn is_sequence(&mut self, ty: &Type) -> bool {

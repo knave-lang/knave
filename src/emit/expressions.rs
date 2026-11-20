@@ -9,6 +9,7 @@ use super::destructured_wrapper::DestructuredWrapper;
 use super::double_negation::DoubleNegation;
 use super::emitted_types::EmittedTypes;
 use super::emitted_value::EmittedValue;
+use super::field_getter::FieldGetter;
 use super::fragment::{Code, Fragment, Precedence};
 use super::lent_temporaries::LentTemporaries;
 use super::let_annotation::LetAnnotation;
@@ -2690,6 +2691,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn field_access(&mut self, value: &TypedExpr, label: &FieldLabel, result: &Type) -> Code {
         let borrows_field = result.is_reference()
+            && !FieldGetter::reads_generic_owner(&value.ty)
             && !self
                 .declared_field_type(&value.ty, &label.name)
                 .is_some_and(|declared| declared.is_reference());
@@ -2702,6 +2704,9 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn field_place(&mut self, value: &TypedExpr, label: &FieldLabel) -> Code {
+        if FieldGetter::reads_generic_owner(&value.ty) {
+            return FieldGetter::call(self.field_owner(value), label);
+        }
         let value = self.field_owner(value);
         let value = if value.is_atomic() {
             value

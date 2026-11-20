@@ -7,6 +7,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::EmissionWork;
 use super::emitted_types::EmittedTypes;
 use super::expressions::ExpressionEmitter;
+use super::field_trait_items::FieldTraitItems;
 use super::fragment::{Code, Fragment};
 use super::fresh_lifetimes::FreshLifetimes;
 use super::generic_callees::GenericCallees;
@@ -177,6 +178,9 @@ impl<'a> ItemEmitter<'a> {
         items.extend(self.traits(module));
         items.extend(self.trait_impls(module));
         items.extend(self.structural_impls.of_module(module));
+        let field_traits = FieldTraitItems::new(self.program, self.plan, self.types);
+        let field_traits = field_traits.with_lifetimes(Self::implementor_lifetime_of);
+        items.extend(field_traits.of_module(module));
         items.extend(self.conversions(module));
         items
     }

@@ -1220,10 +1220,7 @@ impl Expander<'_> {
             .map(|(binding, _)| TypeExpr::new(TypeExprKind::Named(*binding, Vec::new()), span));
         let mut binders = vec![TypeBinder {
             variable: self_variable,
-            bounds: vec![TypeBound {
-                binding: trait_binding,
-                argument,
-            }],
+            bounds: vec![TypeBound::new(trait_binding, argument)],
             span,
             lifetime: false,
         }];

@@ -411,6 +411,9 @@ impl<'a> RustTypes<'a> {
     fn trait_path(&self, bound: &Bound) -> Option<String> {
         let rust_trait = self.traits.get(bound.binding)?;
         let path = rust_trait.path.to_string();
+        if rust_trait.reads_field {
+            return Some(path);
+        }
         Some(match (&bound.argument, &rust_trait.associated) {
             (Some(argument), Some(associated)) => format!(
                 "{path}<{} = {}>",

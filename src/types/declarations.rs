@@ -1,8 +1,10 @@
 use super::declarations_builder::DeclarationsBuilder;
+use super::field_traits::FieldTraitPlan;
 use super::trait_declarations::TraitDeclarations;
 use super::ty::GenericParam;
 use super::type_declarations::TypeDeclarations;
 use super::written_bodies::WrittenBodies;
+use crate::core::BindingId;
 
 #[derive(Default)]
 pub struct Declarations {
@@ -31,6 +33,10 @@ impl Declarations {
             "declarations are built only during collection"
         );
         DeclarationsBuilder::new(&mut self.types, &mut self.traits, &mut self.written)
+    }
+
+    pub(super) fn settle_field_trait(&mut self, binding: BindingId, plan: FieldTraitPlan) {
+        self.traits.rust_paths.field_traits.settle(binding, plan);
     }
 
     pub(super) fn freeze(&mut self) {

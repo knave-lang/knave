@@ -84,7 +84,7 @@ These forms are the compiler's complete vocabulary. Every other form is a macro 
 | `use` | `(use module name...)` | path | module: module path. names: binders. |
 | `export` | `(export name...)` | `pub` | names: references in every namespace. |
 
-In type positions, the kernel provides `fn`, `fn-mut`, `fn-once`, `ref`, `mut`, `where`, `with`, `_`, and the primitive types `bool char str string unit i8 i16 i32 int i128 isize u8 u16 u32 u64 u128 usize f32 float`. `i64` and `f64` are other names of `int` and `float`.
+In type positions, the kernel provides `fn`, `fn-mut`, `fn-once`, `ref`, `mut`, `where`, `with`, `has`, `_`, and the primitive types `bool char str string unit i8 i16 i32 int i128 isize u8 u16 u32 u64 u128 usize f32 float`. `i64` and `f64` are other names of `int` and `float`.
 
 In expression positions, the kernel provides `ref`, `mut` and `deref`, and the constants `true` and `false`. The constants are kernel constants, not prelude definitions. Macro code and program code then see the same booleans, so `if`, `and` and `or` work in both.
 
@@ -93,6 +93,8 @@ In expression positions, the kernel provides `ref`, `mut` and `deref`, and the c
 `ref`, `mut` and `deref` are kernel forms because a prelude function cannot mark its result as written. The compiler must see the written form to know that the value came from a written borrow or dereference.
 
 `infer` is a kernel form because only the checker knows an expression's inferred type ([RFC 0054](../rfcs/0054-infer.md)). A prelude macro runs before the checker and sees forms, never types. A prelude function runs in the emitted program, where Rust's `type_name` spells Rust's names, runs its argument, and cannot name a type variable.
+
+`has` is a kernel name in type positions because the prelude cannot define a family of bounds keyed by a field name ([RFC 0077](../rfcs/0077-generic-field-reads.md)). Only the checker sees every struct of the program and the calls that reach a reader, and the printed bound must paste back into a signature.
 
 `assoc-at` is a kernel form because only the compiler knows a collection's inferred type. A prelude macro cannot choose between a vector and a map, so the `assoc-at` collection rule picks the emitted Rust by type. The rule knows `(vec a)`, `(sorted-map k v)` and `(hash-map k v)`.
 
@@ -148,6 +150,7 @@ Type syntax mirrors value syntax:
 | `(mut 'a point)` | `&'a mut Point` |
 | `(pair int string)` | `(i64, String)` |
 | `(where ((n number)) (fn (n) n))` | `fn<N: Number>(N) -> N` |
+| `(where ((a (has :age int))) (fn ((ref a)) int))` | `fn<A: HasAge>(&A) -> i64` |
 | `_` | inferred |
 
 `int` and `float` are the default number types ([RFC 0074](../rfcs/0074-int-and-float.md)). `i64` and `f64` are other names of the same two types, for code where the width is the point. A large collection of small numbers can use `u8`, `u16` or `i32`, and a large collection of floats can use `f32`, to save memory.
@@ -330,7 +333,7 @@ A keyword call with no value or with more than one value is an error. `local`, `
 
 A field label in `new` may be written as a keyword, so a macro passes the user's spelling through, as `assoc` and `->car` do. An unknown field then reports and suggests the field as a keyword, as `(assoc leaf :yer 2025)` suggests `:year`.
 
-A field read names its struct only through the value's type. When that type is still unknown, the read finds the struct by the field's name: one struct that declares the field fixes the type, none is `L0408`, `` no struct has a field `:size` ``, with the closest field that some struct declares, and an integer or float literal that nothing has fixed is `L0410`, `` `int` has no fields ``, before any struct counts. When two structs share a field name, a function that reads that field from an unannotated parameter needs a signature, as `(type volume (fn ((ref cube)) int))` gives.
+A field read names its struct only through the value's type. When that type is still unknown, the read finds the struct by the field's name: one struct that declares the field fixes the type, none is `L0408`, `` no struct has a field `:size` ``, with the closest field that some struct declares, and an integer or float literal that nothing has fixed is `L0410`, `` `int` has no fields ``, before any struct counts. When two or more structs declare the field, the read gives its owner a field bound, `(a (has :name r))`, which holds for every struct with the field, and `r` is the read's type. Each call checks the bound against the struct it passes. When every struct that reaches the function reads the field as one type, the function prints that type, as `(type hello (where ((a (has :name (ref str)))) (fn ((ref a)) string)))`, and it emits one Rust trait for the field, `trait HasName { fn name(&self) -> &str; }`, with an impl for each such struct, and reads `x.name()`. A function whose structs read the field as different types, or whose stored-borrow read leaves it through its result or a changed parameter, reports `L0407` at the read, so it needs a signature, as `(type volume (fn ((ref cube)) int))` gives. A signature may write the bound, as `(where ((a (has :name (ref str)))) (fn ((ref a)) string))`.
 
 The expander carries keyword reads because a prelude macro per field would clash between two structs that share a field name.
 

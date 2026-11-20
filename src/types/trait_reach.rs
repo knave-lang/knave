@@ -362,6 +362,7 @@ mod tests {
                 bounds: vec![TypeBound {
                     binding: bound,
                     argument: None,
+                    field: None,
                 }],
                 span: Self::span(),
                 lifetime: false,
@@ -542,6 +543,7 @@ mod tests {
             let supertrait = TypeBound {
                 binding: named,
                 argument: None,
+                field: None,
             };
             let self_variable = traits.binding("self");
             ItemKind::Trait(

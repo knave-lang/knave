@@ -6,9 +6,13 @@ input_file: tests/fixtures/emit/format_placeholder_inside_a_string_literal.knv
 fn main() {
     crate::rt::restore_default_sigpipe();
     let mut tricks = vec!["feint", "vanish"];
-    tricks
-        .iter()
-        .for_each(|trick: &&str| println!("{}", format!("{}", "a,*trick)")));
+    tricks.iter().for_each(|trick: &&str| {
+        let shown = {
+            let template_argument_0 = *trick;
+            format!("{} {}", "a,template_argument_0)", template_argument_0)
+        };
+        println!("{}", shown)
+    });
     tricks.push("dash");
     println!("{}", tricks.len())
 }

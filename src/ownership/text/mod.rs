@@ -20,6 +20,7 @@ mod map_queries;
 mod need;
 mod node_id;
 mod node_partition;
+mod place_writes;
 mod reaching_text;
 mod refusal;
 mod representation;

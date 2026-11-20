@@ -9476,6 +9476,7 @@ fn a_compiler_newer_than_the_project_warns_once_per_command() {
         &["test"],
         &["fmt", "project.knv"],
         &["fmt", "--check", "project.knv"],
+        &["fmt", "src/main.knv", "project.knv"],
     ] {
         let stderr = sandbox
             .compiler_in("demo-app", command)

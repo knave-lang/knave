@@ -4,13 +4,10 @@ use super::checking_facts::CheckingFacts;
 use super::collected_impl::CollectedImpl;
 use super::collected_rust_trait::CollectedRustTrait;
 use super::collected_trait::CollectedTrait;
-use super::field_traits::FieldTrait;
-use super::rust_trait::RustTrait;
+use super::field_trait::FieldTrait;
 use super::structural_trait::StructuralTrait;
 use super::trait_declarations::TraitDeclarations;
-use super::trait_rows_reach::LoweredRows;
-use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, Keyword};
-use knave_expand::mangle::NameMangler;
+use crate::core::{BindingArena, BindingId};
 
 pub(super) struct TraitDeclarationsBuilder<'a> {
     traits: &'a mut TraitDeclarations,
@@ -48,30 +45,11 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         bindings: &mut BindingArena,
     ) {
         for field_trait in field_traits {
-            let module = field_trait
-                .implementors
-                .first()
-                .and_then(|(owner, _)| bindings.get(*owner).kind().defining_module())
-                .expect("a field trait has an implementing struct in a module");
-            let name = format!("has {}{}", Keyword::MARKER, field_trait.field);
-            let binding = bindings.add(BindingInfo::new(
-                name.into(),
-                BindingKind::Trait(module),
-                None,
-            ));
-            let implementors = field_trait
-                .implementors
-                .into_iter()
-                .map(|(_, implementor)| implementor);
-            let rows = LoweredRows::new(implementors.collect(), Vec::new());
-            let path = NameMangler::type_name(&format!("has-{}", field_trait.field));
-            let read = NameMangler::type_name(&field_trait.field);
-            let field_trait_rows = RustTrait::field_read(path.into(), read.into(), rows);
-            self.traits.table.add(binding, field_trait_rows);
-            self.traits
-                .rust_paths
-                .field_traits
-                .record(field_trait.field, binding);
+            let info = field_trait.binding_info(bindings);
+            let binding = bindings.add(info);
+            let (field, rust_trait) = field_trait.into_rust_trait();
+            self.traits.table.add(binding, rust_trait);
+            self.traits.rust_paths.field_traits.record(field, binding);
         }
     }
 

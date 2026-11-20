@@ -1,0 +1,13 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defn hello (x)
+  (local y x)
+  (str "hello " (:name x) " " (:name y)))
+
+(defn main ()
+  (println (hello (->user "ana")))
+  (println (hello (->animal "rex"))))

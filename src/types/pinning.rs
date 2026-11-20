@@ -42,6 +42,8 @@ struct Target {
     body: Type,
 }
 
+pub type SitedUse = (BindingId, Option<Type>);
+
 pub struct InstantiationReport {
     entries: BTreeMap<BindingId, FunctionUses>,
     substitutions: FxHashMap<BindingId, FxHashMap<GenericId, Type>>,
@@ -65,11 +67,7 @@ impl InstantiationReport {
         self.substitutions.get(&binding).cloned()
     }
 
-    pub fn sited_uses_of(
-        &self,
-        binding: BindingId,
-        generic: GenericId,
-    ) -> Vec<(BindingId, Option<Type>)> {
+    pub fn sited_uses_of(&self, binding: BindingId, generic: GenericId) -> Vec<SitedUse> {
         let Some(entry) = self.entries.get(&binding) else {
             return Vec::new();
         };
@@ -77,12 +75,8 @@ impl InstantiationReport {
             return Vec::new();
         };
         let used = entry.uses.iter().map(|used| used.types[index].clone());
-        entry
-            .sites
-            .iter()
-            .map(|site| site.enclosing)
-            .zip(used)
-            .collect()
+        let sites = entry.sites.iter().map(|site| site.enclosing);
+        sites.zip(used).collect()
     }
 
     pub fn is_used(&self, binding: BindingId) -> bool {

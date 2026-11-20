@@ -5,6 +5,7 @@ use knave_expand::mangle::NameMangler;
 
 use super::emitted_types::EmittedTypes;
 use super::fragment::Fragment;
+use super::item_lifetimes::ItemLifetimes;
 use super::items::ItemEmitter;
 use super::plan::EmitPlan;
 use super::types::{LifetimeScope, RustTypes, TypePosition};
@@ -253,7 +254,7 @@ impl<'a> StructuralImpls<'a> {
     }
 
     fn implementor_lifetime(&self, implemented: &ImplementedType) -> Option<String> {
-        ItemEmitter::implementor_lifetime_of(self.program, &Self::implementor(implemented))
+        ItemLifetimes::new(self.program).of_implementor(&Self::implementor(implemented))
     }
 
     fn implementor_name(&self, implemented: &ImplementedType, types: &RustTypes) -> String {

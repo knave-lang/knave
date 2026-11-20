@@ -1203,13 +1203,13 @@ impl TypeChecker {
                 vars.push(var);
             }
         }
-        let fields = &self.declarations.traits().rust_paths.field_traits;
+        let fields = &self.declarations.traits().rust_paths().field_traits();
         fields.add_read_vars(vars, &self.unifier, |read| self.free_vars(read));
     }
 
     fn mentioned_generics(&self, inferred: &Type) -> Vec<GenericParam> {
         let mut mentioned = MentionedGenerics::of(inferred);
-        let fields = &self.declarations.traits().rust_paths.field_traits;
+        let fields = &self.declarations.traits().rust_paths().field_traits();
         fields.add_read_generics(&mut mentioned, |id| self.generics.param(id), &self.unifier);
         mentioned
             .into_ids()

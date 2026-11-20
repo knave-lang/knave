@@ -4,3 +4,12 @@ pub enum ReadKind {
     StoredBorrow,
     BorrowOfStruct,
 }
+
+impl ReadKind {
+    pub fn getter_prefix(self) -> &'static str {
+        match self {
+            ReadKind::BorrowOfStruct => "&",
+            ReadKind::Value | ReadKind::StoredBorrow => "",
+        }
+    }
+}

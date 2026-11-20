@@ -5,15 +5,9 @@ use rustc_hash::FxHashMap;
 
 use super::mentioned_generics::MentionedGenerics;
 use super::read_kind::ReadKind;
-use super::trait_rows_reach::Implementor;
 use super::ty::{Bound, GenericId, GenericParam, Type, TypeVar};
 use super::unifier::Unifier;
 use crate::core::BindingId;
-
-pub(super) struct FieldTrait {
-    pub(super) field: Rc<str>,
-    pub(super) implementors: Vec<(BindingId, Implementor)>,
-}
 
 #[derive(Default)]
 pub struct FieldTraits {
@@ -27,26 +21,6 @@ pub struct FieldTraitPlan {
     pub read: Type,
     pub kind: ReadKind,
     pub implementors: Vec<Type>,
-    pub(super) disagrees: bool,
-}
-
-impl FieldTraitPlan {
-    pub(super) fn new(read: Type, kind: ReadKind, implementors: Vec<Type>) -> Self {
-        Self {
-            read,
-            kind,
-            implementors,
-            disagrees: false,
-        }
-    }
-
-    pub(super) fn merge(&mut self, other: FieldTraitPlan) {
-        for implementor in other.implementors {
-            if !self.implementors.contains(&implementor) {
-                self.implementors.push(implementor);
-            }
-        }
-    }
 }
 
 impl FieldTraits {
@@ -112,17 +86,14 @@ impl FieldTraits {
 
 #[cfg(test)]
 mod tests {
-    use super::{FieldTraitPlan, FieldTraits};
-    use crate::core::{BindingId, PrimitiveType};
+    use super::FieldTraits;
+    use crate::core::BindingId;
     use crate::types::mentioned_generics::MentionedGenerics;
-    use crate::types::read_kind::ReadKind;
     use crate::types::unifier::Unifier;
     use crate::types::{Bound, GenericId, GenericParam, Type, TypeVar};
 
     const HAS_NAME: BindingId = BindingId::from_index(0);
     const DISPLAY: BindingId = BindingId::from_index(1);
-    const USER: BindingId = BindingId::from_index(2);
-    const ANIMAL: BindingId = BindingId::from_index(3);
 
     struct FieldTraitsFixture {
         field_traits: FieldTraits,
@@ -152,10 +123,6 @@ mod tests {
                 name: "A".into(),
                 bounds,
             }
-        }
-
-        fn integer() -> Type {
-            Type::Primitive(PrimitiveType::I64)
         }
     }
 
@@ -209,19 +176,5 @@ mod tests {
             mentioned.into_ids(),
             vec![GenericId::new(0), GenericId::new(1)]
         );
-    }
-
-    #[test]
-    fn merging_plans_keeps_each_implementor_once() {
-        let user = Type::Named(USER, Vec::new());
-        let animal = Type::Named(ANIMAL, Vec::new());
-        let read = FieldTraitsFixture::integer();
-        let mut plan = FieldTraitPlan::new(read.clone(), ReadKind::Value, vec![user.clone()]);
-        plan.merge(FieldTraitPlan::new(
-            read,
-            ReadKind::Value,
-            vec![animal.clone(), user.clone()],
-        ));
-        assert_eq!(plan.implementors, vec![user, animal]);
     }
 }

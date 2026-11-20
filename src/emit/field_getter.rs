@@ -1,16 +1,12 @@
 use super::fragment::{Code, Precedence};
 use crate::core::FieldLabel;
-use crate::types::Type;
+use crate::types::{Type, Unborrowed};
 
 pub(super) struct FieldGetter;
 
 impl FieldGetter {
     pub(super) fn reads_generic_owner(owner: &Type) -> bool {
-        let mut owner = owner;
-        while let Type::Ref(_, inner) | Type::Mut(_, inner) = owner {
-            owner = inner;
-        }
-        matches!(owner, Type::Generic(_))
+        matches!(Unborrowed::of(owner), Type::Generic(_))
     }
 
     pub(super) fn call(owner: Code, label: &FieldLabel) -> Code {

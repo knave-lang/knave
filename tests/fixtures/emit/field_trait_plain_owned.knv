@@ -4,12 +4,8 @@
 (defstruct film
   :title string)
 
-(type loud (fn ((ref string)) string))
-
-(defn loud (title) (upper-case title))
-
-(defn shout (x) (loud (:title x)))
+(defn measure (x) (len (:title x)))
 
 (defn main ()
-  (println (shout (->book (str "dune"))))
-  (println (shout (->film (str "jaws")))))
+  (println (measure (->book (str "dune"))))
+  (println (measure (->film (str "jaws!")))))

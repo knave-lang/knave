@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_reader_in_module.knv
+---
+hello ana
+hello rex

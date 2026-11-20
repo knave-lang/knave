@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/emit/field_trait_plain_borrow.knv
 ---
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -21,11 +21,11 @@ fn make_animal(name: &str) -> Animal<'_> {
     Animal { name }
 }
 
-fn uppercase_name<A: HasName>(x: A) -> String {
+fn uppercase_name<A: HasName + Copy>(x: A) -> String {
     x.name().to_uppercase()
 }
 
-fn hello<A: HasName>(x: A) -> String {
+fn hello<A: HasName + Copy>(x: A) -> String {
     format!("hello {}", x.name())
 }
 

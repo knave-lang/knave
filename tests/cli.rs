@@ -9426,6 +9426,36 @@ fn a_compiler_older_than_the_app_reports_only_the_version_before_its_libraries()
 }
 
 #[test]
+fn a_compiler_newer_than_the_project_warns_when_a_library_fails_to_load() {
+    let sandbox = Sandbox::new("version_newer_failing_library")
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            &format!(
+                "(defproject app :knave \"{RELEASED_TEXTS_VERSION}\" (libraries (lib1 :path \"../lib1\")))\n"
+            ),
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(defn main ()\n  (println \"hello\"))\n",
+        )
+        .with_file(
+            &format!("lib1/{}", Language::project_file_name()),
+            "(defproject lib1 :edition 1999)\n",
+        )
+        .with_file("lib1/src/lib.knv", "(export help)\n\n(defn help () 1)\n");
+    let stderr = sandbox
+        .compiler_in("app", &["check"])
+        .assert_exit_code(1)
+        .stderr();
+    assert_eq!(
+        stderr.matches(NEWER_COMPILER_WARNING).count(),
+        1,
+        "{stderr}"
+    );
+    assert!(stderr.contains("[L0717]"), "{stderr}");
+}
+
+#[test]
 fn a_compiler_older_than_a_nested_library_leaves_fmt_of_the_app_silent() {
     let sandbox = Sandbox::new("version_older_nested_library")
         .with_file(

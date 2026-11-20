@@ -5,7 +5,7 @@ use super::located_project::ProjectRoot;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
-use crate::project::{Project, ReleaseVersion};
+use crate::project::{CompilerVersion, ReleaseVersion};
 
 pub struct CompilerCheck<'t> {
     terminal: &'t Terminal,
@@ -17,47 +17,43 @@ impl CompilerCheck<'_> {
     }
 
     pub fn refuse_before_loading(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
-        let mut scratch = self.terminal.scratch();
         let project_file = root.shown()?.join(Language::project_file_name());
-        let Some(recorded) = scratch.sources().projects().recorded_version(&project_file) else {
-            return Ok(());
-        };
-        let Some(refusal) = recorded.refusal(ReleaseVersion::running()) else {
-            return Ok(());
-        };
-        Err(scratch
-            .source_report()
-            .print(&Diagnostics::from_iter([refusal])))
+        match self.printed(&project_file, CompilerVersion::refusal) {
+            Some(refused) => Err(refused),
+            None => Ok(()),
+        }
     }
 
     pub fn report(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
-        let project_file = root.project_file();
-        let mut scratch = self.terminal.scratch();
-        let Some(project) = scratch.sources().projects().read_quietly(&project_file) else {
-            return Ok(());
-        };
-        self.report_located(&project, &project_file)
+        self.warn(&root.project_file())
     }
 
-    pub fn report_located(&self, project: &Project, project_file: &Path) -> Result<(), ExitStatus> {
-        if Self::problem_in(project).is_none() {
-            return Ok(());
-        }
-        let mut scratch = self.terminal.scratch();
-        let located_project = scratch.sources().projects().load(project_file)?;
-        let Some(problem) = Self::problem_in(&located_project) else {
-            return Ok(());
-        };
-        let mut problems = Diagnostics::default();
-        problems.push(problem);
-        match scratch.source_report().print(&problems) {
-            ExitStatus::Success => Ok(()),
-            failure => Err(failure),
+    pub fn report_entered(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
+        self.warn(&root.shown()?.join(Language::project_file_name()))
+    }
+
+    fn warn(&self, project_file: &Path) -> Result<(), ExitStatus> {
+        match self.printed(project_file, CompilerVersion::warning) {
+            Some(ExitStatus::Success) | None => Ok(()),
+            Some(failure) => Err(failure),
         }
     }
 
-    fn problem_in(project: &Project) -> Option<Diagnostic> {
-        let recorded = project.compiler_version.as_ref()?;
-        recorded.warning(ReleaseVersion::running())
+    fn printed(
+        &self,
+        project_file: &Path,
+        problem: impl Fn(&CompilerVersion, ReleaseVersion) -> Option<Diagnostic>,
+    ) -> Option<ExitStatus> {
+        let mut scratch = self.terminal.scratch();
+        let recorded = scratch
+            .sources()
+            .projects()
+            .recorded_version(project_file)?;
+        let found = problem(&recorded, ReleaseVersion::running())?;
+        Some(
+            scratch
+                .source_report()
+                .print(&Diagnostics::from_iter([found])),
+        )
     }
 }

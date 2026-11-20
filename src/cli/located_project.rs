@@ -32,12 +32,13 @@ impl LocatedProject {
         terminal: &mut Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
-        if let Some(root) = ProjectRoot::around(directory) {
-            CompilerCheck::new(terminal).refuse_before_loading(&root)?;
-        }
-        let located = Self::enter_unchecked(directory, terminal, store)?;
-        Self::check_compiler(located.as_ref(), terminal)?;
-        Ok(located)
+        let Some(root) = ProjectRoot::around(directory) else {
+            return Ok(None);
+        };
+        CompilerCheck::new(terminal).refuse_before_loading(&root)?;
+        let located = Self::enter_unchecked(directory, terminal, store);
+        CompilerCheck::new(terminal).report_entered(&root)?;
+        located
     }
 
     pub fn enter_unchecked(
@@ -51,14 +52,6 @@ impl LocatedProject {
             terminal.configure(|settings| settings.leveling_lints_by(levels));
         }
         Ok(located)
-    }
-
-    fn check_compiler(located: Option<&Self>, terminal: &Terminal) -> Result<(), ExitStatus> {
-        match located {
-            Some(entered) => CompilerCheck::new(terminal)
-                .report_located(&entered.project, &entered.project_file()),
-            None => Ok(()),
-        }
     }
 
     fn search_from(

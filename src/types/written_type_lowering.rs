@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 
-use super::bound_origins::BoundOrigins;
+use super::bound_origins::{BoundOrigin, BoundOrigins};
 use super::checking_facts::CheckingFacts;
 use super::copy::CopyRules;
 use super::declarations::Declarations;
@@ -93,7 +93,9 @@ impl<'l> WrittenTypeLowering<'l> {
             if !closed {
                 return Ok(written);
             }
-            return Ok(written.from_origins(BoundOrigins::written()));
+            let mut origins = BoundOrigins::none();
+            origins.add(BoundOrigin::Written);
+            return Ok(written.from_origins(origins));
         }
         self.check_trait_argument(bound.binding, argument.span())?;
         let argument = self.lower_type(argument, scope)?;

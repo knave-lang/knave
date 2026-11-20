@@ -68,12 +68,6 @@ impl<'a> SharedPassingOrder<'a> {
         ReferenceDepth::VALUE.borrow_from(self.places.reference_depth_as_written(&argument.value))
     }
 
-    pub(super) fn borrows_every(&self, group: &SharedGroup) -> bool {
-        group
-            .positions()
-            .all(|position| self.callee.borrows_at(position))
-    }
-
     fn takes_type_from_others(
         &self,
         group: &SharedGroup,
@@ -192,7 +186,7 @@ mod tests {
 
     #[test]
     fn a_written_borrow_of_a_shared_reference_type_passes_as_is() {
-        let mut fixture = PassingFixture::new();
+        let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         let value = fixture.written_borrow(PassingFixture::string());
         let shared = Type::shared(PassingFixture::string());
@@ -203,7 +197,7 @@ mod tests {
 
     #[test]
     fn a_passthrough_that_the_template_borrows_is_dereferenced() {
-        let mut fixture = PassingFixture::new();
+        let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         let argument = fixture.argument(fixture.written_borrow(PassingFixture::string()));
         let borrow = (fixture.shared_passing_order(Some(&callee))).dereference_where_rust_borrows(
@@ -216,7 +210,7 @@ mod tests {
 
     #[test]
     fn a_passthrough_that_the_template_does_not_borrow_stays() {
-        let mut fixture = PassingFixture::new();
+        let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         let argument = fixture.argument(fixture.written_borrow(PassingFixture::string()));
         let borrow = (fixture.shared_passing_order(Some(&callee))).dereference_where_rust_borrows(
@@ -229,7 +223,7 @@ mod tests {
 
     #[test]
     fn another_borrow_that_the_template_borrows_stays() {
-        let mut fixture = PassingFixture::new();
+        let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         let argument = fixture.argument(fixture.written_borrow(PassingFixture::string()));
         let borrow = (fixture.shared_passing_order(Some(&callee))).dereference_where_rust_borrows(
@@ -238,29 +232,5 @@ mod tests {
             &argument,
         );
         assert_eq!(borrow, Borrow::Shared);
-    }
-
-    #[test]
-    fn a_template_borrowing_one_position_does_not_borrow_the_group() {
-        let mut fixture = PassingFixture::new();
-        let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
-        let group = fixture.shared_group(&[0, 0]);
-        assert!(
-            !fixture
-                .shared_passing_order(Some(&callee))
-                .borrows_every(&group)
-        );
-    }
-
-    #[test]
-    fn a_template_borrowing_every_position_borrows_the_group() {
-        let mut fixture = PassingFixture::new();
-        let callee = PassingFixture::template_call(PassingFixture::BORROWING_BOTH);
-        let group = fixture.shared_group(&[0, 0]);
-        assert!(
-            fixture
-                .shared_passing_order(Some(&callee))
-                .borrows_every(&group)
-        );
     }
 }

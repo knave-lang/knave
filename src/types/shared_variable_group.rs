@@ -1,30 +1,33 @@
 use rustc_hash::FxHashMap;
 
+use super::callee_borrows::CalleeBorrows;
 use super::group_depths::GroupDepths;
 use super::passing_facts::PassingFacts;
 use super::passing_tables::PassingTables;
 use super::place_types::PlaceTypes;
 use super::reference_depth::ReferenceDepth;
+use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
-use super::shared_passing_order::SharedPassingOrder;
 use super::ty::{Bound, Type, TypeVar};
 use super::typed::TypedArgument;
 use super::unifier::Unifier;
 
 pub(super) struct SharedVariableGroup<'a> {
     group: &'a SharedGroup,
+    callee: CalleeBorrows<'a>,
     tables: PassingTables<'a>,
     unifier: &'a Unifier,
 }
 
 impl<'a> SharedVariableGroup<'a> {
     pub(super) fn new(
-        group: &'a SharedGroup,
+        call: SharedCall<'a>,
         tables: PassingTables<'a>,
         unifier: &'a Unifier,
     ) -> Self {
         Self {
-            group,
+            group: call.group,
+            callee: call.callee,
             tables,
             unifier,
         }
@@ -69,12 +72,7 @@ impl<'a> SharedVariableGroup<'a> {
             && !self.copies_known_referent(depths)
     }
 
-    pub(super) fn target_depth(
-        &self,
-        referent: &Type,
-        depths: &GroupDepths,
-        order: &SharedPassingOrder,
-    ) -> ReferenceDepth {
+    pub(super) fn target_depth(&self, referent: &Type, depths: &GroupDepths) -> ReferenceDepth {
         let depths = &depths.depths;
         if self.copies_out(referent) {
             ReferenceDepth::VALUE
@@ -85,7 +83,7 @@ impl<'a> SharedVariableGroup<'a> {
             } else {
                 ReferenceDepth::new(depth)
             }
-        } else if order.borrows_every(self.group) {
+        } else if self.callee.borrows_every(self.group) {
             ReferenceDepth::VALUE
         } else {
             ReferenceDepth::new(1)

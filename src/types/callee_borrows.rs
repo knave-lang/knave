@@ -1,3 +1,4 @@
+use super::shared_group::SharedGroup;
 use super::templates::TemplateBorrows;
 use super::typed::TypedExpr;
 
@@ -15,6 +16,10 @@ impl<'a> CalleeBorrows<'a> {
     pub(super) fn borrows_at(&self, position: usize) -> bool {
         self.callee
             .is_some_and(|callee| self.templates.borrows(callee, position))
+    }
+
+    pub(super) fn borrows_every(&self, group: &SharedGroup) -> bool {
+        group.positions().all(|position| self.borrows_at(position))
     }
 }
 
@@ -34,5 +39,21 @@ mod tests {
         let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         assert!(!fixture.callee_borrows(Some(&callee)).borrows_at(0));
+    }
+
+    #[test]
+    fn a_template_borrowing_one_position_does_not_borrow_the_group() {
+        let mut fixture = PassingFixture::new();
+        let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
+        let group = fixture.shared_group(&[0, 0]);
+        assert!(!fixture.callee_borrows(Some(&callee)).borrows_every(&group));
+    }
+
+    #[test]
+    fn a_template_borrowing_every_position_borrows_the_group() {
+        let mut fixture = PassingFixture::new();
+        let callee = PassingFixture::template_call(PassingFixture::BORROWING_BOTH);
+        let group = fixture.shared_group(&[0, 0]);
+        assert!(fixture.callee_borrows(Some(&callee)).borrows_every(&group));
     }
 }

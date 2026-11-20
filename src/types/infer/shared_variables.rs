@@ -114,13 +114,13 @@ impl TypeChecker {
     ) -> Result<(), Diagnostic> {
         for group in shared.groups() {
             if self
-                .shared_variable_group(group)
+                .shared_variable_group(group, callee)
                 .passes_as_written(arguments)
             {
                 self.pass_each(callee, group, arguments)?;
                 continue;
             }
-            if group.is_linked() && self.try_as_written(group, arguments)? {
+            if group.is_linked() && self.try_as_written(callee, group, arguments)? {
                 continue;
             }
             self.pass_group(callee, group, arguments)?;
@@ -130,11 +130,12 @@ impl TypeChecker {
 
     fn try_as_written(
         &mut self,
+        callee: Option<&TypedExpr>,
         group: &SharedGroup,
         arguments: &mut [TypedArgument],
     ) -> Result<bool, Diagnostic> {
         let Some(assignment) = self
-            .shared_variable_group(group)
+            .shared_variable_group(group, callee)
             .written_assignment(arguments)
         else {
             return Ok(false);
@@ -157,16 +158,13 @@ impl TypeChecker {
         group: &SharedGroup,
         arguments: &mut [TypedArgument],
     ) -> Result<(), Diagnostic> {
-        let depths = self.shared_variable_group(group).depths(arguments);
-        if self
-            .shared_variable_group(group)
-            .leaves_referent_to_each(&depths)
-        {
+        let rules = self.shared_variable_group(group, callee);
+        let depths = rules.depths(arguments);
+        if rules.leaves_referent_to_each(&depths) {
             return self.pass_each(callee, group, arguments);
         }
         let referent = self.unify_referents(&depths, arguments)?;
-        let order = self.shared_passing_order(callee);
-        let target = (self.shared_variable_group(group)).target_depth(&referent, &depths, &order);
+        let target = (self.shared_variable_group(group, callee)).target_depth(&referent, &depths);
         let span = arguments[depths.positions[0]].value.span;
         let chosen = target.wrap(referent);
         for member in group.members() {

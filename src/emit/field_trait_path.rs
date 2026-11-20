@@ -63,6 +63,6 @@ impl<'a> FieldTraitPath<'a> {
             .rust_paths()
             .field_traits();
         let mut bounds = (definition.scheme.params.iter()).flat_map(|param| &param.bounds);
-        bounds.any(|bound| field_traits.bindings().field_of(bound.binding).is_some())
+        bounds.any(|bound| field_traits.bindings().is_field_bound(bound))
     }
 }

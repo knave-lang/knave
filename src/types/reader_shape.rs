@@ -4,9 +4,9 @@ use super::field_changes::FieldChanges;
 use super::field_reader::FieldReader;
 use super::field_trait_names::FieldTraitNames;
 use super::field_traits::FieldTraitPlan;
-use super::mentioned_generics::MentionedGenerics;
 use super::owner_uses::OwnerUses;
-use super::ty::{Bound, GenericId, Type};
+use super::read_ties::ReadTies;
+use super::ty::Type;
 use super::typed::{TypedDefinition, TypedProgram};
 
 pub(super) struct ReaderShape<'p> {
@@ -50,43 +50,10 @@ impl<'p> ReaderShape<'p> {
     }
 
     fn bounds_the_read(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
-        let Some(definition) = self.definition(reader) else {
-            return false;
-        };
-        let field_traits = self
-            .program
-            .declarations
-            .traits()
-            .rust_paths()
-            .field_traits();
-        let is_field_bound =
-            |bound: &Bound| field_traits.bindings().field_of(bound.binding).is_some();
-        let params = &definition.scheme.params;
-        let field_bounds = (params.iter())
-            .flat_map(|param| &param.bounds)
-            .filter(|bound| is_field_bound(bound));
-        let reads: Vec<GenericId> = (field_bounds.filter_map(|bound| bound.argument.as_ref()))
-            .flat_map(|read| MentionedGenerics::of(read).into_ids())
-            .collect();
-        let mut others = (params.iter())
-            .flat_map(|param| param.bounds.iter().map(move |bound| (param.id, bound)))
-            .filter(|(_, bound)| !is_field_bound(bound));
-        others.any(|(bounded, bound)| {
-            let named = bound
-                .argument
-                .as_ref()
-                .map(|argument| MentionedGenerics::of(argument).into_ids());
-            let named = named.unwrap_or_default();
-            let touches = reads.contains(&bounded) || named.iter().any(|id| reads.contains(id));
-            let ties_other = named.iter().any(|id| !reads.contains(id));
-            let on_own_read = reader.read == Type::Generic(bounded) && named.is_empty();
-            touches && (ties_other || (on_own_read && !self.satisfied(bound, &plan.read)))
+        let definition = self.definition(reader);
+        definition.is_some_and(|definition| {
+            ReadTies::new(self.program, &definition.scheme).hold(reader, plan)
         })
-    }
-
-    fn satisfied(&self, bound: &Bound, read: &Type) -> bool {
-        let traits = self.program.declarations.traits().table();
-        traits.satisfies(bound, read, &|_, _| false)
     }
 
     pub(super) fn copies_owner(&self, plan: &FieldTraitPlan) -> bool {

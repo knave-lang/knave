@@ -167,7 +167,7 @@
   (-> (sorted-map \"pear\" 3 \"fig\" 1) vals (map str) collect)
   => (vec (str 1) (str 3))
 
-  (reduce (vals (sorted-map \"pear\" 3 \"fig\" 1)) 0 +)
+  (-> (sorted-map \"pear\" 3 \"fig\" 1) vals (reduce 0 +))
   => 4")
 
 (document (into-sorted-map pairs)

@@ -36,7 +36,7 @@
   (assoc (vec 1 2) 0 9)
   => (vec 9 2)
 
-  (len (assoc (sorted-map \"pear\" 3) \"fig\" 1))
+  (-> (sorted-map \"pear\" 3) (assoc \"fig\" 1) len)
   => 2"
   (local arguments (prepend key more))
   (if (keyword? key)
@@ -299,16 +299,12 @@
   a [string] key takes `(str \"name\")`, and a `(ref str)` key takes
   `(as-str name)`.
 
-  (get (update (sorted-map \"ana\" 1)
-               \"ana\"
-               (fn (n) (+ n 1))
-               0)
-       \"ana\")
+  (-> (sorted-map \"ana\" 1)
+      (update \"ana\" (fn (n) (+ n 1)) 0)
+      (get \"ana\"))
   => (some (ref 2))
 
-  (get (update (sorted-map \"ana\" 1)
-               \"bo\"
-               (fn (n) (+ n 1))
-               0)
-       \"bo\")
+  (-> (sorted-map \"ana\" 1)
+      (update \"bo\" (fn (n) (+ n 1)) 0)
+      (get \"bo\"))
   => (some (ref 1))")

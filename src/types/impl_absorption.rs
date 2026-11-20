@@ -249,6 +249,17 @@ mod tests {
             (defstruct (a2 t) :v t)
             (display (a2 {held}) (x) \"<\" (:v x) \">\")";
 
+        const RECURSIVE_CALLS: &str = "
+            (defn main () (println (->a1 :v 1)))
+            (defn countdown (n) (if (= n 0) 0 (countdown (- n 1))))
+            (defn spin (n) (if (= n 0) (->a2 :v 0) (spin (- n 1))))
+            (defn ping (n) (if (= n 0) 0 (pong (- n 1))))
+            (defn pong (n) (if (= n 0) 0 (ping (- n 1))))
+            (defstruct (a1 t) :v t)
+            (display (a1 {held}) (x) \"<\" (:v x) (countdown 2) (spin 2) (ping 3) \">\")
+            (defstruct (a2 t) :v t)
+            (display (a2 {held}) (x) \"<\" (:v x) \">\")";
+
         const SIBLING_METHOD_CHAIN: &str = "
             (defn main () (println (t2 (ref (->w2 :inner (->w1 :value (str \"x\")))))))
             (defstruct (w2 a) :inner (w1 a))
@@ -368,6 +379,14 @@ mod tests {
     fn an_impl_that_builds_a_type_through_functions_checks_after_its_impl() {
         assert!(ChainFixture::checks_in_one_round_holding(
             ChainFixture::FUNCTION_CHAIN,
+            "i64"
+        ));
+    }
+
+    #[test]
+    fn an_impl_that_calls_recursive_functions_checks_after_the_impls_they_build() {
+        assert!(ChainFixture::checks_in_one_round_holding(
+            ChainFixture::RECURSIVE_CALLS,
             "i64"
         ));
     }

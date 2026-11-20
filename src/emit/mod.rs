@@ -11,6 +11,7 @@ mod double_negation;
 mod emitted_code;
 mod emitted_types;
 mod emitted_value;
+mod entry_point;
 mod expressions;
 mod format_arguments;
 mod format_string;

@@ -85,6 +85,8 @@ mod implied_bounds;
 mod index_checks;
 mod index_problems;
 mod infer;
+mod inferred_span;
+mod inferring_checker;
 mod inline_templates;
 mod instantiation;
 mod literal_fit;

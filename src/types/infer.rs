@@ -17,6 +17,7 @@ use super::collection::{Collection, CollectionKind};
 use super::enums::VariantPayload;
 use super::expectation::Expectation;
 use super::field_read_problems::FieldReadProblems;
+use super::inferred_span::InferredSpan;
 use super::parameter_call_request::ParameterCallRequest;
 use super::pending::DecidedBorrows;
 use super::positional_read::PositionalRead;
@@ -118,16 +119,13 @@ impl TypeChecker {
     fn infer(&mut self, expr: &Expr) -> Result<TypedExpr, Diagnostic> {
         self.checking.inferred_expressions += 1;
         let span = expr.span();
-        let enclosing = self.inferring.replace(span);
-        let typed = match expr.kind() {
-            ExprKind::Leaf(leaf) => self.infer_leaf(leaf, span),
-            ExprKind::Fn(lambda) => Self::typed(self.infer_lambda(lambda, span, None), span),
-            ExprKind::Call(callee, arguments) => self.infer_call(callee, arguments, span),
-            ExprKind::Control(control) => self.infer_control(control, span),
-            other => self.infer_nested(expr, other, span),
-        };
-        self.inferring = enclosing;
-        typed
+        InferredSpan::around(self, span, |checker| match expr.kind() {
+            ExprKind::Leaf(leaf) => checker.infer_leaf(leaf, span),
+            ExprKind::Fn(lambda) => Self::typed(checker.infer_lambda(lambda, span, None), span),
+            ExprKind::Call(callee, arguments) => checker.infer_call(callee, arguments, span),
+            ExprKind::Control(control) => checker.infer_control(control, span),
+            other => checker.infer_nested(expr, other, span),
+        })
     }
 
     fn infer_nested(
@@ -1110,8 +1108,8 @@ impl TypeChecker {
         expected: &Type,
         context: &MismatchContext,
     ) -> Result<TypedExpr, Diagnostic> {
-        let enclosing = self.inferring.replace(expr.span());
-        let typed = match (expr.kind(), self.unifier.shallow(expected)) {
+        let shape = self.unifier.shallow(expected);
+        InferredSpan::around(self, expr.span(), |checker| match (expr.kind(), shape) {
             (ExprKind::Fn(lambda), Type::Function(_, parameters, result))
                 if parameters.len() == lambda.params.len() =>
             {
@@ -1121,7 +1119,7 @@ impl TypeChecker {
                     context: context.clone(),
                     written: matches!(context, MismatchContext::Signature { .. }),
                 };
-                let (kind, ty) = self.infer_lambda(lambda, expr.span(), Some(expectation))?;
+                let (kind, ty) = checker.infer_lambda(lambda, expr.span(), Some(expectation))?;
                 Ok(TypedExpr {
                     kind,
                     ty,
@@ -1129,21 +1127,19 @@ impl TypeChecker {
                 })
             }
             (ExprKind::Call(callee, arguments), _) => {
-                self.infer_call_expecting(callee, arguments, Some(expected), expr.span())
+                checker.infer_call_expecting(callee, arguments, Some(expected), expr.span())
             }
             (ExprKind::Control(Control::Match(value, arms)), _) => {
-                self.infer_match_expecting(value, arms, Some(expected), expr.span())
+                checker.infer_match_expecting(value, arms, Some(expected), expr.span())
             }
             (ExprKind::Variant(binding, arguments), _) => {
-                self.infer_variant_expecting(*binding, arguments, Some(expected), expr.span())
+                checker.infer_variant_expecting(*binding, arguments, Some(expected), expr.span())
             }
             (ExprKind::LabeledVariant(binding, fields), _) => {
-                self.infer_labeled_variant(*binding, fields, Some(expected), expr.span())
+                checker.infer_labeled_variant(*binding, fields, Some(expected), expr.span())
             }
-            _ => self.infer(expr),
-        };
-        self.inferring = enclosing;
-        typed
+            _ => checker.infer(expr),
+        })
     }
 
     fn copy_out_of_borrow(&self, value: TypedExpr, expected: &Type) -> TypedExpr {
@@ -1199,9 +1195,9 @@ impl TypeChecker {
         let context = expected
             .as_ref()
             .map_or(MismatchContext::Plain, |expected| expected.context.clone());
-        let enclosing = self.inferring.replace(span);
-        let inferred = self.infer_block_expecting(&lambda.body, &result, context.clone());
-        self.inferring = enclosing;
+        let inferred = InferredSpan::around(self, span, |checker| {
+            checker.infer_block_expecting(&lambda.body, &result, context.clone())
+        });
         self.recur_target = previous;
         self.checking_function_body = enclosing_body;
         self.try_target = previous_try;

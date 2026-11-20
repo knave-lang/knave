@@ -146,7 +146,7 @@ pub struct TypeChecker {
     pub(super) reported_unknown_try_groups: FxHashSet<BindingId>,
     pub(super) string_view: Option<BindingId>,
     pub(super) checking: super::typed::CheckWork,
-    pub(super) inferring: Option<Span>,
+    pub(super) inferring: super::inferred_span::InferredSpan,
 }
 
 #[derive(Clone, Copy)]
@@ -208,7 +208,7 @@ impl TypeChecker {
             reported_unknown_try_groups: FxHashSet::default(),
             string_view: None,
             checking: super::typed::CheckWork::default(),
-            inferring: None,
+            inferring: super::inferred_span::InferredSpan::default(),
         }
     }
 
@@ -669,7 +669,7 @@ impl TypeChecker {
             generics: self.generics.params(),
             single_field_readers: &self.single_field_readers,
             copy_trait: self.copy_trait,
-            enclosing: self.inferring,
+            enclosing: self.inferring.innermost(),
         };
         (tables, &mut self.unifier, &mut self.deferred)
     }
@@ -685,7 +685,7 @@ impl TypeChecker {
             generics: self.generics.params(),
             single_field_readers: &self.single_field_readers,
             copy_trait: self.copy_trait,
-            enclosing: self.inferring,
+            enclosing: self.inferring.innermost(),
         }
     }
 

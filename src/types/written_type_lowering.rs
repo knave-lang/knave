@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 
+use super::bound_origins::BoundOrigins;
 use super::checking_facts::CheckingFacts;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
@@ -81,10 +82,9 @@ impl<'l> WrittenTypeLowering<'l> {
             let field_traits = &self.declarations.traits().rust_paths().field_traits();
             let field_trait = (field_traits.trait_of(field))
                 .ok_or_else(|| self.unregistered_field(field, argument.span()))?;
-            return Ok(Bound::with_argument(
-                field_trait,
-                self.lower_type(argument, scope)?,
-            ));
+            let read = self.lower_type(argument, scope)?;
+            let written = Bound::with_argument(field_trait, read);
+            return Ok(written.from_origins(BoundOrigins::written()));
         }
         self.check_trait_argument(bound.binding, argument.span())?;
         let argument = self.lower_type(argument, scope)?;

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_open_implementor_value.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_refused_open_implementor_value.knv:8:22
+  |
+8 | (defn next (x) (+ 1 (:count x)))
+  |                      ^^^^^^ cannot tell which struct's `count` this is
+  |
+  = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+  = note: run `knave doc L0407` for an explanation

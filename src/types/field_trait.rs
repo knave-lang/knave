@@ -2,8 +2,9 @@ use std::rc::Rc;
 
 use knave_expand::mangle::NameMangler;
 
+use super::implementor::Implementor;
 use super::rust_trait::RustTrait;
-use super::trait_rows_reach::{Implementor, LoweredRows};
+use super::trait_rows_reach::LoweredRows;
 use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, Keyword};
 
 pub(super) struct FieldTrait {

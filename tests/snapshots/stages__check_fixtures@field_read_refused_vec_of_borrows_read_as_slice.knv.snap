@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_vec_of_borrows_read_as_slice.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_refused_vec_of_borrows_read_as_slice.knv:11:12
+   |
+11 |   (local n (lead (->roster (vec "ann"))))
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the type `_` of this value
+   |
+help: write the type with `the`, and replace each `_` with a type
+   |
+11 |   (local n (the _ (lead (->roster (vec "ann")))))
+   |            ++++++                              +
+   = note: run `knave doc L0407` for an explanation
+
+error[L0407]: type annotations needed
+  --> check/field_read_refused_vec_of_borrows_read_as_slice.knv:12:12
+   |
+12 |   (local m (lead (->team (vec "bo"))))
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer the type `_` of this value
+   |
+help: write the type with `the`, and replace each `_` with a type
+   |
+12 |   (local m (the _ (lead (->team (vec "bo")))))
+   |            ++++++                           +
+   = note: run `knave doc L0407` for an explanation

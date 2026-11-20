@@ -6,13 +6,14 @@ pub enum BoundOrigin {
     BorrowCopied(Span),
     ImplBody(Span),
     Included(BindingId),
+    Written,
 }
 
 impl BoundOrigin {
     pub fn including_trait(&self) -> Option<BindingId> {
         match self {
             Self::Included(including) => Some(*including),
-            Self::BorrowCopied(_) | Self::ImplBody(_) => None,
+            Self::BorrowCopied(_) | Self::ImplBody(_) | Self::Written => None,
         }
     }
 }
@@ -27,6 +28,14 @@ impl BoundOrigins {
 
     pub fn borrow_copied(copied: Span) -> Self {
         Self(vec![BoundOrigin::BorrowCopied(copied)])
+    }
+
+    pub fn written() -> Self {
+        Self(vec![BoundOrigin::Written])
+    }
+
+    pub fn is_written(&self) -> bool {
+        (self.0.iter()).any(|origin| matches!(origin, BoundOrigin::Written))
     }
 
     pub fn add(&mut self, origin: BoundOrigin) {

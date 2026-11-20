@@ -12,6 +12,7 @@ use super::open_read::OpenRead;
 use super::pinning::InstantiationReport;
 use super::reaching_structs::ReachingStructs;
 use super::read_settlements::ReadSettlements;
+use super::read_view::ReadView;
 use super::reader_shape::ReaderShape;
 use super::ty::{GenericId, Type};
 use super::typed::{TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
@@ -48,8 +49,12 @@ impl<'r> FieldReadSettlement<'r> {
     }
 
     pub fn settle(&self, program: &mut TypedProgram) -> Result<(), Diagnostics> {
+        let readers = Self::readers(program);
+        if readers.is_empty() {
+            return Ok(());
+        }
         let mut tally = Tally::default();
-        for reader in Self::readers(program) {
+        for reader in readers {
             self.count(program, reader, &mut tally);
         }
         tally.refuse_disagreeing_readers(program);
@@ -98,16 +103,20 @@ impl<'r> FieldReadSettlement<'r> {
     }
 
     fn outcome(&self, program: &TypedProgram, reader: &FieldReader) -> Outcome {
-        let structs = ReachingStructs::new(self.report).of(reader.binding, reader.owner);
+        let Some(structs) = ReachingStructs::new(self.report).of(reader.binding, reader.owner)
+        else {
+            return Outcome::Disagreed;
+        };
         let reads = OpenRead::new(CopyRules::new(&program.declarations, &program.generics));
         let mut found: Vec<FieldRead> = Vec::new();
         let mut implementors: Vec<Type> = Vec::new();
         for (owner, arguments) in structs {
-            let definition = program.declarations.types().structs.get(owner);
+            let concrete = arguments.iter().all(Type::is_concrete);
+            let definition = (program.declarations.types().structs.get(owner)).filter(|_| concrete);
             let read =
                 definition.and_then(|found| reads.instantiated(found, &reader.field, &arguments));
             let Some(read) = read else {
-                continue;
+                return Outcome::Disagreed;
             };
             let implementor = Type::Named(owner, arguments);
             if !found.contains(&read) {
@@ -119,13 +128,19 @@ impl<'r> FieldReadSettlement<'r> {
         }
         match found.as_slice() {
             [] => Outcome::Unreached,
-            [FieldRead { read, kind }] => Outcome::Agreed(FieldTraitPlan {
-                read: read.clone(),
-                kind: *kind,
-                implementors,
-            }),
+            [FieldRead { read, kind }] if Self::meets_reader(reader, read) => {
+                Outcome::Agreed(FieldTraitPlan {
+                    read: read.clone(),
+                    kind: *kind,
+                    implementors,
+                })
+            }
             _ => Outcome::Disagreed,
         }
+    }
+
+    fn meets_reader(reader: &FieldReader, read: &Type) -> bool {
+        ReadView::of(read).is_used_as(&reader.read)
     }
 
     fn ambiguous_reads(program: &TypedProgram, reader: &FieldReader) -> Diagnostics {

@@ -1,6 +1,7 @@
 use super::copy::CopyRules;
 use super::escaping_borrow::EscapingBorrow;
 use super::field_reader::FieldReader;
+use super::field_trait_names::FieldTraitNames;
 use super::field_traits::FieldTraitPlan;
 use super::ty::Type;
 use super::typed::{
@@ -24,7 +25,11 @@ impl<'p> ReaderShape<'p> {
     }
 
     pub(super) fn emits(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
-        self.allows(reader, plan) && !EscapingBorrow::new(self.program).escapes(reader, plan)
+        let names = FieldTraitNames::new(self.program);
+        self.allows(reader, plan)
+            && !EscapingBorrow::new(self.program).escapes(reader, plan)
+            && names.are_free(reader)
+            && !(self.copies_owner(plan) && names.copy_takes_getter(reader))
     }
 
     fn allows(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
@@ -59,7 +64,7 @@ impl<'p> ReaderShape<'p> {
         match &expr.kind {
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => *binding == owner,
             TypedExprKind::Struct(TypedStructExpr::Field(value, _))
-                if Self::is_local(value, owner) =>
+                if Self::is_owner(value, owner) =>
             {
                 false
             }
@@ -67,14 +72,8 @@ impl<'p> ReaderShape<'p> {
         }
     }
 
-    fn is_local(value: &TypedExpr, owner: BindingId) -> bool {
-        match &value.kind {
-            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => *binding == owner,
-            TypedExprKind::Borrow(_, inner) | TypedExprKind::Deref(inner) => {
-                Self::is_local(inner, owner)
-            }
-            _ => false,
-        }
+    fn is_owner(value: &TypedExpr, owner: BindingId) -> bool {
+        matches!(value.kind, TypedExprKind::Leaf(TypedLeaf::Local(local)) if local == owner)
     }
 
     fn changes_a_field(&self, reader: &FieldReader) -> bool {
@@ -128,9 +127,7 @@ impl<'p> ReaderShape<'p> {
         match &place.kind {
             TypedExprKind::Struct(TypedStructExpr::Field(value, _)) => {
                 Unborrowed::of(&value.ty) == &Type::Generic(reader.owner)
-            }
-            TypedExprKind::Borrow(_, inner) | TypedExprKind::Deref(inner) => {
-                Self::reads_owner(inner, reader)
+                    || Self::reads_owner(value, reader)
             }
             _ => false,
         }

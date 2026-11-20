@@ -5,9 +5,9 @@ use rustc_hash::FxHashMap;
 use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_trait::FieldTrait;
+use super::implementor::Implementor;
 use super::open_read::OpenRead;
 use super::structs::{StructDefinition, StructTable};
-use super::trait_rows_reach::Implementor;
 use super::ty::{GenericId, GenericParam, Scheme, Type};
 use crate::core::BindingId;
 

@@ -51,6 +51,9 @@ impl FieldTraits {
         unifier: &Unifier,
         free_vars: impl Fn(&Type) -> Vec<TypeVar>,
     ) {
+        if self.by_binding.is_empty() {
+            return;
+        }
         let mut position = 0;
         while let Some(var) = vars.get(position).copied() {
             for found in self.reads(unifier.bounds(var)).flat_map(&free_vars) {
@@ -68,6 +71,9 @@ impl FieldTraits {
         param_of: impl Fn(GenericId) -> Option<&'p GenericParam>,
         unifier: &Unifier,
     ) {
+        if self.by_binding.is_empty() {
+            return;
+        }
         let mut position = 0;
         while let Some(param) = mentioned.get(position).and_then(&param_of) {
             for read in self.reads(&param.bounds) {

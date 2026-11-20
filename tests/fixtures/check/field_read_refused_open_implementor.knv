@@ -1,0 +1,16 @@
+(defstruct (tagged a)
+  :name str
+  :value a)
+
+(defstruct user
+  :name str)
+
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(defn show (v) (hello (->tagged "t" v)))
+
+(defn main ()
+  (println (show 1))
+  (println (show (str "x")))
+  (println (hello (->user "c"))))

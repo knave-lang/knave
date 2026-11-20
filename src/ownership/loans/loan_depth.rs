@@ -3,7 +3,7 @@ pub struct LoanDepth(usize);
 
 impl LoanDepth {
     pub const TOP: Self = Self(0);
-    pub const DEEPEST: Self = Self(7);
+    pub const DEEPEST: Self = Self(15);
 
     pub fn at(index: usize) -> Self {
         Self(index.min(Self::DEEPEST.0))
@@ -31,7 +31,10 @@ mod tests {
             LoanDepth::at(LoanDepth::DEEPEST.index() + 3),
             LoanDepth::DEEPEST
         );
-        assert_eq!(LoanDepth::at(6).shifted(4), Some(LoanDepth::DEEPEST));
+        assert_eq!(
+            LoanDepth::at(LoanDepth::DEEPEST.index() - 1).shifted(4),
+            Some(LoanDepth::DEEPEST)
+        );
     }
 
     #[test]

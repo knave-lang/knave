@@ -61,7 +61,7 @@ impl ReadSettlements {
         };
         let field_bounds = bounds
             .iter_mut()
-            .filter(|bound| field_traits.bindings().field_of(bound.binding).is_some());
+            .filter(|bound| field_traits.bindings().is_field_bound(bound));
         for bound in field_bounds {
             bound.argument = Some(read.clone());
         }

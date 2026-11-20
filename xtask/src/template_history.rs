@@ -4,17 +4,22 @@ use std::path::{Path, PathBuf};
 use crate::checks::Check;
 use crate::failure::TaskFailure;
 use crate::git::Git;
+use crate::release::ReleaseVersion;
 
 pub struct TemplateHistory {
     templates: Vec<String>,
-    release: Option<String>,
+    comparison: Option<ReleaseComparison>,
+}
+
+struct ReleaseComparison {
+    release: ReleaseVersion,
     forgotten: Vec<String>,
     altered: Vec<KeptText>,
 }
 
 struct KeptText {
     template: String,
-    version: String,
+    version: ReleaseVersion,
     text: String,
 }
 
@@ -22,35 +27,25 @@ impl TemplateHistory {
     pub const HISTORY_ROOT: &str = "src/cli/earlier_texts";
     const LATEST_REACHABLE_RELEASE: [&str; 5] =
         ["describe", "--tags", "--match", "v*", "--abbrev=0"];
-    const RELEASE_PREFIX: &str = "v";
 
     pub fn check(root: &Path) -> Result<Self, TaskFailure> {
         let templates = Self::templates(&root.join(Self::HISTORY_ROOT))?;
-        let release = Self::latest_release(root)?;
-        let mut forgotten = Vec::new();
-        let mut altered = Vec::new();
-        if let Some(release) = &release {
-            for template in &templates {
-                if Self::forgets_its_released_text(root, release, template)? {
-                    forgotten.push(template.clone());
-                }
-                altered.extend(Self::altered_texts(root, template)?);
-            }
-        }
+        let comparison = Self::latest_release(root)?
+            .map(|release| ReleaseComparison::of(root, release, &templates))
+            .transpose()?;
         Ok(Self {
             templates,
-            release,
-            forgotten,
-            altered,
+            comparison,
         })
     }
 
-    fn latest_release(root: &Path) -> Result<Option<String>, TaskFailure> {
+    fn latest_release(root: &Path) -> Result<Option<ReleaseVersion>, TaskFailure> {
         let output = Git::new(root).run(&Self::LATEST_REACHABLE_RELEASE)?;
-        Ok(output
+        output
             .status
             .success()
-            .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string()))
+            .then(|| ReleaseVersion::parse_tag(String::from_utf8_lossy(&output.stdout).trim()))
+            .transpose()
     }
 
     fn templates(history_root: &Path) -> Result<Vec<String>, TaskFailure> {
@@ -90,34 +85,6 @@ impl TemplateHistory {
             .to_string()
     }
 
-    fn forgets_its_released_text(
-        root: &Path,
-        release: &str,
-        template: &str,
-    ) -> Result<bool, TaskFailure> {
-        let Some(earlier) = Self::text_at(root, release, template)? else {
-            return Ok(false);
-        };
-        let path = root.join(template);
-        let current =
-            fs::read_to_string(&path).map_err(|error| TaskFailure::unreadable(&path, error))?;
-        if current == earlier {
-            return Ok(false);
-        }
-        let kept = Self::kept_texts(root, template)?;
-        Ok(!kept.iter().any(|kept| kept.text == earlier))
-    }
-
-    fn altered_texts(root: &Path, template: &str) -> Result<Vec<KeptText>, TaskFailure> {
-        let mut altered = Vec::new();
-        for kept in Self::kept_texts(root, template)? {
-            if !kept.matches_its_release(root)? {
-                altered.push(kept);
-            }
-        }
-        Ok(altered)
-    }
-
     fn text_at(root: &Path, revision: &str, template: &str) -> Result<Option<String>, TaskFailure> {
         let output = Git::new(root).run(&["show", &format!("{revision}:{template}")])?;
         Ok(output
@@ -134,13 +101,69 @@ impl TemplateHistory {
             .map(|entry| KeptText::read(template, &entry.map_err(unreadable)?.path()))
             .collect()
     }
+}
+
+impl ReleaseComparison {
+    fn of(root: &Path, release: ReleaseVersion, templates: &[String]) -> Result<Self, TaskFailure> {
+        let mut comparison = Self {
+            release,
+            forgotten: Vec::new(),
+            altered: Vec::new(),
+        };
+        for template in templates {
+            if comparison.forgets_its_released_text(root, template)? {
+                comparison.forgotten.push(template.clone());
+            }
+            comparison
+                .altered
+                .extend(Self::altered_texts(root, template)?);
+        }
+        Ok(comparison)
+    }
+
+    fn forgets_its_released_text(&self, root: &Path, template: &str) -> Result<bool, TaskFailure> {
+        let Some(earlier) = TemplateHistory::text_at(root, &self.release.tag(), template)? else {
+            return Ok(false);
+        };
+        let path = root.join(template);
+        let current =
+            fs::read_to_string(&path).map_err(|error| TaskFailure::unreadable(&path, error))?;
+        if current == earlier {
+            return Ok(false);
+        }
+        let kept = TemplateHistory::kept_texts(root, template)?;
+        Ok(!kept.iter().any(|kept| kept.text == earlier))
+    }
+
+    fn altered_texts(root: &Path, template: &str) -> Result<Vec<KeptText>, TaskFailure> {
+        let mut altered = Vec::new();
+        for kept in TemplateHistory::kept_texts(root, template)? {
+            if !kept.matches_its_release(root)? {
+                altered.push(kept);
+            }
+        }
+        Ok(altered)
+    }
+
+    fn passes(&self) -> bool {
+        self.forgotten.is_empty() && self.altered.is_empty()
+    }
+
+    fn details(&self) -> String {
+        let forgotten = self
+            .forgotten
+            .iter()
+            .map(|template| self.forgotten_line(template));
+        let altered = self.altered.iter().map(KeptText::mismatch_line);
+        forgotten.chain(altered).collect()
+    }
 
     fn forgotten_line(&self, template: &str) -> String {
-        let release = self.release.as_deref().unwrap_or_default();
         format!(
-            "  {template} differs from its text at {release}, and that text is missing: copy it to `{}/{template}/{}`\n",
-            Self::HISTORY_ROOT,
-            release.trim_start_matches(Self::RELEASE_PREFIX)
+            "  {template} differs from its text at {}, and that text is missing: copy it to `{}/{template}/{}`\n",
+            self.release.tag(),
+            TemplateHistory::HISTORY_ROOT,
+            self.release
         )
     }
 }
@@ -149,11 +172,12 @@ impl KeptText {
     fn read(template: &str, path: &Path) -> Result<Self, TaskFailure> {
         let text =
             fs::read_to_string(path).map_err(|error| TaskFailure::unreadable(path, error))?;
-        let version = path
-            .file_name()
-            .expect("a kept text has a file name")
-            .to_string_lossy()
-            .into_owned();
+        let version = ReleaseVersion::parse(
+            &path
+                .file_name()
+                .expect("a kept text has a file name")
+                .to_string_lossy(),
+        )?;
         Ok(Self {
             template: template.to_string(),
             version,
@@ -167,7 +191,7 @@ impl KeptText {
     }
 
     fn release(&self) -> String {
-        format!("{}{}", TemplateHistory::RELEASE_PREFIX, self.version)
+        self.version.tag()
     }
 
     fn mismatch_line(&self) -> String {
@@ -185,7 +209,9 @@ impl KeptText {
 
 impl Check for TemplateHistory {
     fn passes(&self) -> bool {
-        self.release.is_some() && self.forgotten.is_empty() && self.altered.is_empty()
+        self.comparison
+            .as_ref()
+            .is_some_and(ReleaseComparison::passes)
     }
 
     fn summary(&self) -> String {
@@ -197,15 +223,10 @@ impl Check for TemplateHistory {
     }
 
     fn details(&self) -> String {
-        if self.release.is_none() {
-            return "  no `v*` tag is reachable from HEAD: run `git fetch --tags`\n".to_string();
+        match &self.comparison {
+            Some(comparison) => comparison.details(),
+            None => "  no `v*` tag is reachable from HEAD: run `git fetch --tags`\n".to_string(),
         }
-        let forgotten = self
-            .forgotten
-            .iter()
-            .map(|template| self.forgotten_line(template));
-        let altered = self.altered.iter().map(KeptText::mismatch_line);
-        forgotten.chain(altered).collect()
     }
 }
 

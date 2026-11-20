@@ -23,15 +23,17 @@ impl LiveValues {
 
     fn grow(&mut self, graph: &ControlFlowGraph) -> bool {
         let mut grew = false;
+        let mut live = FxHashSet::default();
         for (point, facts) in graph.points().rev() {
-            let live_after: FxHashSet<BindingId> = facts
-                .successors()
-                .flat_map(|successor| self.live_before[successor.index()].iter().copied())
-                .collect();
-            let live = facts.live_before(live_after);
-            if live.len() != self.live_before[point.index()].len() {
+            live.clear();
+            for successor in facts.successors() {
+                live.extend(self.live_before[successor.index()].iter().copied());
+            }
+            facts.narrow_to_live_before(&mut live);
+            let known = &mut self.live_before[point.index()];
+            if live.len() != known.len() {
                 grew = true;
-                self.live_before[point.index()] = live;
+                std::mem::swap(known, &mut live);
             }
         }
         grew

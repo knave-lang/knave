@@ -55,6 +55,7 @@ impl<'w> BodyFacts<'w> {
         let liveness = self.liveness();
         self.graph
             .points()
+            .filter(|(_, facts)| !facts.accesses().is_empty())
             .flat_map(|(point, facts)| {
                 let loans = self.live_loans(point, &facts, &liveness);
                 facts.accesses().iter().map(move |access| {

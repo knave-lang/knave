@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_call_wrong_type_one_call.knv
+---
+error[L0404]: `user` does not implement `(has :n (option bool))`
+  --> check/field_bound_call_wrong_type_one_call.knv:10:18
+   |
+10 |   (println (n-or (->user (some 1)) true)))
+   |                  ^^^^^^^^^^^^^^^^^ this needs `(has :n (option bool))`
+   |
+   = note: run `knave doc L0404` for an explanation

@@ -1,0 +1,13 @@
+(defstruct user
+  :p (pair str int))
+
+(defstruct animal
+  :p (pair str int))
+
+(defn label-len (x)
+  (match (:p x)
+    ((pair l r) (+ r (len l)))))
+
+(defn main ()
+  (println (label-len (->user (pair "ab" 1))))
+  (println (label-len (->animal (pair "b" 2)))))

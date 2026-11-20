@@ -23,27 +23,8 @@ impl ReadSettlements {
         self.settled.insert(reader.binding);
         match reader.read {
             Type::Generic(open) => self.reads.insert(open, read),
-            _ => {
-                self.bind_open_parts(&reader.read, &read);
-                self.fixed.insert(reader.owner, read)
-            }
+            _ => self.fixed.insert(reader.owner, read),
         };
-    }
-
-    fn bind_open_parts(&mut self, used: &Type, read: &Type) {
-        if let Type::Generic(open) = used {
-            self.reads.insert(*open, read.clone());
-            return;
-        }
-        let same_shape = match (used, read) {
-            (Type::Named(used, _), Type::Named(read, _)) => used == read,
-            _ => std::mem::discriminant(used) == std::mem::discriminant(read),
-        };
-        if same_shape {
-            for (used, read) in used.parts().into_iter().zip(read.parts()) {
-                self.bind_open_parts(used, read);
-            }
-        }
     }
 
     pub(super) fn require_copy(&mut self, reader: &FieldReader) {

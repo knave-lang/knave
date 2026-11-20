@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_call_pair_wrong_type.knv
+---
+error[L0404]: `animal` does not implement `(has :p (pair (ref str) bool))`
+  --> check/field_bound_call_pair_wrong_type.knv:12:21
+   |
+12 |   (println (left-or (->animal (pair 2 false)) "z")))
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^ this needs `(has :p (pair (ref str) bool))`
+   |
+   = note: run `knave doc L0404` for an explanation

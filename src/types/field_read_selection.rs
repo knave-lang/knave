@@ -59,16 +59,15 @@ impl<'u> FieldReadSelection<'u> {
         else {
             return Some(read);
         };
-        if expected.has_vars() || expected == read {
+        if expected == read {
             return Some(read);
         }
-        let met = !Self::is_written(bound) || ReadView::of(&read).is_written_as(&expected);
-        met.then_some(expected)
-    }
-
-    pub(super) fn settles_later(traits: &TraitTable, bound: &Bound) -> bool {
-        let reads_field = (traits.get(bound.binding)).is_some_and(|known| known.reads_field);
-        reads_field && !Self::is_written(bound)
+        if expected.has_vars() {
+            return Some(ReadView::of(&read).at_depth_of(&expected));
+        }
+        let view = ReadView::of(&read);
+        let reached = !Self::is_written(bound) && view.is_reached_as(&expected);
+        (view.is_written_as(&expected) || reached).then_some(expected)
     }
 
     pub(super) fn is_written(bound: &Bound) -> bool {

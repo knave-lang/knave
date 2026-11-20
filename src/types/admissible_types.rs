@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use super::admissible::Admissible;
 use super::rust_trait::RustTrait;
 use super::traits::TraitTable;
-use super::ty::{GenericId, GenericParam, Type};
+use super::ty::{Bound, GenericId, GenericParam, Type};
 
 pub(super) struct AdmissibleTypes<'a> {
     generics: &'a FxHashMap<GenericId, GenericParam>,
@@ -47,6 +47,18 @@ impl<'a> AdmissibleTypes<'a> {
             Admissible::Open(admissible)
         } else {
             Admissible::Closed(admissible)
+        }
+    }
+
+    pub(super) fn all_satisfy(&self, generic: GenericId, bound: &Bound) -> bool {
+        match self.of(generic) {
+            Admissible::Closed(types) => {
+                !types.is_empty()
+                    && types
+                        .iter()
+                        .all(|candidate| self.traits.satisfies(bound, candidate, &|_, _| false))
+            }
+            Admissible::Unbounded | Admissible::Open(_) => false,
         }
     }
 
@@ -120,6 +132,11 @@ mod tests {
 
         fn admissible(&self) -> Admissible {
             AdmissibleTypes::new(&self.generics, &self.traits).of(Self::generic())
+        }
+
+        fn all_satisfy(&self, rust_trait: BindingId) -> bool {
+            AdmissibleTypes::new(&self.generics, &self.traits)
+                .all_satisfy(Self::generic(), &Bound::plain(rust_trait))
         }
 
         fn generic() -> GenericId {
@@ -221,5 +238,62 @@ mod tests {
             fixture.admissible(),
             Admissible::Open(vec![Type::Primitive(PrimitiveType::I64)])
         );
+    }
+
+    #[test]
+    fn a_bound_every_admissible_type_implements_is_satisfied() {
+        let fixture = AdmissibleFixture::new()
+            .bounded_by(&[AdmissibleFixture::FIRST_TRAIT])
+            .implemented_by(
+                AdmissibleFixture::FIRST_TRAIT,
+                vec![AdmissibleFixture::concrete(PrimitiveType::I64)],
+            )
+            .implemented_by(
+                AdmissibleFixture::SECOND_TRAIT,
+                vec![AdmissibleFixture::concrete(PrimitiveType::I64)],
+            );
+        assert!(fixture.all_satisfy(AdmissibleFixture::SECOND_TRAIT));
+    }
+
+    #[test]
+    fn a_bound_one_admissible_type_lacks_is_not_satisfied() {
+        let fixture = AdmissibleFixture::new()
+            .bounded_by(&[AdmissibleFixture::FIRST_TRAIT])
+            .implemented_by(
+                AdmissibleFixture::FIRST_TRAIT,
+                vec![
+                    AdmissibleFixture::concrete(PrimitiveType::I64),
+                    AdmissibleFixture::concrete(PrimitiveType::F64),
+                ],
+            )
+            .implemented_by(
+                AdmissibleFixture::SECOND_TRAIT,
+                vec![AdmissibleFixture::concrete(PrimitiveType::I64)],
+            );
+        assert!(!fixture.all_satisfy(AdmissibleFixture::SECOND_TRAIT));
+    }
+
+    #[test]
+    fn no_admissible_type_satisfies_nothing() {
+        let fixture = AdmissibleFixture::new()
+            .bounded_by(&[AdmissibleFixture::FIRST_TRAIT])
+            .implemented_by(AdmissibleFixture::FIRST_TRAIT, Vec::new())
+            .implemented_by(AdmissibleFixture::SECOND_TRAIT, Vec::new());
+        assert!(!fixture.all_satisfy(AdmissibleFixture::SECOND_TRAIT));
+    }
+
+    #[test]
+    fn open_admissible_types_satisfy_nothing() {
+        let fixture = AdmissibleFixture::new()
+            .bounded_by(&[AdmissibleFixture::FIRST_TRAIT])
+            .implemented_by(
+                AdmissibleFixture::FIRST_TRAIT,
+                vec![AdmissibleFixture::generic_implementor()],
+            )
+            .implemented_by(
+                AdmissibleFixture::SECOND_TRAIT,
+                vec![AdmissibleFixture::generic_implementor()],
+            );
+        assert!(!fixture.all_satisfy(AdmissibleFixture::SECOND_TRAIT));
     }
 }

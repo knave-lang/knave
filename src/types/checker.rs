@@ -2,12 +2,12 @@ use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::admissible::Admissible;
 use super::admissible_types::AdmissibleTypes;
 use super::argument_passing::ArgumentPassing;
 use super::assumed_collections::AssumedCollections;
 use super::bound_origin_problems::BoundOriginProblems;
 use super::bound_origins::BoundOrigins;
+use super::bound_proof::BoundProof;
 use super::callee_borrows::CalleeBorrows;
 use super::check_round::{CheckRound, RoundGrowth};
 use super::checked_program::CheckedProgram;
@@ -31,6 +31,8 @@ use super::enum_item::EnumItem;
 use super::explanation_sources::ExplanationSources;
 use super::generalization::Generalization;
 use super::generalization_rules::GeneralizationRules;
+use super::generic_bound_check::GenericBoundCheck;
+use super::generic_bound_tables::GenericBoundTables;
 use super::generic_declarations::GenericDeclarations;
 use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
@@ -1497,23 +1499,10 @@ impl TypeChecker {
     }
 
     fn check_generic_bound(&mut self, generic: GenericId, bound: Bound, span: Span) {
-        if self.declares_bound(generic, &bound) {
+        let BoundProof::Unproven(bound) = self.generic_bound_check().settle(generic, bound, span)
+        else {
             return;
-        }
-        if self.implied_bounds.is_impl_generic(generic) {
-            self.implied_bounds.record_from_body(generic, bound, span);
-            return;
-        }
-        if self.apply_declared_bound(generic, &bound, span) {
-            return;
-        }
-        if self.implies(generic, &bound) {
-            if self.declared_bound_implies(generic, &bound) {
-                return;
-            }
-            self.implied_bounds.record(generic, bound);
-            return;
-        }
+        };
         if self.has_written_projection_on(generic, bound.binding) {
             return;
         }
@@ -1527,57 +1516,12 @@ impl TypeChecker {
             .push(BoundOriginProblems::annotate(diagnostic, &bound.origins));
     }
 
-    fn declares_bound(&self, generic: GenericId, bound: &Bound) -> bool {
-        self.unifier
-            .generic_bounds(generic)
-            .iter()
-            .any(|declared| declared.meets(bound, generic))
-    }
-
-    fn apply_declared_bound(&mut self, generic: GenericId, bound: &Bound, span: Span) -> bool {
-        let Some(required) = &bound.argument else {
-            return false;
+    fn generic_bound_check(&mut self) -> GenericBoundCheck<'_> {
+        let tables = GenericBoundTables {
+            traits: &self.declarations.traits().table,
+            generics: self.generics.params(),
         };
-        let declared: Vec<Type> = self
-            .unifier
-            .generic_bounds(generic)
-            .iter()
-            .filter(|declared| declared.binding == bound.binding)
-            .filter_map(|declared| declared.argument.clone())
-            .collect();
-        declared
-            .into_iter()
-            .any(|declared| self.unifier.unify(&declared, required, span).is_ok())
-    }
-
-    fn implies(&self, generic: GenericId, bound: &Bound) -> bool {
-        if self.declared_bound_implies(generic, bound) {
-            return true;
-        }
-        if bound.argument.is_some() {
-            return false;
-        }
-        match self.admissible_types().of(generic) {
-            Admissible::Closed(types) => {
-                !types.is_empty()
-                    && types.iter().all(|candidate| {
-                        self.declarations
-                            .traits()
-                            .table
-                            .satisfies(bound, candidate, &|_, _| false)
-                    })
-            }
-            Admissible::Unbounded | Admissible::Open(_) => false,
-        }
-    }
-
-    fn declared_bound_implies(&self, generic: GenericId, bound: &Bound) -> bool {
-        self.unifier.generic_bounds(generic).iter().any(|declared| {
-            self.declarations
-                .traits()
-                .table
-                .implies(declared, bound, generic)
-        })
+        GenericBoundCheck::new(&mut self.unifier, &mut self.implied_bounds, tables)
     }
 
     pub(super) fn report_missing_trait(&mut self, bound: &Bound, implementor: &Type, span: Span) {

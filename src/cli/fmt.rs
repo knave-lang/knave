@@ -1,3 +1,4 @@
+mod compared_roots;
 mod formatted_files;
 mod project_load_warning;
 
@@ -6,9 +7,8 @@ use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::rc::Rc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
-use super::compiler_check::CompilerCheck;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::library_walk::CacheOnlyStore;
@@ -24,6 +24,7 @@ use super::working_directory::WorkingDirectory;
 use crate::format::{FormatFailure, ModuleLookup, SourceFormatter};
 use crate::language::Language;
 use crate::modules::ModuleSources;
+use compared_roots::ComparedRoots;
 use formatted_files::FormattedFiles;
 use project_load_warning::ProjectLoadWarning;
 
@@ -50,7 +51,6 @@ struct SourceFiles {
 
 struct NearbyProjects {
     projects: FxHashMap<PathBuf, Option<LocatedProject>>,
-    checked_roots: FxHashSet<PathBuf>,
     formatted_files: Rc<FormattedFiles>,
 }
 
@@ -97,11 +97,13 @@ impl FmtCommand {
             .standard_input_path
             .clone()
             .unwrap_or_else(|| PathBuf::from(Self::STANDARD_INPUT_NAME));
+        if let Err(refused) =
+            ComparedRoots::around(std::slice::from_ref(&name)).compare_versions(terminal)
+        {
+            return refused;
+        }
         let mut lookups = NearbyProjects::new(FormattedFiles::none());
-        let lookup = match lookups.lookup_for(&name, terminal) {
-            Ok(lookup) => lookup,
-            Err(status) => return status,
-        };
+        let lookup = lookups.lookup_for(&name, terminal);
         match self.formatted(terminal, &name, text.clone(), &lookup) {
             Ok(formatted) => self.answer_standard_input(&name, &text, &formatted),
             Err(status) => status,
@@ -144,10 +146,10 @@ impl FmtCommand {
     fn format_walked(&mut self, terminal: &mut Terminal, paths: Vec<PathBuf>) -> ExitStatus {
         let mut worst = WorstStatus::new();
         let files = Self::source_files(terminal, paths, &mut worst);
-        let mut lookups = NearbyProjects::new(FormattedFiles::of(&files));
-        if let Err(refused) = lookups.refuse_older_compilers(&files, terminal) {
+        if let Err(refused) = ComparedRoots::around(&files).compare_versions(terminal) {
             return refused;
         }
+        let mut lookups = NearbyProjects::new(FormattedFiles::of(&files));
         for file in &files {
             match self.format_file(terminal, file, &mut lookups) {
                 Ok(status) => worst.record(status),
@@ -188,7 +190,7 @@ impl FmtCommand {
                 return Ok(UnreadableFile::new(path, &error).report_to(&*output));
             }
         };
-        let lookup = lookups.lookup_for(path, terminal)?;
+        let lookup = lookups.lookup_for(path, terminal);
         Ok(
             match self.formatted(terminal, path, text.clone(), &lookup) {
                 Ok(formatted) if formatted == text => ExitStatus::Success,
@@ -333,49 +335,22 @@ impl NearbyProjects {
     fn new(formatted_files: FormattedFiles) -> Self {
         Self {
             projects: FxHashMap::default(),
-            checked_roots: FxHashSet::default(),
             formatted_files: Rc::new(formatted_files),
         }
     }
 
-    fn refuse_older_compilers(
-        &mut self,
-        files: &[PathBuf],
-        terminal: &Terminal,
-    ) -> Result<(), ExitStatus> {
-        files
-            .iter()
-            .try_for_each(|file| self.refuse_an_older_compiler_around(file, terminal))
-    }
-
-    fn lookup_for(&mut self, path: &Path, terminal: &Terminal) -> Result<ModuleLookup, ExitStatus> {
-        self.refuse_an_older_compiler_around(path, terminal)?;
+    fn lookup_for(&mut self, path: &Path, terminal: &Terminal) -> ModuleLookup {
         let directory = Self::absolute_directory_of(path);
         if ProgramFile::is_project_file(path) {
-            return Ok(ModuleLookup::beside_project_file(&directory));
+            return ModuleLookup::beside_project_file(&directory);
         }
-        Ok(match self.project_around(path, &directory, terminal)? {
+        match self.project_around(path, &directory, terminal) {
             Some(project) => {
                 let file = project.placement().placed_file(path.to_path_buf());
                 ModuleLookup::within_project(file.module_sources())
             }
             None => ModuleLookup::beside(&directory),
-        })
-    }
-
-    fn refuse_an_older_compiler_around(
-        &mut self,
-        path: &Path,
-        terminal: &Terminal,
-    ) -> Result<(), ExitStatus> {
-        let directory = Self::absolute_directory_of(path);
-        let Some(root) = ProjectRoot::canonical_of(&directory) else {
-            return Ok(());
-        };
-        if !self.checked_roots.insert(root.clone()) {
-            return Ok(());
         }
-        CompilerCheck::refuse_before_loading(&root, terminal)
     }
 
     fn absolute_directory_of(path: &Path) -> PathBuf {
@@ -389,34 +364,24 @@ impl NearbyProjects {
         path: &Path,
         directory: &Path,
         terminal: &Terminal,
-    ) -> Result<Option<&LocatedProject>, ExitStatus> {
-        let Some(root) = ProjectRoot::canonical_of(directory) else {
-            return Ok(None);
-        };
+    ) -> Option<&LocatedProject> {
+        let root = ProjectRoot::canonical_of(directory)?;
         if !self.projects.contains_key(&root) {
             let output = terminal.diagnostic_output();
             let files = Rc::clone(&self.formatted_files);
             let warning = Rc::new(ProjectLoadWarning::new(path, output, files));
-            let loaded = Self::load(&root, &warning, terminal)?;
+            let loaded = Self::load(&root, &warning);
             self.projects.insert(root.clone(), loaded);
         }
-        Ok(self.projects.get(&root).and_then(Option::as_ref))
+        self.projects.get(&root).and_then(Option::as_ref)
     }
 
-    fn load(
-        root: &Path,
-        warning: &Rc<ProjectLoadWarning>,
-        terminal: &Terminal,
-    ) -> Result<Option<LocatedProject>, ExitStatus> {
+    fn load(root: &Path, warning: &Rc<ProjectLoadWarning>) -> Option<LocatedProject> {
         let mut loading = Terminal::new(TerminalSettings::reporting_to(warning.clone()));
-        let loaded = LocatedProject::enter_unchecked(root, &mut loading, CacheOnlyStore::default());
-        let Ok(located) = loaded else {
-            warning.warn_once();
-            return Ok(None);
-        };
-        if let Some(project) = &located {
-            CompilerCheck::EVERY_MISMATCH.report(&project.project_file(), terminal)?;
-        }
-        Ok(located)
+        LocatedProject::enter_unchecked(root, &mut loading, CacheOnlyStore::default())
+            .unwrap_or_else(|_| {
+                warning.warn_once();
+                None
+            })
     }
 }

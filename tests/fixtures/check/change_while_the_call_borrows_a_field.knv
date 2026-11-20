@@ -1,6 +1,6 @@
 (defstruct car
   :make string
-  :letters usize)
+  :letters int)
 
 (defn relabel! (c make)
   (set! (:letters c) (len make)))

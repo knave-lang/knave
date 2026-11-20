@@ -88,9 +88,9 @@ mod tests {
     struct OrderFixture;
 
     impl OrderFixture {
-        const READ_LATER: &'static str = "(def grow! (rust \"{0}.push({1})\" (fn ((mut (vec usize)) usize) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (mut v) (len v)))\n  (println (len v)))";
-        const READ_EARLIER: &'static str = "(def grow! (rust \"{1}.push({0})\" (fn (usize (mut (vec usize))) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (len v) (mut v)))\n  (println (len v)))";
-        const READ_NOWHERE: &'static str = "(def grow! (rust \"{0}.push({1})\" (fn ((mut (vec usize)) usize) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (mut v) 3))\n  (println (len v)))";
+        const READ_LATER: &'static str = "(def grow! (rust \"{0}.push({1})\" (fn ((mut (vec int)) int) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (mut v) (len v)))\n  (println (len v)))";
+        const READ_EARLIER: &'static str = "(def grow! (rust \"{1}.push({0})\" (fn (int (mut (vec int))) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (len v) (mut v)))\n  (println (len v)))";
+        const READ_NOWHERE: &'static str = "(def grow! (rust \"{0}.push({1})\" (fn ((mut (vec int)) int) unit)))\n\n(defn main ()\n  (local v (vec 1))\n  (local grown (grow! (mut v) 3))\n  (println (len v)))";
 
         fn kept(source: &'static str, template: &str) -> bool {
             let program = TestProgram::new(source);

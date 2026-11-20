@@ -1,6 +1,7 @@
 use super::field_reader::FieldReader;
 use super::field_traits::FieldTraitPlan;
 use super::mentioned_generics::MentionedGenerics;
+use super::plain_bound::PlainBound;
 use super::ty::{Bound, GenericId, Scheme, Type};
 use super::typed::TypedProgram;
 
@@ -16,17 +17,19 @@ impl<'p> ReadTies<'p> {
 
     pub(super) fn hold(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
         let reads = self.read_variables();
+        let plain = PlainBound::new(self.program.declarations.traits().table());
         let mut others = (self.scheme.params.iter())
-            .flat_map(|param| param.bounds.iter().map(move |bound| (param.id, bound)))
-            .filter(|(_, bound)| !self.is_field_bound(bound));
-        others.any(|(bounded, bound)| {
-            let named = (bound.argument.as_ref())
-                .map(|argument| MentionedGenerics::of(argument).into_ids())
-                .unwrap_or_default();
-            let touches = reads.contains(&bounded) || named.iter().any(|id| reads.contains(id));
-            let ties_other = named.iter().any(|id| !reads.contains(id));
-            let on_own_read = reader.read == Type::Generic(bounded) && named.is_empty();
-            touches && (ties_other || (on_own_read && !self.satisfied(bound, &plan.read)))
+            .flat_map(|param| {
+                param
+                    .bounds
+                    .iter()
+                    .map(move |bound| ScopedBound::new(param.id, bound))
+            })
+            .filter(|scoped| !self.is_field_bound(scoped.bound));
+        others.any(|scoped| {
+            let unmet_on_read =
+                scoped.is_plain_on(&reader.read) && !plain.is_met_by(scoped.bound, &plan.read);
+            scoped.touches(&reads) && (scoped.names_other_than(&reads) || unmet_on_read)
         })
     }
 
@@ -47,9 +50,35 @@ impl<'p> ReadTies<'p> {
             .field_traits();
         field_traits.bindings().is_field_bound(bound)
     }
+}
 
-    fn satisfied(&self, bound: &Bound, read: &Type) -> bool {
-        let traits = self.program.declarations.traits().table();
-        traits.satisfies(bound, read, &|_, _| false)
+struct ScopedBound<'b> {
+    bounded: GenericId,
+    bound: &'b Bound,
+    named: Vec<GenericId>,
+}
+
+impl<'b> ScopedBound<'b> {
+    fn new(bounded: GenericId, bound: &'b Bound) -> Self {
+        let named = (bound.argument.as_ref())
+            .map(|argument| MentionedGenerics::of(argument).into_ids())
+            .unwrap_or_default();
+        Self {
+            bounded,
+            bound,
+            named,
+        }
+    }
+
+    fn touches(&self, reads: &[GenericId]) -> bool {
+        reads.contains(&self.bounded) || self.named.iter().any(|id| reads.contains(id))
+    }
+
+    fn names_other_than(&self, reads: &[GenericId]) -> bool {
+        self.named.iter().any(|id| !reads.contains(id))
+    }
+
+    fn is_plain_on(&self, read: &Type) -> bool {
+        *read == Type::Generic(self.bounded) && self.named.is_empty()
     }
 }

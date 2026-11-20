@@ -41,7 +41,7 @@ pub struct EvaluationSettings {
 pub enum ModuleText {
     File(PathBuf),
     StandardInput(PathBuf),
-    Loaded(PathBuf, Vec<SourceId>),
+    Loaded(Box<ModuleOfSources>),
 }
 
 pub struct FormsText {
@@ -131,6 +131,9 @@ impl EvalCommand {
     }
 
     fn module_file(&self, terminal: &mut Terminal) -> Result<ProgramFile, ExitStatus> {
+        if let Some(file) = self.module.loaded_file() {
+            return Ok(file);
+        }
         let path = self.module.path().to_path_buf();
         match &self.root {
             Some(root) => {
@@ -188,7 +191,15 @@ impl EvalCommand {
 impl ModuleText {
     fn path(&self) -> &Path {
         match self {
-            Self::File(path) | Self::StandardInput(path) | Self::Loaded(path, _) => path,
+            Self::File(path) | Self::StandardInput(path) => path,
+            Self::Loaded(module) => module.file.path(),
+        }
+    }
+
+    fn loaded_file(&self) -> Option<ProgramFile> {
+        match self {
+            Self::Loaded(module) => Some(module.file.clone()),
+            Self::File(_) | Self::StandardInput(_) => None,
         }
     }
 
@@ -199,7 +210,7 @@ impl ModuleText {
                 Ok(text) => Ok(vec![terminal.sources().add(path.display(), text)]),
                 Err(error) => Err(ExitStatus::report_unreadable_input(&error)),
             },
-            Self::Loaded(_, sources) => Ok(sources.clone()),
+            Self::Loaded(module) => Ok(module.sources.clone()),
         }
     }
 

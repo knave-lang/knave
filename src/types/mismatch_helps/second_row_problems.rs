@@ -11,6 +11,6 @@ impl SecondRowProblems {
             Label::new(span, "second help for the same types"),
         )
         .with_label(Label::new(first, "first help"))
-        .with_help("remove one of the two")
+        .with_help("remove this row")
     }
 }

@@ -12,5 +12,5 @@ error[L0468]: a `mismatch-help` already states the help for these two types
 3 | (mismatch-help u8 int "pass a `u8` instead of {value}")
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ second help for the same types
   |
-  = help: remove one of the two
+  = help: remove this row
   = note: run `knave doc L0468` for an explanation

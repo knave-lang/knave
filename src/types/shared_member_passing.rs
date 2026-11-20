@@ -7,13 +7,13 @@ use super::typed::{Borrow, TypedArgument, TypedExpr, TypedExprKind};
 use super::unifier::{LiteralKind, Unifier};
 use crate::core::ReferenceKind;
 
-pub(super) struct SharedPassingOrder<'a> {
+pub(super) struct SharedMemberPassing<'a> {
     places: PlaceTypes<'a>,
     unifier: &'a Unifier,
     callee: CalleeBorrows<'a>,
 }
 
-impl<'a> SharedPassingOrder<'a> {
+impl<'a> SharedMemberPassing<'a> {
     pub(super) fn new(
         places: PlaceTypes<'a>,
         unifier: &'a Unifier,
@@ -123,7 +123,7 @@ mod tests {
         ];
         let shared = fixture.unifier().fresh();
         let order = fixture
-            .shared_passing_order(None)
+            .shared_member_passing(None)
             .order(&group, &shared, &arguments);
         assert_eq!(order, vec![1, 0]);
     }
@@ -139,7 +139,7 @@ mod tests {
         ];
         let shared = fixture.unifier().fresh();
         let order = fixture
-            .shared_passing_order(None)
+            .shared_member_passing(None)
             .order(&group, &shared, &arguments);
         assert_eq!(order, vec![0, 1]);
     }
@@ -155,7 +155,7 @@ mod tests {
         ];
         let shared = fixture.unifier().fresh();
         let order =
-            (fixture.shared_passing_order(Some(&callee))).order(&group, &shared, &arguments);
+            (fixture.shared_member_passing(Some(&callee))).order(&group, &shared, &arguments);
         assert_eq!(order, vec![1, 0]);
     }
 
@@ -166,7 +166,7 @@ mod tests {
         let value = fixture.written_borrow(PassingFixture::string());
         let shared = fixture.unifier().fresh();
         let place =
-            (fixture.shared_passing_order(Some(&callee))).template_place(1, &shared, &value);
+            (fixture.shared_member_passing(Some(&callee))).template_place(1, &shared, &value);
         assert_eq!(
             place.map(|place| &place.ty),
             Some(&PassingFixture::string())
@@ -180,7 +180,7 @@ mod tests {
         let value = fixture.written_borrow(PassingFixture::string());
         let shared = fixture.unifier().fresh();
         let place =
-            (fixture.shared_passing_order(Some(&callee))).template_place(0, &shared, &value);
+            (fixture.shared_member_passing(Some(&callee))).template_place(0, &shared, &value);
         assert!(place.is_none());
     }
 
@@ -191,7 +191,7 @@ mod tests {
         let value = fixture.written_borrow(PassingFixture::string());
         let shared = Type::shared(PassingFixture::string());
         let place =
-            (fixture.shared_passing_order(Some(&callee))).template_place(1, &shared, &value);
+            (fixture.shared_member_passing(Some(&callee))).template_place(1, &shared, &value);
         assert!(place.is_none());
     }
 
@@ -200,7 +200,7 @@ mod tests {
         let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         let argument = fixture.argument(fixture.written_borrow(PassingFixture::string()));
-        let borrow = (fixture.shared_passing_order(Some(&callee))).dereference_where_rust_borrows(
+        let borrow = (fixture.shared_member_passing(Some(&callee))).dereference_where_rust_borrows(
             1,
             Borrow::Passthrough,
             &argument,
@@ -213,7 +213,7 @@ mod tests {
         let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         let argument = fixture.argument(fixture.written_borrow(PassingFixture::string()));
-        let borrow = (fixture.shared_passing_order(Some(&callee))).dereference_where_rust_borrows(
+        let borrow = (fixture.shared_member_passing(Some(&callee))).dereference_where_rust_borrows(
             0,
             Borrow::Passthrough,
             &argument,
@@ -226,7 +226,7 @@ mod tests {
         let fixture = PassingFixture::new();
         let callee = PassingFixture::template_call(PassingFixture::BORROWING_SECOND);
         let argument = fixture.argument(fixture.written_borrow(PassingFixture::string()));
-        let borrow = (fixture.shared_passing_order(Some(&callee))).dereference_where_rust_borrows(
+        let borrow = (fixture.shared_member_passing(Some(&callee))).dereference_where_rust_borrows(
             1,
             Borrow::Shared,
             &argument,

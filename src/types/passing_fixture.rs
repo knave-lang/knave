@@ -17,7 +17,7 @@ use super::reference_depth::ReferenceDepth;
 use super::reopened_parameters::ReopenedParameters;
 use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
-use super::shared_passing_order::SharedPassingOrder;
+use super::shared_member_passing::SharedMemberPassing;
 use super::shared_variable_group::SharedVariableGroup;
 use super::string_views::StringViews;
 use super::templates::TemplateBorrows;
@@ -200,13 +200,13 @@ impl PassingFixture {
         SharedVariableGroup::new(call, tables, &self.unifier)
     }
 
-    pub(super) fn shared_passing_order<'f>(
+    pub(super) fn shared_member_passing<'f>(
         &'f self,
         callee: Option<&'f TypedExpr>,
-    ) -> SharedPassingOrder<'f> {
+    ) -> SharedMemberPassing<'f> {
         let tables = Self::tables_of(&self.declarations, &self.field_readers);
         let places = PlaceTypes::new(&self.unifier, tables.declared_types());
-        SharedPassingOrder::new(places, &self.unifier, self.callee_borrows(callee))
+        SharedMemberPassing::new(places, &self.unifier, self.callee_borrows(callee))
     }
 
     pub(super) fn callee_borrows<'f>(&'f self, callee: Option<&'f TypedExpr>) -> CalleeBorrows<'f> {

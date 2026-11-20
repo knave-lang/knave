@@ -196,7 +196,7 @@ impl TypeChecker {
         }
         self.view_borrowed_strings_beside_views(group.positions(), arguments)?;
         let shared = Type::Var(root);
-        let order = (self.shared_passing_order(callee)).order(group, &shared, arguments);
+        let order = (self.shared_member_passing(callee)).order(group, &shared, arguments);
         for position in order {
             self.pass_member(callee, position, &shared, &mut arguments[position])?;
         }
@@ -210,15 +210,15 @@ impl TypeChecker {
         shared: &Type,
         argument: &mut TypedArgument,
     ) -> Result<(), Diagnostic> {
-        let order = self.shared_passing_order(callee);
-        match order.template_place(position, shared, &argument.value) {
+        let passing = self.shared_member_passing(callee);
+        match passing.template_place(position, shared, &argument.value) {
             Some(place) => {
                 let place = place.clone();
                 self.pass_template_borrow(shared, place, argument)
             }
             None => {
                 let borrow = self.pass_call_argument(callee, position, shared, &argument.value)?;
-                argument.borrow = (self.shared_passing_order(callee))
+                argument.borrow = (self.shared_member_passing(callee))
                     .dereference_where_rust_borrows(position, borrow, argument);
                 Ok(())
             }

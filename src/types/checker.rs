@@ -59,7 +59,7 @@ use super::rust_type_item::RustTypeItem;
 use super::selection::Selection;
 use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
-use super::shared_passing_order::SharedPassingOrder;
+use super::shared_member_passing::SharedMemberPassing;
 use super::shared_variable_group::SharedVariableGroup;
 use super::string_views::StringViews;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
@@ -605,12 +605,12 @@ impl TypeChecker {
         SharedVariableGroup::new(call, self.passing_tables(), &self.unifier)
     }
 
-    pub(super) fn shared_passing_order<'c>(
+    pub(super) fn shared_member_passing<'c>(
         &'c self,
         callee: Option<&'c TypedExpr>,
-    ) -> SharedPassingOrder<'c> {
+    ) -> SharedMemberPassing<'c> {
         let callee = CalleeBorrows::new(callee, &self.template_borrows);
-        SharedPassingOrder::new(self.place_types(), &self.unifier, callee)
+        SharedMemberPassing::new(self.place_types(), &self.unifier, callee)
     }
 
     pub(super) fn unification(&mut self) -> Unification<'_> {

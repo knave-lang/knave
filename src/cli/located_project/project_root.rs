@@ -30,8 +30,8 @@ impl ProjectRoot {
             .to_path_buf())
     }
 
-    pub fn project_file(&self) -> PathBuf {
-        self.path.join(Language::project_file_name())
+    pub fn project_file(&self) -> Result<PathBuf, ExitStatus> {
+        Ok(self.shown()?.join(Language::project_file_name()))
     }
 
     pub fn into_path(self) -> PathBuf {

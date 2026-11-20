@@ -4,7 +4,6 @@ use super::exit_status::ExitStatus;
 use super::located_project::ProjectRoot;
 use super::terminal::Terminal;
 use crate::diagnostic::{Diagnostic, Diagnostics};
-use crate::language::Language;
 use crate::project::{CompilerVersion, ReleaseVersion};
 
 pub struct CompilerCheck<'t> {
@@ -17,23 +16,14 @@ impl CompilerCheck<'_> {
     }
 
     pub fn refuse_before_loading(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
-        let project_file = root.shown()?.join(Language::project_file_name());
-        match self.printed(&project_file, CompilerVersion::refusal) {
+        match self.printed(&root.project_file()?, CompilerVersion::refusal) {
             Some(refused) => Err(refused),
             None => Ok(()),
         }
     }
 
     pub fn report(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
-        self.warn(&root.project_file())
-    }
-
-    pub fn report_entered(&self, root: &ProjectRoot) -> Result<(), ExitStatus> {
-        self.warn(&root.shown()?.join(Language::project_file_name()))
-    }
-
-    fn warn(&self, project_file: &Path) -> Result<(), ExitStatus> {
-        match self.printed(project_file, CompilerVersion::warning) {
+        match self.printed(&root.project_file()?, CompilerVersion::warning) {
             Some(ExitStatus::Success) | None => Ok(()),
             Some(failure) => Err(failure),
         }

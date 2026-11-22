@@ -1,0 +1,9 @@
+(defstruct point
+  :label str
+  :x i64)
+
+(defn label-of (p)
+  (match p ((point :label text) text)))
+
+(defn main ()
+  (println (label-of (->point :label "origin" :x 0))))

@@ -6,3 +6,4 @@ input_file: tests/fixtures/text/set_of_an_option_local_to_a_lent_view_is_a_view.
 defn viewer!
   name: owned, written mutable
   local v[0]: a view
+  local s: a view

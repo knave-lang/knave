@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/clone_of_a_binder_moved_out_of_owned_text_is_owned.knv
+---
+struct user
+  name: owned
+defn main
+  local found[0]: owned
+  local text: owned

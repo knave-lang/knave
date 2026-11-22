@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/binder_of_a_struct_pattern_reads_its_field.knv
+---
+struct point
+  label: a 'static view, written a view
+defn label-of
+  local text: a 'static view, written a view
+  result: a 'static view, written a view

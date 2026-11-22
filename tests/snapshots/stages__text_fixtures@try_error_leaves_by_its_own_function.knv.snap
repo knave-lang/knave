@@ -1,11 +1,12 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/text/try_error_leaves_by_its_own_function.knv
 ---
 defn checked
   result[1]: owned
 defn guarded
+  local _reason: a view, written owned
   result[1]: a 'static view, written a view
 defn parsed
   result[1]: a 'static view, written a view

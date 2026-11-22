@@ -1,0 +1,11 @@
+(defenum shape
+  (named str)
+  blank)
+
+(defn name-of (s)
+  (match s
+    ((named text) text)
+    (blank "blank")))
+
+(defn main ()
+  (println (name-of (shape/named "circle"))))

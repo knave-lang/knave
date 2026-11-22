@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/binder_matched_through_a_reference_is_lent.knv
+---
+defn shout
+  found[0]: owned
+  local text: lent
+  result: owned
+defn main
+  local found[0]: owned

@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_owner_ref_filter_calls_reader.knv
----
-1
-1

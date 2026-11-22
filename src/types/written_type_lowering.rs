@@ -1,6 +1,5 @@
 use rustc_hash::FxHashMap;
 
-use super::bound_origins::{BoundOrigin, BoundOrigins};
 use super::checking_facts::CheckingFacts;
 use super::copy::CopyRules;
 use super::declarations::Declarations;
@@ -88,14 +87,7 @@ impl<'l> WrittenTypeLowering<'l> {
             let no_generics = FxHashMap::default();
             let read =
                 OpenRead::new(CopyRules::new(self.declarations, &no_generics)).of_written(&written);
-            let closed = read.is_concrete();
-            let written = Bound::with_argument(field_trait, read);
-            if !closed {
-                return Ok(written);
-            }
-            let mut origins = BoundOrigins::none();
-            origins.add(BoundOrigin::Written);
-            return Ok(written.from_origins(origins));
+            return Ok(Bound::with_argument(field_trait, read));
         }
         self.check_trait_argument(bound.binding, argument.span())?;
         let argument = self.lower_type(argument, scope)?;

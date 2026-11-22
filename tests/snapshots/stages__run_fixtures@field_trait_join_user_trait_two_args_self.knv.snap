@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_join_user_trait_two_args_self.knv
----
-true
-false

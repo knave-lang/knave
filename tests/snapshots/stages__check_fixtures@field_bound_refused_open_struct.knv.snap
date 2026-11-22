@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_refused_open_struct.knv
+---
+error[L0427]: a struct with an open type argument reaches this `has` bound on `:name`
+  --> check/field_bound_refused_open_struct.knv:13:18
+   |
+13 |   (str "hello " (:name x)))
+   |                  ^^^^^ this read goes through the `has` bound
+   |
+   = help: pass the struct with its type arguments fixed, or name the struct
+   = note: run `knave doc L0427` for an explanation

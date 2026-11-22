@@ -21,14 +21,14 @@ fn make_dog(age: i64) -> Dog {
     Dog { age }
 }
 
-fn age_of<A: field_traits::HasAge + Copy>(x: A) -> i64 {
-    field_traits::HasAge::age(&x)
+fn age_of<A: field_traits::HasAge + Copy>(x: &A) -> i64 {
+    field_traits::HasAge::age(x)
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", age_of(make_cat(3)));
-    println!("{}", age_of(make_dog(4)))
+    println!("{}", age_of(&make_cat(3)));
+    println!("{}", age_of(&make_dog(4)))
 }
 
 mod field_traits {

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_refused_moves_owner.knv
+---
+error[L0427]: this function moves a value that it reads `:title` from through a `has` bound
+  --> check/field_bound_refused_moves_owner.knv:13:9
+   |
+13 |   (len (:title y)))
+   |         ^^^^^^ this read goes through the `has` bound
+   |
+   = help: take the value as `(ref a)`, or name the struct in the signature
+   = note: run `knave doc L0427` for an explanation

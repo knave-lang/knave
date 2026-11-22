@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_refused_reads_otherwise.knv
+---
+error[L0427]: another `has` bound reads `:n` as a different type
+  --> check/field_bound_refused_reads_otherwise.knv:17:26
+   |
+17 | (defn held-n (x) (deref (:n x)))
+   |                          ^^ this read goes through the `has` bound
+   |
+   = help: write `:n` with one read type in every `has` bound
+   = note: run `knave doc L0427` for an explanation

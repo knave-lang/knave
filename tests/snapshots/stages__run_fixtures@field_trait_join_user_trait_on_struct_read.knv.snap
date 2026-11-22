@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_join_user_trait_on_struct_read.knv
----
-toy 1
-toy 2

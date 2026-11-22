@@ -12,7 +12,7 @@ impl MentionedGenerics {
         mentioned
     }
 
-    pub(super) fn collect(&mut self, value: &Type) {
+    fn collect(&mut self, value: &Type) {
         match value {
             Type::Generic(id) if !self.ids.contains(id) => self.ids.push(*id),
             Type::Generic(_) => {}
@@ -21,10 +21,6 @@ impl MentionedGenerics {
                 .into_iter()
                 .for_each(|part| self.collect(part)),
         }
-    }
-
-    pub(super) fn get(&self, position: usize) -> Option<GenericId> {
-        self.ids.get(position).copied()
     }
 
     pub(super) fn into_ids(self) -> Vec<GenericId> {
@@ -58,12 +54,5 @@ mod tests {
         );
         let ids = MentionedGenerics::of(&function).into_ids();
         assert_eq!(ids, vec![GenericId::new(1), GenericId::new(0)]);
-    }
-
-    #[test]
-    fn reads_a_generic_by_its_position() {
-        let mentioned = MentionedGenerics::of(&Generics::generic(2));
-        assert_eq!(mentioned.get(0), Some(GenericId::new(2)));
-        assert_eq!(mentioned.get(1), None);
     }
 }

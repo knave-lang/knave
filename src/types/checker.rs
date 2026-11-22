@@ -81,7 +81,6 @@ use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
 use super::type_declaration_collector::TypeDeclarationCollector;
 use super::type_variables::TypeVariables;
 use super::typed_module_builder::TypedModuleBuilder;
-use super::unfit_reads::UnfitReads;
 use super::unification::Unification;
 use super::unifier::{LiteralKind, Unifier};
 use super::user_trait::UserTrait;
@@ -240,7 +239,9 @@ impl TypeChecker {
         self.collect_trait_impls(modules);
         self.record_structural_traits(modules);
         self.register_derived_traits(modules);
-        let fields = StructFieldTraits::new(&self.declarations, self.generics.params()).traits();
+        let written = graph.reach().field_bounds();
+        let fields =
+            StructFieldTraits::new(&self.declarations, self.generics.params()).traits(written);
         (self.declarations.builder().traits()).enter_field_traits(fields, &mut self.bindings);
         self.report_supertraits();
         self.check_trait_claims(modules, reached);
@@ -579,10 +580,6 @@ impl TypeChecker {
             display: self.display(),
             derive_rules: self.derive_rules(),
         })
-    }
-
-    fn unfit_reads(&self) -> UnfitReads<'_> {
-        UnfitReads::new(&self.unifier, &self.declarations, self.copy_rules())
     }
 
     fn literal_settlement(&self) -> LiteralSettlement<'_> {
@@ -1088,8 +1085,7 @@ impl TypeChecker {
             },
             None => MismatchContext::Plain,
         };
-        let value = self.infer_against(member.value, &expected, context)?;
-        self.unfit_reads().refuse(&value).map(|()| value)
+        self.infer_against(member.value, &expected, context)
     }
 
     fn finish_scheme(
@@ -1209,15 +1205,10 @@ impl TypeChecker {
                 vars.push(var);
             }
         }
-        let fields = &self.declarations.traits().rust_paths().field_traits();
-        fields.add_read_vars(vars, &self.unifier, |read| self.free_vars(read));
     }
 
     fn mentioned_generics(&self, inferred: &Type) -> Vec<GenericParam> {
-        let mut mentioned = MentionedGenerics::of(inferred);
-        let fields = &self.declarations.traits().rust_paths().field_traits();
-        fields.add_read_generics(&mut mentioned, |id| self.generics.param(id), &self.unifier);
-        mentioned
+        MentionedGenerics::of(inferred)
             .into_ids()
             .into_iter()
             .filter_map(|id| self.generics.param(id).cloned())

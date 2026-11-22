@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::copy::CopyRules;
 use super::declarations::Declarations;
@@ -27,9 +27,10 @@ impl<'a> StructFieldTraits<'a> {
         }
     }
 
-    pub(super) fn traits(&self) -> Vec<FieldTrait> {
-        self.shared_names()
-            .into_iter()
+    pub(super) fn traits(&self, written: &FxHashSet<Rc<str>>) -> Vec<FieldTrait> {
+        let shared = self.shared_names().into_iter();
+        shared
+            .filter(|field| written.contains(field))
             .map(|field| FieldTrait::new(Rc::clone(&field), self.implementors(&field)))
             .collect()
     }

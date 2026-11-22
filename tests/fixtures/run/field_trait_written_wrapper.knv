@@ -1,0 +1,22 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(type hello
+  (where ((a (has :name (ref str))))
+    (fn ((ref a)) string)))
+
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(type greet
+  (where ((a (has :name (ref str))))
+    (fn ((ref a)) string)))
+
+(defn greet (x) (str (hello x) "!"))
+
+(defn main ()
+  (println (greet (->user "ana")))
+  (println (greet (->animal "rex"))))

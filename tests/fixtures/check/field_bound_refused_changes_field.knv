@@ -1,0 +1,19 @@
+(defstruct counter
+  :count int)
+
+(defstruct timer
+  :count int)
+
+(type bump!
+  (where ((a (has :count int)))
+    (fn ((mut a)) unit)))
+
+(defn bump! (x)
+  (set! (:count x) (+ (:count x) 1)))
+
+(defn main ()
+  (local c (->counter 1))
+  (bump! (mut c))
+  (local t (->timer 2))
+  (bump! (mut t))
+  (println (:count c)))

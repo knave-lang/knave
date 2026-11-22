@@ -31,14 +31,14 @@ fn make_span(start: Point) -> Span {
     Span { start }
 }
 
-fn start_x<A: field_traits::HasStart + Copy>(l: A) -> i64 {
-    field_traits::HasStart::start(&l).x + 1
+fn start_x<A: field_traits::HasStart + Copy>(l: &A) -> i64 {
+    field_traits::HasStart::start(l).x + 1
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", start_x(make_line(make_point(1, 2))));
-    println!("{}", start_x(make_span(make_point(5, 6))))
+    println!("{}", start_x(&make_line(make_point(1, 2))));
+    println!("{}", start_x(&make_span(make_point(5, 6))))
 }
 
 mod field_traits {

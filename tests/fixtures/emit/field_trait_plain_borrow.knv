@@ -4,8 +4,16 @@
 (defstruct animal
   :name str)
 
+(type uppercase-name
+  (where ((a (has :name (ref str))))
+    (fn ((ref a)) string)))
+
 (defn uppercase-name (x)
   (upper-case (:name x)))
+
+(type hello
+  (where ((a (has :name (ref str))))
+    (fn ((ref a)) string)))
 
 (defn hello (x)
   (str "hello " (:name x)))

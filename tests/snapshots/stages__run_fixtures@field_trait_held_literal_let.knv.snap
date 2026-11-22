@@ -1,6 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_held_literal_let.knv
----
-1

@@ -64,17 +64,15 @@ impl<'u> FieldReadSelection<'u> {
         else {
             return Some(read);
         };
-        if expected == read || expected.has_vars() {
-            return Some(read);
-        }
-        (!Self::is_written(bound)).then_some(expected)
+        (expected == read || expected.has_vars()).then_some(read)
+    }
+
+    pub(super) fn reads_open_field(traits: &TraitTable, bound: &Bound) -> bool {
+        let open = (bound.argument.as_ref()).is_some_and(Type::has_vars);
+        Self::reads_field(traits, bound) && open
     }
 
     pub(super) fn reads_field(traits: &TraitTable, bound: &Bound) -> bool {
         (traits.get(bound.binding)).is_some_and(|known| known.reads_field)
-    }
-
-    pub(super) fn is_written(bound: &Bound) -> bool {
-        bound.origins.is_written()
     }
 }

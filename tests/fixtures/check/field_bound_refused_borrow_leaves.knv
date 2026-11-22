@@ -1,0 +1,15 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(type name-of
+  (where ((a (has :name (ref str))))
+    (fn (a) (ref str))))
+
+(defn name-of (x) (:name x))
+
+(defn main ()
+  (println (name-of (->user "ana")))
+  (println (name-of (->animal "rex"))))

@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_struct_named_like_trait.knv
----
-1
-hello ana
-hello rex

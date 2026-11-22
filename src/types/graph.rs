@@ -8,6 +8,7 @@ use super::dependency_graph::DependencyGraph;
 use super::reached_traits::ReachedTraits;
 use super::trait_reach::TraitReach;
 use super::written_bodies::WrittenBodies;
+use super::written_field_bounds::WrittenFieldBounds;
 use crate::core::{BindingArena, BindingId, Expr, ItemKind, References};
 use crate::expand::Program;
 use crate::source::Span;
@@ -29,6 +30,7 @@ pub struct ProgramReach {
     unreached: Rc<FxHashSet<BindingId>>,
     traits: ReachedTraits,
     written: WrittenBodies,
+    field_bounds: FxHashSet<Rc<str>>,
 }
 
 impl ProgramReach {
@@ -42,6 +44,10 @@ impl ProgramReach {
 
     pub fn written_bodies(&self) -> &WrittenBodies {
         &self.written
+    }
+
+    pub fn field_bounds(&self) -> &FxHashSet<Rc<str>> {
+        &self.field_bounds
     }
 }
 
@@ -63,6 +69,7 @@ impl<'p> DefinitionGraph<'p> {
             ReferenceWalk::new(&program.bindings, &deferred).run(Self::definitions_in(program));
         deferred.retain(|binding| !walked.contains_key(binding));
         let reached_traits = TraitReach::of(&program.modules, walked.values());
+        let field_bounds = WrittenFieldBounds::of(&program.modules, walked.values());
         let mut definitions = Vec::with_capacity(Self::item_count(program));
         definitions.extend(
             Self::definitions_in(program)
@@ -81,6 +88,7 @@ impl<'p> DefinitionGraph<'p> {
                 unreached: Rc::new(deferred),
                 traits: reached_traits,
                 written,
+                field_bounds,
             },
         }
     }

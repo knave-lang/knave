@@ -68,10 +68,10 @@ mod tests {
 
     use super::ConstructedTypes;
     use crate::core::{BindingId, References};
-    use crate::types::check_order::CheckOrder;
     use crate::types::dependency_graph::DependencyGraph;
     use crate::types::typed_source::TypedSource;
     use crate::types::written_bodies::WrittenBodies;
+    use crate::types::written_impls::WrittenImpls;
 
     struct ConstructedTypesFixture {
         source: TypedSource,
@@ -112,7 +112,11 @@ mod tests {
                 FxHashSet::default(),
                 &WrittenBodies::of(&program.modules),
             );
-            let method = CheckOrder::impl_methods(program)
+            let method = WrittenImpls::of(program)
+                .entries()
+                .iter()
+                .flat_map(|entry| entry.methods)
+                .map(|method| method.binding)
                 .find(|method| program.bindings.get(*method).name() == "probe")
                 .expect("the source implements probe");
             let mut names: Vec<String> = ConstructedTypes::new(program, &references, &dependencies)

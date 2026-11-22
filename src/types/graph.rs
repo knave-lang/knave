@@ -71,7 +71,7 @@ impl<'p> DefinitionGraph<'p> {
         let written = WrittenBodies::of(&program.modules);
         let dependencies = DependencyGraph::build(&walked, macro_helpers, &written);
         let order = CheckOrder::new(program, walked, &dependencies)
-            .of(definitions.iter().map(|definition| definition.binding));
+            .order(definitions.iter().map(|definition| definition.binding));
         let components = dependencies.components(&order);
         Self {
             definitions,
@@ -198,7 +198,7 @@ mod tests {
     use crate::core::BindingId;
     use crate::expand::Program;
     use crate::modules::ModuleSources;
-    use crate::types::check_order::CheckOrder;
+    use crate::types::written_impls::WrittenImpls;
     use crate::types::{TypedProgram, TypedSource};
 
     #[test]
@@ -376,8 +376,13 @@ mod tests {
         }
 
         fn impl_method_position(&self) -> usize {
-            let method = CheckOrder::impl_methods(self.source.program())
-                .find(|method| self.source.program().bindings.get(*method).name() == "probe")
+            let program = self.source.program();
+            let method = WrittenImpls::of(program)
+                .entries()
+                .iter()
+                .flat_map(|entry| entry.methods)
+                .map(|method| method.binding)
+                .find(|method| program.bindings.get(*method).name() == "probe")
                 .expect("the source implements probe");
             self.component_holding(method)
         }

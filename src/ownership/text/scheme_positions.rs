@@ -15,14 +15,22 @@ struct Place {
 impl Place {
     fn behind(&self, access: Access) -> Self {
         Self {
-            path: self.path.clone(),
             access,
+            ..self.clone()
         }
     }
 
     fn child(&self, part: usize) -> Self {
+        self.at(self.path.child(part))
+    }
+
+    fn result(&self) -> Self {
+        self.at(self.path.result())
+    }
+
+    fn at(&self, path: TypePath) -> Self {
         Self {
-            path: self.path.child(part),
+            path,
             access: Access::Direct,
         }
     }
@@ -58,6 +66,17 @@ impl SchemePositions {
                 {
                     self.visit(declared, instantiated, place.child(part));
                 }
+            }
+            (
+                Type::Function(_, declared_parameters, declared_result),
+                Type::Function(_, parameters, result),
+            ) => {
+                for (part, (declared, instantiated)) in
+                    declared_parameters.iter().zip(parameters).enumerate()
+                {
+                    self.visit(declared, instantiated, place.child(part));
+                }
+                self.visit(declared_result, result, place.result());
             }
             _ => {}
         }
@@ -202,6 +221,36 @@ mod tests {
         let positions =
             SchemePositions::of(&Types::vec_of(Types::text()), &Types::vec_of(Types::text()));
         assert_eq!(positions[0].path(), TypePath::default().child(0));
+    }
+
+    #[test]
+    fn a_function_type_reaches_the_generics_of_its_parameters_and_result() {
+        let generic = GenericId::new(0);
+        let function = |parameter: Type, result: Type| {
+            Type::Function(
+                crate::core::ClosureKind::Fn,
+                vec![parameter],
+                Box::new(result),
+            )
+        };
+        let positions = SchemePositions::of(
+            &function(Type::shared(Type::Generic(generic)), Type::Generic(generic)),
+            &function(Type::shared(Types::text()), Types::text()),
+        );
+        assert!(matches!(
+            &positions[..],
+            [
+                SchemePosition::Generic {
+                    access: Access::Referenced,
+                    ..
+                },
+                SchemePosition::Generic {
+                    access: Access::Direct,
+                    ..
+                }
+            ]
+        ));
+        assert_eq!(positions[1].path(), TypePath::default().result());
     }
 
     #[test]

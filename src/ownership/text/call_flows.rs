@@ -1,6 +1,8 @@
 use super::access::Access;
 use super::call_target::CallTarget;
 use super::callee::Callee;
+use super::callee_scheme::CalleeScheme;
+use super::function_value::FunctionValue;
 use super::instantiation::Instantiation;
 use super::need::Need;
 use super::node_id::NodeId;
@@ -52,6 +54,14 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         }
     }
 
+    pub fn function_value(mut self, callee: &TypedExpr, owner: SlotOwner) -> TextValue {
+        let target = FunctionValue::new(CalleeScheme::new(&callee.ty, &[]), Slot::from(owner));
+        match &callee.ty {
+            Type::Function(_, parameters, result) => self.through(&target, (parameters, result)),
+            _ => self.unknown_result(),
+        }
+    }
+
     fn unknown_result(&self) -> TextValue {
         ShortLivedText::of(self.call)
     }
@@ -85,7 +95,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         if let Some(whole) = instantiation.whole_generic() {
             self.whole_generic_argument(target, whole, value);
         } else if let Some(parameter) = target.parameter(index) {
-            self.pour(&Slot::from(parameter), value);
+            self.pour(&parameter, value);
         }
         for position in instantiation.positions() {
             self.argument_position(target, &position, value);
@@ -124,7 +134,8 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             SchemePosition::Generic { outer, .. } if outer.is_top() => {}
             SchemePosition::Generic { generic, inner, .. } => {
                 if let Some(argument) = Self::nested_at(value, &position.path()) {
-                    self.unite_with_variable(*generic, inner, argument);
+                    let variable = self.variable_node(*generic, inner);
+                    self.context.unite(variable, argument);
                 }
             }
             SchemePosition::Written { written, path } if path.is_top() => {
@@ -165,10 +176,9 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             .map(|(_, node)| *node)
     }
 
-    fn unite_with_variable(&mut self, generic: GenericId, inner: &TypePath, argument: NodeId) {
+    fn variable_node(&mut self, generic: GenericId, inner: &TypePath) -> NodeId {
         let slot = Slot::new(SlotOwner::Variable(self.call.span, generic), inner.clone());
-        let variable = self.context.node(slot);
-        self.context.unite(variable, argument);
+        self.context.node(slot)
     }
 
     fn result(
@@ -183,8 +193,13 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
                 ty,
                 Transfer::referring(access),
             ),
-            None => target.result().map_or_else(TextValue::default, |owner| {
-                self.read(&owner, ty, Transfer::Move)
+            None => target.result().map_or_else(TextValue::default, |slot| {
+                let read = TextRead {
+                    ty,
+                    span: self.call.span,
+                    transfer: Transfer::Move,
+                };
+                self.context.read(&slot, read)
             }),
         };
         instantiation
@@ -257,7 +272,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             span: self.call.span,
             transfer,
         };
-        self.context.read(owner, read)
+        self.context.read(&Slot::from(owner.clone()), read)
     }
 
     fn pour(&mut self, slot: &Slot, value: &TextValue) {

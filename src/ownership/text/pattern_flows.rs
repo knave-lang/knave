@@ -95,7 +95,7 @@ impl<'c, 'w, 'p> PatternFlows<'c, 'w, 'p> {
             span: part.span,
             transfer: Transfer::Move,
         };
-        self.context.read(owner, read)
+        self.context.read(&Slot::from(owner.clone()), read)
     }
 }
 

@@ -1,11 +1,11 @@
-use rustc_hash::FxHashSet;
-
 use super::assoc_flows::AssocFlows;
+use super::binding_owners::BindingOwners;
 use super::call_flows::CallFlows;
+use super::callee::Callee;
+use super::closure_slots::{ClosureSlots, ClosureUse};
 use super::construction_flows::ConstructionFlows;
 use super::pattern_flows::PatternFlows;
 use super::reaching_text::ReachingText;
-use super::short_lived_text::ShortLivedText;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
@@ -26,9 +26,8 @@ pub struct BodyFlows<'b, 'p> {
     context: WalkContext<'b, 'p>,
     listing: &'b mut SlotListing,
     function: BindingId,
-    parameters: Vec<BindingId>,
-    opaque: FxHashSet<BindingId>,
-    closures: usize,
+    owners: BindingOwners,
+    closure_results: Vec<SlotOwner>,
 }
 
 impl<'b, 'p> BodyFlows<'b, 'p> {
@@ -41,15 +40,14 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             context,
             listing,
             function,
-            parameters: Vec::new(),
-            opaque: FxHashSet::default(),
-            closures: 0,
+            owners: BindingOwners::default(),
+            closure_results: Vec::new(),
         }
     }
 
     pub fn walk(mut self, lambda: &TypedLambda) {
         for parameter in &lambda.params {
-            self.parameters.push(parameter.binding);
+            self.owners.add_parameter(parameter.binding);
             self.listing
                 .list(&SlotOwner::Parameter(parameter.binding), &parameter.ty);
         }
@@ -71,7 +69,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     pub fn value(&mut self, expr: &TypedExpr) -> TextValue {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr),
-            TypedExprKind::Fn(lambda) => self.closure(lambda),
+            TypedExprKind::Fn(lambda) => self.closure(lambda, expr, ClosureUse::Free),
             TypedExprKind::Call(callee, arguments) => self.call(expr, callee, arguments),
             TypedExprKind::Recur(arguments) => {
                 self.recur(arguments.iter().map(|argument| &argument.value))
@@ -108,17 +106,27 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         callee: &TypedExpr,
         arguments: &[TypedArgument],
     ) -> TextValue {
+        let fixed = Callee::fixes_closures(callee, self.context.program());
         let values: Vec<TextValue> = arguments
             .iter()
             .map(|argument| {
-                self.value(&argument.value)
-                    .transferred(Transfer::passing(&argument.borrow))
+                let value = match &argument.value.kind {
+                    TypedExprKind::Fn(lambda) => self.closure(lambda, &argument.value, fixed),
+                    _ => self.value(&argument.value),
+                };
+                value.transferred(Transfer::passing(&argument.borrow))
             })
             .collect();
         if !matches!(callee.kind, TypedExprKind::Leaf(_)) {
             self.value(callee);
         }
-        CallFlows::new(&mut self.context, expr, &values).value(callee)
+        let flows = CallFlows::new(&mut self.context, expr, &values);
+        match &callee.kind {
+            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
+                flows.function_value(callee, self.owners.owner(*binding))
+            }
+            _ => flows.value(callee),
+        }
     }
 
     fn result_type(&self) -> Option<Type> {
@@ -139,7 +147,8 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             TypedLeaf::Local(binding) => self.local(*binding, expr),
             TypedLeaf::Global(binding) if self.context.program().is_written_value(*binding) => {
                 let read = TextRead::of(expr, Transfer::Refer);
-                self.context.read(&SlotOwner::Global(*binding), read)
+                let global = Slot::from(SlotOwner::Global(*binding));
+                self.context.read(&global, read)
             }
             TypedLeaf::Global(_) if TextPositions::holds_text(&expr.ty) => {
                 TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
@@ -152,29 +161,28 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         if !TextPositions::holds_text(&expr.ty) {
             return TextValue::default();
         }
-        if self.opaque.contains(&binding) {
-            return ShortLivedText::of(expr);
-        }
-        let owner = if self.parameters.contains(&binding) {
-            SlotOwner::Parameter(binding)
-        } else {
-            SlotOwner::Local(binding)
-        };
+        let owner = self.owners.owner(binding);
         self.context
-            .read(&owner, TextRead::of(expr, Transfer::Move))
+            .read(&Slot::from(owner), TextRead::of(expr, Transfer::Move))
     }
 
-    fn closure(&mut self, lambda: &TypedLambda) -> TextValue {
-        self.opaque
-            .extend(lambda.params.iter().map(|parameter| parameter.binding));
-        self.closures += 1;
-        self.block(&lambda.body);
-        self.closures -= 1;
-        TextValue::default()
+    fn closure(
+        &mut self,
+        lambda: &TypedLambda,
+        expr: &TypedExpr,
+        closure_use: ClosureUse,
+    ) -> TextValue {
+        let slots = ClosureSlots::new(lambda, expr, closure_use);
+        slots.list(self.listing);
+        self.owners.add_closure_parameters(slots.free_parameters());
+        self.closure_results.push(slots.result());
+        let body = self.block(&lambda.body);
+        self.closure_results.pop();
+        slots.close(&mut self.context, &body)
     }
 
     fn recur<'e>(&mut self, arguments: impl Iterator<Item = &'e TypedExpr>) -> TextValue {
-        let parameters = self.parameters.clone();
+        let parameters = self.owners.parameters().to_vec();
         for (parameter, argument) in parameters.into_iter().zip(arguments) {
             let value = self.value(argument);
             self.context
@@ -282,8 +290,12 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     ) -> TextValue {
         let tried = self.value(value);
         let mut flows = TryFlows::new(&mut self.context, expr.span);
-        if conversion == TryErrorConversion::Identity && self.closures == 0 {
-            flows.propagate(&tried, &SlotOwner::Result(self.function));
+        if conversion == TryErrorConversion::Identity {
+            let returned = self.closure_results.last().cloned();
+            flows.propagate(
+                &tried,
+                &returned.unwrap_or(SlotOwner::Result(self.function)),
+            );
         }
         flows.payload(&tried)
     }

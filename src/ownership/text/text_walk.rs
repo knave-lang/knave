@@ -41,7 +41,10 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         for definition in &module.definitions {
             match &definition.value.kind {
                 TypedExprKind::Fn(lambda) => self.walk_function(definition.binding, lambda),
-                _ => self.walk_value(definition.binding, &definition.value),
+                _ if self.program.is_written_value(definition.binding) => {
+                    self.walk_value(definition.binding, &definition.value)
+                }
+                _ => {}
             }
         }
     }

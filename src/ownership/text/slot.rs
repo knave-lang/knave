@@ -56,6 +56,7 @@ impl Slot {
                 names.name(*binding).to_string()
             }
             SlotOwner::Result(_) => "result".to_string(),
+            SlotOwner::ClosureResult(_) => "closure result".to_string(),
             SlotOwner::Local(binding) => format!("local {}", names.name(*binding)),
             SlotOwner::Field(_, name) => name.to_string(),
             SlotOwner::Variable(..)

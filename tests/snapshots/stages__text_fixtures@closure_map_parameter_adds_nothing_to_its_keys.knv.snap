@@ -1,7 +1,10 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/text/closure_map_parameter_adds_nothing_to_its_keys.knv
 ---
 defn main
-  local counts[0]: a view, written owned
+  local counts[0]: owned
+  local word: a 'static view, written a view
+  closure result[0]: owned
+  local counts[0]: owned

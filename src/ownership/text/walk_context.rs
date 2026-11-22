@@ -2,7 +2,6 @@ use super::flow_graph::FlowGraph;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::slot::Slot;
-use super::slot_owner::SlotOwner;
 use super::slot_reads::SlotReads;
 use super::text_program::TextProgram;
 use super::text_read::TextRead;
@@ -38,7 +37,7 @@ impl<'w, 'p> WalkContext<'w, 'p> {
         self.graph.require(slot, need);
     }
 
-    pub fn read(&mut self, owner: &SlotOwner, read: TextRead<'_>) -> TextValue {
-        SlotReads::new(self.graph).read(owner, read)
+    pub fn read(&mut self, base: &Slot, read: TextRead<'_>) -> TextValue {
+        SlotReads::new(self.graph).read(base, read)
     }
 }

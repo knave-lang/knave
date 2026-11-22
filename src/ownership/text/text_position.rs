@@ -45,7 +45,13 @@ impl TextPositions {
                     self.visit(argument, path.child(part), Access::Direct)
                 })
             }
-            Type::Var(_) | Type::Generic(_) | Type::Function(..) | Type::TraitObject(_) => {}
+            Type::Function(_, parameters, result) => {
+                parameters.iter().enumerate().for_each(|(part, parameter)| {
+                    self.visit(parameter, path.child(part), Access::Direct)
+                });
+                self.visit(result, path.result(), Access::Direct);
+            }
+            Type::Var(_) | Type::Generic(_) | Type::TraitObject(_) => {}
         }
     }
 
@@ -128,12 +134,20 @@ mod tests {
     }
 
     #[test]
-    fn a_function_type_holds_no_text_position() {
+    fn a_function_type_holds_text_at_its_parameters_and_result() {
         let function = Type::Function(
             crate::core::ClosureKind::Fn,
-            vec![Type::str_ref()],
-            Box::new(Type::unit()),
+            vec![Type::unit(), Type::str_ref()],
+            Box::new(Types::text(PrimitiveType::String)),
         );
-        assert!(!TextPositions::holds_text(&function));
+        let paths: Vec<TypePath> = TextPositions::of(&function)
+            .into_iter()
+            .map(|position| position.path)
+            .collect();
+        assert_eq!(
+            paths,
+            vec![TypePath::default().child(1), TypePath::default().result()]
+        );
+        assert!(!TextPositions::holds_top_text(&function));
     }
 }

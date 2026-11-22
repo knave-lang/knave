@@ -1,0 +1,15 @@
+(defstruct user
+  :name string)
+
+(defn apply-to (f s) (f s))
+
+(defn main ()
+  (local names
+    (vec (str "a" 1) (str "b" 2)))
+  (local shout (fn (w) (str w "!")))
+  (println (shout "x"))
+  (println (apply-to (fn (v) (len v)) "y"))
+  (local keep (fn (n) (->user :name n)))
+  (println (:name (keep (str "k" 1))))
+  (println (count (filter (iter names)
+                    (fn (w) (> (len w) 0))))))

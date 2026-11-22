@@ -1,17 +1,20 @@
 mod access;
 mod assoc_flows;
+mod binding_owners;
 mod body_flows;
 mod call_flows;
 mod call_target;
 mod callee;
 mod callee_scheme;
 mod class_role;
+mod closure_slots;
 mod construction_flows;
 mod enum_payloads;
 mod flow;
 #[cfg(test)]
 mod flow_fixture;
 mod flow_graph;
+mod function_value;
 mod inline_flows;
 mod inline_rust;
 mod instantiation;

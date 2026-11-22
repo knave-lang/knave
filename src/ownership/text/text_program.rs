@@ -5,7 +5,7 @@ use super::text_traits::TextTraits;
 use super::text_types::TextTypes;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
-use crate::types::{TypedDefinition, TypedExprKind, TypedModule, TypedProgram};
+use crate::types::{Type, TypedDefinition, TypedModule, TypedProgram};
 
 pub struct TextProgram<'p> {
     program: &'p TypedProgram,
@@ -26,7 +26,7 @@ impl<'p> TextProgram<'p> {
             .iter()
             .filter(|module| !ModuleSources::is_prelude(&module.path))
             .flat_map(|module| &module.definitions)
-            .filter(|definition| !matches!(definition.value.kind, TypedExprKind::Fn(_)))
+            .filter(|definition| !matches!(definition.value.ty, Type::Function(..)))
             .map(|definition| definition.binding)
             .collect();
         Self {

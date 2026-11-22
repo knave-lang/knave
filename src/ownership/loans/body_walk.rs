@@ -110,21 +110,11 @@ impl<'w> BodyWalk<'w> {
         if !expr.ty.is_reference() {
             return read;
         }
-        if self.reads_through_a_stored_reference(expr) {
+        if self.rules().reads_through_a_stored_reference(expr) {
             return self.read_after(read, place, expr.span);
         }
         let shared = <dyn LoanKind>::of(ReferenceKind::Shared);
         self.lend_after(read, Lending::new(place, shared, expr.span))
-    }
-
-    fn reads_through_a_stored_reference(&self, read: &TypedExpr) -> bool {
-        match &read.kind {
-            TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => {
-                self.rules().stores_reference(&owner.ty, &label.name)
-                    || self.reads_through_a_stored_reference(owner)
-            }
-            _ => read.ty.is_reference(),
-        }
     }
 
     fn read_after(&mut self, read: Walked, place: LoanPlace, span: Span) -> Walked {

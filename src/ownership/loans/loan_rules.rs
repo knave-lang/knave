@@ -1,5 +1,8 @@
 use super::type_memo::TypeMemo;
-use crate::types::{BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedProgram};
+use crate::types::{
+    BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedExprKind, TypedProgram,
+    TypedStructExpr,
+};
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
@@ -28,7 +31,17 @@ impl<'p> LoanRules<'p> {
             .read_template(callee, None, |_, ties| ties.cloned())
     }
 
-    pub fn stores_reference(&self, owner: &Type, field: &str) -> bool {
+    pub fn reads_through_a_stored_reference(&self, read: &TypedExpr) -> bool {
+        match &read.kind {
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => {
+                self.stores_reference(&owner.ty, &label.name)
+                    || self.reads_through_a_stored_reference(owner)
+            }
+            _ => read.ty.is_reference(),
+        }
+    }
+
+    fn stores_reference(&self, owner: &Type, field: &str) -> bool {
         self.program
             .declarations
             .types()

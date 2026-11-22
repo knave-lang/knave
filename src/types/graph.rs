@@ -85,6 +85,12 @@ impl<'p> DefinitionGraph<'p> {
         }
     }
 
+    #[cfg(test)]
+    pub(super) fn walked(program: &'p Program) -> FxHashMap<BindingId, References> {
+        let deferred = DeferredDefinitions::of(program, &WrittenBodies::of(&program.modules));
+        ReferenceWalk::new(&program.bindings, &deferred).run(Self::definitions_in(program))
+    }
+
     fn item_count(program: &Program) -> usize {
         program
             .modules

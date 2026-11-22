@@ -64,13 +64,9 @@ impl<'d> ConstructedTypes<'d> {
 
 #[cfg(test)]
 mod tests {
-    use rustc_hash::{FxHashMap, FxHashSet};
-
     use super::ConstructedTypes;
-    use crate::core::{BindingId, References};
-    use crate::types::dependency_graph::DependencyGraph;
+    use crate::types::graph::DefinitionGraph;
     use crate::types::typed_source::TypedSource;
-    use crate::types::written_bodies::WrittenBodies;
     use crate::types::written_impls::WrittenImpls;
 
     struct ConstructedTypesFixture {
@@ -106,12 +102,8 @@ mod tests {
 
         fn built_by_probe(&self) -> Vec<String> {
             let program = self.source.program();
-            let references = self.references();
-            let dependencies = DependencyGraph::build(
-                &references,
-                FxHashSet::default(),
-                &WrittenBodies::of(&program.modules),
-            );
+            let references = DefinitionGraph::walked(program);
+            let graph = DefinitionGraph::of(program);
             let method = WrittenImpls::of(program)
                 .entries()
                 .iter()
@@ -119,23 +111,14 @@ mod tests {
                 .map(|method| method.binding)
                 .find(|method| program.bindings.get(*method).name() == "probe")
                 .expect("the source implements probe");
-            let mut names: Vec<String> = ConstructedTypes::new(program, &references, &dependencies)
-                .by_method(method)
-                .into_iter()
-                .map(|built| program.bindings.get(built).name().to_string())
-                .collect();
+            let mut names: Vec<String> =
+                ConstructedTypes::new(program, &references, graph.dependencies())
+                    .by_method(method)
+                    .into_iter()
+                    .map(|built| program.bindings.get(built).name().to_string())
+                    .collect();
             names.sort();
             names
-        }
-
-        fn references(&self) -> FxHashMap<BindingId, References> {
-            let program = self.source.program();
-            program
-                .modules
-                .iter()
-                .flat_map(|module| module.definitions())
-                .map(|(binding, value)| (binding, References::of(value, &program.bindings)))
-                .collect()
         }
     }
 

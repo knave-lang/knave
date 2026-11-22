@@ -1,25 +1,10 @@
+use super::parameter_owner::ParameterOwner;
 use super::problems::DroppedValue;
 use crate::core::BindingId;
-use crate::source::Span;
 use crate::types::{
     TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
     TypedMatch,
 };
-
-#[derive(Clone, Copy)]
-pub(super) enum ParameterOwner {
-    Function,
-    Closure,
-}
-
-impl ParameterOwner {
-    fn dropped_parameter(self, span: Span) -> DroppedValue {
-        match self {
-            Self::Function => DroppedValue::FunctionParameter(span),
-            Self::Closure => DroppedValue::ClosureParameter(span),
-        }
-    }
-}
 
 #[derive(Clone, Copy)]
 pub(super) struct OwnedValues<'e> {

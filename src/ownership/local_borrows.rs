@@ -1,4 +1,5 @@
-use super::owned_values::{OwnedValues, ParameterOwner};
+use super::owned_values::OwnedValues;
+use super::parameter_owner::ParameterOwner;
 use super::problems::DroppedValue;
 use super::promoted_constants::PromotedConstants;
 use crate::core::{BindingId, FieldLabel};

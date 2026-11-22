@@ -35,6 +35,14 @@ impl<'c, 'w, 'p> PlaceWrites<'c, 'w, 'p> {
         self.unite_with_place(written, place);
     }
 
+    pub fn into_parameter(self, place: &TextValue) {
+        for (path, nested) in place.nested() {
+            let written = Slot::new(SlotOwner::Written(self.call.span), path.clone());
+            let written = self.context.node(written);
+            self.context.unite(written, *nested);
+        }
+    }
+
     fn written(&mut self) -> NodeId {
         self.context
             .node(Slot::from(SlotOwner::Written(self.call.span)))

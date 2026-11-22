@@ -5,6 +5,7 @@ use super::callee::Callee;
 use super::closure_slots::{ClosureSlots, ClosureUse};
 use super::construction_flows::ConstructionFlows;
 use super::pattern_flows::PatternFlows;
+use super::place_writes::PlaceWrites;
 use super::reaching_text::ReachingText;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
@@ -119,6 +120,11 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             .collect();
         if !matches!(callee.kind, TypedExprKind::Leaf(_)) {
             self.value(callee);
+        }
+        for (argument, value) in arguments.iter().zip(&values) {
+            if self.owners.writes_a_parameter(&argument.value) {
+                PlaceWrites::new(&mut self.context, expr).into_parameter(value);
+            }
         }
         let flows = CallFlows::new(&mut self.context, expr, &values);
         match &callee.kind {

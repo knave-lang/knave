@@ -61,6 +61,7 @@ mod finished_program;
 mod fmt;
 mod front_end_stack;
 mod git_setup;
+mod github_linguist;
 mod github_workflow;
 mod input_helper;
 mod inspection_command;

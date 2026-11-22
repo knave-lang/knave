@@ -2,6 +2,7 @@ use clap::Args;
 
 use super::agent_skill::AgentSkill;
 use super::git_setup::GitSetup;
+use super::github_linguist::GithubLinguist;
 use super::github_workflow::GithubWorkflow;
 use super::project_component::ProjectComponent;
 
@@ -9,7 +10,7 @@ use super::project_component::ProjectComponent;
 pub struct NewComponents {
     #[arg(long, help = "Write no `.gitignore` and run no `git init`")]
     skip_git: bool,
-    #[arg(long, help = "Write no GitHub Actions workflow")]
+    #[arg(long, help = "Write no GitHub Actions workflow or `.gitattributes`")]
     skip_github: bool,
     #[arg(long, help = "Write no agent skill for writing Knave")]
     skip_agent_skill: bool,
@@ -28,10 +29,11 @@ impl NewComponents {
         Self::default().chosen()
     }
 
-    fn offered(&self) -> [(bool, Box<dyn ProjectComponent>); 3] {
+    fn offered(&self) -> [(bool, Box<dyn ProjectComponent>); 4] {
         [
             (self.skip_git, Box::new(GitSetup)),
             (self.skip_github, Box::new(GithubWorkflow)),
+            (self.skip_github, Box::new(GithubLinguist)),
             (self.skip_agent_skill, Box::new(AgentSkill)),
         ]
     }

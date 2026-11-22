@@ -806,7 +806,8 @@ exit 101
             .with_file(
                 "app/scratch/dangling.knv",
                 "(defstruct person :name string)\n\n\
-                 (defn dangling-name ()\n  (let (someone (->person (str \"Ada\")))\n    (:name someone)))\n\n\
+                 (defn name-of (p) (:name p))\n\n\
+                 (defn dangling-name ()\n  (let (someone (->person (str \"Ada\")))\n    (name-of someone)))\n\n\
                  (defn main () (println (dangling-name)))\n",
             )
     }

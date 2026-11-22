@@ -46,13 +46,18 @@ impl<'c, 'w, 'p> ConstructionFlows<'c, 'w, 'p> {
     }
 
     fn payload_slot(&self, variant: BindingId, field: usize) -> Slot {
-        let types = self.context.program().types();
-        match types.payload_argument(variant, field) {
+        let payloads = self.context.program().types().payloads();
+        match payloads.argument(variant, field) {
             Some(argument) => Slot::new(
                 SlotOwner::Value(self.expr.span),
                 TypePath::default().child(argument),
             ),
-            None => Slot::from(SlotOwner::Field(variant, field.to_string().into())),
+            None => Slot::from(
+                payloads
+                    .field(variant, field)
+                    .map(|(owner, _)| owner)
+                    .expect("a built variant has a declared case"),
+            ),
         }
     }
 

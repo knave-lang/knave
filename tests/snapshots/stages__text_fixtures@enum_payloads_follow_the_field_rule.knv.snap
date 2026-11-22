@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/enum_payloads_follow_the_field_rule.knv
+---
+enum event
+  named.0: owned, written a view
+  titled.title: a 'static view, written a view
+  quoted.0: a view
+defn describe
+  local text: a view
+  local title: a 'static view, written a view
+  local text: a view
+  result: owned
+defn main
+  local line: owned
+needs owned text
+  text/enum_payloads_follow_the_field_rule.knv:17:43

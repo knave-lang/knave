@@ -123,6 +123,7 @@ impl SearchFixture {
                 .map(|(index, payload)| VariantDefinition {
                     name: format!("variant{index}").into(),
                     payload,
+                    bare_text_fields: Vec::new(),
                     payload_spans: Vec::new(),
                     function_spans: Vec::new(),
                     span: Self::span(),

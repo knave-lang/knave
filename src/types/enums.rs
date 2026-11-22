@@ -20,6 +20,7 @@ pub enum VariantPayload {
 pub struct VariantDefinition {
     pub name: Rc<str>,
     pub payload: VariantPayload,
+    pub bare_text_fields: Vec<usize>,
     pub payload_spans: Vec<Span>,
     pub function_spans: Vec<Span>,
     pub span: Span,
@@ -197,6 +198,7 @@ mod tests {
             VariantDefinition {
                 name: name.into(),
                 payload,
+                bare_text_fields: Vec::new(),
                 payload_spans: Vec::new(),
                 function_spans: Vec::new(),
                 span: self.span,

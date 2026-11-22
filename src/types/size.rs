@@ -221,6 +221,7 @@ mod tests {
                     variants: vec![VariantDefinition {
                         name: "value".into(),
                         payload,
+                        bare_text_fields: Vec::new(),
                         payload_spans: Vec::new(),
                         function_spans: Vec::new(),
                         span: crate::source::Span::new(crate::source::SourceId::new(0), 0..0),
@@ -267,6 +268,7 @@ mod tests {
                     variants: vec![VariantDefinition {
                         name: "next".into(),
                         payload: VariantPayload::Positional(vec![Type::Named(binding, Vec::new())]),
+                        bare_text_fields: Vec::new(),
                         payload_spans: Vec::new(),
                         function_spans: Vec::new(),
                         span: crate::source::Span::new(crate::source::SourceId::new(0), 0..0),

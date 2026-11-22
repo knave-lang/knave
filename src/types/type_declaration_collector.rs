@@ -128,6 +128,7 @@ impl<'c> TypeDeclarationCollector<'c> {
             lowered.push(VariantDefinition {
                 name: variant.name.clone(),
                 payload: payload.payload,
+                bare_text_fields: payload.bare_text,
                 lowering,
                 payload_spans: type_exprs
                     .iter()
@@ -201,12 +202,24 @@ impl<'c> TypeDeclarationCollector<'c> {
         scope: &FxHashMap<BindingId, GenericId>,
     ) -> LoweredPayload {
         let mut problems = Vec::new();
+        let mut bare_text = Vec::new();
+        let mut field = 0;
         let mut lower = |type_expr: &TypeExpr| {
-            self.lower_stored_type(type_expr, scope)
-                .unwrap_or_else(|problem| {
+            let stored = match self.lowering.lower_type(type_expr, scope) {
+                Ok(written) => {
+                    let stored = self.borrow_views(written.clone());
+                    if stored != written {
+                        bare_text.push(field);
+                    }
+                    stored
+                }
+                Err(problem) => {
                     problems.push(problem);
                     self.lowering.placeholder_type()
-                })
+                }
+            };
+            field += 1;
+            stored
         };
         let payload = match payload {
             CoreVariantPayload::None => VariantPayload::None,
@@ -220,7 +233,11 @@ impl<'c> TypeDeclarationCollector<'c> {
                     .collect(),
             ),
         };
-        LoweredPayload { payload, problems }
+        LoweredPayload {
+            payload,
+            problems,
+            bare_text,
+        }
     }
 
     fn check_enum_parameters_used(
@@ -293,15 +310,6 @@ impl<'c> TypeDeclarationCollector<'c> {
             .parts()
             .into_iter()
             .find_map(Self::inner_function_span)
-    }
-
-    fn lower_stored_type(
-        &mut self,
-        stored_type: &TypeExpr,
-        scope: &FxHashMap<BindingId, GenericId>,
-    ) -> Result<Type, Diagnostic> {
-        let lowered = self.lowering.lower_type(stored_type, scope)?;
-        Ok(self.borrow_views(lowered))
     }
 
     fn borrow_views(&self, stored: Type) -> Type {

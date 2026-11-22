@@ -7,6 +7,7 @@ mod callee;
 mod callee_scheme;
 mod class_role;
 mod construction_flows;
+mod enum_payloads;
 mod flow;
 #[cfg(test)]
 mod flow_fixture;

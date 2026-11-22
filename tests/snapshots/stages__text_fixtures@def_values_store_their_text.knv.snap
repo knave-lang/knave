@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/def_values_store_their_text.knv
+---
+struct user
+  name: owned
+def greeting
+  greeting: owned
+def plain
+  plain: a 'static view, written a view

@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/global_lent_to_an_owned_rust_argument_is_refused.knv
+---
+def greeting
+  greeting: owned
+defn relay
+  text: owned
+needs owned text
+  text/global_lent_to_an_owned_rust_argument_is_refused.knv:10:19

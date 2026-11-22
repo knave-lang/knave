@@ -1,9 +1,19 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum WrittenRefusal {
-    FunctionRead,
-    OpenRead,
+    Read(ReadRefusal),
+    Use(UseRefusal),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum ReadRefusal {
+    Function,
+    Open,
     OpenStruct,
-    ReadsOtherwise,
+    Otherwise,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum UseRefusal {
     ChangesField,
     MovesOwner,
     BorrowLeaves,

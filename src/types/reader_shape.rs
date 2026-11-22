@@ -7,7 +7,7 @@ use super::field_traits::FieldTraitPlan;
 use super::owner_uses::OwnerUses;
 use super::ty::Type;
 use super::typed::{TypedDefinition, TypedProgram};
-use super::written_refusal::WrittenRefusal;
+use super::written_refusal::{ReadRefusal, UseRefusal, WrittenRefusal};
 
 pub(super) struct ReaderShape<'p> {
     program: &'p TypedProgram,
@@ -29,17 +29,17 @@ impl<'p> ReaderShape<'p> {
     ) -> Option<WrittenRefusal> {
         let names = FieldTraitNames::new(self.program);
         if matches!(plan.read, Type::Function(..)) {
-            Some(WrittenRefusal::FunctionRead)
+            Some(WrittenRefusal::Read(ReadRefusal::Function))
         } else if self.changes_a_field(reader) {
-            Some(WrittenRefusal::ChangesField)
+            Some(WrittenRefusal::Use(UseRefusal::ChangesField))
         } else if !self.passes_owner(reader, plan) {
-            Some(WrittenRefusal::MovesOwner)
+            Some(WrittenRefusal::Use(UseRefusal::MovesOwner))
         } else if self.escapes(reader, plan) {
-            Some(WrittenRefusal::BorrowLeaves)
+            Some(WrittenRefusal::Use(UseRefusal::BorrowLeaves))
         } else if !names.are_free(reader)
             || (self.copies_owner(plan) && names.copy_takes_getter(reader))
         {
-            Some(WrittenRefusal::NameTaken)
+            Some(WrittenRefusal::Use(UseRefusal::NameTaken))
         } else {
             None
         }

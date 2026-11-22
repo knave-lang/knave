@@ -15,7 +15,7 @@ use super::reader_shape::ReaderShape;
 use super::ty::{GenericId, Type};
 use super::typed::{TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
 use super::unborrowed::Unborrowed;
-use super::written_refusal::WrittenRefusal;
+use super::written_refusal::{ReadRefusal, WrittenRefusal};
 use crate::core::{BindingId, FieldLabel};
 use crate::diagnostic::Diagnostics;
 
@@ -92,16 +92,16 @@ impl<'r> FieldReadSettlement<'r> {
         reader: &FieldReader,
     ) -> Result<Option<FieldTraitPlan>, WrittenRefusal> {
         if !reader.read.is_concrete() {
-            return Err(WrittenRefusal::OpenRead);
+            return Err(WrittenRefusal::Read(ReadRefusal::Open));
         }
         let structs = ReachingStructs::new(self.report)
             .of(reader.binding, reader.owner)
-            .ok_or(WrittenRefusal::OpenStruct)?;
+            .ok_or(WrittenRefusal::Read(ReadRefusal::OpenStruct))?;
         let reads = OpenRead::new(CopyRules::new(&program.declarations, &program.generics));
         let mut plan: Option<FieldTraitPlan> = None;
         for (owner, arguments) in structs {
             if !arguments.iter().all(Type::is_concrete) {
-                return Err(WrittenRefusal::OpenStruct);
+                return Err(WrittenRefusal::Read(ReadRefusal::OpenStruct));
             }
             let definition = program.declarations.types().structs.get(owner);
             let read =
@@ -175,7 +175,7 @@ impl Tally {
             return Ok(());
         };
         if known.read != plan.read {
-            return Err(WrittenRefusal::ReadsOtherwise);
+            return Err(WrittenRefusal::Read(ReadRefusal::Otherwise));
         }
         for implementor in plan.implementors {
             if !known.implementors.contains(&implementor) {

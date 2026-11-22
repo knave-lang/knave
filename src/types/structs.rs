@@ -79,7 +79,7 @@ impl StructDefinition {
     }
 }
 
-pub struct StructBehind<'t, 'a> {
+pub struct UnderlyingStruct<'t, 'a> {
     pub binding: BindingId,
     pub definition: &'t StructDefinition,
     pub arguments: &'a [Type],
@@ -95,14 +95,16 @@ impl StructTable {
         self.structs.insert(binding, definition);
     }
 
-    pub fn behind<'a>(&self, ty: &'a Type) -> Option<StructBehind<'_, 'a>> {
+    pub fn behind<'a>(&self, ty: &'a Type) -> Option<UnderlyingStruct<'_, 'a>> {
         match ty {
             Type::Ref(_, inner) | Type::Mut(_, inner) => self.behind(inner),
-            Type::Named(binding, arguments) => self.get(*binding).map(|definition| StructBehind {
-                binding: *binding,
-                definition,
-                arguments,
-            }),
+            Type::Named(binding, arguments) => {
+                self.get(*binding).map(|definition| UnderlyingStruct {
+                    binding: *binding,
+                    definition,
+                    arguments,
+                })
+            }
             _ => None,
         }
     }

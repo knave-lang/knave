@@ -10,6 +10,7 @@ mod consulted_traits;
 mod conversion;
 mod dropped_borrows;
 mod expr;
+mod field_bound_names;
 mod implementor_rows;
 mod imported_bindings;
 mod kernel;
@@ -64,6 +65,7 @@ pub use expr::{
     Lambda, Leaf, Literal, MapOperation, Pattern, PatternArguments, PatternKind, PatternPart, Push,
     RustClause, RustTemplate, StructExpr,
 };
+pub use field_bound_names::FieldBoundNames;
 pub use implementor_rows::{ImplementorRow, ImplementorRows};
 pub use imported_bindings::ImportedBindings;
 pub use kernel::{

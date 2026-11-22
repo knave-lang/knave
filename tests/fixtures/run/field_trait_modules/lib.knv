@@ -1,3 +1,7 @@
+(type hello
+  (where ((a (has :name (ref str))))
+    (fn ((ref a)) string)))
+
 (defn hello (x)
   (str "hello " (:name x)))
 

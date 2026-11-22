@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_getter_named_like_ne.knv
----
-1
-2

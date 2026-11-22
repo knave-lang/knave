@@ -5,18 +5,17 @@ use rustc_hash::FxHashMap;
 use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
-use super::field_read::FieldRead;
 use super::field_reader::FieldReader;
 use super::field_traits::FieldTraitPlan;
 use super::open_read::OpenRead;
 use super::pinning::InstantiationReport;
 use super::reaching_structs::ReachingStructs;
 use super::read_settlements::ReadSettlements;
-use super::read_view::ReadView;
 use super::reader_shape::ReaderShape;
 use super::ty::{GenericId, Type};
 use super::typed::{TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
 use super::unborrowed::Unborrowed;
+use super::written_refusal::WrittenRefusal;
 use crate::core::{BindingId, FieldLabel};
 use crate::diagnostic::Diagnostics;
 
@@ -24,24 +23,11 @@ pub struct FieldReadSettlement<'r> {
     report: &'r InstantiationReport,
 }
 
-enum Outcome {
-    Unreached,
-    Agreed(FieldTraitPlan),
-    Disagreed,
-    Unsupported,
-}
-
 #[derive(Default)]
 struct Tally {
     settlements: ReadSettlements,
     errors: Diagnostics,
-    agreements: FxHashMap<BindingId, TraitAgreement>,
-}
-
-struct TraitAgreement {
-    plan: FieldTraitPlan,
-    readers: Vec<FieldReader>,
-    disagrees: bool,
+    plans: FxHashMap<BindingId, FieldTraitPlan>,
 }
 
 impl<'r> FieldReadSettlement<'r> {
@@ -58,7 +44,6 @@ impl<'r> FieldReadSettlement<'r> {
         for reader in readers {
             self.count(program, reader, &mut tally);
         }
-        tally.refuse_disagreeing_readers(program);
         if !tally.errors.is_empty() {
             return Err(tally.errors);
         }
@@ -68,21 +53,14 @@ impl<'r> FieldReadSettlement<'r> {
     }
 
     fn count(&self, program: &TypedProgram, reader: FieldReader, tally: &mut Tally) {
-        let shape = ReaderShape::new(program);
-        match self.outcome(program, &reader) {
-            Outcome::Agreed(plan)
-                if shape.emits(&reader, &plan)
-                    && !tally.settlements.settles_otherwise(&reader, &plan.read) =>
-            {
-                if shape.copies_owner(&plan) {
-                    tally.settlements.require_copy(&reader);
-                }
-                tally.agree(reader, plan);
-            }
-            Outcome::Agreed(_) | Outcome::Disagreed | Outcome::Unsupported => {
-                tally.refuse(program, &reader)
-            }
-            Outcome::Unreached => {}
+        let planned = self.plan(program, &reader).and_then(|plan| match plan {
+            Some(plan) => tally.kept(program, &reader, plan),
+            None => Ok(()),
+        });
+        if let Err(refusal) = planned {
+            tally
+                .errors
+                .extend(Self::refusals(program, &reader, refusal));
         }
     }
 
@@ -108,68 +86,55 @@ impl<'r> FieldReadSettlement<'r> {
             .collect()
     }
 
-    fn outcome(&self, program: &TypedProgram, reader: &FieldReader) -> Outcome {
-        let Some(structs) = ReachingStructs::new(self.report).of(reader.binding, reader.owner)
-        else {
-            return Outcome::Unsupported;
-        };
+    fn plan(
+        &self,
+        program: &TypedProgram,
+        reader: &FieldReader,
+    ) -> Result<Option<FieldTraitPlan>, WrittenRefusal> {
+        if !reader.read.is_concrete() {
+            return Err(WrittenRefusal::OpenRead);
+        }
+        let structs = ReachingStructs::new(self.report)
+            .of(reader.binding, reader.owner)
+            .ok_or(WrittenRefusal::OpenStruct)?;
         let reads = OpenRead::new(CopyRules::new(&program.declarations, &program.generics));
-        let mut found: Vec<FieldRead> = Vec::new();
-        let mut implementors: Vec<Type> = Vec::new();
+        let mut plan: Option<FieldTraitPlan> = None;
         for (owner, arguments) in structs {
-            let concrete = arguments.iter().all(Type::is_concrete);
-            let definition = (program.declarations.types().structs.get(owner)).filter(|_| concrete);
+            if !arguments.iter().all(Type::is_concrete) {
+                return Err(WrittenRefusal::OpenStruct);
+            }
+            let definition = program.declarations.types().structs.get(owner);
             let read =
                 definition.and_then(|found| reads.instantiated(found, &reader.field, &arguments));
-            let Some(read) = read else {
-                return Outcome::Unsupported;
+            let Some(read) = read.filter(|read| read.read == reader.read) else {
+                continue;
             };
             let implementor = Type::Named(owner, arguments);
-            if !found.contains(&read) {
-                found.push(read);
-            }
-            if !implementors.contains(&implementor) {
-                implementors.push(implementor);
+            let found = plan.get_or_insert_with(|| FieldTraitPlan {
+                read: read.read,
+                kind: read.kind,
+                implementors: Vec::new(),
+            });
+            if !found.implementors.contains(&implementor) {
+                found.implementors.push(implementor);
             }
         }
-        match found.as_slice() {
-            [] => Outcome::Unreached,
-            [FieldRead { read, kind }]
-                if Self::meets_reader(reader, read) && self.calls_pass(reader, read) =>
-            {
-                Outcome::Agreed(FieldTraitPlan {
-                    read: read.clone(),
-                    kind: *kind,
-                    implementors,
-                })
-            }
-            _ => Outcome::Disagreed,
-        }
+        Ok(plan)
     }
 
-    fn meets_reader(reader: &FieldReader, read: &Type) -> bool {
-        ReadView::of(read).is_used_as(&reader.read)
-    }
-
-    fn calls_pass(&self, reader: &FieldReader, read: &Type) -> bool {
-        let Type::Generic(open) = reader.read else {
-            return true;
-        };
-        let uses = self.report.sited_uses_of(reader.binding, open);
-        let mut passed = uses.iter().filter_map(|(_, passed)| passed.as_ref());
-        passed.all(|passed| ReadView::of(read).is_used_as(passed))
-    }
-
-    fn ambiguous_reads(program: &TypedProgram, reader: &FieldReader) -> Diagnostics {
+    fn refusals(
+        program: &TypedProgram,
+        reader: &FieldReader,
+        refusal: WrittenRefusal,
+    ) -> Diagnostics {
         let definitions = (program.modules.iter()).flat_map(|module| &module.definitions);
         let refused = definitions.filter(|definition| definition.binding == reader.binding);
         refused
-            .map(
-                |definition| match Self::first_read(&definition.value, reader.owner) {
-                    Some(label) => FieldOwnerProblems::ambiguous(&label.name, label.span),
-                    None => FieldOwnerProblems::ambiguous(&reader.field, definition.span),
-                },
-            )
+            .map(|definition| {
+                let span = Self::first_read(&definition.value, reader.owner)
+                    .map_or(definition.span, |label| label.span);
+                FieldOwnerProblems::unkept(refusal, &reader.field, span)
+            })
             .collect()
     }
 
@@ -184,66 +149,45 @@ impl<'r> FieldReadSettlement<'r> {
 }
 
 impl Tally {
-    fn refuse(&mut self, program: &TypedProgram, reader: &FieldReader) {
-        (self.errors).extend(FieldReadSettlement::ambiguous_reads(program, reader));
+    fn kept(
+        &mut self,
+        program: &TypedProgram,
+        reader: &FieldReader,
+        plan: FieldTraitPlan,
+    ) -> Result<(), WrittenRefusal> {
+        let shape = ReaderShape::new(program);
+        if let Some(refusal) = shape.refusal(reader, &plan) {
+            return Err(refusal);
+        }
+        if shape.copies_owner(&plan) {
+            self.settlements.require_copy(reader.owner);
+        }
+        self.join(reader.trait_binding, plan)
     }
 
-    fn agree(&mut self, reader: FieldReader, plan: FieldTraitPlan) {
-        self.settlements.settle(&reader, plan.read.clone());
-        match self.agreements.get_mut(&reader.trait_binding) {
-            Some(agreement) => agreement.join(reader, plan),
-            None => {
-                let binding = reader.trait_binding;
-                self.agreements
-                    .insert(binding, TraitAgreement::new(reader, plan));
+    fn join(
+        &mut self,
+        trait_binding: BindingId,
+        plan: FieldTraitPlan,
+    ) -> Result<(), WrittenRefusal> {
+        let Some(known) = self.plans.get_mut(&trait_binding) else {
+            self.plans.insert(trait_binding, plan);
+            return Ok(());
+        };
+        if known.read != plan.read {
+            return Err(WrittenRefusal::ReadsOtherwise);
+        }
+        for implementor in plan.implementors {
+            if !known.implementors.contains(&implementor) {
+                known.implementors.push(implementor);
             }
         }
-    }
-
-    fn refuse_disagreeing_readers(&mut self, program: &TypedProgram) {
-        for agreement in self.agreements.values() {
-            self.errors.extend(agreement.refusals(program));
-        }
+        Ok(())
     }
 
     fn record_plans(self, declarations: &mut Declarations) {
-        for (binding, agreement) in self.agreements {
-            declarations.settle_field_trait(binding, agreement.into_plan());
+        for (binding, plan) in self.plans {
+            declarations.settle_field_trait(binding, plan);
         }
-    }
-}
-
-impl TraitAgreement {
-    fn new(reader: FieldReader, plan: FieldTraitPlan) -> Self {
-        Self {
-            plan,
-            readers: vec![reader],
-            disagrees: false,
-        }
-    }
-
-    fn join(&mut self, reader: FieldReader, plan: FieldTraitPlan) {
-        if self.plan.read != plan.read {
-            self.disagrees = true;
-        }
-        for implementor in plan.implementors {
-            if !self.plan.implementors.contains(&implementor) {
-                self.plan.implementors.push(implementor);
-            }
-        }
-        self.readers.push(reader);
-    }
-
-    fn refusals(&self, program: &TypedProgram) -> Diagnostics {
-        let mut refusals = Diagnostics::default();
-        let refused = self.readers.iter().filter(|_| self.disagrees);
-        for reader in refused {
-            refusals.extend(FieldReadSettlement::ambiguous_reads(program, reader));
-        }
-        refusals
-    }
-
-    fn into_plan(self) -> FieldTraitPlan {
-        self.plan
     }
 }

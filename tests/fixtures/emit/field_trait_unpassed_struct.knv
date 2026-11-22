@@ -7,6 +7,10 @@
 (defstruct user
   :age str)
 
+(type age-of
+  (where ((a (has :age int)))
+    (fn ((ref a)) int)))
+
 (defn age-of (x) (:age x))
 
 (defn main ()

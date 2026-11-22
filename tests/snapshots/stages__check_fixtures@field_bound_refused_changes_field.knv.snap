@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_refused_changes_field.knv
+---
+error[L0427]: this function changes `:count` through a `has` bound
+  --> check/field_bound_refused_changes_field.knv:12:10
+   |
+12 |   (set! (:count x) (+ (:count x) 1)))
+   |          ^^^^^^ this read goes through the `has` bound
+   |
+   = help: name the struct in the signature to change its fields
+   = note: run `knave doc L0427` for an explanation

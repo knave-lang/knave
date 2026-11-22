@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_refused_borrow_leaves.knv
+---
+error[L0427]: a borrow read from `:name` through a `has` bound leaves this function
+  --> check/field_bound_refused_borrow_leaves.knv:11:20
+   |
+11 | (defn name-of (x) (:name x))
+   |                    ^^^^^ this read goes through the `has` bound
+   |
+   = help: return or store an owned value, or name the struct in the signature
+   = note: run `knave doc L0427` for an explanation

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_refused_name_taken.knv
+---
+error[L0427]: the trait or getter for `:name` would take a name the program already uses
+  --> check/field_bound_refused_name_taken.knv:21:18
+   |
+21 |   (str "hello " (:name x)))
+   |                  ^^^^^ this read goes through the `has` bound
+   |
+   = help: rename the type, trait or method that takes the name, or name the struct
+   = note: run `knave doc L0427` for an explanation

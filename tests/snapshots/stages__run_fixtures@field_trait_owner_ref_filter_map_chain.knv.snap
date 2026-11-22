@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_owner_ref_filter_map_chain.knv
----
-(vec "tom")
-(vec "rex")

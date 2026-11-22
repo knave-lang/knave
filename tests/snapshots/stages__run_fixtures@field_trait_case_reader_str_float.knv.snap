@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_case_reader_str_float.knv
----
-w=1.5
-w=2

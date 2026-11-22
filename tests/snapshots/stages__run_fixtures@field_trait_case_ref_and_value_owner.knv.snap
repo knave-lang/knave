@@ -1,8 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_case_ref_and_value_owner.knv
----
-3
-4
-4

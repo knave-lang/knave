@@ -8,6 +8,10 @@
 (defstruct span
   :start point)
 
+(type start-x
+  (where ((a (has :start point)))
+    (fn ((ref a)) int)))
+
 (defn start-x (l) (+ (:x (:start l)) 1))
 
 (defn main ()

@@ -1,0 +1,22 @@
+(defstruct user
+  :n int)
+
+(defstruct holder
+  :n (ref int))
+
+(type plain-n
+  (where ((a (has :n int)))
+    (fn ((ref a)) int)))
+
+(defn plain-n (x) (:n x))
+
+(type held-n
+  (where ((a (has :n (ref int))))
+    (fn ((ref a)) int)))
+
+(defn held-n (x) (deref (:n x)))
+
+(defn main ()
+  (local k 3)
+  (println (plain-n (->user 1)))
+  (println (held-n (->holder (ref k)))))

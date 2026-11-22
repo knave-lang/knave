@@ -1,0 +1,21 @@
+(defstruct (tagged t)
+  :name str
+  :value t)
+
+(defstruct user
+  :name str)
+
+(type hello
+  (where ((a (has :name (ref str))))
+    (fn ((ref a)) string)))
+
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(defn show (v)
+  (hello (ref (->tagged "t" v))))
+
+(defn main ()
+  (println (show 1))
+  (println (show (str "two")))
+  (println (hello (ref (->user "ana")))))

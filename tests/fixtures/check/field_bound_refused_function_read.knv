@@ -1,0 +1,15 @@
+(defstruct doubler
+  :f (fn (int) int))
+
+(defstruct tripler
+  :f (fn (int) int))
+
+(type apply-it
+  (where ((a (has :f (fn (int) int))))
+    (fn ((ref a)) int)))
+
+(defn apply-it (x) ((:f x) 3))
+
+(defn main ()
+  (println (apply-it (->doubler (fn (n) (* n 2)))))
+  (println (apply-it (->tripler (fn (n) (* n 3))))))

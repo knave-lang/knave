@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_refused_open_read.knv
+---
+error[L0427]: the read of `:name` in this `has` bound names a type variable
+  --> check/field_bound_refused_open_read.knv:11:27
+   |
+11 | (defn hello (x) (println (:name x)))
+   |                           ^^^^^ this read goes through the `has` bound
+   |
+   = help: write the field's type in the bound, as in `(has :name int)`
+   = note: run `knave doc L0427` for an explanation

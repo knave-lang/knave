@@ -4,11 +4,10 @@ use super::field_changes::FieldChanges;
 use super::field_reader::FieldReader;
 use super::field_trait_names::FieldTraitNames;
 use super::field_traits::FieldTraitPlan;
-use super::open_read_holders::OpenReadHolders;
 use super::owner_uses::OwnerUses;
-use super::read_ties::ReadTies;
 use super::ty::Type;
 use super::typed::{TypedDefinition, TypedProgram};
+use super::written_refusal::WrittenRefusal;
 
 pub(super) struct ReaderShape<'p> {
     program: &'p TypedProgram,
@@ -23,12 +22,31 @@ impl<'p> ReaderShape<'p> {
         }
     }
 
-    pub(super) fn emits(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
+    pub(super) fn refusal(
+        &self,
+        reader: &FieldReader,
+        plan: &FieldTraitPlan,
+    ) -> Option<WrittenRefusal> {
         let names = FieldTraitNames::new(self.program);
-        self.allows(reader, plan)
-            && !self.escapes(reader, plan)
-            && names.are_free(reader)
-            && !(self.copies_owner(plan) && names.copy_takes_getter(reader))
+        if matches!(plan.read, Type::Function(..)) {
+            Some(WrittenRefusal::FunctionRead)
+        } else if self.changes_a_field(reader) {
+            Some(WrittenRefusal::ChangesField)
+        } else if !self.passes_owner(reader, plan) {
+            Some(WrittenRefusal::MovesOwner)
+        } else if self.escapes(reader, plan) {
+            Some(WrittenRefusal::BorrowLeaves)
+        } else if !names.are_free(reader)
+            || (self.copies_owner(plan) && names.copy_takes_getter(reader))
+        {
+            Some(WrittenRefusal::NameTaken)
+        } else {
+            None
+        }
+    }
+
+    pub(super) fn copies_owner(&self, plan: &FieldTraitPlan) -> bool {
+        (plan.implementors.iter()).all(|implementor| self.copy.is_copy(implementor))
     }
 
     fn escapes(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
@@ -38,35 +56,6 @@ impl<'p> ReaderShape<'p> {
         } else {
             escaping.escapes(reader, plan)
         }
-    }
-
-    fn allows(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
-        let emitted_read = plan.read.is_concrete() && !matches!(plan.read, Type::Function(..));
-        let settled_read = matches!(reader.read, Type::Generic(_)) || reader.read.is_concrete();
-        emitted_read
-            && settled_read
-            && !self.bounds_the_read(reader, plan)
-            && !self.reads_through_open_holder(reader)
-            && !self.changes_a_field(reader)
-            && self.passes_owner(reader, plan)
-    }
-
-    fn reads_through_open_holder(&self, reader: &FieldReader) -> bool {
-        let definition = self.definition(reader);
-        definition.is_some_and(|definition| {
-            OpenReadHolders::of(reader).are_read_within(&definition.value)
-        })
-    }
-
-    fn bounds_the_read(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
-        let definition = self.definition(reader);
-        definition.is_some_and(|definition| {
-            ReadTies::new(self.program, &definition.scheme).hold(reader, plan)
-        })
-    }
-
-    pub(super) fn copies_owner(&self, plan: &FieldTraitPlan) -> bool {
-        (plan.implementors.iter()).all(|implementor| self.copy.is_copy(implementor))
     }
 
     fn passes_owner(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {

@@ -1,13 +1,20 @@
-use super::{BindingId, Control, Expr, ExprKind, Leaf, TypeExpr};
+use std::rc::Rc;
+
+use super::{BindingId, Control, Expr, ExprKind, FieldBoundNames, Leaf, TypeExpr};
 
 #[derive(Default)]
 pub struct WrittenTypes {
     named: Vec<BindingId>,
+    field_bounds: Vec<Rc<str>>,
 }
 
 impl WrittenTypes {
     pub fn named(&self) -> &[BindingId] {
         &self.named
+    }
+
+    pub fn field_bounds(&self) -> &[Rc<str>] {
+        &self.field_bounds
     }
 
     pub(super) fn note(&mut self, expr: &Expr) {
@@ -28,6 +35,7 @@ impl WrittenTypes {
     fn name_all<'t>(&mut self, written: impl Iterator<Item = &'t TypeExpr>) {
         for type_expr in written {
             self.named.extend(type_expr.named_bindings());
+            self.field_bounds.extend(FieldBoundNames::of(type_expr));
         }
     }
 }

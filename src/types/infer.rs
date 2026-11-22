@@ -2727,7 +2727,7 @@ impl TypeChecker {
     ) -> Result<TypedExpr, Diagnostic> {
         let value = self.infer(value)?;
         let bound_read =
-            FieldBound::new(&mut self.unifier, &self.declarations).read(&value.ty, &label.name);
+            FieldBound::new(&self.unifier, &self.declarations).read(&value.ty, &label.name);
         if let Some(ty) = bound_read {
             return Ok(FieldReadExpr::new(value, label).typed(ty, span));
         }

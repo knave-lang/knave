@@ -1,7 +1,0 @@
----
-source: tests/stages.rs
-expression: report
-input_file: tests/fixtures/run/field_trait_reached_through_a_caller.knv
----
-age 4
-age 5

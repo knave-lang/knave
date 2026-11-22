@@ -4,6 +4,10 @@
 (defstruct dog
   :age int)
 
+(type next-age
+  (where ((a (has :age int)))
+    (fn (a) int)))
+
 (defn next-age (x) (+ (:age x) 1))
 
 (defn main ()

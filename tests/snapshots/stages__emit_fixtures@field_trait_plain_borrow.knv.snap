@@ -21,20 +21,20 @@ fn make_animal(name: &str) -> Animal<'_> {
     Animal { name }
 }
 
-fn uppercase_name<A: field_traits::HasName + Copy>(x: A) -> String {
-    field_traits::HasName::name(&x).to_uppercase()
+fn uppercase_name<A: field_traits::HasName + Copy>(x: &A) -> String {
+    field_traits::HasName::name(x).to_uppercase()
 }
 
-fn hello<A: field_traits::HasName + Copy>(x: A) -> String {
-    format!("hello {}", field_traits::HasName::name(&x))
+fn hello<A: field_traits::HasName + Copy>(x: &A) -> String {
+    format!("hello {}", field_traits::HasName::name(x))
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", uppercase_name(make_user("ana")));
-    println!("{}", uppercase_name(make_animal("rex")));
-    println!("{}", hello(make_user("ana")));
-    println!("{}", hello(make_animal("rex")))
+    println!("{}", uppercase_name(&make_user("ana")));
+    println!("{}", uppercase_name(&make_animal("rex")));
+    println!("{}", hello(&make_user("ana")));
+    println!("{}", hello(&make_animal("rex")))
 }
 
 mod field_traits {

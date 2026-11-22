@@ -6,7 +6,8 @@ use super::labeled_spans::LabeledSpans;
 use super::loan_rules::LoanRules;
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
-use crate::ownership::owned_values::{OwnedValues, ParameterOwner};
+use crate::ownership::owned_values::OwnedValues;
+use crate::ownership::parameter_owner::ParameterOwner;
 use crate::types::{TypedExprKind, TypedLambda, TypedProgram};
 
 pub struct LoanConflicts<'p> {

@@ -32,6 +32,7 @@ mod mutation;
 mod names;
 mod owned_values;
 mod parameter_adjustments;
+mod parameter_owner;
 mod parameter_uses;
 mod pending_diagnostic;
 mod place_arguments;

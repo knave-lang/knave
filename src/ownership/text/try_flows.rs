@@ -4,6 +4,7 @@ use super::source::Source;
 use super::text_value::TextValue;
 use super::walk_context::WalkContext;
 use crate::source::Span;
+use crate::types::Type;
 
 pub struct TryFlows<'c, 'w, 'p> {
     context: &'c mut WalkContext<'w, 'p>,
@@ -28,11 +29,36 @@ impl<'c, 'w, 'p> TryFlows<'c, 'w, 'p> {
         }
     }
 
+    pub fn convert(&mut self, tried: &TextValue, (tried_type, returned_type): (&Type, &Type)) {
+        let (Some(error), Some(Type::Named(target, _))) =
+            (Self::error_of(tried_type), Self::error_of(returned_type))
+        else {
+            return;
+        };
+        let payloads = self.context.program().types().payloads();
+        if let Some(case) = payloads.converted_case(*target, error) {
+            let error = self.part(tried, Self::ERROR);
+            self.context.receive(&Slot::from(case), &error);
+        }
+    }
+
     pub fn payload(&self, tried: &TextValue) -> TextValue {
+        self.part(tried, Self::PAYLOAD)
+    }
+
+    fn error_of(result: &Type) -> Option<&Type> {
+        match result {
+            Type::Ref(_, inner) | Type::Mut(_, inner) => Self::error_of(inner),
+            Type::Named(_, arguments) if arguments.len() == 2 => Some(&arguments[Self::ERROR]),
+            _ => None,
+        }
+    }
+
+    fn part(&self, tried: &TextValue, part: usize) -> TextValue {
         tried
             .nested()
             .iter()
-            .filter_map(|(path, node)| Some((path.below(Self::PAYLOAD)?, *node)))
+            .filter_map(|(path, node)| Some((path.below(part)?, *node)))
             .fold(TextValue::default(), |value, (path, node)| {
                 if path.is_top() {
                     value.merged(TextValue::from(Source::Slot(node), self.span))

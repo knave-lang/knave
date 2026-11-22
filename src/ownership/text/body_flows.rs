@@ -27,7 +27,7 @@ pub struct BodyFlows<'b, 'p> {
     listing: &'b mut SlotListing,
     function: BindingId,
     owners: BindingOwners,
-    closure_results: Vec<SlotOwner>,
+    closure_results: Vec<(SlotOwner, Type)>,
 }
 
 impl<'b, 'p> BodyFlows<'b, 'p> {
@@ -52,7 +52,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
                 .list(&SlotOwner::Parameter(parameter.binding), &parameter.ty);
         }
         let value = self.block(&lambda.body);
-        if let Some(result) = self.result_type() {
+        if let Some(result) = self.result_type().filter(TextPositions::holds_text) {
             let owner = SlotOwner::Result(self.function);
             self.listing.list(&owner, &result);
             self.context.receive(&Slot::from(owner), &value);
@@ -132,9 +132,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     fn result_type(&self) -> Option<Type> {
         let definition = self.context.program().definition(self.function)?;
         match &definition.value.ty {
-            Type::Function(_, _, result) if TextPositions::holds_text(result) => {
-                Some(result.as_ref().clone())
-            }
+            Type::Function(_, _, result) => Some(result.as_ref().clone()),
             _ => None,
         }
     }
@@ -175,7 +173,8 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         let slots = ClosureSlots::new(lambda, expr, closure_use);
         slots.list(self.listing);
         self.owners.add_closure_parameters(slots.free_parameters());
-        self.closure_results.push(slots.result());
+        self.closure_results
+            .push((slots.result(), slots.result_type().clone()));
         let body = self.block(&lambda.body);
         self.closure_results.pop();
         slots.close(&mut self.context, &body)
@@ -289,13 +288,17 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         expr: &TypedExpr,
     ) -> TextValue {
         let tried = self.value(value);
+        let (returned, returned_type) = match self.closure_results.last() {
+            Some(closure) => closure.clone(),
+            None => (
+                SlotOwner::Result(self.function),
+                self.result_type().unwrap_or_else(Type::unit),
+            ),
+        };
         let mut flows = TryFlows::new(&mut self.context, expr.span);
-        if conversion == TryErrorConversion::Identity {
-            let returned = self.closure_results.last().cloned();
-            flows.propagate(
-                &tried,
-                &returned.unwrap_or(SlotOwner::Result(self.function)),
-            );
+        match conversion {
+            TryErrorConversion::Identity => flows.propagate(&tried, &returned),
+            TryErrorConversion::Converted => flows.convert(&tried, (&value.ty, &returned_type)),
         }
         flows.payload(&tried)
     }

@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::core::{ModulePath, UnnamedPartPath};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::language::Language;
-use crate::modules::{SearchScope, UnlistedLibrary, UnnamedPartTarget};
+use crate::modules::{MissingRootModule, SearchScope, UnlistedLibrary, UnnamedPartTarget};
 use crate::source::Span;
 
 pub struct ModulePathProblems;
@@ -58,6 +58,22 @@ impl ModulePathProblems {
                 diagnostic.with_note("this path names no file under the root directory")
             }
         }
+    }
+
+    pub fn library_without_root_module(missing: &MissingRootModule, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::LIBRARY_WITHOUT_ROOT_MODULE,
+            format!(
+                "library `{}` has no root module `{}`",
+                missing.library,
+                missing.root_file.display()
+            ),
+            Label::new(span, "this loads the library's root module"),
+        )
+        .with_help(format!(
+            "fix `:lib` in `{}`, or add the file",
+            missing.project_file.display()
+        ))
     }
 
     pub fn with_listing_advice(diagnostic: Diagnostic, unlisted: &UnlistedLibrary) -> Diagnostic {

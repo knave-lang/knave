@@ -388,15 +388,6 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         project: &Project,
     ) -> Result<LibraryRoot, ExitStatus> {
         let root_file = library_root.join(&project.library_root);
-        if !root_file.is_file() {
-            let project_file = library_root.join(Language::project_file_name());
-            return Err(self.report(ProjectProblems::library_without_root_module(
-                &library.name,
-                library.name_span,
-                &root_file.display().to_string(),
-                &project_file.display().to_string(),
-            )));
-        }
         let source_root = ProgramFile::directory_of(&root_file);
         Ok(LibraryRoot::new(
             library.name.clone(),
@@ -404,7 +395,8 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             source_root,
             ProgramFile::file_stem(&root_file),
             Self::names(project),
-        ))
+        )
+        .described_in(library_root.join(Language::project_file_name())))
     }
 
     fn report(&self, problem: Diagnostic) -> ExitStatus {

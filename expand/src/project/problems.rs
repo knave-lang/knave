@@ -116,20 +116,6 @@ impl ProjectProblems {
         .with_help("point `:path` at the library's directory, which holds its project file")
     }
 
-    pub fn library_without_root_module(
-        name: &str,
-        span: Span,
-        root_file: &str,
-        project_file: &str,
-    ) -> Diagnostic {
-        Diagnostic::error(
-            DiagnosticCode::LIBRARY_WITHOUT_ROOT_MODULE,
-            format!("library `{name}` has no root module `{root_file}`"),
-            Label::new(span, "this library's `:lib` names no file"),
-        )
-        .with_help(format!("fix `:lib` in `{project_file}`, or add the file"))
-    }
-
     pub fn unavailable_git_library(name: &str, span: Span, reason: &str) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::GIT_LIBRARY_UNAVAILABLE,

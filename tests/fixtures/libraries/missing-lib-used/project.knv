@@ -1,0 +1,1 @@
+(defproject app (libraries (broken :path "../broken")))

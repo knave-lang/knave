@@ -8,6 +8,7 @@ use super::lint_records::UseFormText;
 use super::local_file_diagnosis::LocalFileDiagnosis;
 use super::module_body::PendingItem;
 use super::module_load_site::ModuleLoadSite;
+use super::module_path_problems::ModulePathProblems;
 use super::problems::{ExpandProblems, MissingExportRemedy};
 use super::shape::Shape;
 use super::text_module_load::TextModuleLoad;
@@ -20,7 +21,9 @@ use crate::core::{
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
 use crate::interpret::Warnings;
-use crate::modules::{LocatedModule, ModuleScopes, ModuleSource, ModuleSources};
+use crate::modules::{
+    LibraryFileProblem, LocatedModule, ModuleScopes, ModuleSource, ModuleSources,
+};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::{Phase, ScopeKind, ScopeSet};
 use crate::source::{SourceId, Span};
@@ -232,8 +235,13 @@ impl Expander<'_> {
         self.report_hidden_local_module(owner, written, span);
         self.report_hidden_source_module(owner, written, span);
         let path = self.module_sources.resolve(owner, written);
-        match self.module_sources.module_outside_checkout(&path) {
-            Some(file) => Err(ExpandProblems::module_outside_checkout(&path, &file, span)),
+        match self.module_sources.library_file_problem(&path) {
+            Some(LibraryFileProblem::MissingRootModule(missing)) => Err(
+                ModulePathProblems::library_without_root_module(&missing, span),
+            ),
+            Some(LibraryFileProblem::OutsideCheckout(file)) => {
+                Err(ExpandProblems::module_outside_checkout(&path, &file, span))
+            }
             None => Ok(path),
         }
     }

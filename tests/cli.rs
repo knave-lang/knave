@@ -9943,8 +9943,24 @@ fn a_library_without_a_project_file_names_the_entry() {
 }
 
 #[test]
-fn a_library_without_its_root_module_names_the_file() {
-    let check = Sandbox::check_fixture("libraries/missing-lib");
+fn a_library_without_its_root_module_loads_while_no_use_reaches_it() {
+    Sandbox::check_fixture("libraries/missing-lib").assert_exit_code(0);
+}
+
+#[test]
+fn a_library_without_its_root_module_still_lends_its_other_modules() {
+    Sandbox::check_fixture("libraries/rootless-app").assert_exit_code(0);
+}
+
+#[test]
+fn a_missing_module_of_a_rootless_library_is_not_its_root_module() {
+    let check = Sandbox::check_fixture("libraries/rootless-missing-module");
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_use_of_a_missing_root_module_names_the_file() {
+    let check = Sandbox::check_fixture("libraries/missing-lib-used");
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 

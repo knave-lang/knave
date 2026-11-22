@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use super::claim_rules::ClaimRules;
 use super::libraries::LibraryTable;
+use super::library_file_problem::LibraryFileProblem;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::located_module::LocatedModule;
@@ -336,11 +337,18 @@ impl ModuleSources {
         }
     }
 
-    pub fn module_outside_checkout(&self, path: &ModulePath) -> Option<PathBuf> {
-        let checkout = self.libraries.owner_of(path)?.checkout()?;
+    pub fn library_file_problem(&self, path: &ModulePath) -> Option<LibraryFileProblem<'_>> {
+        let library = self.libraries.owner_of(path)?;
         let file = self.libraries.file(path)?;
+        if !file.path.is_file() {
+            return library
+                .missing_root_module(path, file.display)
+                .map(LibraryFileProblem::MissingRootModule);
+        }
         let resolved = fs::canonicalize(&file.path).ok()?;
-        (!resolved.starts_with(checkout)).then_some(file.display)
+        let checkout = library.checkout()?;
+        (!resolved.starts_with(checkout))
+            .then_some(LibraryFileProblem::OutsideCheckout(file.display))
     }
 
     fn library_file(&self, path: &ModulePath) -> Option<ModuleSource> {

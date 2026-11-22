@@ -1,0 +1,2 @@
+(defproject rootless-app
+  (libraries (rootless :path "../rootless")))

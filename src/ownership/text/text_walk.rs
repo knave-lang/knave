@@ -10,7 +10,7 @@ use super::text_program::TextProgram;
 
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
-use crate::types::{Type, TypedExprKind, TypedLambda, TypedModule};
+use crate::types::{Type, TypedExpr, TypedExprKind, TypedLambda, TypedModule};
 
 pub struct TextWalk<'w, 'p> {
     program: &'w TextProgram<'p>,
@@ -39,8 +39,9 @@ impl<'w, 'p> TextWalk<'w, 'p> {
             self.list_enum(*binding);
         }
         for definition in &module.definitions {
-            if let TypedExprKind::Fn(lambda) = &definition.value.kind {
-                self.walk_function(definition.binding, lambda);
+            match &definition.value.kind {
+                TypedExprKind::Fn(lambda) => self.walk_function(definition.binding, lambda),
+                _ => self.walk_value(definition.binding, &definition.value),
             }
         }
     }
@@ -89,6 +90,14 @@ impl<'w, 'p> TextWalk<'w, 'p> {
             self.graph
                 .require(Slot::new(field.clone(), position.path), Need::View);
         }
+    }
+
+    fn walk_value(&mut self, binding: BindingId, value: &TypedExpr) {
+        let names = self.program.names();
+        self.listing
+            .open(Some(format!("def {}", names.name(binding))));
+        let context = WalkContext::new(self.program, &mut self.graph);
+        BodyFlows::new(context, &mut self.listing, binding).walk_value(value);
     }
 
     fn walk_function(&mut self, binding: BindingId, lambda: &TypedLambda) {

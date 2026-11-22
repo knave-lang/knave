@@ -1,15 +1,16 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::text_names::TextNames;
 use super::text_traits::TextTraits;
 use super::text_types::TextTypes;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
-use crate::types::{TypedDefinition, TypedModule, TypedProgram};
+use crate::types::{TypedDefinition, TypedExprKind, TypedModule, TypedProgram};
 
 pub struct TextProgram<'p> {
     program: &'p TypedProgram,
     definitions: FxHashMap<BindingId, &'p TypedDefinition>,
+    written_values: FxHashSet<BindingId>,
 }
 
 impl<'p> TextProgram<'p> {
@@ -20,9 +21,18 @@ impl<'p> TextProgram<'p> {
             .flat_map(|module| &module.definitions)
             .map(|definition| (definition.binding, definition))
             .collect();
+        let written_values = program
+            .modules
+            .iter()
+            .filter(|module| !ModuleSources::is_prelude(&module.path))
+            .flat_map(|module| &module.definitions)
+            .filter(|definition| !matches!(definition.value.kind, TypedExprKind::Fn(_)))
+            .map(|definition| definition.binding)
+            .collect();
         Self {
             program,
             definitions,
+            written_values,
         }
     }
 
@@ -35,6 +45,10 @@ impl<'p> TextProgram<'p> {
 
     pub fn definition(&self, binding: BindingId) -> Option<&'p TypedDefinition> {
         self.definitions.get(&binding).copied()
+    }
+
+    pub fn is_written_value(&self, binding: BindingId) -> bool {
+        self.written_values.contains(&binding)
     }
 
     pub fn traits(&self) -> TextTraits<'p> {

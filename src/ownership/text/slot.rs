@@ -29,7 +29,10 @@ impl Slot {
     }
 
     pub fn is_stored_place(&self) -> bool {
-        matches!(self.owner, SlotOwner::Field(..) | SlotOwner::Written(_))
+        matches!(
+            self.owner,
+            SlotOwner::Field(..) | SlotOwner::Global(_) | SlotOwner::Written(_)
+        )
     }
 
     pub fn owner(&self) -> &SlotOwner {
@@ -49,7 +52,9 @@ impl Slot {
 
     fn owner_label(&self, names: TextNames<'_>) -> String {
         match &self.owner {
-            SlotOwner::Parameter(binding) => names.name(*binding).to_string(),
+            SlotOwner::Parameter(binding) | SlotOwner::Global(binding) => {
+                names.name(*binding).to_string()
+            }
             SlotOwner::Result(_) => "result".to_string(),
             SlotOwner::Local(binding) => format!("local {}", names.name(*binding)),
             SlotOwner::Field(_, name) => name.to_string(),

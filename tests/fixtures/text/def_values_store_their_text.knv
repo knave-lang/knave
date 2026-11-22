@@ -1,0 +1,13 @@
+(defstruct user
+  :name string)
+
+(def greeting (str "hi " 1))
+
+(def plain "plain")
+
+(def made (->user :name (str "m")))
+
+(defn main ()
+  (println greeting plain (:name made))
+  (local u (->user :name (clone greeting)))
+  (println (:name u)))

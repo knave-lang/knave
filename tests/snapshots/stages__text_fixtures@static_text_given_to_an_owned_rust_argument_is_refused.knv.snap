@@ -1,9 +1,0 @@
----
-source: tests/stages.rs
-expression: reports.report(path)
-input_file: tests/fixtures/text/static_text_given_to_an_owned_rust_argument_is_refused.knv
----
-defn relay
-  text: mixed, written owned
-needs owned text
-  text/static_text_given_to_an_owned_rust_argument_is_refused.knv:6:26

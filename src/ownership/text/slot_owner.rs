@@ -10,6 +10,7 @@ pub enum SlotOwner {
     Result(BindingId),
     Local(BindingId),
     Field(BindingId, Rc<str>),
+    Global(BindingId),
     Variable(Span, GenericId),
     Value(Span),
     Argument(Span),
@@ -24,7 +25,11 @@ impl SlotOwner {
     pub fn is_decided(&self) -> bool {
         matches!(
             self,
-            Self::Parameter(_) | Self::Result(_) | Self::Local(_) | Self::Field(..)
+            Self::Parameter(_)
+                | Self::Result(_)
+                | Self::Local(_)
+                | Self::Field(..)
+                | Self::Global(_)
         )
     }
 }

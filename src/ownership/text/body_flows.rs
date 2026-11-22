@@ -61,6 +61,13 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         }
     }
 
+    pub fn walk_value(mut self, expr: &TypedExpr) {
+        let owner = SlotOwner::Global(self.function);
+        self.listing.list(&owner, &expr.ty);
+        let value = self.value(expr);
+        self.context.receive(&Slot::from(owner), &value);
+    }
+
     pub fn value(&mut self, expr: &TypedExpr) -> TextValue {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr),
@@ -130,6 +137,10 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
                 TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
             }
             TypedLeaf::Local(binding) => self.local(*binding, expr),
+            TypedLeaf::Global(binding) if self.context.program().is_written_value(*binding) => {
+                let read = TextRead::of(expr, Transfer::Refer);
+                self.context.read(&SlotOwner::Global(*binding), read)
+            }
             TypedLeaf::Global(_) if TextPositions::holds_text(&expr.ty) => {
                 TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
             }
@@ -149,12 +160,8 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         } else {
             SlotOwner::Local(binding)
         };
-        let read = TextRead {
-            ty: &expr.ty,
-            span: expr.span,
-            transfer: Transfer::Move,
-        };
-        self.context.read(&owner, read)
+        self.context
+            .read(&owner, TextRead::of(expr, Transfer::Move))
     }
 
     fn closure(&mut self, lambda: &TypedLambda) -> TextValue {

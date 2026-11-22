@@ -156,3 +156,116 @@ impl<'i> TypesReached<'i> {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{SameTraitCallees, TypesReached};
+    use crate::core::BindingId;
+    use crate::types::constructed_types::ConstructedTypes;
+    use crate::types::contained_types::ContainedTypes;
+    use crate::types::graph::DefinitionGraph;
+    use crate::types::typed_source::TypedSource;
+    use crate::types::written_impls::WrittenImpls;
+
+    struct SameTraitFixture {
+        source: TypedSource,
+    }
+
+    impl SameTraitFixture {
+        const SOURCE: &str = "
+            (defn main () (println (->built-outer :v (->held-outer :inner (->held :v 1)))))
+            (defstruct (built-outer t) :v t)
+            (display (built-outer t) (x) \"<\" (->built-inner :v 1) \">\")
+            (defstruct (built-inner t) :v t)
+            (display (built-inner t) (x) \"<\" (:v x) \">\")
+            (defstruct (held t) :v t)
+            (display (held t) (x) \"<\" (:v x) \">\")
+            (defstruct (held-outer t) :inner (held t))
+            (display (held-outer t) (x) \"[\" (:inner x) \"]\")
+            (trait probe (probe (fn ((ref self)) bool)))
+            (impl probe (held t) (probe (x) true))";
+
+        fn new() -> Self {
+            Self {
+                source: TypedSource::expand(Self::SOURCE),
+            }
+        }
+
+        fn callees_of_impl_for(&self, implementor: &str) -> Vec<String> {
+            let program = self.source.program();
+            let references = DefinitionGraph::walked(program);
+            let graph = DefinitionGraph::of(program);
+            let impls = WrittenImpls::of(program);
+            let contained = ContainedTypes::of(program);
+            let constructed = ConstructedTypes::new(program, &references, graph.dependencies());
+            let reached = TypesReached::new(&contained, &constructed, &references);
+            let callees = SameTraitCallees::new(&impls, reached).by_method();
+            let method = self.display_method_of(&impls, implementor);
+            let mut names: Vec<String> = callees[&method]
+                .iter()
+                .map(|callee| self.implementor_of(&impls, *callee))
+                .collect();
+            names.sort();
+            names
+        }
+
+        fn display_method_of(&self, impls: &WrittenImpls<'_>, implementor: &str) -> BindingId {
+            let program = self.source.program();
+            impls
+                .entries()
+                .iter()
+                .filter(|entry| program.bindings.get(entry.trait_binding).name() == "display")
+                .find(|entry| {
+                    entry
+                        .implementor
+                        .is_some_and(|head| program.bindings.get(head).name() == implementor)
+                })
+                .and_then(|entry| entry.methods.first())
+                .map(|method| method.binding)
+                .expect("the source displays the implementor")
+        }
+
+        fn implementor_of(&self, impls: &WrittenImpls<'_>, method: BindingId) -> String {
+            let program = self.source.program();
+            let entry = impls
+                .entries()
+                .iter()
+                .find(|entry| {
+                    entry
+                        .methods
+                        .iter()
+                        .any(|written| written.binding == method)
+                })
+                .expect("a callee is an impl method");
+            let head = entry
+                .implementor
+                .expect("a callee's impl names its implementor");
+            program.bindings.get(head).name().to_string()
+        }
+    }
+
+    #[test]
+    fn a_method_calls_the_same_trait_on_a_type_it_builds() {
+        assert_eq!(
+            SameTraitFixture::new().callees_of_impl_for("built-outer"),
+            ["built-inner"]
+        );
+    }
+
+    #[test]
+    fn a_method_calls_the_same_trait_on_a_type_its_implementor_holds() {
+        assert_eq!(
+            SameTraitFixture::new().callees_of_impl_for("held-outer"),
+            ["held"]
+        );
+    }
+
+    #[test]
+    fn a_method_on_a_type_that_holds_and_builds_nothing_calls_no_impl() {
+        assert!(
+            SameTraitFixture::new()
+                .callees_of_impl_for("built-inner")
+                .is_empty()
+        );
+    }
+}

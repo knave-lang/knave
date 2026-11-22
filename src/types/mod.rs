@@ -246,6 +246,7 @@ mod written_argument;
 mod written_bodies;
 mod written_borrows;
 mod written_derive;
+mod written_impls;
 mod written_projection;
 mod written_type_facts;
 #[cfg(test)]

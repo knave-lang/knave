@@ -1,6 +1,6 @@
 # RFC 0078: One text type
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-18
 
 This RFC answers the owner's issue #589: its five rules and its four open questions. It designs issue #590, on auto-borrowing read-only references, with it (section 2, decision 14). PR 598 (branch `infer-string-ownership`) is the owner's rough exploration of the same end state. This RFC weighs it as one option, and "Differences from PR 598" lists each point where this design departs from it.
@@ -1009,7 +1009,7 @@ The project owner decided every question of this RFC on 2026-11-15:
 - **Decision 19: the recommended one rule, the tied `(ref a)` table.** For a parameter the body does not store, passed at a `(ref a)` whose `a` another argument ties by unification, the facts of the call's `a` decide: lent `&String` when O holds with L, or without S; lent mixed `&Cow<'static, str>` when O and S hold without L; a view, passed as `&name`, when O does not hold; and `L0503` with `(str s)` when `a` stays a view and the trait's rows exclude a view. A stored parameter takes its own row and is passed as `&name`. `label` keeps `&String`, and `mk` and `dup` are `L0503` with `(str s)`.
 - **Decision 20: (a).** A view node goes on every non-receiver text argument at a view position, unless the argument is already a view: a `(ref str)` position of a `rust` form, the text query of a template the checker builds (the map query of `get` and `set-at!`, and each text slot of a compound query by the key's representation), and the argument of a clause chosen for text, such as `slurp`'s. It never goes at a `(ref a)` whose variable another argument ties by unification. A receiver, as `TemplateBorrows::receives` records it, takes no node.
 
-The status stays Proposed. As for RFC 0074, the owner accepts this RFC after PR 1, the prototype of decision 11, reports what the solver decides over today's fixtures and corpus and what the solve costs; the RFC then becomes Accepted with these decisions, or the report reopens the ones it contradicts.
+**Acceptance:** the owner accepted this RFC on 2026-11-22 with these decisions, on the counts of PR 1 (PR 710). Of the 1,492 fixture and corpus programs that pass plain `knave check`, outside the prototype's own `tests/fixtures/text/`, 14 programs hold one site each that the RFC itself would report as needing owned text. Ten sites store a view of a local, written `(as-str model)`, into a struct field that decision 1(d) makes owned: five `emit` fixtures and the five `run` fixtures that repeat them. Four sites `clone` a view, which decision 19's tied `(ref a)` rule reports as `L0503`: `clone_bounds`, the corpus entry `warehouse` and two `loans` fixtures. The prototype's stated limits cause 21 more sites, which hold 19 refusals.
 
 ## Rejected options and why
 

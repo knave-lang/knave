@@ -1,4 +1,4 @@
-use super::access::Move;
+use super::access::{Borrowing, Move};
 use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
 use super::lending::Lending;
@@ -28,6 +28,10 @@ impl<'l> Lender<'l> {
         let loan = self.loans.record(lending, self.point);
         self.access(access.lending(loan));
         Holdings::from(loan)
+    }
+
+    pub fn read(&mut self, place: LoanPlace, span: Span) {
+        self.access(PlaceAccess::new(place, &Borrowing, span));
     }
 
     pub fn move_out(&mut self, place: LoanPlace, span: Span) {

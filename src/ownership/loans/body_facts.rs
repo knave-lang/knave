@@ -4,6 +4,7 @@ use super::access_facts::AccessFacts;
 use super::closure::Closure;
 use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
+use super::lent_place::LentPlace;
 use super::live_loan::LiveLoan;
 use super::live_values::LiveValues;
 use super::loan_conflict::LoanConflict;
@@ -67,6 +68,14 @@ impl<'w> BodyFacts<'w> {
                     AccessFacts::new(point, access, met)
                 })
             })
+            .collect()
+    }
+
+    pub fn escapes(&self) -> Vec<LentPlace<'_>> {
+        self.regions
+            .of_holdings(&self.returned)
+            .into_iter()
+            .map(|loan| self.loans.loan(loan).lending().lent())
             .collect()
     }
 

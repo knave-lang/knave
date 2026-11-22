@@ -40,7 +40,7 @@ pub(super) enum ParameterOwner {
 }
 
 impl ParameterOwner {
-    fn dropped_parameter(self, span: Span) -> DroppedValue {
+    pub(super) fn dropped_parameter(self, span: Span) -> DroppedValue {
         match self {
             Self::Function => DroppedValue::FunctionParameter(span),
             Self::Closure => DroppedValue::ClosureParameter(span),
@@ -100,7 +100,7 @@ impl<'e> LocalBorrows<'e> {
                 .lent_reference(*binding)
                 .map(|lent| LocalBorrow::new(expr.span, lent)),
             TypedExprKind::Borrow(_, inner) => self
-                .written_borrow_root(inner)
+                .dropped_root(inner)
                 .map(|dropped| LocalBorrow::new(expr.span, dropped)),
             TypedExprKind::Call(callee, arguments) if expr.ty.holds_reference() => {
                 self.borrowing_call(expr.span, callee, arguments)
@@ -158,6 +158,9 @@ impl<'e> LocalBorrows<'e> {
     pub(super) fn borrowed_by(&self, argument: &'e TypedArgument) -> Option<DroppedValue> {
         match argument.borrow {
             Borrow::Shared | Borrow::Mutable if !argument.value.ty.holds_reference() => {
+                if self.yields_borrowed_parameter(&argument.value) {
+                    return None;
+                }
                 self.dropped_root(&argument.value)
             }
             _ => self.returned(&argument.value).map(|found| found.dropped),
@@ -200,23 +203,12 @@ impl<'e> LocalBorrows<'e> {
         }
     }
 
-    fn written_borrow_root(&self, borrowed: &TypedExpr) -> Option<DroppedValue> {
-        let BorrowRoots::Dropped(owner, constants) = self.roots else {
-            return None;
-        };
-        match borrowed.place_root() {
-            Some(root) => self.dropped_value(root, owner),
-            None => Self::temporary(borrowed, constants),
-        }
-    }
-
     fn dropped_root(&self, borrowed: &TypedExpr) -> Option<DroppedValue> {
         let BorrowRoots::Dropped(owner, constants) = self.roots else {
             return None;
         };
         match borrowed.place_root() {
             Some(root) => self.dropped_value(root, owner),
-            None if self.yields_borrowed_parameter(borrowed) => None,
             None => Self::temporary(borrowed, constants),
         }
     }

@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_default_owned_by_a_parameter.knv
+---
+error[L0510]: cannot return a borrow of a local value
+ --> check/returned_default_owned_by_a_parameter.knv:6:25
+  |
+5 | (defn first-or (xs d)
+  |                    - this parameter owns its value, which is dropped when the function returns
+6 |   (unwrap-or (get xs 0) d))
+  |                         ^ this borrows a local value
+  |
+  = help: return an owned value with `(clone ...)`, or give this parameter a borrowed type
+  = note: run `knave doc L0510` for an explanation

@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_element_through_a_borrowed_match.knv
+---
+2019

@@ -1,8 +1,6 @@
+use super::constant_values::ConstantValues;
 use super::local_borrows::LocalBorrows;
-use crate::core::{
-    BindingId, Division, Literal, Operand, ParsedTemplate, PrimitiveType, TemplateOperation,
-};
-use crate::reader::NumberValue;
+use crate::core::{Division, Operand, ParsedTemplate, PrimitiveType, TemplateOperation};
 use crate::types::{
     ClauseChoice, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
     TypedProgram,
@@ -11,6 +9,7 @@ use crate::types::{
 #[derive(Clone, Copy)]
 pub(super) struct PromotedConstants<'p> {
     program: &'p TypedProgram,
+    values: ConstantValues<'p>,
 }
 
 impl<'p> PromotedConstants<'p> {
@@ -18,7 +17,10 @@ impl<'p> PromotedConstants<'p> {
     const MINUS_ONE: i128 = -1;
 
     pub fn new(program: &'p TypedProgram) -> Self {
-        Self { program }
+        Self {
+            program,
+            values: ConstantValues::new(program),
+        }
     }
 
     pub fn is_temporary(&self, borrowed: &TypedExpr) -> bool {
@@ -39,6 +41,7 @@ impl<'p> PromotedConstants<'p> {
                 LocalBorrows::tail_of(block).is_none_or(|tail| self.promotes(tail))
             }
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => self
+                .values
                 .definition_value(*binding)
                 .is_some_and(|value| self.promotes(value)),
             TypedExprKind::Leaf(TypedLeaf::Local(_)) | TypedExprKind::Control(_) => false,
@@ -154,8 +157,8 @@ impl<'p> PromotedConstants<'p> {
         arguments: &[TypedArgument],
     ) -> bool {
         let cannot_divide_by_zero =
-            self.is_constant_operand(divisor) && !self.has_value(divisor, Self::ZERO);
-        let cannot_overflow = !self.has_value(divisor, Self::MINUS_ONE)
+            self.is_constant_operand(divisor) && !self.values.has_value(divisor, Self::ZERO);
+        let cannot_overflow = !self.values.has_value(divisor, Self::MINUS_ONE)
             || self.is_constant_dividend(dividend, arguments);
         cannot_divide_by_zero && cannot_overflow
     }
@@ -172,65 +175,19 @@ impl<'p> PromotedConstants<'p> {
     fn is_constant_operand(&self, operand: &TypedExpr) -> bool {
         match &operand.kind {
             TypedExprKind::Leaf(TypedLeaf::Literal(_) | TypedLeaf::Global(_)) => true,
-            _ => self.negated(operand).is_some_and(Self::is_literal),
+            _ => self.values.negated(operand).is_some_and(Self::is_literal),
         }
     }
 
     fn is_type_minimum(&self, operand: &TypedExpr) -> bool {
         self.primitive(&operand.ty)
             .and_then(PrimitiveType::integer_range)
-            .is_some_and(|(minimum, _)| minimum < Self::ZERO && self.has_value(operand, minimum))
-    }
-
-    fn has_value(&self, operand: &TypedExpr, value: i128) -> bool {
-        let operand = self.resolved(operand);
-        Self::is_literal_of(operand, value)
-            || self
-                .negated(operand)
-                .is_some_and(|negated| Self::is_literal_of(negated, -value))
-    }
-
-    fn resolved<'e>(&self, operand: &'e TypedExpr) -> &'e TypedExpr
-    where
-        'p: 'e,
-    {
-        match &operand.kind {
-            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
-                self.definition_value(*binding).unwrap_or(operand)
-            }
-            _ => operand,
-        }
-    }
-
-    fn definition_value(&self, binding: BindingId) -> Option<&'p TypedExpr> {
-        self.program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions)
-            .find(|definition| definition.binding == binding)
-            .map(|definition| &definition.value)
-    }
-
-    fn negated<'e>(&self, operand: &'e TypedExpr) -> Option<&'e TypedExpr> {
-        let TypedExprKind::Call(callee, arguments) = &operand.kind else {
-            return None;
-        };
-        let negates =
-            ClauseChoice::new(self.program).read_selected_template(callee, false, |template| {
-                template.operation().is_negation()
-            });
-        arguments
-            .first()
-            .filter(|_| negates)
-            .map(|argument| &argument.value)
+            .is_some_and(|(minimum, _)| {
+                minimum < Self::ZERO && self.values.has_value(operand, minimum)
+            })
     }
 
     fn is_literal(operand: &TypedExpr) -> bool {
         matches!(operand.kind, TypedExprKind::Leaf(TypedLeaf::Literal(_)))
-    }
-
-    fn is_literal_of(operand: &TypedExpr, value: i128) -> bool {
-        matches!(&operand.kind, TypedExprKind::Leaf(TypedLeaf::Literal(Literal::Number(number)))
-            if *number.value() == NumberValue::Integer(value))
     }
 }

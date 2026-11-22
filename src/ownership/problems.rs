@@ -35,7 +35,7 @@ pub enum DroppedValue {
 }
 
 impl DroppedValue {
-    fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self {
             Self::Local(span)
             | Self::Temporary(span)

@@ -1,0 +1,10 @@
+(def fallback-years (vec 2019 2021))
+
+(defn first-of (maybe)
+  (match maybe
+    ((some items) (at items 0))
+    (none (at fallback-years 0))))
+
+(defn main ()
+  (local years (some (vec 2019 2021 2024)))
+  (println (first-of years)))

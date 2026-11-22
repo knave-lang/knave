@@ -1,6 +1,6 @@
 # RFC 0081: Tasks from libraries
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-11-22
 
 ## Problem
@@ -183,7 +183,7 @@ When the owner accepts, these status lines change:
 
 ## Decision
 
-Pending the project owner.
+The owner accepted this RFC as recommended on 2026-11-22.
 
 ## Rejected options and why
 

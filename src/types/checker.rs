@@ -7,7 +7,6 @@ use super::argument_passing::ArgumentPassing;
 use super::assumed_collections::AssumedCollections;
 use super::bound_origin_problems::BoundOriginProblems;
 use super::bound_origins::BoundOrigins;
-use super::bound_proof::BoundProof;
 use super::callee_borrows::CalleeBorrows;
 use super::check_round::{CheckRound, RoundGrowth};
 use super::checked_program::CheckedProgram;
@@ -31,8 +30,6 @@ use super::enum_item::EnumItem;
 use super::explanation_sources::ExplanationSources;
 use super::generalization::Generalization;
 use super::generalization_rules::GeneralizationRules;
-use super::generic_bound_check::GenericBoundCheck;
-use super::generic_bound_tables::GenericBoundTables;
 use super::generic_declarations::GenericDeclarations;
 use super::generic_registry::GenericRegistry;
 use super::graph::{Definition, DefinitionGraph};
@@ -51,6 +48,8 @@ use super::literal_settlement::LiteralSettlement;
 use super::method_receivers::MethodReceivers;
 use super::missing_trait::MissingTrait;
 use super::missing_trait_explanation::MissingTraitExplanation;
+use super::obligation_pass::ObligationPass;
+use super::obligation_solver::ObligationSolver;
 use super::opaque_positions::OpaquePositions;
 use super::parameter_call_search::CalledParameters;
 use super::parameter_modes::ParameterModes;
@@ -66,11 +65,13 @@ use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
 use super::result_borrow_source::ResultBorrowSource;
 use super::round_facts::RoundFacts;
-use super::selection::Selection;
 use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
 use super::shared_member_passing::SharedMemberPassing;
 use super::shared_variable_group::SharedVariableGroup;
+use super::solver_event::SolverEvent;
+use super::solver_sources::SolverSources;
+use super::solver_state::SolverState;
 use super::string_views::StringViews;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_declaration_collector::TraitDeclarationCollector;
@@ -79,7 +80,7 @@ use super::type_declaration_collector::TypeDeclarationCollector;
 use super::type_variables::TypeVariables;
 use super::typed_module_builder::TypedModuleBuilder;
 use super::unification::Unification;
-use super::unifier::{LiteralKind, Obligation, ObligationSite, Unifier};
+use super::unifier::{LiteralKind, Unifier};
 use super::user_trait::UserTrait;
 use super::variable_linking::VariableLinking;
 use super::variant_payloads::VariantPayloads;
@@ -95,12 +96,6 @@ use crate::core::{
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::MacroCallLookup;
 use crate::source::Span;
-
-#[derive(Clone, Copy)]
-pub(super) enum ObligationPass {
-    Deferring,
-    Final,
-}
 
 pub struct TypeChecker {
     pub(super) bindings: BindingArena,
@@ -792,11 +787,51 @@ impl TypeChecker {
 
     fn discharge_obligations(&mut self, pass: ObligationPass) {
         self.recheck_deferred_equalities();
-        for obligation in self.unifier.take_obligations() {
-            self.with_operand_mark(obligation.inside_operand, |checker| {
-                checker.discharge(obligation, pass)
-            });
+        let obligations = self.unifier.take_obligations();
+        for event in self.obligation_solver(pass).discharge_all(obligations) {
+            match event {
+                SolverEvent::MissingTrait {
+                    bound,
+                    implementor,
+                    span,
+                    shown_argument,
+                } => {
+                    let missing = MissingTrait {
+                        bound: &bound,
+                        implementor: &implementor,
+                        span,
+                        shown_argument,
+                    };
+                    let diagnostic = self.missing_trait_explanation().explain(missing);
+                    self.diagnostics.push(diagnostic);
+                }
+                SolverEvent::StructuralUse {
+                    bound,
+                    implementor,
+                    span,
+                } => self.record_structural_use(&bound, &implementor, span),
+                SolverEvent::UnprovenBound {
+                    generic,
+                    bound,
+                    span,
+                } => self.report_unproven_bound(generic, bound, span),
+                SolverEvent::OpenObligation { open_vars, problem } => {
+                    self.missing_annotations.defer(open_vars, problem)
+                }
+            }
         }
+    }
+
+    fn obligation_solver(&mut self, pass: ObligationPass) -> ObligationSolver<'_> {
+        let state = SolverState {
+            unifier: &mut self.unifier,
+            implied_bounds: &mut self.implied_bounds,
+        };
+        let sources = SolverSources {
+            declarations: &self.declarations,
+            generics: self.generics.params(),
+        };
+        ObligationSolver::new(state, sources, pass)
     }
 
     pub(super) fn with_operand_mark<T>(
@@ -811,109 +846,8 @@ impl TypeChecker {
         result
     }
 
-    fn discharge(&mut self, obligation: Obligation, pass: ObligationPass) {
-        let bound = self.resolve_bound(&obligation.bound);
-        let implementor = self.unifier.resolve(&obligation.implementor);
-        match implementor {
-            Type::Var(var) => self.unifier.add_bound(var, bound),
-            Type::Generic(generic) => {
-                self.check_generic_bound(generic, bound, obligation.site.span)
-            }
-            _ => self.select_implementor(bound, &implementor, obligation.site, pass),
-        }
-    }
-
-    fn resolve_bound(&self, bound: &Bound) -> Bound {
-        Bound {
-            binding: bound.binding,
-            argument: bound
-                .argument
-                .as_ref()
-                .map(|argument| self.unifier.resolve(argument)),
-            origins: bound.origins.clone(),
-        }
-    }
-
-    fn select_implementor(
-        &mut self,
-        bound: Bound,
-        implementor: &Type,
-        site: ObligationSite,
-        pass: ObligationPass,
-    ) {
-        let boxed_object = self.declarations.types().boxed_object(implementor);
-        let inclusions = self.declarations.traits().table.inclusions();
-        if boxed_object.is_some_and(|object| inclusions.is_met_by(bound.binding, object)) {
-            return;
-        }
-        match self.literal_settlement().select(&bound, implementor) {
-            Selection::Implemented {
-                requirements,
-                argument,
-            } => self.adopt_selection(bound, implementor, requirements, argument, site, pass),
-            Selection::Missing if !implementor.has_vars() => {
-                self.report_missing_trait(&bound, implementor, site.span)
-            }
-            Selection::Undecided | Selection::Missing => self.leave_unresolved(
-                Obligation {
-                    bound,
-                    implementor: implementor.clone(),
-                    site,
-                    inside_operand: self.unifier.inside_operand(),
-                },
-                pass,
-            ),
-        }
-    }
-
-    fn adopt_selection(
-        &mut self,
-        bound: Bound,
-        implementor: &Type,
-        requirements: Vec<super::selection::Requirement>,
-        argument: Option<Type>,
-        site: ObligationSite,
-        pass: ObligationPass,
-    ) {
-        if let (Some(argument), Some(expected)) = (argument, &bound.argument)
-            && self.unifier.unify(expected, &argument, site.span).is_err()
-        {
-            self.report_missing_trait(&bound, implementor, site.span);
-            return;
-        }
-        self.record_structural_use(&bound, implementor, site.span);
-        for requirement in requirements {
-            let required = Obligation {
-                bound: requirement.bound,
-                implementor: requirement.implementor,
-                site,
-                inside_operand: self.unifier.inside_operand(),
-            };
-            self.discharge(required, pass);
-        }
-    }
-
     pub(super) fn defaults_literal_parameters(&self) -> bool {
         self.default_literal_parameters
-    }
-
-    fn leave_unresolved(&mut self, obligation: Obligation, pass: ObligationPass) {
-        match pass {
-            ObligationPass::Deferring => self.unifier.defer(obligation),
-            ObligationPass::Final if obligation.inside_operand => {}
-            ObligationPass::Final => self.report_open_obligation(&obligation),
-        }
-    }
-
-    fn report_open_obligation(&mut self, obligation: &Obligation) {
-        let mut open_vars = self.free_vars(&obligation.implementor);
-        if let Some(argument) = &obligation.bound.argument {
-            open_vars.extend(self.free_vars(argument));
-        }
-        let site = obligation.site;
-        let label_span = site.bound_site.unwrap_or(site.span);
-        self.missing_annotations
-            .defer(open_vars, TypeProblems::cannot_infer_bound(label_span));
     }
 
     fn check_component(&mut self, members: &[&Definition]) -> Vec<(BindingId, TypedDefinition)> {
@@ -1495,11 +1429,7 @@ impl TypeChecker {
         Ok(())
     }
 
-    fn check_generic_bound(&mut self, generic: GenericId, bound: Bound, span: Span) {
-        let BoundProof::Unproven(bound) = self.generic_bound_check().settle(generic, bound, span)
-        else {
-            return;
-        };
+    fn report_unproven_bound(&mut self, generic: GenericId, bound: Bound, span: Span) {
         if self.has_written_projection_on(generic, bound.binding) {
             return;
         }
@@ -1514,14 +1444,6 @@ impl TypeChecker {
             TypeProblems::missing_bound(self.bindings.get(reported).name(), &generic_name, span);
         self.diagnostics
             .push(BoundOriginProblems::annotate(diagnostic, &bound.origins));
-    }
-
-    fn generic_bound_check(&mut self) -> GenericBoundCheck<'_> {
-        let tables = GenericBoundTables {
-            traits: &self.declarations.traits().table,
-            generics: self.generics.params(),
-        };
-        GenericBoundCheck::new(&mut self.unifier, &mut self.implied_bounds, tables)
     }
 
     pub(super) fn report_missing_trait(&mut self, bound: &Bound, implementor: &Type, span: Span) {

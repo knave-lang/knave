@@ -1,5 +1,6 @@
 use super::call_target::CallTarget;
 use super::callee_scheme::CalleeScheme;
+use super::closure_slots::ClosureUse;
 use super::inline_rust::InlineRust;
 use super::map_queries::MapQueries;
 use super::template_call::TemplateCall;
@@ -23,6 +24,21 @@ impl Callee {
                 Self::map_queries(callee, program),
             ))),
             _ => None,
+        }
+    }
+
+    pub fn fixes_closures(callee: &TypedExpr, program: &TextProgram<'_>) -> ClosureUse {
+        let template = match &callee.kind {
+            TypedExprKind::Leaf(TypedLeaf::Rust(_)) => true,
+            TypedExprKind::Leaf(TypedLeaf::Global(binding)) => program
+                .definition(*binding)
+                .is_some_and(|definition| !matches!(definition.value.kind, TypedExprKind::Fn(_))),
+            _ => false,
+        };
+        if template {
+            ClosureUse::Fixed
+        } else {
+            ClosureUse::Free
         }
     }
 

@@ -4,6 +4,8 @@ use std::fmt;
 pub struct TypePath(Vec<usize>);
 
 impl TypePath {
+    const RESULT: usize = usize::MAX;
+
     pub fn is_top(&self) -> bool {
         self.0.is_empty()
     }
@@ -12,6 +14,10 @@ impl TypePath {
         let mut parts = self.0.clone();
         parts.push(part);
         Self(parts)
+    }
+
+    pub fn result(&self) -> Self {
+        self.child(Self::RESULT)
     }
 
     pub fn below(&self, part: usize) -> Option<Self> {
@@ -28,9 +34,10 @@ impl TypePath {
 
 impl fmt::Display for TypePath {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
-            .iter()
-            .try_for_each(|part| write!(formatter, "[{part}]"))
+        self.0.iter().try_for_each(|part| match *part {
+            Self::RESULT => write!(formatter, "[result]"),
+            part => write!(formatter, "[{part}]"),
+        })
     }
 }
 
@@ -51,6 +58,12 @@ mod tests {
         assert_eq!(path.below(1), Some(TypePath::default().child(0)));
         assert_eq!(path.below(0), None);
         assert_eq!(TypePath::default().below(0), None);
+    }
+
+    #[test]
+    fn a_function_result_part_prints_its_name() {
+        let path = TypePath::default().child(0).result();
+        assert_eq!(path.to_string(), "[0][result]");
     }
 
     #[test]

@@ -8,7 +8,9 @@ enum label-error
 defn checked
   result[1]: owned
 defn guarded
-  local _reason: a view, written owned
+  closure result[1]: owned
+  local attempt[result][1]: owned
+  local _reason: owned
   result[1]: a 'static view, written a view
 defn parsed
   result[1]: a 'static view, written a view

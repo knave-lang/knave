@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/closures_decide_their_parameters_and_results.knv
+---
+struct user
+  name: owned
+defn apply-to
+  f[0]: a view
+  s: a view
+defn main
+  local names[0]: owned
+  w: a view
+  closure result: owned
+  local shout[0]: a view
+  local shout[result]: owned
+  v: a view
+  n: owned
+  local keep[0]: owned
+  local w: lent

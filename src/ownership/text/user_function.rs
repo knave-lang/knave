@@ -1,5 +1,6 @@
 use super::call_target::CallTarget;
 use super::callee_scheme::CalleeScheme;
+use super::slot::Slot;
 use super::slot_owner::SlotOwner;
 use crate::core::BindingId;
 use crate::types::TypedLambda;
@@ -29,13 +30,13 @@ impl<'t> CallTarget<'t> for UserFunction<'t> {
         &self.scheme
     }
 
-    fn parameter(&self, index: usize) -> Option<SlotOwner> {
+    fn parameter(&self, index: usize) -> Option<Slot> {
         self.parameters
             .get(index)
-            .map(|binding| SlotOwner::Parameter(*binding))
+            .map(|binding| Slot::from(SlotOwner::Parameter(*binding)))
     }
 
-    fn result(&self) -> Option<SlotOwner> {
-        Some(SlotOwner::Result(self.binding))
+    fn result(&self) -> Option<Slot> {
+        Some(Slot::from(SlotOwner::Result(self.binding)))
     }
 }

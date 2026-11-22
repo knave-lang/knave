@@ -11,6 +11,7 @@ pub enum SlotOwner {
     Local(BindingId),
     Field(BindingId, Rc<str>),
     Global(BindingId),
+    ClosureResult(Span),
     Variable(Span, GenericId),
     Value(Span),
     Argument(Span),
@@ -30,6 +31,7 @@ impl SlotOwner {
                 | Self::Local(_)
                 | Self::Field(..)
                 | Self::Global(_)
+                | Self::ClosureResult(_)
         )
     }
 }

@@ -67,6 +67,6 @@ impl<'c, 'w, 'p> ConstructionFlows<'c, 'w, 'p> {
             span: self.expr.span,
             transfer,
         };
-        self.context.read(owner, read)
+        self.context.read(&Slot::from(owner.clone()), read)
     }
 }

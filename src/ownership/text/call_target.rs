@@ -1,5 +1,6 @@
 use super::callee_scheme::CalleeScheme;
 use super::representation::Representation;
+use super::slot::Slot;
 use super::slot_owner::SlotOwner;
 use super::text_value::TextValue;
 use super::walk_context::WalkContext;
@@ -22,7 +23,7 @@ pub trait CallTarget<'t> {
         None
     }
 
-    fn parameter(&self, _index: usize) -> Option<SlotOwner> {
+    fn parameter(&self, _index: usize) -> Option<Slot> {
         None
     }
 
@@ -34,7 +35,7 @@ pub trait CallTarget<'t> {
         false
     }
 
-    fn result(&self) -> Option<SlotOwner> {
+    fn result(&self) -> Option<Slot> {
         None
     }
 

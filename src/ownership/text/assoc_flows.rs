@@ -33,7 +33,7 @@ impl<'c, 'w, 'p> AssocFlows<'c, 'w, 'p> {
             span: self.assoc.span,
             transfer: Transfer::Move,
         };
-        self.context.read(&result, read)
+        self.context.read(&Slot::from(result), read)
     }
 
     fn placements<'v>(

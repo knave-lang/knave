@@ -108,6 +108,7 @@ mod tests {
             VariantDefinition {
                 name: name.into(),
                 payload: VariantPayload::None,
+                bare_text_fields: Vec::new(),
                 payload_spans: Vec::new(),
                 function_spans: Vec::new(),
                 span: Span::new(SourceId::new(0), 0..0),

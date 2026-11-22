@@ -3,6 +3,8 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/text/binder_of_an_enum_case_reads_its_field.knv
 ---
+enum shape
+  named.0: a 'static view, written a view
 defn name-of
   local text: a 'static view, written a view
   result: a 'static view, written a view

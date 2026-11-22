@@ -1,0 +1,19 @@
+(defenum event
+  (named str)
+  (titled :title str :page i64)
+  (quoted (ref str))
+  blank)
+
+(defn describe (e)
+  (match e
+    ((named text) (str text))
+    ((titled :title title) (str title))
+    ((quoted text) (str text))
+    (blank (str "blank"))))
+
+(defn main ()
+  (local line (str "x" 1))
+  (println (describe (event/named "a"))
+           (describe (event/named (as-str line)))
+           (describe (event/titled :title "c" :page 1))
+           (describe (event/quoted (as-str line)))))

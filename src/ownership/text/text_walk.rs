@@ -1,4 +1,5 @@
 use super::body_flows::BodyFlows;
+use super::enum_payloads::EnumPayloads;
 use super::flow_graph::FlowGraph;
 use super::need::Need;
 use super::slot::Slot;
@@ -6,6 +7,7 @@ use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
 use super::text_position::{TextPosition, TextPositions};
 use super::text_program::TextProgram;
+
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
 use crate::types::{Type, TypedExprKind, TypedLambda, TypedModule};
@@ -33,6 +35,9 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         for binding in &module.structs {
             self.list_struct(*binding);
         }
+        for binding in &module.enums {
+            self.list_enum(*binding);
+        }
         for definition in &module.definitions {
             if let TypedExprKind::Fn(lambda) = &definition.value.kind {
                 self.walk_function(definition.binding, lambda);
@@ -55,6 +60,23 @@ impl<'w, 'p> TextWalk<'w, 'p> {
             self.listing.list(&field, ty);
             if !structure.bare_text_fields.contains(name) {
                 self.keep_written_view(&field, ty);
+            }
+        }
+    }
+
+    fn list_enum(&mut self, binding: BindingId) {
+        let Some(definition) = self.program.types().payloads().enumeration(binding) else {
+            return;
+        };
+        let heading = format!("enum {}", self.program.names().name(binding));
+        self.listing.open(Some(heading));
+        for case in &definition.variants {
+            for (field, ty) in case.payload_types().into_iter().enumerate() {
+                let owner = SlotOwner::Field(binding, EnumPayloads::label(case, field));
+                self.listing.list(&owner, ty);
+                if !case.bare_text_fields.contains(&field) {
+                    self.keep_written_view(&owner, ty);
+                }
             }
         }
     }

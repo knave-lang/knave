@@ -49,15 +49,12 @@ impl<'c, 'w, 'p> PatternFlows<'c, 'w, 'p> {
         field: usize,
         (part, value): (&TypedPattern, &TextValue),
     ) -> TextValue {
-        let types = self.context.program().types();
-        if let Some(argument) = types.payload_argument(variant, field) {
+        let payloads = self.context.program().types().payloads();
+        if let Some(argument) = payloads.argument(variant, field) {
             return Self::part_of(value, argument, part.span);
         }
-        match types.payload_field(variant, field) {
-            Some(ty) => {
-                let owner = SlotOwner::Field(variant, field.to_string().into());
-                self.field(&owner, ty, part)
-            }
+        match payloads.field(variant, field) {
+            Some((owner, ty)) => self.field(&owner, ty, part),
             None => TextValue::default(),
         }
     }

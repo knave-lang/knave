@@ -1,0 +1,20 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0204]: cannot find module `rootless/nope`
+ --> src/main.knv:1:6
+  |
+1 | (use rootless/nope greet)
+  |      ^^^^^^^^^^^^^ no module with this path
+  |
+  = help: a module path names a file relative to the root directory, without its extension
+  = note: run `knave doc L0204` for an explanation
+
+error[L0201]: cannot find `greet` in this scope
+ --> src/main.knv:3:25
+  |
+3 | (defn main () (println (greet)))
+  |                         ^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

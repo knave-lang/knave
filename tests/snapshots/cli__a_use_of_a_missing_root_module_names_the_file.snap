@@ -1,0 +1,20 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0262]: library `broken` has no root module `../broken/src/nope.knv`
+ --> src/main.knv:1:6
+  |
+1 | (use broken greet)
+  |      ^^^^^^ this loads the library's root module
+  |
+  = help: fix `:lib` in `../broken/project.knv`, or add the file
+  = note: run `knave doc L0262` for an explanation
+
+error[L0201]: cannot find `greet` in this scope
+ --> src/main.knv:3:25
+  |
+3 | (defn main () (println (greet)))
+  |                         ^^^^^ not found in this scope
+  |
+  = note: run `knave doc L0201` for an explanation

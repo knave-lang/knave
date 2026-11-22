@@ -1,0 +1,2 @@
+(defproject rootless-missing-module
+  (libraries (rootless :path "../rootless")))

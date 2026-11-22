@@ -4,6 +4,7 @@ use super::claim_rules::ClaimRules;
 use super::library_naming::LibraryNaming;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
+use super::missing_root_module::MissingRootModule;
 use super::other_libraries::OtherLibraries;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
@@ -20,6 +21,7 @@ pub struct LibraryRoot {
     visible: Vec<String>,
     lister: Option<String>,
     checkout: Option<PathBuf>,
+    project_file: PathBuf,
 }
 
 #[derive(Clone, Default)]
@@ -50,6 +52,14 @@ impl LibraryRoot {
             visible,
             lister: None,
             checkout: None,
+            project_file: PathBuf::new(),
+        }
+    }
+
+    pub fn described_in(self, project_file: PathBuf) -> Self {
+        Self {
+            project_file,
+            ..self
         }
     }
 
@@ -68,12 +78,24 @@ impl LibraryRoot {
         &self.name
     }
 
-    pub fn lister(&self) -> Option<&str> {
+    fn lister(&self) -> Option<&str> {
         self.lister.as_deref()
     }
 
     pub fn checkout(&self) -> Option<&std::path::Path> {
         self.checkout.as_deref()
+    }
+
+    pub fn missing_root_module(
+        &self,
+        path: &ModulePath,
+        root_file: PathBuf,
+    ) -> Option<MissingRootModule<'_>> {
+        (path.as_str() == self.name).then(|| MissingRootModule {
+            library: &self.name,
+            root_file,
+            project_file: self.project_file.clone(),
+        })
     }
 
     fn module_path_under(&self, inner_module: &str) -> ModulePath {

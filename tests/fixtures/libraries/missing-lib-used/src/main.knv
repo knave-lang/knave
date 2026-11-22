@@ -1,0 +1,3 @@
+(use broken greet)
+
+(defn main () (println (greet)))

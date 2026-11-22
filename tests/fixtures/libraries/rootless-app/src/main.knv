@@ -1,0 +1,3 @@
+(use rootless/tools greet)
+
+(defn main () (println (greet)))

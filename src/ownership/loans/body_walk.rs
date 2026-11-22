@@ -13,6 +13,7 @@ use super::loop_walk::LoopWalk;
 use super::point_id::PointId;
 use super::walked::Walked;
 use crate::core::ReferenceKind;
+use crate::source::Span;
 use crate::types::{
     TypedArm, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
     TypedLeaf, TypedMatch, TypedStructExpr,
@@ -109,8 +110,17 @@ impl<'w> BodyWalk<'w> {
         if !expr.ty.is_reference() {
             return read;
         }
+        if self.rules().stores_reference(&owner.ty, place.last_field()) {
+            return self.read_after(read, place, expr.span);
+        }
         let shared = <dyn LoanKind>::of(ReferenceKind::Shared);
         self.lend_after(read, Lending::new(place, shared, expr.span))
+    }
+
+    fn read_after(&mut self, read: Walked, place: LoanPlace, span: Span) -> Walked {
+        let point = self.builder.join(&[read.end]);
+        self.builder.lender(point).read(place, span);
+        Walked::holding(point, read.held)
     }
 
     fn path_root(owner: &'w TypedExpr) -> &'w TypedExpr {

@@ -17,6 +17,7 @@ mod holdings;
 mod labeled_spans;
 mod lender;
 mod lending;
+mod lent_place;
 mod live_loan;
 mod live_values;
 mod loan;

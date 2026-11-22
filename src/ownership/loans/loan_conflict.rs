@@ -41,7 +41,7 @@ impl<'b> LoanConflict<'b> {
     }
 
     pub fn spans(&self) -> [Span; 2] {
-        let mut spans = [self.access.span(), self.lending.span()];
+        let mut spans = [self.access.span(), self.lending.lent().span()];
         spans.sort();
         spans
     }
@@ -54,9 +54,9 @@ impl<'b> LoanConflict<'b> {
     fn parts(&self, bindings: &BindingArena) -> ConflictParts {
         ConflictParts {
             place: self.access.named(bindings),
-            lent_place: self.lending.named(bindings),
+            lent_place: self.lending.lent().named(bindings),
             access_span: self.access.span(),
-            lent_span: self.lending.span(),
+            lent_span: self.lending.lent().span(),
             holder: match self.holder {
                 LoanHolder::Value(value) => {
                     NamedHolder::Value(bindings.get(value).name().to_string())

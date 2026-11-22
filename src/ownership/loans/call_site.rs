@@ -57,7 +57,7 @@ impl<'c> CallSite<'c> {
                 match ties.tie_at(position) {
                     Some(PositionTie::Lent) => held.merged(passed.all()),
                     Some(PositionTie::HeldBeneath) => held.merged(passed.held().referent()),
-                    Some(PositionTie::Held) => held.merged(passed.held().clone()),
+                    Some(PositionTie::Held) => held.merged(passed.all()),
                     None => held,
                 }
             })

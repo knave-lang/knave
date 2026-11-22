@@ -28,6 +28,29 @@ impl<'p> LoanRules<'p> {
             .read_template(callee, None, |_, ties| ties.cloned())
     }
 
+    pub fn stores_reference(&self, owner: &Type, field: &str) -> bool {
+        let Type::Named(binding, arguments) = Self::value_behind(owner) else {
+            return false;
+        };
+        let Some(definition) = self.program.declarations.types().structs().get(*binding) else {
+            return false;
+        };
+        definition
+            .bare_text_fields
+            .iter()
+            .any(|bare| bare.as_ref() == field)
+            || definition
+                .instantiated_field(field, arguments)
+                .is_some_and(|field_type| field_type.is_reference())
+    }
+
+    fn value_behind(ty: &Type) -> &Type {
+        match ty {
+            Type::Ref(..) | Type::Mut(..) => Self::value_behind(ty.referent()),
+            _ => ty,
+        }
+    }
+
     pub fn holds_a_borrow(&self, ty: &Type) -> bool {
         self.borrowing
             .answer(ty, |ty| BorrowingTypes::of(self.program).keeps_borrow(ty))

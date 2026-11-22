@@ -18,6 +18,14 @@ impl LoanPlace {
         })
     }
 
+    pub fn last_field(&self) -> &str {
+        self.fields.last().map_or("", |field| field.as_ref())
+    }
+
+    pub fn root(&self) -> BindingId {
+        self.root
+    }
+
     pub fn overlaps(&self, other: &Self) -> bool {
         self.root == other.root
             && self

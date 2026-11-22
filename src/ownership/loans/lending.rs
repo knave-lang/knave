@@ -1,9 +1,9 @@
 use super::access::Access;
+use super::lent_place::LentPlace;
 use super::loan_kind::LoanKind;
 use super::loan_names::LoanNames;
 use super::loan_place::LoanPlace;
 use super::place_access::PlaceAccess;
-use crate::core::BindingArena;
 use crate::source::Span;
 
 pub struct Lending {
@@ -17,12 +17,8 @@ impl Lending {
         Self { place, kind, span }
     }
 
-    pub fn named(&self, bindings: &BindingArena) -> String {
-        self.place.named(bindings)
-    }
-
-    pub fn span(&self) -> Span {
-        self.span
+    pub fn lent(&self) -> LentPlace<'_> {
+        LentPlace::new(&self.place, self.span)
     }
 
     pub fn excluding(&self, access: &PlaceAccess) -> Option<&'static dyn Access> {

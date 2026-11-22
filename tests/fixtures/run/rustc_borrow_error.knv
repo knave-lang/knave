@@ -2,8 +2,10 @@
   :name string
   :age i64)
 
+(defn name-of (p) (:name p))
+
 (defn dangling-name ()
   (local someone (->person (str "Grace") 85))
-  (:name someone))
+  (name-of someone))
 
 (defn main () (println (dangling-name)))

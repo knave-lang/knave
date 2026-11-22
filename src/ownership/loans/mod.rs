@@ -11,6 +11,7 @@ mod closure;
 mod conflict_parts;
 mod conflict_wording;
 mod control_flow_graph;
+mod escaping_loans;
 mod expression_walk;
 mod held_value;
 mod holdings;

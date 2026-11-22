@@ -1,7 +1,8 @@
 use rustc_hash::FxHashSet;
 
 use super::lent_borrows::LentBorrows;
-use super::local_borrows::{BorrowHolder, LocalBorrows, ParameterOwner};
+use super::local_borrows::{BorrowHolder, LocalBorrows};
+use super::owned_values::ParameterOwner;
 use super::problems::{BorrowedStorage, OwnershipProblems};
 use super::promoted_constants::PromotedConstants;
 use super::slots::DeclaredSlots;

@@ -1,14 +1,12 @@
 use rustc_hash::FxHashSet;
 
-use super::body_facts::BodyFacts;
 use super::body_walk::BodyWalk;
+use super::escaping_loans::EscapingLoans;
 use super::labeled_spans::LabeledSpans;
 use super::loan_rules::LoanRules;
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
-use crate::ownership::local_borrows::ParameterOwner;
-use crate::ownership::owned_values::OwnedValues;
-use crate::ownership::problems::OwnershipProblems;
+use crate::ownership::owned_values::{OwnedValues, ParameterOwner};
 use crate::types::{TypedExprKind, TypedLambda, TypedProgram};
 
 pub struct LoanConflicts<'p> {
@@ -59,11 +57,8 @@ impl<'p> LoanConflicts<'p> {
             .filter(|conflict| pairs.insert(conflict.spans()))
             .map(|conflict| conflict.diagnostic(&self.program.bindings))
             .collect();
-        diagnostics.extend(Self::escapes(
-            &facts,
-            &OwnedValues::new(lambda, owner),
-            labeled,
-        ));
+        let owned = OwnedValues::new(lambda, owner);
+        diagnostics.extend(EscapingLoans::new(&facts, owned).diagnostics(labeled));
         for closure in facts.closures() {
             diagnostics.extend(self.body_conflicts(
                 closure.lambda(),
@@ -72,21 +67,5 @@ impl<'p> LoanConflicts<'p> {
             ));
         }
         diagnostics
-    }
-
-    fn escapes(
-        facts: &BodyFacts<'_>,
-        owned: &OwnedValues<'_>,
-        labeled: &LabeledSpans,
-    ) -> Vec<Diagnostic> {
-        let mut dropped_spans = FxHashSet::default();
-        facts
-            .escapes()
-            .into_iter()
-            .filter_map(|lent| Some((lent, owned.of(lent.root())?)))
-            .filter(|(lent, dropped)| !labeled.cover_any(&[lent.span(), dropped.span()]))
-            .filter(|(_, dropped)| dropped_spans.insert(dropped.span()))
-            .map(|(lent, dropped)| OwnershipProblems::local_borrow(lent.span(), &dropped))
-            .collect()
     }
 }

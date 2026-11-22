@@ -1,3 +1,4 @@
+use super::owned_values::{OwnedValues, ParameterOwner};
 use super::problems::DroppedValue;
 use super::promoted_constants::PromotedConstants;
 use crate::core::{BindingId, FieldLabel};
@@ -34,23 +35,8 @@ pub(super) enum BorrowHolder<'e> {
 }
 
 #[derive(Clone, Copy)]
-pub(super) enum ParameterOwner {
-    Function,
-    Closure,
-}
-
-impl ParameterOwner {
-    pub(super) fn dropped_parameter(self, span: Span) -> DroppedValue {
-        match self {
-            Self::Function => DroppedValue::FunctionParameter(span),
-            Self::Closure => DroppedValue::ClosureParameter(span),
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
 enum BorrowRoots<'e> {
-    Dropped(ParameterOwner, PromotedConstants<'e>),
+    Dropped(OwnedValues<'e>, PromotedConstants<'e>),
     Lent(BindingId),
 }
 
@@ -67,7 +53,7 @@ impl<'e> LocalBorrows<'e> {
     ) -> Self {
         Self {
             lambda,
-            roots: BorrowRoots::Dropped(owner, constants),
+            roots: BorrowRoots::Dropped(OwnedValues::new(lambda, owner), constants),
         }
     }
 
@@ -204,11 +190,11 @@ impl<'e> LocalBorrows<'e> {
     }
 
     fn dropped_root(&self, borrowed: &TypedExpr) -> Option<DroppedValue> {
-        let BorrowRoots::Dropped(owner, constants) = self.roots else {
+        let BorrowRoots::Dropped(owned, constants) = self.roots else {
             return None;
         };
         match borrowed.place_root() {
-            Some(root) => self.dropped_value(root, owner),
+            Some(root) => owned.of(root),
             None => Self::temporary(borrowed, constants),
         }
     }
@@ -246,16 +232,6 @@ impl<'e> LocalBorrows<'e> {
             .then_some(DroppedValue::Temporary(borrowed.span))
     }
 
-    fn dropped_value(&self, binding: BindingId, owner: ParameterOwner) -> Option<DroppedValue> {
-        match self.parameter(binding) {
-            Some(parameter) if parameter.ty.is_reference() => None,
-            Some(parameter) => Some(owner.dropped_parameter(parameter.span)),
-            None => self
-                .body_binder(binding)
-                .map(|binder| DroppedValue::Local(binder.span)),
-        }
-    }
-
     fn lent_reference(&self, binding: BindingId) -> Option<DroppedValue> {
         match self.roots {
             BorrowRoots::Lent(parameter) if parameter == binding => self
@@ -270,29 +246,6 @@ impl<'e> LocalBorrows<'e> {
             .params
             .iter()
             .find(|parameter| parameter.binding == binding)
-    }
-
-    fn body_binder(&self, binding: BindingId) -> Option<&'e TypedBinder> {
-        self.lambda
-            .binders()
-            .find(|binder| binder.binding == binding)
-            .or_else(|| {
-                self.lambda
-                    .body
-                    .expressions()
-                    .find_map(|expr| Self::binder_inside(expr, binding))
-            })
-    }
-
-    fn binder_inside(expr: &'e TypedExpr, binding: BindingId) -> Option<&'e TypedBinder> {
-        expr.binders()
-            .into_iter()
-            .find(|binder| binder.binding == binding)
-            .or_else(|| {
-                expr.children()
-                    .into_iter()
-                    .find_map(|child| Self::binder_inside(child, binding))
-            })
     }
 
     pub(super) fn tail_of(block: &TypedBlock) -> Option<&TypedExpr> {

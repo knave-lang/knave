@@ -1,7 +1,8 @@
 use rustc_hash::FxHashMap;
 
 use super::aliases::{LetAlias, LetAliases};
-use super::local_borrows::{LocalBorrows, ParameterOwner};
+use super::local_borrows::LocalBorrows;
+use super::owned_values::ParameterOwner;
 use super::problems::{AliasLabel, LentCall, LentParameter, OwnershipProblems};
 use super::promoted_constants::PromotedConstants;
 use crate::core::BindingId;

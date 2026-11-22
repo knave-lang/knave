@@ -1,10 +1,7 @@
+use super::implementor::Implementor;
+use super::indexed_implementors::IndexedImplementors;
 use super::ty::{Bound, Scheme, Type};
 use crate::core::BindingId;
-
-pub struct Implementor {
-    pub scheme: Scheme,
-    pub argument: Option<Type>,
-}
 
 pub struct TraitRowsReach(Lowering);
 
@@ -48,19 +45,19 @@ impl TraitRowsReach {
 }
 
 pub struct LoweredRows {
-    implementors: Vec<Implementor>,
+    implementors: IndexedImplementors,
     supertraits: Vec<Bound>,
 }
 
 impl LoweredRows {
     pub fn new(implementors: Vec<Implementor>, supertraits: Vec<Bound>) -> Self {
         Self {
-            implementors,
+            implementors: IndexedImplementors::new(implementors),
             supertraits,
         }
     }
 
-    pub fn implementors(&self) -> &[Implementor] {
+    pub fn implementors(&self) -> &IndexedImplementors {
         &self.implementors
     }
 
@@ -75,13 +72,7 @@ impl LoweredRows {
     }
 
     pub fn set_scheme(&mut self, body: &Type, scheme: Scheme) {
-        if let Some(implementor) = self
-            .implementors
-            .iter_mut()
-            .find(|implementor| implementor.scheme.body == *body)
-        {
-            implementor.scheme = scheme;
-        }
+        self.implementors.set_scheme(body, scheme);
     }
 
     pub fn supertraits(&self) -> &[Bound] {
@@ -112,7 +103,7 @@ mod tests {
         let mut rows = RowsFixture::lowered();
         rows.assert_reached();
         assert!(rows.get().is_some());
-        assert!(rows.reached_mut().implementors().is_empty());
+        assert!(rows.reached_mut().implementors().iter().next().is_none());
     }
 
     #[test]

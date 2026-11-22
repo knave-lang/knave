@@ -1,8 +1,8 @@
 use super::checker::TypeChecker;
+use super::implementor::Implementor;
 use super::lowered_associated_value::LoweredAssociatedValue;
 use super::problems::{MismatchContext, ProjectionNames, TypeProblems};
 use super::projection::AssociatedType;
-use super::trait_rows_reach::Implementor;
 use super::ty::{GenericId, Type};
 use super::unifier::DeferredEquality;
 use super::written_projection::WrittenProjection;

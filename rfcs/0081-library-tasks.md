@@ -17,7 +17,7 @@
       (exit 1))))
 ```
 
-The wrapper repeats ledelint's own `tasks/newspaper.knv`, drifts from it when ledelint changes, and must avoid the file name `tasks/ledelint.knv`, which `L0258` reserves for the library. The owner chose the Mix model (roadmap item 584): a library declares the tasks it exports, and listing the library makes them available. With this RFC, the `libraries` entry alone makes `knave task ledelint` work.
+The wrapper repeats ledelint's own `tasks/ledelint.knv`, drifts from it when ledelint changes, and must avoid the file name `tasks/ledelint.knv`, which `L0258` reserves for the library. The owner chose the Mix model (roadmap item 584): a library declares the tasks it exports, and listing the library makes them available. With this RFC, the `libraries` entry alone makes `knave task ledelint` work.
 
 ## Options
 
@@ -82,31 +82,43 @@ Take the `exported-tasks` section, and run a library's tasks in the library's ow
    - `use` in a library task resolves the same in the author's repository and in a dependent, whatever the library's `:entry` and `:lib`, so the author's `knave check` covers what a dependent runs, given the same compiler.
    - A library task module's path is the path it has in the library's own project, and the module namespace is that project's. The tree of RFC 0066 holds unchanged: `tasks/` first, then the source root, `tests/` unreachable, the source root never reaching back into `tasks/`, `L0256` when a task module takes a source module's path. A library's task modules never meet the project's own task program, so no `use` of the user's, `(use ledelint/util)` included, can bind one, and two libraries' trees never meet each other.
    - Every task rule of `prelude/task` holds as written. `project-folders`, `check-task-directory`, `check-task-module`, `L0356`, `L0257`, `L0258`, the hidden-folder skip and the lookups by bare name all work inside one project's tree, and each program holds one project's tree.
-   - A tool-only library needs no root module: a project whose section lists a task MAY have no file at `:lib`, and only a `use` of its root module is then `L0724`, labeled on the `use`.
    - A dependent's crates never join the library task's build, and its libraries never reach the task's code. The task depends on the library at its commit and on the compiler.
 
-   The program compares the running compiler with the library's `:knave`: an older compiler is `L0736`, labeled at the library's `:knave`, in place of every other problem of the library's tasks. A newer one prints no `L0737`, because the user cannot upgrade the library.
+   The program differs from the library's own in four ways, each because the user cannot edit the library's files:
+   - A git library's task program keeps the checkout bounds it has as a library: a path that leaves the checkout is `L0728`, and a module file that a symbolic link leads out of it is `L0254`.
+   - It compares no `:knave`, as RFC 0079 decides for every library, so it prints neither `L0736` nor `L0737`.
+   - It applies no project's `lints` levels and prints no warning: its errors print, and its lints and warnings, such as `L0803` or `L0256`, belong to the library's own repository, as `knave lint` never lints a library's task.
+   - It carries the name of the user's `libraries` entry, which the qualified form and `L0367`'s note use.
+
+   A tool-only library needs no root module and no entry, by two rules that hold for every project:
+   - `L0724` moves from the `libraries` entry to a `use` of the library's root module, the form that needs the module. A library whose `:lib` names no file then lists and runs its tasks.
+   - `knave check` with no file skips a missing `:entry` that the project file does not write, when the project has a `tasks/` directory or an `exported-tasks` section, and checks the task tree alone. A written `:entry` that names no file stays an error. So the author's `knave check` covers what a dependent runs.
 3. **Resolution.** `knave task <name>` takes, in order:
    - The project's own task of that name. A project's code is the user's choice, and it can wrap or replace a library's task.
    - Otherwise, the one direct library whose section lists the name. Two or more is an error that names each, with the qualified form of each.
    - `knave task <library>/<task>` always runs that library's export, shadowed or clashing. Task and library names are kebab-case, so the `/` cannot be part of either, and the form reads as a module path does.
 
-   A run checks the project's own task program, as today, and only when the name resolves to a library, that library's program: `knave task deploy` never loads a library's tasks, so a broken library never blocks the user's own task. The error arises only when a name is run, as a clash of two glob imports does in Rust: two libraries may export one name, and the user who never runs it never sees an error.
+   **`src/cli/` resolves the name and prints its errors.** The rule chooses which program to build, and the prelude runs only inside a program, so it cannot choose between programs. The command takes the project's own task names from the project's task program, as `TaskCommand` does today, and each direct library's exported names from the libraries' project files, which it reads already. It loads no library's tasks to resolve a name. A project with no `tasks/` directory has no task names of its own and builds no task program of its own, so ledelint's README case, a project with only a `libraries` entry, resolves `ledelint` from data alone and runs it. A project with no `tasks/` and no direct library that exports a task is the existing usage error. Every resolution error is an uncoded usage error that exits 2, as RFC 0066's unknown name is, with its wording in `src/cli/`.
 
-   `knave task` with no name lists the project's tasks as today, then one block per library that exports a task, in library name order, headed by the library's name and indented by two spaces. With no task of its own, the listing starts with the first library block. Each block aligns its own columns. Each row shows the name that runs its task: the bare name when it resolves to that task, the qualified name otherwise.
-4. **Where it runs.** A library task runs at the root of the project where `knave task` was typed, so `ledelint` lints the user's project. Its arguments pass as a project task's do: every word after the name belongs to the task, `--help` prints its usage and docstring, and the command exits with the task's exit code. It builds into `<root>/target/knave/<project>/library-tasks/<library>/<task>/`, which no project task's directory can meet, with a Cargo bin named `<project>-library-task-<library>-<task>` and the build directory's hash, which also keeps it apart from a project task named `library-task-<library>-<task>`.
+   A run checks the project's own task program, when `tasks/` exists, and only when the name resolves to a library, that library's program: `knave task deploy` never loads a library's tasks, so a broken library never blocks the user's own task. The clash arises only when a name is run, as a clash of two glob imports does in Rust: two libraries may export one name, and the user who never runs it never sees an error.
+
+   `knave task` with no name lists the project's tasks as today, then one block per library that exports a task, in library name order, headed by the library's name and indented by two spaces. With no task of its own, the listing starts with the first library block. Each row shows the name that runs its task: the bare name when it resolves to that task, the qualified name otherwise.
+   - The listing loads the task program of every direct library that exports a task, as `knave check` does, because a row's parameters and summary come from the expanded task. A project that lists no exporting library pays nothing.
+   - `src/cli/` knows from data which exported names the project's own tasks shadow and which two libraries share, and passes the library's name and those names to the library program's `task-listing`. `prelude/task` lays out the block, heading, indentation, qualified names and columns, so each block aligns its own columns.
+   - A library whose program fails still gets its block, listing its exported names bare of parameters, and its diagnostics print on standard error. The other blocks and the project's own tasks print as usual, and the command exits 1, so a CI that lists tasks learns of the failure.
+4. **Where it runs.** A library task runs at the root of the project where `knave task` was typed, so `ledelint` lints the user's project. Its arguments pass as a project task's do: every word after the name belongs to the task, `--help` prints its usage and docstring, and the command exits with the task's exit code. It builds into `<root>/target/knave/<project>/library_tasks/<library>/<task>/`, with a Cargo bin named `<project>-library-task-<library>-<task>` and the build directory's hash. The underscore keeps the directory apart from every kebab-case name, so neither a project task's directory nor the entry binary of a project named `library-tasks` can meet it, as `test_runner` does for `knave test`.
 5. **Transitive libraries.** Only direct libraries export tasks to a project. A `use` of a library that only another library lists is already `L0252`, so a project reaches commands by the rule it reaches code. A library's library is its implementation, which it can change without a breaking release, and the user who wants its task lists it.
 6. **Other commands.**
    - `knave check` with no file checks what `knave task` can check, so RFC 0066's decision 8 holds: the project's own task tree, and the task program of each direct library whose section lists a task, with RFC 0066's two checks each. A user's CI then learns that a pinned library's task fails on its compiler before someone runs it. The cost falls only on projects that list an exporting library.
    - `knave lint` checks the programs `knave check` checks, and lints only the project's own modules, so it never lints a library's task.
    - `knave test` and `knave build` do not read `tasks/`, a library's included.
-   - `knave upgrade` reads only the root project file and loads no library. It keeps the section, as it keeps any section.
+   - `knave upgrade` reads only the root project file and loads no library. It keeps the section, as it keeps any section, and the files it owns under the owner's decision D135 hold no task.
    - `knave fmt` lays out the section with the shape `prelude/project-file` gives it.
-7. **An older compiler.** Once ledelint adds its section, a user whose compiler predates this RFC and who moves the `:rev` would get `L0707`, an unknown section, at ledelint's project file, though the cause is the compiler's age. So when a library's project file has an error and its `:knave` is newer than the compiler, the compiler reports `L0736` at the library's `:knave` in place of the library's project-file errors, for the reason it does so for the root project: a newer Knave may accept the rest. This narrows RFC 0079's "a library's is never compared" to that case.
+7. **An older compiler.** No command compares a library's `:knave`, as RFC 0079 decides, in the user's project or in a library's task program. Once ledelint adds its section, a user whose compiler predates this RFC and who moves the `:rev` gets `L0707`, an unknown section, at ledelint's project file. Every section that a later Knave adds to a library meets the same case, `lints` included, so a fix belongs to RFC 0079's rule for every library and not to this section.
 
 ### The new diagnostic
 
-`prelude/task` reports a section name that no `deftask` of the project's tree defines, so it takes the macro range: `L0367`, `missing-exported-task`. The section's symbols reach the prelude with their places in `project.knv`, through a builtin. It fires in every program that checks the project's tree: in the library's own project under `knave check` and `knave task`, and in a dependent under each command that checks the library's task program. A section with no `tasks/` behind it makes each name `L0367`. A name that is not kebab-case cannot name a task, so it is `L0367` too.
+`prelude/task` reports a section name that no `deftask` of the project's tree defines, so it takes the macro range, `L0367`, `missing-exported-task`, and exits 1 as every coded error does. The task program's lookup compares the section's symbols, which reach the prelude with their places in `project.knv` through a builtin, with the tree's tasks. It fires in every program that checks the project's tree: in the library's own project under `knave check` and `knave task`, and in a dependent under each command that loads the library's task program. A project with a section and no `tasks/` still gets a task program, holding no task file, under `knave check` and `knave task`, so each name is `L0367` there. A name that is not kebab-case cannot name a task, so it is `L0367` too.
 
 ```text
 error[L0367]: no task named `ledelnt` to export
@@ -122,7 +134,7 @@ help: a task with a similar name exists
   = note: run `knave doc L0367` for an explanation
 ```
 
-With no similar task, the help is ``define the task with `deftask` in a file under `tasks/`, or remove the name``. In a dependent, the file sits in the git store, which the user cannot fix, so the error adds `note: library `ledelint` exports this name` and the help ``pin a `:rev` of `ledelint` that defines the task``.
+With no similar task, the help is ``define the task with `deftask` in a file under `tasks/`, or remove the name``. In a dependent, the file sits in the git store, which the user cannot fix, so the error adds `note: library `ledelint` exports this name` and, for a `:git` library, the help ``pin a `:rev` of `ledelint` that defines the task``. Both name the library by the user's `libraries` entry, which the program carries.
 
 The command's own usage errors exit 2, as RFC 0066's unknown name does:
 
@@ -141,19 +153,31 @@ help: run `knave task` to list the tasks
 
 error: library `ledelint` exports no task named `newspaper`
 help: run `knave task` to list the tasks
+
+error: `a/b/c` is not a task name
+help: name a task as `<task>` or `<library>/<task>`
 ```
 
-A qualified name suggests among the libraries the project lists. An unknown bare name suggests the closest name among every row of the listing. A project with no `tasks/` and no library that exports a task is the existing usage error, whose help also names a library's `exported-tasks`.
+A word with a `/` that does not split into two nonempty names, as `ledelint/`, `/fmt` or `a/b/c`, is the last error. A qualified name suggests among the libraries the project lists. An unknown bare name suggests the closest name among every row of the listing. A project with no `tasks/` and no library that exports a task is the existing usage error, whose help also names a library's `exported-tasks`.
 
 ### What the compiler adds, and why
 
-`prelude/task` keeps the resolution order, the clash, the missing export and each block's layout, and states them once. The compiler adds only what the prelude cannot express:
+`prelude/task` keeps the missing export and each block's layout. The compiler adds only what the prelude cannot express:
 
 - **Reading the section,** because the project file is data that the compiler reads.
-- **Building a library's task program** with the library as its root project, its working directory at the user's root, and its build directory under `library-tasks/`, in `src/cli/`, because only `src/cli/` and `ModuleSources` touch the file system and run processes.
-- **Two builtins.** `(project-exported-tasks)` returns the root project's section as symbols that carry their places in `project.knv`, for `L0367`. `(library-exported-tasks)` returns each direct library's name with the names its section lists, so the project's own task program can resolve a name with no library's tasks loaded. Each name differs from the section's, so `knave doc` never confuses the two.
-- **Comparing a library's `:knave`** when its project file has an error, and in its task program.
-- **`L0724` on a `use`** of a tool-only library's missing root module.
+- **Resolving a name and wording its errors,** in `src/cli/`, because the rule picks a program, which no program's prelude can do.
+- **Building a library's task program** with the library as its root project, its working directory at the user's root, its build directory under `library_tasks/`, its checkout bounds, no lint levels or warnings, and the user's entry name, in `src/cli/` and `ModuleSources`, because only they touch the file system and run processes.
+- **Two builtins.** `(project-exported-tasks)` returns the root project's section as symbols that carry their places in `project.knv`, for `L0367`; its name differs from the section's, so `knave doc` never confuses the two. `(task-library)` returns the name of the user's `libraries` entry in a library's task program, and `none` in a project's own, for `L0367`'s note.
+- **`L0724` on a `use`** of a library's missing root module, for every library.
+- **`knave check` skipping a missing default `:entry`** when the project has tasks to check.
+
+### Supersession
+
+When the owner accepts, these status lines change:
+
+- RFC 0066 becomes `Superseded by 0081` in part: its recommendation item 7, the listing, which gains library blocks; item 8, which makes a project with no `tasks/` a usage error, now only when no direct library exports a task; and item 10, the build layout, which gains `library_tasks/`.
+- RFC 0079 keeps its rule that no library's `:knave` is compared; this RFC changes nothing of it.
+- No RFC states where `L0724` is labeled, so its move to the `use` changes only `docs/language.md`.
 
 ## Decision
 
@@ -165,6 +189,8 @@ Pending the project owner.
 - **A marker in the task's code:** `export` would need a binding that `deftask` does not make, and a keyword breaks `deftask`'s shape; both are exceptions to a rule. A command would also expand every library's tasks to learn which it exports.
 - **Library task files in the project's task program:** a library task module would take the library's prefix and share the namespace of the library's source modules, a user's task could reach it, and two libraries' trees would meet. `use` would resolve from `:lib`'s directory in a dependent and from `:entry`'s in the library's own repository, so the author's check would not cover the dependent's run. `project-folders`, `L0356`, `L0359` and the lookups by bare name would each need a library case.
 - **Requiring `:entry` and `:lib` in one directory:** fixes only the search, and is a rule that only exporting projects obey.
+- **Resolving in the prelude:** the prelude runs inside one program, and a prelude `fail` is a coded error that exits 1, where a wrong command line exits 2. With no `tasks/`, no program would exist to run it.
+- **Comparing a library's `:knave` in its task program or on a project-file error:** an unused library task would fail the user's `knave check` on a version that the library's code, never compared, does not need, and it adds an exception to RFC 0079's rule.
 - **Leaving library tasks out of `knave check`:** breaks RFC 0066's decision 8, so `knave check` would pass where `knave task` fails.
 - **A transitive scope:** exposes a library's implementation and breaks the rule that a project reaches only the libraries it lists.
 - **Prior art:**

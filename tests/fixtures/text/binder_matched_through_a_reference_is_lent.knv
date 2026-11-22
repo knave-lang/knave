@@ -1,0 +1,8 @@
+(defn shout (found)
+  (match found
+    ((some text) (str text "!"))
+    (none (str "none"))))
+
+(defn main ()
+  (local found (some (str "a" 1)))
+  (println (shout found)))

@@ -3,6 +3,7 @@ use rustc_hash::FxHashSet;
 use super::assoc_flows::AssocFlows;
 use super::call_flows::CallFlows;
 use super::construction_flows::ConstructionFlows;
+use super::pattern_flows::PatternFlows;
 use super::reaching_text::ReachingText;
 use super::short_lived_text::ShortLivedText;
 use super::slot::Slot;
@@ -17,8 +18,8 @@ use super::try_flows::TryFlows;
 use super::walk_context::WalkContext;
 use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
-    FieldOrder, TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
-    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
+    FieldOrder, TryErrorConversion, Type, TypedArgument, TypedArm, TypedBlock, TypedBodyItem,
+    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 pub struct BodyFlows<'b, 'p> {
@@ -205,17 +206,24 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
                 then.merged(self.value(otherwise))
             }
             TypedControl::Match(matched) => {
-                self.value(&matched.value);
+                let scrutinee = self.value(&matched.value);
                 matched
                     .arms
                     .iter()
                     .fold(TextValue::default(), |value, arm| {
-                        self.opaque
-                            .extend(arm.pattern.binders().iter().map(|binder| binder.binding));
-                        value.merged(self.block(&arm.body))
+                        value.merged(self.arm(arm, (&scrutinee, &matched.value.ty)))
                     })
             }
         }
+    }
+
+    fn arm(&mut self, arm: &TypedArm, (scrutinee, matched): (&TextValue, &Type)) -> TextValue {
+        for binder in arm.pattern.binders() {
+            self.listing
+                .list(&SlotOwner::Local(binder.binding), &binder.ty);
+        }
+        PatternFlows::new(&mut self.context, matched).bind(&arm.pattern, scrutinee);
+        self.block(&arm.body)
     }
 
     fn structure(&mut self, structure: &TypedStructExpr, expr: &TypedExpr) -> TextValue {

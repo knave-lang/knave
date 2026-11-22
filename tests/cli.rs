@@ -8813,15 +8813,6 @@ fn new_writes_a_gitattributes_that_highlights_knave_as_clojure() {
 }
 
 #[test]
-fn new_skips_the_gitattributes_with_the_github_workflow() {
-    let sandbox = Sandbox::new("new_skip_github_gitattributes");
-    sandbox
-        .compiler(&["new", "demo-app", "--skip-github"])
-        .assert_silent_success();
-    assert!(!sandbox.directory.join("demo-app/.gitattributes").exists());
-}
-
-#[test]
 fn new_writes_the_same_agent_skill_for_each_agent_tool() {
     let sandbox = Sandbox::new("new_agent_skill_folders");
     sandbox
@@ -8869,6 +8860,7 @@ fn new_skips_the_github_workflow() {
             "tests/greeting.knv",
         ]
     );
+    assert!(!sandbox.directory.join("demo-app/.gitattributes").exists());
 }
 
 #[test]

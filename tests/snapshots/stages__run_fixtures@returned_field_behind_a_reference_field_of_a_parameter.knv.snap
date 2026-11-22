@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_field_behind_a_reference_field_of_a_parameter.knv
+---
+a

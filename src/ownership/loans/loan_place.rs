@@ -18,10 +18,6 @@ impl LoanPlace {
         })
     }
 
-    pub fn last_field(&self) -> &str {
-        self.fields.last().map_or("", |field| field.as_ref())
-    }
-
     pub fn root(&self) -> BindingId {
         self.root
     }

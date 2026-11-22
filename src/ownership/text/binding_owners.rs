@@ -2,6 +2,7 @@ use rustc_hash::FxHashSet;
 
 use super::slot_owner::SlotOwner;
 use crate::core::BindingId;
+use crate::types::{Type, TypedExpr, TypedExprKind, TypedLeaf};
 
 #[derive(Default)]
 pub struct BindingOwners {
@@ -20,6 +21,16 @@ impl BindingOwners {
 
     pub fn parameters(&self) -> &[BindingId] {
         &self.parameters
+    }
+
+    pub fn writes_a_parameter(&self, argument: &TypedExpr) -> bool {
+        match &argument.kind {
+            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
+                matches!(argument.ty, Type::Mut(..))
+                    && matches!(self.owner(*binding), SlotOwner::Parameter(_))
+            }
+            _ => false,
+        }
     }
 
     pub fn owner(&self, binding: BindingId) -> SlotOwner {

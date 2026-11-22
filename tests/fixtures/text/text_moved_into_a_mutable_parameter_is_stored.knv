@@ -1,0 +1,12 @@
+(defn add-name! ((names (mut (vec string))) name)
+  (push! names name))
+
+(defn put! ((m (mut (hash-map string i64))) key)
+  (set-at! m (key) 1))
+
+(defn main ()
+  (local names (vec))
+  (add-name! (mut names) (str "a" 1))
+  (local m (hash-map))
+  (put! (mut m) (str "k" 1))
+  (println (len names) (len m)))

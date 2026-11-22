@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/text_moved_into_a_mutable_parameter_is_stored.knv
+---
+defn add-name!
+  names[0]: owned
+  name: owned
+defn put!
+  m[0]: owned
+  key: a view, written lent
+defn main
+  local names[0]: owned
+  local m[0]: owned

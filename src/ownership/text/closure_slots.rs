@@ -107,7 +107,7 @@ impl<'l> ClosureSlots<'l> {
         SlotOwner::ClosureResult(self.closure.span)
     }
 
-    fn result_type(&self) -> &'l Type {
+    pub fn result_type(&self) -> &'l Type {
         match &self.closure.ty {
             Type::Function(_, _, result) => result,
             other => other,

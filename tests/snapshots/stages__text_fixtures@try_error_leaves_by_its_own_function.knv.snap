@@ -4,7 +4,7 @@ expression: report
 input_file: tests/fixtures/text/try_error_leaves_by_its_own_function.knv
 ---
 enum label-error
-  text.0: owned, written a view
+  text.0: a 'static view, written a view
 defn checked
   result[1]: owned
 defn guarded

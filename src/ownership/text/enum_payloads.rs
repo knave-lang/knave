@@ -32,6 +32,15 @@ impl<'p> EnumPayloads<'p> {
         Some((owner, Self::field_type(case, field)?))
     }
 
+    pub fn converted_case(&self, target: BindingId, error: &Type) -> Option<SlotOwner> {
+        let conversion =
+            self.program.conversions.iter().find(|conversion| {
+                conversion.enum_binding == target && conversion.error == *error
+            })?;
+        let case = self.enumeration(target)?.variants.get(conversion.variant)?;
+        Some(SlotOwner::Field(target, Self::label(case, 0)))
+    }
+
     pub fn enumeration(&self, binding: BindingId) -> Option<&'p EnumDefinition> {
         self.program.declarations.types().enums().get(binding)
     }

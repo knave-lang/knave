@@ -43,14 +43,11 @@ const VERSION_CHECKED_COMMANDS: [&[&str]; 4] =
     [&["fmt"], &["lint"], &["build"], &["task", "hello"]];
 const COMPILER_TOO_OLD_ERROR: &str = "error[L0736]";
 const NEWER_COMPILER_WARNING: &str = "warning[L0737]";
-const RELEASED_TEXTS_VERSION: &str = "0.18.0";
+const EARLIER_VERSION: &str = "0.18.0";
 const VERSION_MASK: &str = "<version>";
 const MISSING_VERSION_ERROR: &str =
     "::error file=project.knv::project.knv records no :knave \"x.y.z\" on one line\n";
-const RELEASED_SKILL: &str =
-    include_str!("../src/cli/earlier_texts/skills/writing-knave/SKILL.md/0.18.0");
-const RELEASED_WORKFLOW: &str =
-    include_str!("../src/cli/earlier_texts/src/cli/github_workflow.yml/0.18.0");
+const OUTDATED_LINE: &str = "# a line an earlier Knave wrote\n";
 const AGENT_SKILL_PATHS: [&str; 2] = [
     "demo-app/.agents/skills/writing-knave/SKILL.md",
     "demo-app/.claude/skills/writing-knave/SKILL.md",
@@ -482,26 +479,38 @@ exit 101
             .join("\n")
     }
 
-    fn with_released_project(test_name: &str, skipped: &[&str]) -> Self {
+    fn with_outdated_project(test_name: &str, skipped: &[&str]) -> Self {
         let sandbox = Self::new(test_name);
         let arguments = [&["new", "demo-app"], skipped].concat();
         sandbox.compiler(&arguments).assert_silent_success();
-        let workflow = format!("demo-app/{WORKFLOW_FILE}");
-        let released_skill = RELEASED_SKILL.replace(VERSION_SLOT, FILLED_VERSION);
-        let written_skills: Vec<&str> = AGENT_SKILL_PATHS
+        let written_files: Vec<String> = EVERY_OWNED_FILE
             .into_iter()
+            .map(|path| format!("demo-app/{path}"))
             .filter(|path| sandbox.directory.join(path).exists())
             .collect();
-        written_skills
+        written_files
             .into_iter()
             .fold(sandbox, |sandbox, path| {
-                sandbox.with_file(path, &released_skill)
+                let outdated = format!("{}{OUTDATED_LINE}", sandbox.contents(&path));
+                sandbox.with_file(&path, &outdated)
             })
             .with_file("demo-app/project.knv", "(defproject demo-app)\n")
-            .with_file(
-                &workflow,
-                &RELEASED_WORKFLOW.replace(VERSION_SLOT, FILLED_VERSION),
-            )
+            .committed("demo-app")
+    }
+
+    fn with_committed_project(test_name: &str) -> Self {
+        let sandbox = Self::new(test_name);
+        sandbox
+            .compiler(&["new", "demo-app"])
+            .assert_silent_success();
+        sandbox.committed("demo-app")
+    }
+
+    fn committed(self, directory: &str) -> Self {
+        self.git(directory, &["init", "--quiet"]);
+        self.git(directory, &["add", "--all"]);
+        self.git(directory, &["commit", "--quiet", "--message", "Fixture"]);
+        self
     }
 
     fn with_recorded_version(test_name: &str, version: &str) -> Self {
@@ -531,7 +540,7 @@ exit 101
     }
 
     fn without_version(text: &str) -> String {
-        [env!("CARGO_PKG_VERSION"), RELEASED_TEXTS_VERSION]
+        [env!("CARGO_PKG_VERSION"), EARLIER_VERSION]
             .into_iter()
             .fold(text.to_string(), |text, version| {
                 text.replace(version, VERSION_MASK)
@@ -9210,8 +9219,8 @@ fn new_writes_a_workflow_that_fails_on_two_versions_in_one_line() {
 }
 
 #[test]
-fn upgrade_rewrites_the_files_a_release_wrote_and_records_the_version() {
-    let sandbox = Sandbox::with_released_project("upgrade_released_files", &[]);
+fn upgrade_rewrites_each_outdated_file_and_records_the_version() {
+    let sandbox = Sandbox::with_outdated_project("upgrade_outdated_files", &[]);
     let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
     insta::assert_snapshot!(Sandbox::without_version(
         &upgrade.assert_exit_code(0).stderr()
@@ -9223,7 +9232,7 @@ fn upgrade_rewrites_the_files_a_release_wrote_and_records_the_version() {
         assert_eq!(
             sandbox.contents(&format!("demo-app/{path}")),
             sandbox.contents(&format!("fresh-app/{path}")),
-            "`{path}` holds an earlier text"
+            "`{path}` holds an outdated text"
         );
     }
     assert_eq!(
@@ -9236,53 +9245,27 @@ fn upgrade_rewrites_the_files_a_release_wrote_and_records_the_version() {
 }
 
 #[test]
-fn upgrade_keeps_a_workflow_the_user_changed() {
-    let sandbox = Sandbox::with_released_project("upgrade_changed_workflow", &[]);
+fn upgrade_rewrites_a_committed_workflow_with_an_added_step() {
+    let sandbox = Sandbox::with_committed_project("upgrade_changed_workflow");
     let workflow = format!("demo-app/{WORKFLOW_FILE}");
-    let changed = format!(
-        "{}      - name: Build\n        run: knave task build\n",
-        sandbox.contents(&workflow)
-    );
+    let current = sandbox.contents(&workflow);
+    let changed = format!("{current}      - name: Build\n        run: knave task build\n");
     let sandbox = sandbox.with_file(&workflow, &changed);
-    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
-    insta::assert_snapshot!(Sandbox::without_version(
-        &upgrade.assert_exit_code(0).stderr()
-    ));
-    assert_eq!(sandbox.contents(&workflow), changed);
-    sandbox
-        .compiler(&["new", "fresh-app"])
-        .assert_silent_success();
-    for path in AGENT_SKILL_PATHS {
-        assert_eq!(
-            sandbox.contents(path),
-            sandbox.contents(&path.replacen("demo-app", "fresh-app", 1)),
-            "`{path}` holds an earlier text"
-        );
-    }
-}
-
-#[test]
-fn upgrade_keeps_a_current_workflow_the_user_changed_and_shows_only_their_changes() {
-    let sandbox = Sandbox::new("upgrade_changed_current_workflow");
-    sandbox
-        .compiler(&["new", "demo-app"])
-        .assert_silent_success();
-    let workflow = format!("demo-app/{WORKFLOW_FILE}");
-    let changed = format!(
-        "{}      - name: Document\n        run: knave doc\n",
-        sandbox.contents(&workflow)
+    sandbox.git(
+        "demo-app",
+        &["commit", "--quiet", "--all", "--message", "Build"],
     );
-    let sandbox = sandbox.with_file(&workflow, &changed);
     let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
-    insta::assert_snapshot!(Sandbox::without_version(
-        &upgrade.assert_exit_code(0).stderr()
-    ));
-    assert_eq!(sandbox.contents(&workflow), changed);
+    assert_eq!(
+        upgrade.assert_exit_code(0).stderr(),
+        format!("rewrote `{WORKFLOW_FILE}`\n")
+    );
+    assert_eq!(sandbox.contents(&workflow), current);
 }
 
 #[test]
 fn upgrade_writes_no_skill_into_a_project_made_without_one() {
-    let sandbox = Sandbox::with_released_project("upgrade_without_skill", &["--skip-agent-skill"]);
+    let sandbox = Sandbox::with_outdated_project("upgrade_without_skill", &["--skip-agent-skill"]);
     sandbox
         .compiler_in("demo-app", &["upgrade"])
         .assert_exit_code(0);
@@ -9457,7 +9440,7 @@ fn a_compiler_newer_than_the_project_warns_when_a_library_fails_to_load() {
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             &format!(
-                "(defproject app :knave \"{RELEASED_TEXTS_VERSION}\" (libraries (lib1 :path \"../lib1\")))\n"
+                "(defproject app :knave \"{EARLIER_VERSION}\" (libraries (lib1 :path \"../lib1\")))\n"
             ),
         )
         .with_file(
@@ -9680,7 +9663,7 @@ fn upgrade_reads_only_the_root_project_file() {
         ),
     ];
     for (test_name, libraries) in unreachable_libraries {
-        let sandbox = Sandbox::with_released_project(test_name, &[]).with_file(
+        let sandbox = Sandbox::with_outdated_project(test_name, &[]).with_file(
             "demo-app/project.knv",
             &format!("(defproject demo-app {libraries})\n"),
         );
@@ -9697,7 +9680,7 @@ fn upgrade_reads_only_the_root_project_file() {
             assert_eq!(
                 sandbox.contents(&format!("demo-app/{path}")),
                 sandbox.contents(&format!("fresh-app/{path}")),
-                "`{path}` holds an earlier text"
+                "`{path}` holds an outdated text"
             );
         }
     }

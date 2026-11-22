@@ -2,9 +2,8 @@ use std::fs;
 use std::path::Path;
 
 use super::exit_status::ExitStatus;
-use super::kept_file::KeptFile;
 use super::new_components::NewComponents;
-use super::owned_file::{OwnedFile, OwnedFileState};
+use super::owned_file::OwnedFile;
 use super::program_file::ProgramFile;
 use super::project_file_edit::ProjectFileEdit;
 use super::standard_error::StandardError;
@@ -58,13 +57,10 @@ impl UpgradeCommand {
         let Ok(written) = fs::read_to_string(&path) else {
             return Ok(false);
         };
-        match file.state(&written) {
-            OwnedFileState::Current => Ok(false),
-            OwnedFileState::WrittenByEarlierKnave => Self::rewrite(&path, file),
-            OwnedFileState::ChangedByUser => {
-                KeptFile::new(file, &written).report();
-                Ok(true)
-            }
+        if written == file.current_text() {
+            Ok(false)
+        } else {
+            Self::rewrite(&path, file)
         }
     }
 

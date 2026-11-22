@@ -1,6 +1,7 @@
 use super::typed::{TypedDefinition, TypedProgram};
 use crate::core::BindingId;
 
+#[derive(Clone, Copy)]
 pub struct ProgramDefinitions<'p> {
     program: &'p TypedProgram,
 }

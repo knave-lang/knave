@@ -1,15 +1,21 @@
 use crate::core::{BindingId, Literal};
 use crate::reader::NumberValue;
-use crate::types::{ClauseChoice, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram};
+use crate::types::{
+    ClauseChoice, ProgramDefinitions, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+};
 
 #[derive(Clone, Copy)]
 pub(super) struct ConstantValues<'p> {
     program: &'p TypedProgram,
+    definitions: ProgramDefinitions<'p>,
 }
 
 impl<'p> ConstantValues<'p> {
     pub fn new(program: &'p TypedProgram) -> Self {
-        Self { program }
+        Self {
+            program,
+            definitions: ProgramDefinitions::new(program),
+        }
     }
 
     pub fn has_value(&self, operand: &TypedExpr, value: i128) -> bool {
@@ -33,11 +39,8 @@ impl<'p> ConstantValues<'p> {
     }
 
     pub fn definition_value(&self, binding: BindingId) -> Option<&'p TypedExpr> {
-        self.program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions)
-            .find(|definition| definition.binding == binding)
+        self.definitions
+            .find(binding)
             .map(|definition| &definition.value)
     }
 

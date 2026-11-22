@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use super::definition_kind::DefinitionKind;
 use super::derive_candidate::DeriveCandidate;
+use super::implementor::Implementor;
 use super::trait_declarations::TraitDeclarations;
-use super::trait_rows_reach::Implementor;
 use super::ty::Type;
 use super::type_declarations::TypeDeclarations;
 use crate::core::BindingId;

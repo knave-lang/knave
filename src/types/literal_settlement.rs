@@ -73,8 +73,9 @@ impl<'c> LiteralSettlement<'c> {
 mod tests {
     use super::*;
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId, PrimitiveType};
+    use crate::types::implementor::Implementor;
     use crate::types::rust_trait::RustTrait;
-    use crate::types::trait_rows_reach::{Implementor, LoweredRows};
+    use crate::types::trait_rows_reach::LoweredRows;
     use crate::types::ty::Scheme;
     use crate::types::unifier::LiteralKind;
 

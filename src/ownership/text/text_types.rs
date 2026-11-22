@@ -12,17 +12,12 @@ impl<'p> TextTypes<'p> {
     }
 
     pub fn structure_of(&self, ty: &Type) -> Option<(BindingId, &'p StructDefinition)> {
-        match ty {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => self.structure_of(inner),
-            Type::Named(binding, _) => self
-                .program
-                .declarations
-                .types()
-                .structs()
-                .get(*binding)
-                .map(|structure| (*binding, structure)),
-            _ => None,
-        }
+        self.program
+            .declarations
+            .types()
+            .structs()
+            .behind(ty)
+            .map(|found| (found.binding, found.definition))
     }
 
     pub fn payload_argument(&self, variant: BindingId, field: usize) -> Option<usize> {

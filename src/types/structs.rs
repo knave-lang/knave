@@ -46,6 +46,15 @@ impl StructDefinition {
         })
     }
 
+    pub fn holds_reference_in(&self, field: &str, arguments: &[Type]) -> bool {
+        self.bare_text_fields
+            .iter()
+            .any(|bare| bare.as_ref() == field)
+            || self
+                .instantiated_field(field, arguments)
+                .is_some_and(|field_type| field_type.is_reference())
+    }
+
     pub fn instantiated_fields(&self, arguments: &[Type]) -> Vec<(Rc<str>, Type)> {
         let replacements = self.replacements(arguments);
         self.fields
@@ -70,6 +79,12 @@ impl StructDefinition {
     }
 }
 
+pub struct StructBehind<'t, 'a> {
+    pub binding: BindingId,
+    pub definition: &'t StructDefinition,
+    pub arguments: &'a [Type],
+}
+
 #[derive(Clone, Default)]
 pub struct StructTable {
     structs: FxHashMap<BindingId, StructDefinition>,
@@ -78,6 +93,18 @@ pub struct StructTable {
 impl StructTable {
     pub fn add(&mut self, binding: BindingId, definition: StructDefinition) {
         self.structs.insert(binding, definition);
+    }
+
+    pub fn behind<'a>(&self, ty: &'a Type) -> Option<StructBehind<'_, 'a>> {
+        match ty {
+            Type::Ref(_, inner) | Type::Mut(_, inner) => self.behind(inner),
+            Type::Named(binding, arguments) => self.get(*binding).map(|definition| StructBehind {
+                binding: *binding,
+                definition,
+                arguments,
+            }),
+            _ => None,
+        }
     }
 
     pub fn get(&self, binding: BindingId) -> Option<&StructDefinition> {

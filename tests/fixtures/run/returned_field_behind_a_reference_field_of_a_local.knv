@@ -1,0 +1,13 @@
+(defstruct person
+  :name string)
+
+(defstruct pin
+  :at (ref person))
+
+(defn f ((who (ref person)))
+  (local p (->pin :at who))
+  (:name (:at p)))
+
+(defn main ()
+  (local x (->person :name (str "a")))
+  (println (f (ref x))))

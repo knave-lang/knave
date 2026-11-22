@@ -285,7 +285,7 @@ pub use returned_values::ReturnedValues;
 pub use rust_trait::RustTrait;
 pub use rust_types::{RustType, RustTypeTable};
 pub use scheme_bindings::SchemeBindings;
-pub use structs::{StructDefinition, StructTable};
+pub use structs::{StructBehind, StructDefinition, StructTable};
 pub use structural_trait::StructuralTrait;
 pub use structural_uses::{StructuralUse, StructuralUses};
 pub use synthetic_template::SyntheticTemplate;

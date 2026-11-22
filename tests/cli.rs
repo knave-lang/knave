@@ -17,9 +17,10 @@ use serde_json::{Map, Value, json};
 const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
 const NEW_PROJECT_CHECKS: [&[&str]; 3] = [&["fmt", "--check"], &["lint"], &["test"]];
 const VERSION_SLOT: &str = "{knave-version}";
-const EVERY_NEW_FILE: [&str; 7] = [
+const EVERY_NEW_FILE: [&str; 8] = [
     ".agents/skills/writing-knave/SKILL.md",
     ".claude/skills/writing-knave/SKILL.md",
+    ".gitattributes",
     ".github/workflows/knave.yml",
     ".gitignore",
     "project.knv",
@@ -27,6 +28,7 @@ const EVERY_NEW_FILE: [&str; 7] = [
     "tests/greeting.knv",
 ];
 const WORKFLOW_FILE: &str = ".github/workflows/knave.yml";
+const LINGUIST_LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false\n";
 const VERSION_STEP: &str = "name: Read the Knave version";
 const GITHUB_BASH: [&str; 5] = ["--noprofile", "--norc", "-eo", "pipefail", "-c"];
 const EVERY_OWNED_FILE: [&str; 3] = [
@@ -8801,6 +8803,24 @@ fn new_writes_a_gitignore_that_lists_the_build_and_doc_folders() {
 }
 
 #[test]
+fn new_writes_a_gitattributes_that_highlights_knave_as_clojure() {
+    let sandbox = Sandbox::new("new_gitattributes");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    assert_eq!(sandbox.contents("demo-app/.gitattributes"), LINGUIST_LINE);
+}
+
+#[test]
+fn new_skips_the_gitattributes_with_the_github_workflow() {
+    let sandbox = Sandbox::new("new_skip_github_gitattributes");
+    sandbox
+        .compiler(&["new", "demo-app", "--skip-github"])
+        .assert_silent_success();
+    assert!(!sandbox.directory.join("demo-app/.gitattributes").exists());
+}
+
+#[test]
 fn new_writes_the_same_agent_skill_for_each_agent_tool() {
     let sandbox = Sandbox::new("new_agent_skill_folders");
     sandbox
@@ -8859,6 +8879,7 @@ fn new_skips_the_agent_skill() {
     assert_eq!(
         sandbox.project_files("demo-app"),
         [
+            ".gitattributes",
             ".github/workflows/knave.yml",
             ".gitignore",
             "project.knv",
@@ -8879,6 +8900,7 @@ fn new_skips_git_and_keeps_the_github_workflow() {
         [
             ".agents/skills/writing-knave/SKILL.md",
             ".claude/skills/writing-knave/SKILL.md",
+            ".gitattributes",
             ".github/workflows/knave.yml",
             "project.knv",
             "src/main.knv",
@@ -9274,6 +9296,7 @@ fn upgrade_writes_no_skill_into_a_project_made_without_one() {
     assert_eq!(
         sandbox.project_files("demo-app"),
         [
+            ".gitattributes",
             ".github/workflows/knave.yml",
             ".gitignore",
             "project.knv",

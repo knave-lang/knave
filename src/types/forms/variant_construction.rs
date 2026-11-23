@@ -78,13 +78,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::VariantConstruction;
-    use crate::core::{BindingId, Expr, ExprKind, Leaf, Literal, PrimitiveType, VariantInfo};
+    use crate::core::{BindingId, Expr, Literal, PrimitiveType, VariantInfo};
     use crate::diagnostic::Diagnostic;
-    use crate::source::{SourceId, Span};
     use crate::types::expectation::Expectation;
+    use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{ExpectedChildTyping, ExpressionForm, VariantSites};
     use crate::types::ty::Type;
-    use crate::types::typed::{TryErrorConversion, TypedExpr, TypedExprKind, TypedLeaf};
+    use crate::types::typed::{TryErrorConversion, TypedExpr, TypedExprKind};
     use crate::types::variant_site::VariantSite;
 
     struct VariantFixture {
@@ -117,23 +117,16 @@ mod tests {
             hint: Option<&Type>,
         ) -> Result<TypedExpr, Diagnostic> {
             let arguments: Vec<Expr> = (0..arguments).map(|_| Self::argument()).collect();
-            VariantConstruction::new(Self::VARIANT, &arguments, Self::span())
+            VariantConstruction::new(Self::VARIANT, &arguments, FormFixtures::span())
                 .type_against(self, hint.map(Expectation::plain))
         }
 
         fn argument() -> Expr {
-            Expr::new(
-                ExprKind::Leaf(Leaf::Literal(Literal::Bool(true))),
-                Self::span(),
-            )
+            FormFixtures::leaf(Literal::Bool(true))
         }
 
         fn literal() -> TypedExpr {
-            TypedExpr {
-                kind: TypedExprKind::Leaf(TypedLeaf::Literal(Literal::Bool(true))),
-                ty: Type::bool(),
-                span: Self::span(),
-            }
+            FormFixtures::typed_leaf(Literal::Bool(true), Type::bool())
         }
 
         fn payload() -> Type {
@@ -142,10 +135,6 @@ mod tests {
 
         fn type_argument() -> Type {
             Type::Primitive(PrimitiveType::U8)
-        }
-
-        fn span() -> Span {
-            Span::new(SourceId::new(0), 0..1)
         }
     }
 

@@ -3,6 +3,8 @@ mod capabilities;
 mod conditional;
 mod dereference;
 mod expression_form;
+#[cfg(test)]
+mod form_fixtures;
 mod if_operands;
 mod variant_construction;
 

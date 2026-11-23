@@ -69,9 +69,10 @@ mod tests {
     use super::Conditional;
     use crate::core::{Expr, ExprKind, Leaf, Literal, PrimitiveType};
     use crate::diagnostic::Diagnostic;
-    use crate::source::{SourceId, Span};
+    use crate::source::Span;
     use crate::types::expectation::Expectation;
     use crate::types::forms::IfOperands;
+    use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{ChildTyping, ExpressionForm, MacroOrigins, TypeFitting};
     use crate::types::problems::MismatchContext;
     use crate::types::ty::Type;
@@ -115,25 +116,17 @@ mod tests {
                 then,
                 otherwise,
             };
-            Conditional::new(operands, Self::span(0))
+            Conditional::new(operands, FormFixtures::span_at(0))
                 .type_against(self, hint)
                 .unwrap_or_else(|_| panic!("the fixture fits every type"))
         }
 
         fn boolean(at: usize) -> Expr {
-            Self::literal(Literal::Bool(true), at)
+            FormFixtures::leaf_at(Literal::Bool(true), at)
         }
 
         fn text(at: usize) -> Expr {
-            Self::literal(Literal::String(Rc::from("x")), at)
-        }
-
-        fn literal(literal: Literal, at: usize) -> Expr {
-            Expr::new(ExprKind::Leaf(Leaf::Literal(literal)), Self::span(at))
-        }
-
-        fn span(at: usize) -> Span {
-            Span::new(SourceId::new(0), at..at + 1)
+            FormFixtures::leaf_at(Literal::String(Rc::from("x")), at)
         }
 
         fn text_type() -> Type {
@@ -201,7 +194,7 @@ mod tests {
             (
                 Type::bool(),
                 ConditionalFixture::text_type(),
-                ConditionalFixture::span(1)
+                FormFixtures::span_at(1)
             )
         );
     }
@@ -218,7 +211,7 @@ mod tests {
             (
                 Type::bool(),
                 ConditionalFixture::text_type(),
-                ConditionalFixture::span(3)
+                FormFixtures::span_at(3)
             )
         );
     }

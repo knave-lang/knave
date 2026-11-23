@@ -3,6 +3,7 @@ use std::path::Path;
 
 use super::announced_write::AnnouncedWrite;
 use super::exit_status::ExitStatus;
+use super::line_ending::LineEnding;
 use super::line_upgrade::LineUpgrade;
 use super::new_file::NewFile;
 
@@ -13,8 +14,6 @@ pub struct OwnedLine {
 }
 
 impl OwnedLine {
-    const LF: &str = "\n";
-    const CRLF: &str = "\r\n";
     const BYTE_ORDER_MARK: &str = "\u{feff}";
 
     pub const fn new(
@@ -85,20 +84,13 @@ impl OwnedLine {
     }
 
     fn appended_to(&self, written: &str) -> String {
-        let ending = Self::line_ending_of(written);
+        let ending = LineEnding::of_first_line(written).text();
         let separator = if written.is_empty() || written.ends_with('\n') {
             ""
         } else {
             ending
         };
         format!("{written}{separator}{}{ending}", self.line)
-    }
-
-    fn line_ending_of(written: &str) -> &'static str {
-        match written.split_once('\n') {
-            Some((first, _)) if first.ends_with('\r') => Self::CRLF,
-            _ => Self::LF,
-        }
     }
 
     fn owns(&self, line: &str) -> bool {

@@ -17,14 +17,13 @@ mod variant_construction;
 pub(super) use body::Body;
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
-    AnnotationLowering, ChildTyping, ExpectedChildTyping, LocalScope, MacroOrigins, Obligations,
-    OperandTyping, PlaceReads, TypeFitting, TypeTextRecords, Unknowns, VariantSites,
+    AnnotationLowering, BodyTyping, ChildTyping, ExpectedChildTyping, LocalScope, MacroOrigins,
+    Obligations, OperandTyping, PlaceReads, TypeFitting, TypeTextRecords, Unknowns, VariantSites,
 };
 pub(super) use conditional::Conditional;
 pub(super) use dereference::Dereference;
 pub(super) use expression_form::ExpressionForm;
 pub(super) use if_operands::IfOperands;
-pub(super) use local_binding::LocalBinding;
 pub(super) use sequence::Sequence;
 pub(super) use type_text_request::TypeTextRequest;
 pub(super) use variant_construction::VariantConstruction;

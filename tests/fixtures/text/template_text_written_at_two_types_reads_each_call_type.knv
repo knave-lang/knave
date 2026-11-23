@@ -1,0 +1,10 @@
+(defn main ()
+  (local made (str "a" 1))
+  (local lent
+    ((rust "{0}"
+       (fn ((ref string)) (ref string)))
+     (ref made)))
+  (local created
+    ((rust "{0}" (fn (string) string))
+     (str "b" 2)))
+  (println lent created))

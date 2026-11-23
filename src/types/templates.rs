@@ -53,7 +53,7 @@ impl TemplateBorrows {
                 }
                 self.declared.insert(binding, registered);
             }
-            TemplateName::Inline(text) => self.inline.register(text, (scheme, ties)),
+            TemplateName::Inline(text) => self.inline.register(text, scheme, ties),
         }
     }
 

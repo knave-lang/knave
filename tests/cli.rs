@@ -11860,6 +11860,100 @@ fn a_missing_export_of_a_git_library_asks_for_another_commit() {
 }
 
 #[test]
+fn the_listing_shows_each_lending_library_as_a_block() {
+    let sandbox = LendingLibraries::both("library_task_listing").with_file(
+        "app/tasks/own.knv",
+        "(deftask deploy () \"Deploys the app.\" (println \"deploying\"))\n",
+    );
+    let listing = sandbox.compiler_in("app", &["task"]);
+    insta::assert_snapshot!(listing.assert_exit_code(0).stdout());
+}
+
+#[test]
+fn the_listing_without_own_tasks_starts_with_the_first_block() {
+    let listing =
+        LendingLibraries::lint_only("library_task_listing_alone").compiler_in("app", &["task"]);
+    insta::assert_snapshot!(listing.assert_exit_code(0).stdout());
+}
+
+#[test]
+fn a_failing_library_drops_its_block_and_fails_the_listing() {
+    let sandbox = LendingLibraries::both("library_task_listing_failure").with_file(
+        "other/project.knv",
+        "(defproject other (exported-tasks chek))\n",
+    );
+    let listing = sandbox.compiler_in("app", &["task"]);
+    let listing = listing.assert_exit_code(1);
+    assert_eq!(
+        (listing.stdout(), listing.stderr().contains("error[L0367]")),
+        (
+            "lint\n  check [--path .]  Checks the files under a path.\n  where\n".to_string(),
+            true
+        )
+    );
+}
+
+#[test]
+fn check_and_lint_check_each_lending_librarys_tasks() {
+    let sandbox = LendingLibraries::both("library_task_check")
+        .with_file(
+            "other/project.knv",
+            "(defproject other (exported-tasks chek))\n",
+        )
+        .with_file("app/src/main.knv", "(defn main () (println \"app\"))\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    let lint = sandbox.compiler_in("app", &["lint"]);
+    let check = check.assert_exit_code(1).stderr();
+    let lint = lint.assert_exit_code(1).stderr();
+    assert_eq!(check, lint);
+    assert!(
+        check.contains("note: library `other` exports this name"),
+        "{check}"
+    );
+}
+
+#[test]
+fn check_applies_no_lending_librarys_lint_levels() {
+    LendingLibraries::lint_only("library_task_check_levels")
+        .with_file("app/src/main.knv", "(defn main () (println \"app\"))\n")
+        .compiler_in("app", &["check"])
+        .assert_exit_code(0);
+}
+
+#[test]
+fn a_linter_library_lints_a_dependent_that_has_no_tasks() {
+    let sandbox = Sandbox::new("ledelint_like")
+        .with_file(
+            "linter/project.knv",
+            "(defproject linter (exported-tasks linter))\n",
+        )
+        .with_file(
+            "linter/tasks/linter.knv",
+            "(deftask linter (:path string \".\")
+  \"Counts the Knave files under a path.\"
+  (println (str \"linted \" path)))
+",
+        )
+        .with_file(
+            "shop/project.knv",
+            "(defproject shop (libraries (linter :path \"../linter\")))\n",
+        )
+        .with_file("shop/src/main.knv", "(defn main () (println \"shop\"))\n");
+    let listing = sandbox.compiler_in("shop", &["task"]);
+    let run = sandbox.compiler_in("shop/src", &["task", "linter", "--path", "src"]);
+    assert_eq!(
+        [
+            listing.assert_exit_code(0).stdout(),
+            run.assert_exit_code(0).stdout()
+        ],
+        [
+            "linter\n  linter [--path .]  Counts the Knave files under a path.\n",
+            "linted src\n"
+        ]
+    );
+}
+
+#[test]
 fn a_project_without_tasks_or_lending_libraries_is_a_usage_error() {
     let task = Sandbox::new("task_no_tasks_no_lenders")
         .with_file("hints/project.knv", "(defproject hints)\n")

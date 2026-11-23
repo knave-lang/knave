@@ -5,6 +5,7 @@ use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::library_task_resolver::LibraryTaskResolver;
 use super::library_task_run::LibraryTaskRun;
+use super::library_tasks::LibraryTasks;
 use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
 use super::own_tasks::OwnTasks;
@@ -106,13 +107,52 @@ impl TaskCommand {
     }
 
     fn list(terminal: &mut Terminal, project: LocatedProject) -> Result<ExitStatus, ExitStatus> {
+        let libraries = project.task_layout().libraries().to_vec();
+        let resolver = LibraryTaskResolver::new(&libraries);
+        let (mut listing, own_names) = Self::own_listing(terminal, project)?;
+        let mut failure = Ok(());
+        for library in resolver.lenders() {
+            let block = resolver.block_arguments(library, &own_names);
+            let lent = LibraryTasks::within(terminal, library, |terminal, tasks| {
+                let LibraryTasks {
+                    catalog, exports, ..
+                } = tasks;
+                exports.result()?;
+                catalog.listing(terminal, &block)
+            });
+            match lent {
+                Ok(block) => Self::append_block(&mut listing, &block),
+                Err(status) => failure = Err(status),
+            }
+        }
+        let written = StandardOutput::locked().write(listing);
+        failure.map(|()| written)
+    }
+
+    fn own_listing(
+        terminal: &mut Terminal,
+        project: LocatedProject,
+    ) -> Result<(String, Vec<Rc<str>>), ExitStatus> {
         if !project.task_layout().has_tasks() {
-            return Ok(ExitStatus::Success);
+            return Ok((String::new(), Vec::new()));
         }
         let tree = EntryTree::of_tasks(project);
-        let catalog = TaskCatalog::load(&tree, terminal, None)?;
-        let listing = catalog.listing(terminal)?;
-        Ok(StandardOutput::locked().write(listing))
+        let (catalog, exports) = TaskCatalog::load(&tree, terminal, None)?;
+        exports.result()?;
+        let listing = catalog.listing(terminal, "")?;
+        let names = catalog
+            .names(terminal)?
+            .iter()
+            .map(|name| Rc::from(name.as_str()))
+            .collect();
+        Ok((listing, names))
+    }
+
+    fn append_block(listing: &mut String, block: &str) {
+        if !listing.is_empty() {
+            listing.push('\n');
+        }
+        listing.push_str(block);
     }
 
     fn project(terminal: &mut Terminal) -> Result<LocatedProject, ExitStatus> {

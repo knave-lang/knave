@@ -8,6 +8,7 @@ use super::distinct_output::DistinctOutput;
 use super::entry_tree::EntryTree;
 use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
+use super::export_status::ExportStatus;
 use super::exported_task_names::ExportedTaskNames;
 use super::form_block::FormBlock;
 use super::program_file::ProgramFile;
@@ -33,7 +34,6 @@ struct TaskLookup {
 pub struct TaskCatalog {
     request: EvaluationRequest,
     names_lookup: TaskLookupCall,
-    exports: Result<(), ExitStatus>,
 }
 
 pub struct EnteredProgram {
@@ -45,7 +45,6 @@ pub struct EnteredProgram {
 impl TaskCatalog {
     pub const LOOKUP_SOURCE: &'static str = "<task lookup>";
     pub const RUNNER_SOURCE: &'static str = "<task runner>";
-    const LISTING: &'static str = "(task-listing)";
     const LIBRARY: &'static str = ":library";
     const GIT_LIBRARY: &'static str = ":git-library";
     const SEPARATOR: &'static str = " ";
@@ -66,10 +65,10 @@ impl TaskCatalog {
         tree: &EntryTree,
         terminal: &mut Terminal,
         lender: Option<&DirectLibrary>,
-    ) -> Result<Self, ExitStatus> {
+    ) -> Result<(Self, ExportStatus), ExitStatus> {
         let modules = Self::tree_arguments(&tree.module_paths()?);
         let exported_tasks = Self::exported_task_names(tree)?;
-        let mut catalog = Self {
+        let catalog = Self {
             request: EvaluationRequest {
                 module: tree.load(terminal)?,
                 evaluated: Vec::new(),
@@ -78,13 +77,12 @@ impl TaskCatalog {
                 "(task-names {})",
                 modules.join(Self::SEPARATOR)
             )),
-            exports: Ok(()),
         };
-        if let Some(names) = exported_tasks {
-            let check = Self::export_check(lender);
-            catalog.exports = catalog.checked_exports(terminal, &names, &check);
-        }
-        Ok(catalog)
+        let exports = match exported_tasks {
+            Some(names) => catalog.checked_exports(terminal, &names, &Self::export_check(lender)),
+            None => Ok(()),
+        };
+        Ok((catalog, ExportStatus::new(exports)))
     }
 
     fn export_check(lender: Option<&DirectLibrary>) -> String {
@@ -154,17 +152,12 @@ impl TaskCatalog {
             .collect())
     }
 
-    pub fn exports(&self) -> Result<(), ExitStatus> {
-        self.exports
-    }
-
-    pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
+    pub fn listing(&self, terminal: &mut Terminal, block: &str) -> Result<String, ExitStatus> {
         self.names(terminal)?;
-        self.exports?;
-        let listing = TaskLookupCall::new(Self::LISTING.to_string());
-        let lookup = self.expanded(terminal, &listing)?;
+        let call = TaskLookupCall::new(format!("(task-listing{block})"));
+        let lookup = self.expanded(terminal, &call)?;
         terminal.source_report().print(&lookup.warnings).passed()?;
-        let listing = lookup.text(Self::LISTING)?;
+        let listing = lookup.text(call.text())?;
         Ok(if listing.is_empty() {
             listing
         } else {

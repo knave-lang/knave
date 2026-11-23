@@ -5,6 +5,7 @@ use super::exit_status::ExitStatus;
 use super::standard_error::StandardError;
 use crate::diagnostic::SimilarName;
 use crate::language::Language;
+use crate::reader::StringLiteral;
 
 pub struct LibraryTaskResolver<'l> {
     libraries: &'l [DirectLibrary],
@@ -21,6 +22,29 @@ impl<'l> LibraryTaskResolver<'l> {
         self.libraries
             .iter()
             .any(|library| !library.exported_tasks.is_empty())
+    }
+
+    pub fn lenders(&self) -> Vec<&'l DirectLibrary> {
+        let mut lenders: Vec<&'l DirectLibrary> = self
+            .libraries
+            .iter()
+            .filter(|library| !library.exported_tasks.is_empty())
+            .collect();
+        lenders.sort_by(|left, right| left.name.cmp(&right.name));
+        lenders
+    }
+
+    pub fn block_arguments(&self, library: &DirectLibrary, own: &[Rc<str>]) -> String {
+        let library_name = format!(" :library {}", StringLiteral::quoted(&library.name));
+        let rows = library.exported_tasks.iter().map(|task| {
+            let exported = format!(" :exported {}", StringLiteral::quoted(task));
+            if self.qualifies(task, own) {
+                format!("{exported} :qualified {}", StringLiteral::quoted(task))
+            } else {
+                exported
+            }
+        });
+        std::iter::once(library_name).chain(rows).collect()
     }
 
     pub fn qualified(&self, library: &str, task: &str) -> Result<&'l DirectLibrary, ExitStatus> {
@@ -128,18 +152,21 @@ impl<'l> LibraryTaskResolver<'l> {
     }
 
     fn row_name(&self, library: &DirectLibrary, task: &str, own: &[Rc<str>]) -> String {
-        let shadowed = own.iter().any(|name| name.as_ref() == task);
-        let shared = self
-            .libraries
-            .iter()
-            .filter(|other| Self::exports(other, task))
-            .count()
-            > 1;
-        if shadowed || shared {
+        if self.qualifies(task, own) {
             format!("{}/{task}", library.name)
         } else {
             task.to_string()
         }
+    }
+
+    fn qualifies(&self, task: &str, own: &[Rc<str>]) -> bool {
+        let shadowed = own.iter().any(|name| name.as_ref() == task);
+        let exporters = self
+            .libraries
+            .iter()
+            .filter(|library| Self::exports(library, task))
+            .count();
+        shadowed || exporters > 1
     }
 
     fn listed(items: &[String], conjunction: &str) -> String {

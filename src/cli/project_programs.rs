@@ -4,6 +4,8 @@ use rustc_hash::FxHashSet;
 
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
+use super::export_status::ExportStatus;
+use super::library_tasks::LibraryTasks;
 use super::loaded_programs::LoadedPrograms;
 use super::located_program::LocatedProgram;
 use super::located_project::LocatedProject;
@@ -104,21 +106,29 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> LocatedProject {
+        let libraries = project.task_layout().libraries().to_vec();
         let tree = EntryTree::of_tasks(project);
         if tree.holds_tasks() {
             match TaskCatalog::load(&tree, terminal, None) {
-                Ok(catalog) => Self::task_program(terminal, &catalog, loaded),
+                Ok(loaded_catalog) => Self::task_program(terminal, loaded_catalog, loaded),
                 Err(status) => loaded.fail(status),
             }
+        }
+        if let Err(status) = LibraryTasks::check_lenders(terminal, &libraries) {
+            loaded.fail(status);
         }
         Self::project_of(tree)
     }
 
-    fn task_program(terminal: &mut Terminal, catalog: &TaskCatalog, loaded: &mut LoadedPrograms) {
-        if let Err(status) = catalog.exports() {
+    fn task_program(
+        terminal: &mut Terminal,
+        (catalog, exports): (TaskCatalog, ExportStatus),
+        loaded: &mut LoadedPrograms,
+    ) {
+        if let Err(status) = exports.result() {
             loaded.fail(status);
         }
-        let program = TaskRunners::new(catalog).program(terminal);
+        let program = TaskRunners::new(&catalog).program(terminal);
         loaded.add(program.map(|entered| ProjectProgram {
             file: entered.file,
             program: entered.program,

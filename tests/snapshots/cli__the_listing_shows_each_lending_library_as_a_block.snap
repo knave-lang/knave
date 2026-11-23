@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: listing.assert_exit_code(0).stdout()
+---
+deploy  Deploys the app.
+
+lint
+  lint/check [--path .]  Checks the files under a path.
+  where
+
+other
+  other/check

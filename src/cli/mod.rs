@@ -53,6 +53,7 @@ mod expanded_page;
 mod expansion;
 mod explanation_lookup;
 mod explanation_page;
+mod export_status;
 mod exported_task_names;
 #[cfg(test)]
 mod fake_crates;
@@ -77,6 +78,7 @@ mod leveled_diagnostics;
 mod library_task;
 mod library_task_resolver;
 mod library_task_run;
+mod library_tasks;
 mod library_walk;
 mod lint;
 mod lint_levels;

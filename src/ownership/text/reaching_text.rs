@@ -8,8 +8,10 @@ impl ReachingText {
     pub const BORROWED: Self = Self(1 << 2);
     pub const LENT: Self = Self(1 << 3);
     pub const ASSUMED: Self = Self(1 << 4);
+    pub const LENT_MIXED: Self = Self(1 << 5);
     pub const SHORT_LIVED_VIEWS: Self = Self(Self::BORROWED.0 | Self::ASSUMED.0);
-    pub const SHORT_LIVED: Self = Self(Self::SHORT_LIVED_VIEWS.0 | Self::LENT.0);
+    pub const SHORT_LIVED: Self =
+        Self(Self::SHORT_LIVED_VIEWS.0 | Self::LENT.0 | Self::LENT_MIXED.0);
 
     pub fn with(self, other: Self) -> Self {
         Self(self.0 | other.0)
@@ -44,6 +46,11 @@ mod tests {
     #[test]
     fn an_assumed_view_is_short_lived() {
         assert!(ReachingText::ASSUMED.is_short_lived());
+    }
+
+    #[test]
+    fn a_lent_mixed_value_is_short_lived() {
+        assert!(ReachingText::LENT_MIXED.is_short_lived());
     }
 
     #[test]

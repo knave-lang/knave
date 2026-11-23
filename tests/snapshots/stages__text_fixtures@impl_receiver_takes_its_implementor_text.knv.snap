@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/impl_receiver_takes_its_implementor_text.knv
+---
+method shout
+  text: a view
+  result: owned
+method shout
+  text: lent
+  result: owned
+method keep
+  text: owned
+  result: a view, written owned

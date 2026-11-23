@@ -115,7 +115,7 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
     fn need_refuses(&self, flow: &Flow, (target, arriving): (NodeId, ReachingText)) -> bool {
         match self.classes.need(target) {
             Some(Need::Owned) => arriving.holds(ReachingText::STATIC),
-            Some(Need::View) | None => false,
+            Some(Need::View | Need::Lent) | None => false,
             Some(Need::OwnedOrMixed) => {
                 let carries_text = arriving != ReachingText::NOTHING
                     || matches!(flow.source, Source::Slot(node) if self.classes.is_read_only_parameter(node));

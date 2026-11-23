@@ -95,7 +95,7 @@
 (def bindings-with-body
   (fn (form bindings)
     (if (empty? (drop form 2))
-      (bindings-without-body form bindings)
+      (bindings-without-body form)
       bindings)))
 
 (def form-name
@@ -214,7 +214,7 @@
         false))))
 
 (def bindings-without-body
-  (fn (form bindings)
+  (fn (form)
     (fail (string "`" (form-name form) "` has no body")
       form
       "write the forms that use the bindings after the list"

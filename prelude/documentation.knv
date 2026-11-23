@@ -363,7 +363,7 @@
   (fn (page terms)
     (map-list (marked-homes (page-links page)
                             terms
-                            (map-list terms (fn (term) unmarked-home)))
+                            (map-list terms (fn (_term) unmarked-home)))
               chosen-home)))
 
 (def unmarked-home (list (list) (list)))

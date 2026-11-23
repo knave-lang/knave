@@ -9455,6 +9455,31 @@ fn upgrade_reads_every_knave_file_before_it_writes_one() {
 }
 
 #[test]
+fn upgrade_takes_knave_files_with_crlf_endings_as_current() {
+    let sandbox = Sandbox::with_committed_project("upgrade_crlf_files");
+    let paths: Vec<String> = EVERY_OWNED_FILE
+        .into_iter()
+        .map(|path| format!("demo-app/{path}"))
+        .collect();
+    let sandbox = paths.iter().fold(sandbox, |sandbox, path| {
+        let crlf = sandbox.contents(path).replace('\n', "\r\n");
+        sandbox.with_file(path, &crlf)
+    });
+    sandbox.git(
+        "demo-app",
+        &["commit", "--quiet", "--all", "--message", "Crlf"],
+    );
+    let before = sandbox.files_with_bytes("demo-app");
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    let stderr = upgrade.assert_exit_code(0).stderr();
+    assert!(
+        stderr.starts_with("note: the project already uses Knave"),
+        "{stderr}"
+    );
+    assert_eq!(sandbox.files_with_bytes("demo-app"), before);
+}
+
+#[test]
 fn upgrade_writes_no_skill_into_a_project_made_without_one() {
     let sandbox = Sandbox::with_outdated_project("upgrade_without_skill", &["--skip-agent-skill"]);
     sandbox

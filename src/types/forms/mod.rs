@@ -1,8 +1,10 @@
 mod conditional;
+mod if_operands;
 
 use std::rc::Rc;
 
-pub(super) use conditional::{Conditional, IfBranches};
+pub(super) use conditional::Conditional;
+pub(super) use if_operands::IfOperands;
 
 use super::expectation::Expectation;
 use super::ty::Type;

@@ -17,6 +17,17 @@ pub enum Representation {
 }
 
 impl Representation {
+    const NAMES: [&'static str; 8] = [
+        "owned",
+        "a view",
+        "a 'static view",
+        "mixed",
+        "lent",
+        "lent mixed",
+        "mutable",
+        "generic over AsRef<str>",
+    ];
+
     pub fn written(primitive: PrimitiveType, access: Access) -> Option<Self> {
         match (primitive, access) {
             (PrimitiveType::String | PrimitiveType::Str, Access::Direct) => Some(Self::Owned),
@@ -94,16 +105,7 @@ impl Representation {
 
 impl fmt::Display for Representation {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(match self {
-            Self::Owned => "owned",
-            Self::View => "a view",
-            Self::StaticView => "a 'static view",
-            Self::Mixed => "mixed",
-            Self::Lent => "lent",
-            Self::LentMixed => "lent mixed",
-            Self::Mutable => "mutable",
-            Self::Generic => "generic over AsRef<str>",
-        })
+        formatter.write_str(Self::NAMES[*self as usize])
     }
 }
 

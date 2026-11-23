@@ -32,14 +32,17 @@ impl InlineDeclaration {
                 self.all(parameters)?,
                 Box::new(self.lower(result)?),
             )),
-            TypeExprKind::Reference(ReferenceKind::Shared, _, inner) => {
-                Some(Type::shared(self.lower(inner)?))
-            }
-            TypeExprKind::Reference(ReferenceKind::Mutable, _, inner) => {
-                Some(Type::mutable(self.lower(inner)?))
-            }
+            TypeExprKind::Reference(kind, _, inner) => self.reference(*kind, inner),
             _ => None,
         }
+    }
+
+    fn reference(&self, kind: ReferenceKind, inner: &TypeExpr) -> Option<Type> {
+        let inner = self.lower(inner)?;
+        Some(match kind {
+            ReferenceKind::Shared => Type::shared(inner),
+            ReferenceKind::Mutable => Type::mutable(inner),
+        })
     }
 
     fn named(&self, binding: BindingId, arguments: &[TypeExpr]) -> Option<Type> {

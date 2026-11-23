@@ -131,6 +131,36 @@ mod tests {
     }
 
     #[test]
+    fn each_representation_prints_its_own_name() {
+        let names: Vec<String> = [
+            Representation::Owned,
+            Representation::View,
+            Representation::StaticView,
+            Representation::Mixed,
+            Representation::Lent,
+            Representation::LentMixed,
+            Representation::Mutable,
+            Representation::Generic,
+        ]
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+        assert_eq!(
+            names,
+            [
+                "owned",
+                "a view",
+                "a 'static view",
+                "mixed",
+                "lent",
+                "lent mixed",
+                "mutable",
+                "generic over AsRef<str>"
+            ]
+        );
+    }
+
+    #[test]
     fn a_field_with_nothing_stored_is_owned() {
         assert_eq!(
             Representation::of_stored(ReachingText::NOTHING),

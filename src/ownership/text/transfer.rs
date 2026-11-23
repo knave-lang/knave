@@ -240,7 +240,6 @@ mod tests {
 
     #[test]
     fn a_dereferenced_argument_is_reborrowed_and_any_other_moved() {
-        use crate::core::BindingId;
         use crate::types::Borrow;
         assert_eq!(Transfer::passing(&Borrow::Deref(1)), Transfer::Reborrow);
         assert_eq!(Transfer::passing(&Borrow::Shared), Transfer::Move);

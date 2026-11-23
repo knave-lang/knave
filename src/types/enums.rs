@@ -49,6 +49,10 @@ impl VariantDefinition {
         }
     }
 
+    pub fn is_bare_text(&self, field: usize) -> bool {
+        self.bare_text_fields.contains(&field)
+    }
+
     pub fn payload_types(&self) -> Vec<&Type> {
         match &self.payload {
             VariantPayload::None => Vec::new(),

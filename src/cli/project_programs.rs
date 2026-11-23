@@ -68,13 +68,21 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
+        Self::starts(terminal, &project, loaded);
+        let project = Self::tests(terminal, project, loaded);
+        let project = Self::tasks(terminal, project, loaded);
+        Self::unreached(terminal, &project, loaded)
+    }
+
+    fn starts(terminal: &mut Terminal, project: &LocatedProject, loaded: &mut LoadedPrograms) {
         let entries = project.entry_layout();
         if !entries.skips_entry() {
             loaded.add(Self::entry(terminal, entries.entry()));
         }
-        let project = Self::tests(terminal, project, loaded);
-        let project = Self::tasks(terminal, project, loaded);
-        Self::unreached(terminal, &project, loaded)
+        let held = terminal.source_report().canonical_files_from(0);
+        if let Some(library_root) = entries.library_root_outside(&held) {
+            loaded.add(Self::entry(terminal, library_root));
+        }
     }
 
     fn entry(terminal: &mut Terminal, file: ProgramFile) -> Result<ProjectProgram, ExitStatus> {
@@ -201,10 +209,25 @@ mod tests {
                 "(export twice)\n\n(defn twice (x) (* 2 x))\n",
             ),
         ];
+        const LIBRARY_FILES: [(&str, &str); 4] = [
+            ("project.knv", "(defproject chain)\n"),
+            (
+                "src/lib.knv",
+                "(use lib/a four)\n\n(export eight)\n\n(defn eight () (* 2 (four)))\n",
+            ),
+            (
+                "src/lib/a.knv",
+                "(use lib/b twice)\n\n(export four)\n\n(defn four () (twice 2))\n",
+            ),
+            (
+                "src/lib/b.knv",
+                "(export twice)\n\n(defn twice (x) (* 2 x))\n",
+            ),
+        ];
 
-        fn new() -> Self {
+        fn new(files: &[(&str, &str)]) -> Self {
             let directory = TemporaryDirectory::create().expect("a scratch directory is created");
-            for (path, text) in Self::FILES {
+            for (path, text) in files {
                 let file = directory.path().join(path);
                 fs::create_dir_all(file.parent().expect("a file has a folder"))
                     .expect("the scratch directory is writable");
@@ -235,6 +258,12 @@ mod tests {
 
     #[test]
     fn a_module_that_an_unreached_file_loads_is_not_loaded_again() {
-        assert_eq!(ChainFixture::new().loaded_programs(), 2);
+        assert_eq!(ChainFixture::new(&ChainFixture::FILES).loaded_programs(), 2);
+    }
+
+    #[test]
+    fn a_library_root_loads_before_the_modules_it_reaches() {
+        let fixture = ChainFixture::new(&ChainFixture::LIBRARY_FILES);
+        assert_eq!(fixture.loaded_programs(), 1);
     }
 }

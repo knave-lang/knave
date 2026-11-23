@@ -11934,6 +11934,108 @@ fn check_without_an_entry_or_tasks_stays_an_error() {
     insta::assert_snapshot!(check.assert_exit_code(2).stderr());
 }
 
+const SHELF_PROJECT: &str = "(defproject shelf)\n";
+const SHELF_LIBRARY: &str = "(export shelve)\n\n(defn shelve (count) (* 2 count))\n";
+const MISTYPED_SHELF_LIBRARY: &str = "(export shelve)\n\n(defn shelve (count) (+ count \"x\"))\n";
+const UNUSED_BINDING_SHELF_LIBRARY: &str =
+    "(export shelve)\n\n(defn shelve (count) (let (unused 1) (* 2 count)))\n";
+const UNIMPLEMENTED_TRAIT_ERROR: &str = "error[L0404]";
+const SHELF_ENTRY: &str = "(defn main () (println 1))\n";
+const SHELF_ENTRY_USING_LIBRARY: &str = "(use lib shelve)\n\n(defn main () (println (shelve 2)))\n";
+
+struct LibraryProject;
+
+impl LibraryProject {
+    fn of(test_name: &str, library: &str) -> Sandbox {
+        Sandbox::new(test_name)
+            .with_file(&Language::project_file_name(), SHELF_PROJECT)
+            .with_file("src/lib.knv", library)
+    }
+}
+
+#[test]
+fn check_and_lint_pass_in_a_library_project_that_type_checks() {
+    let sandbox = LibraryProject::of("library_project_passes", SHELF_LIBRARY);
+    sandbox.compiler(&["check"]).assert_exit_code(0);
+    sandbox.compiler(&["lint"]).assert_exit_code(0);
+}
+
+#[test]
+fn check_reports_a_type_error_in_a_library_project() {
+    let check = LibraryProject::of("library_project_type_error", MISTYPED_SHELF_LIBRARY)
+        .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn lint_reports_an_unused_binding_in_a_library_project() {
+    let lint = LibraryProject::of(
+        "library_project_unused_binding",
+        UNUSED_BINDING_SHELF_LIBRARY,
+    )
+    .compiler(&["lint"]);
+    insta::assert_snapshot!(lint.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn check_covers_a_library_project_root_that_the_entry_never_uses() {
+    LibraryProject::of("library_project_unused_root", MISTYPED_SHELF_LIBRARY)
+        .with_file("src/main.knv", SHELF_ENTRY)
+        .compiler(&["check"])
+        .assert_exit_code(1);
+}
+
+#[test]
+fn check_reports_a_library_project_root_that_the_entry_uses_once() {
+    let check = LibraryProject::of("library_project_used_root", MISTYPED_SHELF_LIBRARY)
+        .with_file("src/main.knv", SHELF_ENTRY_USING_LIBRARY)
+        .compiler(&["check"]);
+    let stderr = check.assert_exit_code(1).stderr();
+    assert_eq!(
+        stderr.matches(UNIMPLEMENTED_TRAIT_ERROR).count(),
+        1,
+        "{stderr}"
+    );
+}
+
+#[test]
+fn check_starts_a_library_project_from_its_written_library_root() {
+    let check = Sandbox::new("library_project_written_root")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject shelf :lib \"src/shelf.knv\")\n",
+        )
+        .with_file("src/shelf.knv", MISTYPED_SHELF_LIBRARY)
+        .compiler(&["check"]);
+    assert!(check.assert_exit_code(1).stderr().contains("src/shelf.knv"));
+}
+
+#[test]
+fn check_in_a_library_project_with_a_written_entry_that_names_no_file_stays_an_error() {
+    let check = Sandbox::new("library_project_missing_written_entry")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject shelf :entry \"src/app.knv\")\n",
+        )
+        .with_file("src/lib.knv", SHELF_LIBRARY)
+        .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn build_in_a_library_project_stays_an_error() {
+    let build = LibraryProject::of("library_project_build", SHELF_LIBRARY).compiler(&["build"]);
+    insta::assert_snapshot!(build.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn check_of_a_named_file_skips_the_library_project_root() {
+    LibraryProject::of("library_project_named_file", MISTYPED_SHELF_LIBRARY)
+        .with_file("src/main.knv", SHELF_ENTRY)
+        .compiler(&["check", "src/main.knv"])
+        .assert_exit_code(0);
+}
+
 const LENDING_PROJECT: &str = "(defproject lint :knave \"99.0.0\" (exported-tasks check where) (lints (unused-binding deny)))\n";
 const LENT_TASKS: &str = "(deftask check (:path string \".\")
   \"Checks the files under a path.\"

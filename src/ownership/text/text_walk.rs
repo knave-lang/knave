@@ -111,17 +111,14 @@ impl<'w, 'p> TextWalk<'w, 'p> {
 
     fn walk_function(&mut self, binding: BindingId, lambda: &TypedLambda) {
         let names = self.program.names();
+        let origin = self.program.written().origin(binding);
         let heading = match self.program.written().trait_method(binding) {
             Some(_) => Some(format!("method {}", names.name(binding))),
-            None => (!names.is_generated(binding)).then(|| format!("defn {}", names.name(binding))),
+            None => {
+                (origin == FlowOrigin::Written).then(|| format!("defn {}", names.name(binding)))
+            }
         };
         self.listing.open(heading);
-        let written_method = self.program.written().trait_method(binding).is_some();
-        let origin = if names.is_generated(binding) && !written_method {
-            FlowOrigin::Generated
-        } else {
-            FlowOrigin::Written
-        };
         let context = WalkContext::new(self.program, &mut self.graph, origin);
         BodyFlows::new(context, &mut self.listing, binding).walk(lambda);
         self.share_trait_method(binding, lambda);

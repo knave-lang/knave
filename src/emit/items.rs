@@ -31,9 +31,9 @@ use crate::diagnostic::Diagnostic;
 use crate::ownership::{FunctionFlows, LambdaFlows, ResultBorrows, StoredFlows};
 use crate::source::Span;
 use crate::types::{
-    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, Scheme, Type, TypedAssociatedType,
-    TypedBinder, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedImplMethod,
-    TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
+    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, ResultRegion, Scheme, Type,
+    TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind,
+    TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
 };
 
 struct ImplementedTrait<'l> {
@@ -936,7 +936,10 @@ impl<'a> ItemEmitter<'a> {
         } = self
             .result_borrows
             .analyse_function(definition.binding, lambda);
-        borrows.confirm(&self.program.ownership.regions, definition.binding);
+        self.program
+            .ownership
+            .regions
+            .assert_recorded(definition.binding, &ResultRegion::from(&borrows));
         let shared = stored.flows.with_values(reassigned_parameters);
         let inferred = self.function_lifetime(definition, &shared);
         let mut emitter = self

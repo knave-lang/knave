@@ -1,6 +1,7 @@
 mod callee_parameters;
 mod definition_index;
 mod definition_lookup;
+mod flows_region;
 mod region_record;
 mod result_borrows;
 mod store_sites;

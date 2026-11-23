@@ -46,10 +46,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::Dereference;
-    use crate::core::{Expr, ExprKind, Leaf, Literal, PrimitiveType};
+    use crate::core::{Expr, Literal, PrimitiveType};
     use crate::diagnostic::Diagnostic;
-    use crate::source::{SourceId, Span};
+    use crate::source::Span;
     use crate::types::expectation::Expectation;
+    use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{ChildTyping, ExpressionForm, Obligations, TypeFitting, Unknowns};
     use crate::types::ty::Type;
     use crate::types::typed::{TypedExpr, TypedExprKind, TypedLeaf};
@@ -70,11 +71,8 @@ mod tests {
         }
 
         fn dereference(&mut self) -> TypedExpr {
-            let value = Expr::new(
-                ExprKind::Leaf(Leaf::Literal(Literal::Bool(true))),
-                Self::span(),
-            );
-            Dereference::new(&value, Self::span())
+            let value = FormFixtures::leaf(Literal::Bool(true));
+            Dereference::new(&value, FormFixtures::span())
                 .type_against(self, None)
                 .unwrap_or_else(|_| panic!("the fixture fits every type"))
         }
@@ -85,10 +83,6 @@ mod tests {
 
         fn inner() -> Type {
             Type::Primitive(PrimitiveType::I64)
-        }
-
-        fn span() -> Span {
-            Span::new(SourceId::new(0), 0..1)
         }
     }
 

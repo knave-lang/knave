@@ -54,7 +54,7 @@ mod tests {
     use super::Borrowing;
     use crate::core::{BindingId, Expr, ExprKind, Leaf, Literal, PrimitiveType, ReferenceKind};
     use crate::diagnostic::Diagnostic;
-    use crate::source::{SourceId, Span};
+    use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{ChildTyping, ExpressionForm, PlaceReads};
     use crate::types::ty::Type;
     use crate::types::typed::{TypedExpr, TypedExprKind, TypedLeaf};
@@ -63,19 +63,18 @@ mod tests {
 
     impl BorrowingFixture {
         fn borrow(&mut self, kind: ReferenceKind, value: &Expr) -> Result<TypedExpr, Diagnostic> {
-            Borrowing::new(kind, value, Self::span()).type_against(self, None)
+            Borrowing::new(kind, value, FormFixtures::span()).type_against(self, None)
         }
 
         fn local() -> Expr {
             Expr::new(
                 ExprKind::Leaf(Leaf::Var(BindingId::from_index(0))),
-                Self::span(),
+                FormFixtures::span(),
             )
         }
 
         fn value() -> Expr {
-            let text = Literal::String(Rc::from("x"));
-            Expr::new(ExprKind::Leaf(Leaf::Literal(text)), Self::span())
+            FormFixtures::leaf(Literal::String(Rc::from("x")))
         }
 
         fn read_type() -> Type {
@@ -84,10 +83,6 @@ mod tests {
 
         fn changed_type() -> Type {
             Type::Primitive(PrimitiveType::String)
-        }
-
-        fn span() -> Span {
-            Span::new(SourceId::new(0), 0..1)
         }
     }
 

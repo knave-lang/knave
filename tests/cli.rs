@@ -11695,6 +11695,8 @@ const LENT_TASKS: &str = "(deftask check (:path string \".\")
 
 (deftask release () (println \"releasing\"))
 
+(deftask noisy () (match 1 (_ (println \"first\")) (_ (println \"second\"))))
+
 (def working-directory
   (rust \"std::env::current_dir().unwrap().display().to_string()\"
     (fn () string)))
@@ -11782,6 +11784,52 @@ fn a_library_task_copies_the_librarys_lock_and_never_writes_it_back() {
         ],
         [lock, lock]
     );
+}
+
+#[test]
+fn a_librarys_task_runs_beside_the_projects_own_tasks() {
+    let run = LendingLibraries::lint_only("library_task_beside_own")
+        .with_file(
+            "app/tasks/own.knv",
+            "(deftask deploy () (println \"deploying\"))\n",
+        )
+        .compiler_in("app", &["task", "check"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "checking .\n");
+}
+
+#[test]
+fn a_task_of_a_librarys_library_does_not_reach_the_project() {
+    let task = LendingLibraries::lint_only("library_task_nested")
+        .with_file(
+            "deep/project.knv",
+            "(defproject deep (exported-tasks dig))\n",
+        )
+        .with_file(
+            "deep/tasks/dig.knv",
+            "(deftask dig () (println \"digging\"))\n",
+        )
+        .with_file(
+            "lint/project.knv",
+            "(defproject lint (libraries (deep :path \"../deep\")) (exported-tasks check where))\n",
+        )
+        .compiler_in("app", &["task", "dig"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn the_listing_qualifies_a_name_the_projects_task_shadows() {
+    let listing = LendingLibraries::lint_only("library_task_listing_shadowed")
+        .with_file("hints/project.knv", "(defproject hints)\n")
+        .with_file(
+            "app/project.knv",
+            "(defproject app (libraries (lint :path \"../lint\") (hints :path \"../hints\")))\n",
+        )
+        .with_file(
+            "app/tasks/own.knv",
+            "(deftask where () (println \"here\"))\n",
+        )
+        .compiler_in("app", &["task"]);
+    insta::assert_snapshot!(listing.assert_exit_code(0).stdout());
 }
 
 #[test]

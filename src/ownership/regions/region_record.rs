@@ -4,14 +4,15 @@ use super::lambda_flows::{FunctionFlows, LambdaFlows};
 use super::result_borrows::ResultBorrows;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
-use crate::ownership::local_borrows::LocalBorrows;
 use crate::types::{
-    DefinitionTable, ParameterRole, Regions, TypedDefinition, TypedExprKind, TypedLambda,
-    TypedProgram,
+    DefinitionTable, ParameterRole, Regions, Type, TypedDefinition, TypedExpr, TypedExprKind,
+    TypedLambda, TypedProgram,
 };
 
 pub struct RegionRecord<'a> {
+    program: &'a TypedProgram,
     analysis: ResultBorrows<'a>,
+    impl_methods: FxHashSet<BindingId>,
     regions: Regions,
 }
 
@@ -19,13 +20,26 @@ impl RegionRecord<'_> {
     pub fn of(program: &TypedProgram) -> Regions {
         let definitions = DefinitionTable::of(program);
         let mut record = RegionRecord {
+            program,
             analysis: ResultBorrows::new(program, &definitions),
+            impl_methods: Self::impl_methods(program),
             regions: Regions::default(),
         };
         for definition in Self::covered(program) {
             record.definition(definition);
         }
         record.regions
+    }
+
+    fn impl_methods(program: &TypedProgram) -> FxHashSet<BindingId> {
+        program
+            .declarations
+            .traits()
+            .impls()
+            .iter()
+            .flat_map(|implementation| &implementation.methods)
+            .map(|method| method.binding)
+            .collect()
     }
 
     fn covered(program: &TypedProgram) -> Vec<&TypedDefinition> {
@@ -49,10 +63,24 @@ impl RegionRecord<'_> {
         if let TypedExprKind::Fn(lambda) = &definition.value.kind {
             self.function(definition.binding, lambda);
         }
-        for closure in LocalBorrows::closures_in(&definition.value) {
-            let flows = self.analysis.analyse(closure);
-            self.lambda(closure, flows);
+        for child in definition.value.children() {
+            self.borrowing_closures(child);
         }
+    }
+
+    fn borrowing_closures(&mut self, expr: &TypedExpr) {
+        if let TypedExprKind::Fn(lambda) = &expr.kind
+            && self.returns_borrow(&expr.ty)
+        {
+            self.lambda(self.analysis.analyse(lambda));
+        }
+        for child in expr.children() {
+            self.borrowing_closures(child);
+        }
+    }
+
+    fn returns_borrow(&self, ty: &Type) -> bool {
+        matches!(ty, Type::Function(_, _, result) if self.program.function_type_returns_borrow(result))
     }
 
     fn function(&mut self, function: BindingId, lambda: &TypedLambda) {
@@ -60,7 +88,12 @@ impl RegionRecord<'_> {
             flows,
             reassigned_parameters,
         } = self.analysis.analyse_function(function, lambda);
-        self.lambda(lambda, flows);
+        self.lambda(flows);
+        if self.reads_shared_arguments(function, lambda) {
+            let shared = self.analysis.analyse_shared_arguments(lambda).flows;
+            self.regions
+                .record(ParameterRole::FlowsThroughSharedArguments, shared);
+        }
         self.regions
             .record(ParameterRole::Reassigned, reassigned_parameters);
         let stored = self.analysis.definition_stores(function).flows.clone();
@@ -70,13 +103,18 @@ impl RegionRecord<'_> {
             .record(ParameterRole::StoredTarget, stored.targets);
     }
 
-    fn lambda(&mut self, lambda: &TypedLambda, flows: LambdaFlows) {
+    fn reads_shared_arguments(&self, function: BindingId, lambda: &TypedLambda) -> bool {
+        let modes = &self.program.ownership.parameter_modes;
+        self.impl_methods.contains(&function)
+            || lambda
+                .parameter_bindings()
+                .any(|parameter| modes.changes(parameter))
+    }
+
+    fn lambda(&mut self, flows: LambdaFlows) {
         self.regions
             .record(ParameterRole::FlowsToResult, flows.flows);
         self.regions
             .record(ParameterRole::HigherRanked, flows.higher_ranked);
-        let shared = self.analysis.analyse_shared_arguments(lambda).flows;
-        self.regions
-            .record(ParameterRole::FlowsThroughSharedArguments, shared);
     }
 }

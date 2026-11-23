@@ -28,24 +28,20 @@ impl<'a> StructFieldTraits<'a> {
     }
 
     pub(super) fn traits(&self, written: &FxHashSet<Rc<str>>) -> Vec<FieldTrait> {
-        let shared = self.shared_names().into_iter();
+        let mut shared: Vec<&Rc<str>> = (written.iter())
+            .filter(|field| self.is_shared(field))
+            .collect();
+        shared.sort();
         shared
-            .filter(|field| written.contains(field))
-            .map(|field| FieldTrait::new(Rc::clone(&field), self.implementors(&field)))
+            .into_iter()
+            .map(|field| FieldTrait::new(Rc::clone(field), self.implementors(field)))
             .collect()
     }
 
-    fn shared_names(&self) -> Vec<Rc<str>> {
-        let mut names: Vec<Rc<str>> = self
-            .structs
-            .iter()
-            .flat_map(|(_, definition)| definition.fields.iter().map(|(name, _)| name.clone()))
-            .collect();
-        names.sort();
-        let shared = names
-            .chunk_by(|left, right| left == right)
-            .filter(|group| group.len() > 1);
-        shared.map(|group| Rc::clone(&group[0])).collect()
+    fn is_shared(&self, field: &str) -> bool {
+        let mut declaring =
+            (self.structs.iter()).filter(|(_, definition)| definition.field(field).is_some());
+        declaring.nth(1).is_some()
     }
 
     fn implementors(&self, field: &str) -> Vec<(BindingId, Implementor)> {

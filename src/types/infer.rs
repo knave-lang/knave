@@ -5,7 +5,7 @@ mod shared_variables;
 mod short_pattern;
 mod variant_target;
 
-use super::forms::{Conditional, ExpressionForm, IfOperands};
+use super::forms::{Borrowing, Conditional, Dereference, ExpressionForm, IfOperands};
 use super::result_span::ResultSpan;
 use std::rc::Rc;
 
@@ -126,21 +126,19 @@ impl TypeChecker {
             ExprKind::Fn(lambda) => Self::typed(checker.infer_lambda(lambda, span, None), span),
             ExprKind::Call(callee, arguments) => checker.infer_call(callee, arguments, span),
             ExprKind::Control(control) => checker.infer_control(control, span),
-            other => checker.infer_nested(expr, other, span),
+            other => checker.infer_nested(other, span),
         })
     }
 
-    fn infer_nested(
-        &mut self,
-        expr: &Expr,
-        kind: &ExprKind,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
+    fn infer_nested(&mut self, kind: &ExprKind, span: Span) -> Result<TypedExpr, Diagnostic> {
         match kind {
             ExprKind::Recur(arguments) => self.infer_recur(arguments, span),
             ExprKind::Try(value) => self.infer_try(value, span),
             ExprKind::Infer(operand) => self.infer_type_text(operand, span),
-            ExprKind::Borrow(..) | ExprKind::Deref(..) => self.infer_written(expr, span),
+            ExprKind::Borrow(kind, value) => {
+                Borrowing::new(*kind, value, span).type_against(self, None)
+            }
+            ExprKind::Deref(value) => Dereference::new(value, span).type_against(self, None),
             _ => self.infer_composite(kind, span),
         }
     }
@@ -183,59 +181,6 @@ impl TypeChecker {
             Leaf::Rust(template) => self.infer_inline_rust(template, span),
         };
         Self::typed(inferred, span)
-    }
-
-    fn infer_written(&mut self, expr: &Expr, span: Span) -> Result<TypedExpr, Diagnostic> {
-        match expr.kind() {
-            ExprKind::Borrow(kind, value) => self.infer_borrow(*kind, value, span),
-            ExprKind::Deref(value) => self.infer_deref(value, span),
-            _ => unreachable!("the caller matches a written form"),
-        }
-    }
-
-    fn infer_borrow(
-        &mut self,
-        kind: ReferenceKind,
-        value: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let value = self.infer(value)?;
-        if kind == ReferenceKind::Mutable && !value.is_place() {
-            return Err(TypeProblems::mut_borrow_of_copy(
-                value.span,
-                self.passing_facts().field_place(&value),
-            ));
-        }
-        let ty = match kind {
-            ReferenceKind::Shared => Type::shared(self.place_types().read(&value)),
-            ReferenceKind::Mutable => Type::mutable(self.place_types().changed(&value)),
-        };
-        Ok(TypedExpr {
-            kind: TypedExprKind::Borrow(kind, Box::new(value)),
-            ty,
-            span,
-        })
-    }
-
-    fn infer_deref(&mut self, value: &Expr, span: Span) -> Result<TypedExpr, Diagnostic> {
-        let value = self.infer(value)?;
-        let referent = self.unifier.fresh();
-        self.require_copy(&referent);
-        if let Type::Mut(_, inner) = self.unifier.resolve(&value.ty) {
-            self.unification()
-                .expect(Expectation::plain(&referent), &inner, value.span)?;
-        } else {
-            self.unification().expect(
-                Expectation::plain(&Type::shared(referent.clone())),
-                &value.ty,
-                value.span,
-            )?;
-        }
-        Ok(TypedExpr {
-            kind: TypedExprKind::Deref(Box::new(value)),
-            ty: referent,
-            span,
-        })
     }
 
     fn infer_control(&mut self, control: &Control, span: Span) -> Result<TypedExpr, Diagnostic> {
@@ -3130,10 +3075,7 @@ mod tests {
     use rustc_hash::FxHashSet;
 
     use super::TypeChecker;
-    use crate::core::{
-        BindingArena, BindingInfo, BindingKind, Expr, ExprKind, Leaf, Literal, ModuleId,
-        PrimitiveType,
-    };
+    use crate::core::{BindingArena, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::source::{SourceId, Span};
     use crate::types::definition_outcomes::DefinitionOutcomes;
     use crate::types::{ClosureKind, Type, TypeVar};
@@ -3215,16 +3157,5 @@ mod tests {
     fn a_compile_time_only_global_is_rejected() {
         let mut fixture = PlaceTypeFixture::new();
         assert!(fixture.rejects_a_compile_time_only_global());
-    }
-
-    #[test]
-    #[should_panic(expected = "the caller matches a written form")]
-    fn inferring_a_non_written_expression_panics() {
-        let mut fixture = PlaceTypeFixture::new();
-        let expr = Expr::new(
-            ExprKind::Leaf(Leaf::Literal(Literal::Bool(false))),
-            fixture.span,
-        );
-        let _ = fixture.checker.infer_written(&expr, fixture.span);
     }
 }

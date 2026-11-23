@@ -1,15 +1,15 @@
 use std::path::Path;
 
-use super::github_linguist::GithubLinguist;
 use super::new_file::NewFile;
 use super::owned_file::OwnedFile;
+use super::owned_line::OwnedLine;
 
 pub trait ProjectComponent {
     fn owned_files(&self) -> Vec<OwnedFile> {
         Vec::new()
     }
 
-    fn owned_lines(&self) -> Vec<GithubLinguist> {
+    fn owned_lines(&self) -> Vec<OwnedLine> {
         Vec::new()
     }
 

@@ -1,48 +1,55 @@
 use std::path::Path;
 
-use super::linguist_upgrade::LinguistUpgrade;
+use super::line_upgrade::LineUpgrade;
 use super::new_file::NewFile;
 
-pub struct GithubLinguist;
+pub struct OwnedLine {
+    path: &'static str,
+    line: &'static str,
+    attribute_prefix: &'static str,
+}
 
-impl GithubLinguist {
-    pub const PATH: &str = ".gitattributes";
-    pub const PATTERN: &str = "*.knv";
-    const ATTRIBUTE_PREFIX: &str = "linguist-";
+impl OwnedLine {
     const LF: &str = "\n";
     const CRLF: &str = "\r\n";
-    const LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false";
+
+    pub const fn new(
+        path: &'static str,
+        line: &'static str,
+        attribute_prefix: &'static str,
+    ) -> Self {
+        Self {
+            path,
+            line,
+            attribute_prefix,
+        }
+    }
+
+    pub fn path(&self) -> &Path {
+        Path::new(self.path)
+    }
 
     pub fn new_file(&self, root: &Path) -> NewFile {
-        NewFile::new(root.join(Self::PATH), format!("{}\n", Self::LINE))
+        NewFile::new(root.join(self.path), format!("{}\n", self.line))
     }
 
-    pub fn upgrade(&self, written: &str) -> Option<LinguistUpgrade> {
-        if !written.lines().any(Self::owns) {
-            return Some(LinguistUpgrade::Appended(Self::appended_to(written)));
+    pub fn upgrade(&self, written: &str) -> Option<LineUpgrade> {
+        if !written.lines().any(|line| self.owns(line)) {
+            let announcement = format!("added the `{}` line to `{}`", self.pattern(), self.path);
+            return Some(LineUpgrade::new(self.appended_to(written), announcement));
         }
-        let replaced = Self::replaced_in(written);
-        (replaced != written).then_some(LinguistUpgrade::Replaced(replaced))
+        let replaced = self.replaced_in(written);
+        let announcement = format!("rewrote the `{}` line of `{}`", self.pattern(), self.path);
+        (replaced != written).then(|| LineUpgrade::new(replaced, announcement))
     }
 
-    pub fn announcement(&self, upgrade: &LinguistUpgrade) -> String {
-        match upgrade {
-            LinguistUpgrade::Appended(_) => {
-                format!("added the `{}` line to `{}`", Self::PATTERN, Self::PATH)
-            }
-            LinguistUpgrade::Replaced(_) => {
-                format!("rewrote the `{}` line of `{}`", Self::PATTERN, Self::PATH)
-            }
-        }
-    }
-
-    fn replaced_in(written: &str) -> String {
+    fn replaced_in(&self, written: &str) -> String {
         written
             .split_inclusive('\n')
             .map(|line| {
                 let content = line.trim_end_matches(['\n', '\r']);
-                if Self::owns(content) {
-                    format!("{}{}", Self::LINE, &line[content.len()..])
+                if self.owns(content) {
+                    format!("{}{}", self.line, &line[content.len()..])
                 } else {
                     line.to_string()
                 }
@@ -50,14 +57,14 @@ impl GithubLinguist {
             .collect()
     }
 
-    fn appended_to(written: &str) -> String {
+    fn appended_to(&self, written: &str) -> String {
         let ending = Self::line_ending_of(written);
         let separator = if written.is_empty() || written.ends_with('\n') {
             ""
         } else {
             ending
         };
-        format!("{written}{separator}{}{ending}", Self::LINE)
+        format!("{written}{separator}{}{ending}", self.line)
     }
 
     fn line_ending_of(written: &str) -> &'static str {
@@ -67,34 +74,37 @@ impl GithubLinguist {
         }
     }
 
-    fn owns(line: &str) -> bool {
+    fn owns(&self, line: &str) -> bool {
         let mut fields = line.split_whitespace();
-        fields.next() == Some(Self::PATTERN)
-            && fields.any(|attribute| attribute.starts_with(Self::ATTRIBUTE_PREFIX))
+        fields.next() == Some(self.pattern())
+            && fields.any(|attribute| attribute.starts_with(self.attribute_prefix))
+    }
+
+    fn pattern(&self) -> &str {
+        self.line.split_whitespace().next().unwrap_or_default()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::GithubLinguist;
-    use crate::cli::linguist_upgrade::LinguistUpgrade;
+    use super::OwnedLine;
 
-    const LINE: &str = GithubLinguist::LINE;
+    const LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false";
+    const OWNED: OwnedLine = OwnedLine::new(".gitattributes", LINE, "linguist-");
 
     struct LinguistFixture;
 
     impl LinguistFixture {
         fn upgraded(written: &str) -> String {
-            GithubLinguist
+            OWNED
                 .upgrade(written)
                 .map_or_else(|| written.to_string(), |upgrade| upgrade.text().to_string())
         }
 
         fn is_appended(written: &str) -> bool {
-            matches!(
-                GithubLinguist.upgrade(written),
-                Some(LinguistUpgrade::Appended(_))
-            )
+            OWNED
+                .upgrade(written)
+                .is_some_and(|upgrade| upgrade.announcement().starts_with("added"))
         }
     }
 
@@ -110,7 +120,7 @@ mod tests {
 
     #[test]
     fn a_current_line_needs_no_upgrade() {
-        assert!(GithubLinguist.upgrade(&format!("{LINE}\n")).is_none());
+        assert!(OWNED.upgrade(&format!("{LINE}\n")).is_none());
     }
 
     #[test]

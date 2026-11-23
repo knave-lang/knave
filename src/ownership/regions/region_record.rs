@@ -50,7 +50,9 @@ impl RegionRecord<'_> {
     }
 
     fn definition(&mut self, definition: &TypedDefinition) {
-        if let TypedExprKind::Fn(lambda) = &definition.value.kind {
+        if let TypedExprKind::Fn(lambda) = &definition.value.kind
+            && !lambda.params.is_empty()
+        {
             self.function(definition.binding, lambda);
         }
         for child in definition.value.children() {
@@ -60,6 +62,7 @@ impl RegionRecord<'_> {
 
     fn borrowing_closures(&mut self, expr: &TypedExpr) {
         if let TypedExprKind::Fn(lambda) = &expr.kind
+            && !lambda.params.is_empty()
             && RecordedClosures::new(self.program).includes(&expr.ty)
         {
             self.lambda(lambda, self.analysis.analyse(lambda));

@@ -1,6 +1,6 @@
 # RFC 0079: A project records its Knave version
 
-**Status:** Accepted. [docs/language.md: Projects](../docs/language.md#projects) states the rule.
+**Status:** Accepted. [RFC 0082](0082-knave-owns-its-files.md) supersedes its rules on kept files and missing files. [docs/language.md: Projects](../docs/language.md#projects) states the rule.
 **Date:** 2026-11-18
 
 ## Problem

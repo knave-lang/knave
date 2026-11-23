@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_case_option_ref_owner.knv
+---
+true
+false
+1

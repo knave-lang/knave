@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_option_returned_unwrap.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_option_returned_unwrap.knv:11:44
+   |
+11 |   (println (unwrap-or (nn (->animal none)) "z")))
+   |                                            ^^^ expected `int`, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

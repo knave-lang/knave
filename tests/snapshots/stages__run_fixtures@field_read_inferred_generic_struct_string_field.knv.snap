@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_inferred_generic_struct_string_field.knv
+---
+1
+1

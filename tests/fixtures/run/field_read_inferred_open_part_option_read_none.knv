@@ -1,0 +1,13 @@
+(defstruct user
+  :n (option int)
+  :name str)
+
+(defstruct animal
+  :n (option int)
+  :name str)
+
+(defn lacks-n (x) (none? (:n x)))
+
+(defn main ()
+  (println (lacks-n (->user (some 1) "a")))
+  (println (lacks-n (->animal none "b"))))

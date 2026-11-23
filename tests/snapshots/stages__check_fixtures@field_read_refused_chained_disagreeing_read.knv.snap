@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_chained_disagreeing_read.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_refused_chained_disagreeing_read.knv:14:16
+   |
+14 |   (str (:name (:pet x))))
+   |                ^^^^ this read of `:pet` infers a `has` bound
+   |
+   = note: the structs that reach this function read `:pet` as different types: `owner` as `cat`, `keeper` as `dog`
+   = help: write one function for each struct, or declare the field with one type in every struct
+   = note: run `knave doc L0407` for an explanation

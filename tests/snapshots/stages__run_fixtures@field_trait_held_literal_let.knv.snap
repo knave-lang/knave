@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_held_literal_let.knv
+---
+error[L0510]: cannot return a borrow of a local value
+ --> run/field_trait_held_literal_let.knv:4:31
+  |
+4 | (defn f () (let (b (->box 1)) (:v b)))
+  |                  -            ^^^^^^ this borrows a local value
+  |                  |
+  |                  this local is dropped when the function returns
+  |
+  = help: return an owned value with `(clone ...)`, or borrow from a parameter
+  = note: run `knave doc L0510` for an explanation

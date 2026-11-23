@@ -1,0 +1,16 @@
+(defenum kind
+  small
+  big)
+
+(defstruct user
+  :k kind)
+
+(defstruct animal
+  :k kind)
+
+(defn big? (x)
+  (match (:k x) (small false) (big true)))
+
+(defn main ()
+  (println (big? (->user kind/small)))
+  (println (big? (->animal kind/big))))

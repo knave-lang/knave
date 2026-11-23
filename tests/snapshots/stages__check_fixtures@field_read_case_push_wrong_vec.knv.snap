@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_push_wrong_vec.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_push_wrong_vec.knv:11:23
+   |
+11 |     (add-n (->user 1) (mut v))
+   |                       ^^^^^^^ expected `(vec int)`, found `(vec (ref str))`
+   |
+   = help: a push reads a target of unknown type as a vector, so write a `type` signature for `add-n`, such as `(type add-n (fn (_ (mut (vec (ref str)))) _))`
+   = note: run `knave doc L0401` for an explanation

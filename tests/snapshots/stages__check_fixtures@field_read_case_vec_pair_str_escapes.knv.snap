@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_vec_pair_str_escapes.knv
+---
+(derive user clone partial-eq eq hash show)
+(derive animal clone partial-eq eq hash show)
+(type ->user (fn ((vec (pair (ref str) int))) user))
+(type ->animal (fn ((vec (pair (ref str) int))) animal))
+(type ps (where ((a (has :p (ref (vec (pair (ref str) int)))))) (fn ((ref a)) (ref (vec (pair (ref str) int))))))
+(type main (fn () unit))

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_vec_int_float.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_join_vec_int_float.knv:13:32
+   |
+13 | (defn f (x y) (len (vec (:a x) (:b y))))
+   |                                ^^^^^^ expected `int`, found `float`
+   |
+   = note: run `knave doc L0401` for an explanation

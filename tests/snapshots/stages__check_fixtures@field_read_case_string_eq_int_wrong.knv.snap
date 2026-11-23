@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_string_eq_int_wrong.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_string_eq_int_wrong.knv:10:41
+   |
+10 |   (println (named? (->user (str "ana")) "ana"))
+   |                                         ^^^^^ expected `string`, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_join_written_open_with_display.knv
+---
+error[L0427]: the read of `:n` in this `has` bound names a type variable
+  --> run/field_trait_join_written_open_with_display.knv:11:26
+   |
+11 | (defn show (x) (println (:n x)))
+   |                          ^^ this read goes through the `has` bound
+   |
+   = note: the structs that reach this function read `:n` as `int`
+   = help: write the read with no type variable
+   = note: run `knave doc L0427` for an explanation

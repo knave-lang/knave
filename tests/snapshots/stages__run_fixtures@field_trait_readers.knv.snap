@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_readers.knv
+---
+4
+age 5
+4
+5

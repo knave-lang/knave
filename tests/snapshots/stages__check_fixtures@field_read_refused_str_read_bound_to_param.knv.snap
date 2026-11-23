@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_str_read_bound_to_param.knv
+---
+error[L0404]: `str` does not implement `(contains b)`
+ --> check/field_read_refused_str_read_bound_to_param.knv:8:14
+  |
+8 |   (contains? (:name x) s))
+  |              ^^^^^^^^^ this needs `(contains b)`
+  |
+  = note: `contains` is implemented for: (with str (ref str)), (with string (ref str)), (with (where ((item partial-eq)) (vec item)) item), (with (where ((item partial-eq)) (slice item)) item), (with (where ((whole (contains part)) part) (ref whole)) part)
+  = help: `contains?` looks for a `(ref str)` part in text and for an item of the element type in a vector or a slice: write `(as-str part)` to look for a `string` in text, or `(str part)` to look for text in a vector of `string`
+  = note: run `knave doc L0404` for an explanation

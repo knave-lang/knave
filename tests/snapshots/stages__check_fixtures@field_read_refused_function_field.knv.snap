@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_function_field.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_refused_function_field.knv:7:22
+  |
+7 | (defn apply-it (x) ((:f x) 3))
+  |                      ^^ this read of `:f` infers a `has` bound
+  |
+  = note: the bound `(has :f (fn (int) int))` inferred from this read cannot be kept: a `has` bound cannot read the function field `:f`
+  = help: write one function for each struct to read or call its function field
+  = note: run `knave doc L0407` for an explanation

@@ -1,0 +1,11 @@
+(defstruct user
+  :m (hash-map string int))
+
+(defstruct animal
+  :m (hash-map int bool))
+
+(defn size (x) (count (:m x)))
+
+(defn main ()
+  (println (size (->user (hash-map (str "a") 1))))
+  (println (size (->animal (hash-map 1 true 2 false)))))

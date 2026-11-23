@@ -1,0 +1,14 @@
+(defstruct user
+  :nick (option string))
+
+(defstruct animal
+  :nick (option string))
+
+(defn nick-len (x)
+  (match (:nick x)
+    ((some n) (len n))
+    (none 0)))
+
+(defn main ()
+  (println (nick-len (->user (some (str "ana")))))
+  (println (nick-len (->animal none))))

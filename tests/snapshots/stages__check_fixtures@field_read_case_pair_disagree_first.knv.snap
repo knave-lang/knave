@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_pair_disagree_first.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_pair_disagree_first.knv:8:11
+  |
+8 |   (match (:p x) ((pair l r) (+ 1 l))))
+  |           ^^ this read of `:p` infers a `has` bound
+  |
+  = note: the structs that reach this function read `:p` as different types: `user` as `(ref (pair int string))`, `animal` as `(pair int bool)`
+  = help: write one function for each struct, or declare the field with one type in every struct
+  = note: run `knave doc L0407` for an explanation

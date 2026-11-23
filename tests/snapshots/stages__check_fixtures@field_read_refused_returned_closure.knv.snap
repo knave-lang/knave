@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_returned_closure.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_refused_returned_closure.knv:7:25
+  |
+7 | (defn namer (x) (fn () (:name x)))
+  |                         ^^^^^ this read of `:name` infers a `has` bound
+  |
+  = note: the bound `(has :name (ref str))` inferred from this read cannot be kept: a borrow read from `:name` through a `has` bound leaves this function
+  = help: return or store an owned value, or write one function for each struct
+  = note: run `knave doc L0407` for an explanation

@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_owned_use_in_let.knv
+---
+error[L0401]: mismatched types
+ --> check/field_read_refused_owned_use_in_let.knv:8:20
+  |
+8 |   (let ((t string) (:title x)) t))
+  |            ------  ^^^^^^^^^^ expected `string`, found `(ref string)`
+  |            |
+  |            expected because of this annotation
+  |
+  = note: run `knave doc L0401` for an explanation

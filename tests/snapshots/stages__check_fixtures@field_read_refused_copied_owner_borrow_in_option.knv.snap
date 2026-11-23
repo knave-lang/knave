@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_copied_owner_borrow_in_option.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_refused_copied_owner_borrow_in_option.knv:12:25
+   |
+12 | (defn pos-of (x) (some (:pos x)))
+   |                         ^^^^ this read of `:pos` infers a `has` bound
+   |
+   = note: the bound `(has :pos (ref big))` inferred from this read cannot be kept: a borrow read from `:pos` through a `has` bound leaves this function
+   = help: return or store an owned value, or write one function for each struct
+   = note: run `knave doc L0407` for an explanation

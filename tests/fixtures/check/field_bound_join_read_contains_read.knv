@@ -1,0 +1,14 @@
+(defstruct cat
+  :name string)
+
+(defstruct dog
+  :name string)
+
+(defn within? (x y)
+  (contains? (:name x) (:name y)))
+
+(defn main ()
+  (println (within? (->cat (str "tommy"))
+                    (->dog (str "tom"))))
+  (println (within? (->dog (str "rex"))
+                    (->cat (str "tom")))))

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_call_unwrap_or_wrong_default.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_call_unwrap_or_wrong_default.knv:10:36
+   |
+10 |   (println (n-or (->user (some 1)) "z"))
+   |                                    ^^^ expected `int`, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

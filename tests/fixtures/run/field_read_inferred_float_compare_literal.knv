@@ -1,0 +1,11 @@
+(defstruct user
+  :w f32)
+
+(defstruct animal
+  :w f32)
+
+(defn heavy? (x) (> (:w x) 2.5))
+
+(defn main ()
+  (println (heavy? (->user 5.0)))
+  (println (heavy? (->animal 1.0))))

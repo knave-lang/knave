@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_user_trait_unmet.knv
+---
+error[L0404]: `int` does not implement `shout`
+  --> check/field_read_join_user_trait_unmet.knv:13:22
+   |
+13 | (defn yell (x) (loud (:n x)))
+   |                      ^^^^^^ this needs `shout`
+   |
+   = note: `shout` is implemented for: string
+   = note: run `knave doc L0404` for an explanation

@@ -1,0 +1,11 @@
+(defstruct op
+  :f (fn (int) int))
+
+(defstruct step
+  :f (fn (int) int))
+
+(defn apply-it (x) ((:f x) 3))
+
+(defn main ()
+  (println (apply-it (->op (fn (n) (+ n 1)))))
+  (println (apply-it (->step (fn (n) (* n 2))))))

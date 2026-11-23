@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_user_trait_two_args_disagree.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_join_user_trait_two_args_disagree.knv:22:19
+   |
+22 |   (bigger? (:n x) (:m y)))
+   |                   ^^^^^^ expected `int`, found `float`
+   |
+   = note: run `knave doc L0401` for an explanation

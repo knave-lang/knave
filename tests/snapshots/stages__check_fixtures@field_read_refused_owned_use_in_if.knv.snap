@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_owned_use_in_if.knv
+---
+error[L0401]: mismatched types
+ --> check/field_read_refused_owned_use_in_if.knv:8:26
+  |
+8 |   (if (> 1 0) (:title x) (str "none")))
+  |               ---------- ^^^^^^^^^^^^ expected `(ref string)`, found `string`
+  |               |
+  |               the first branch is `(ref string)`
+  |
+  = note: both branches of `if` must have the same type
+  = note: run `knave doc L0401` for an explanation

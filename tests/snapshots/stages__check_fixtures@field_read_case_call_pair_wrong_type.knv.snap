@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_call_pair_wrong_type.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_call_pair_wrong_type.knv:12:47
+   |
+12 |   (println (left-or (->animal (pair 2 false)) "z")))
+   |                                               ^^^ expected `int`, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

@@ -1,0 +1,12 @@
+(defstruct user
+  :name str)
+
+(defstruct person
+  :name string)
+
+(defn uppercase-name (x)
+  (upper-case (:name x)))
+
+(defn main ()
+  (println (uppercase-name (->user "ana")))
+  (println (uppercase-name (->person (str "bob")))))

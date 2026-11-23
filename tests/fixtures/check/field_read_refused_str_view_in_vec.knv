@@ -1,0 +1,17 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(type count-all
+  (fn ((vec (ref str))) usize))
+
+(defn count-all (v) (len v))
+
+(defn count-title (x)
+  (let (v (vec (:title x))) (count-all v)))
+
+(defn main ()
+  (println (count-title (->book (str "dune"))))
+  (println (count-title (->film (str "jaws")))))

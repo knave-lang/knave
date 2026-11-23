@@ -1,0 +1,10 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(defn main () (println "x"))

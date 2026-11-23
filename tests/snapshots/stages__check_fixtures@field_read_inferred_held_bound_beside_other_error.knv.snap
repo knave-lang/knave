@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_held_bound_beside_other_error.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_inferred_held_bound_beside_other_error.knv:15:17
+   |
+15 |   (println (+ 1 "s"))
+   |                 ^^^ expected an integer, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

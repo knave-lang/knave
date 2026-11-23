@@ -12,6 +12,9 @@ use crate::source::Span;
 pub(super) struct FieldOwnerProblems;
 
 impl FieldOwnerProblems {
+    const NAME_THE_STRUCT: &'static str =
+        "name the struct in a signature, as in `(fn ((ref point)) _)`";
+
     pub(super) fn ambiguous(field: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::CANNOT_INFER,
@@ -21,7 +24,7 @@ impl FieldOwnerProblems {
                 format!("cannot tell which struct's `{field}` this is"),
             ),
         )
-        .with_help("name the struct in a signature, as in `(fn ((ref point)) _)`")
+        .with_help(Self::NAME_THE_STRUCT)
     }
 
     pub(super) fn undeclared(label: &FieldLabel, similar: Option<Rc<str>>) -> Diagnostic {
@@ -52,7 +55,7 @@ impl FieldOwnerProblems {
     }
 
     pub(super) fn unkept(refusal: WrittenRefusal, field: &str, span: Span) -> Diagnostic {
-        let (title, help) = RefusalWording::of(refusal, field);
+        let (title, help) = RefusalWording::written().of(refusal, field);
         Diagnostic::error(
             DiagnosticCode::UNKEPT_FIELD_BOUND,
             title,

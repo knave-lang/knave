@@ -1,0 +1,15 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(defstruct point
+  :x float)
+
+(defn age-of (x) (:age x))
+
+(defn main ()
+  (println (age-of (->cat 1)))
+  (println (age-of (->point 1.0)))
+  (println (age-of 5)))

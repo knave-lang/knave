@@ -9,5 +9,5 @@ error[L0427]: this function moves a value that it reads `:title` from through a 
 13 |   (len (:title y)))
    |         ^^^^^^ this read goes through the `has` bound
    |
-   = help: take the value as `(ref a)`, or name the struct in the signature
+   = help: take the value as `(ref a)`, or name the struct in the signature, or write one function for each struct
    = note: run `knave doc L0427` for an explanation

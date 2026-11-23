@@ -1,0 +1,14 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(defn both (a b)
+  (str (:title a) " & " (:title b)))
+
+(defn main ()
+  (println (both (->book (str "dune"))
+                 (->film (str "jaws"))))
+  (println (both (->film (str "up"))
+                 (->film (str "jaws")))))

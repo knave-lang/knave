@@ -1,0 +1,12 @@
+(defstruct cat
+  :age int)
+
+(defstruct drone
+  :age u8)
+
+(defn show-age (x)
+  (str "age " (:age x)))
+
+(defn main ()
+  (println (show-age (->cat 1)))
+  (println (show-age (->drone 2))))

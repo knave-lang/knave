@@ -1,3 +1,5 @@
+use super::read_kind::ReadKind;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum WrittenRefusal {
     Read(ReadRefusal),
@@ -6,6 +8,7 @@ pub(super) enum WrittenRefusal {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ReadRefusal {
+    Differing,
     Function,
     Open,
     OpenStruct,
@@ -17,5 +20,15 @@ pub(super) enum UseRefusal {
     ChangesField,
     MovesOwner,
     BorrowLeaves,
+    ValueLeaves,
     NameTaken,
+}
+
+impl UseRefusal {
+    pub(super) fn leaving(kind: ReadKind) -> Self {
+        match kind {
+            ReadKind::Value => Self::ValueLeaves,
+            ReadKind::StoredBorrow | ReadKind::BorrowOfStruct => Self::BorrowLeaves,
+        }
+    }
 }

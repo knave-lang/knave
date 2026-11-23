@@ -1,0 +1,14 @@
+(defstruct cat
+  :age int
+  :tags (vec int))
+
+(defstruct dog
+  :age int
+  :tags (vec int))
+
+(defn tags-ref (x)
+  (if (> (:age x) 5) (vec) (:tags x)))
+
+(defn main ()
+  (println (len (tags-ref (->dog 9 (vec 1)))))
+  (println (len (tags-ref (->cat 1 (vec 1))))))

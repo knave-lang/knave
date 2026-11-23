@@ -1,0 +1,13 @@
+(defstruct (boxed t)
+  :title t)
+
+(defstruct film
+  :title string)
+
+(defn show (x) (str (:title x)))
+
+(defn main ()
+  (println (show (->boxed 5)))
+  (println (show (->boxed (str "s"))))
+  (println (show (->film (str "f"))))
+  (println (show (->film (str "g")))))

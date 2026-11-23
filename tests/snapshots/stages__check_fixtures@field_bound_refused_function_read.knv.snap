@@ -9,5 +9,5 @@ error[L0427]: a `has` bound cannot read the function field `:f`
 11 | (defn apply-it (x) ((:f x) 3))
    |                      ^^ this read goes through the `has` bound
    |
-   = help: name the struct in the signature to call its function field
+   = help: name the struct in the signature, or write one function for each struct to read or call its function field
    = note: run `knave doc L0427` for an explanation

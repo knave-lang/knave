@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_written_caller_open_read_help.knv
+---
+error[L0440]: `a` might not implement `(has :age r)`
+  --> check/field_read_inferred_written_caller_open_read_help.knv:12:33
+   |
+ 7 | (defn age-of (x) (:age x))
+   |                   ---- this read of an unknown struct needs the field
+...
+12 | (defn show (x) (println (age-of x)))
+   |                                 ^ this needs `(has :age r)`
+   |
+   = help: add the trait and its read to the signature's `where`: `(a (has :age r)) r`
+   = note: run `knave doc L0440` for an explanation

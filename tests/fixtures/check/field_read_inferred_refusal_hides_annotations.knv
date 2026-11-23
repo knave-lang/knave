@@ -1,0 +1,11 @@
+(defstruct book
+  :items (vec int))
+
+(defstruct sack
+  :items (vec string))
+
+(defn first-item (x) (first (:items x)))
+
+(defn main ()
+  (prn (first-item (->book (vec 3 1))))
+  (prn (first-item (->sack (vec (str "a"))))))

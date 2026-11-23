@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_int_call_not_pinned.knv
+---
+error[L0410]: `int` has no fields
+  --> check/field_read_inferred_int_call_not_pinned.knv:11:13
+   |
+ 7 | (defn age-of (x) (:age x))
+   |                   ---- this read of `:age` infers a `has` bound
+...
+11 |   (println (age-of 5)))
+   |             ^^^^^^ only structs have fields
+   |
+   = note: run `knave doc L0410` for an explanation

@@ -1,0 +1,16 @@
+(defstruct user
+  :name (fn (int) int))
+
+(defstruct animal
+  :name (fn (int) int))
+
+(type hello
+  (where ((a (has :name r)) r)
+    (fn ((ref a)) unit)))
+
+(defn hello (x)
+  (let (v (:name x)) (prn 1)))
+
+(defn main ()
+  (hello (->user (fn (v) (+ v 1))))
+  (hello (->animal (fn (v) (+ v 1)))))

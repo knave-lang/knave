@@ -1,0 +1,14 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(defn grow! (x) (set! (:age x) 3))
+
+(defn main ()
+  (let (c (->cat 1)
+        d (->dog 2))
+    (grow! c)
+    (grow! d)
+    (println (:age c))))

@@ -30,7 +30,10 @@ impl<'a> TypeVariables<'a> {
                     if argument == Type::Var(var) {
                         Bound::plain(bound.binding)
                     } else {
-                        Bound::with_argument(bound.binding, argument)
+                        Bound {
+                            argument: Some(argument),
+                            ..bound.clone()
+                        }
                     }
                 }
                 None => bound.clone(),

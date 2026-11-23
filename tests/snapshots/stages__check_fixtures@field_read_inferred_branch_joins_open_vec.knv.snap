@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_branch_joins_open_vec.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_inferred_branch_joins_open_vec.knv:10:28
+   |
+10 |   (if (> (:age x) 5) (vec) (:tags x)))
+   |                      ----- ^^^^^^^^^ expected `(vec _)`, found `(ref (vec int))`
+   |                      |
+   |                      the first branch is `(vec _)`
+   |
+   = note: both branches of `if` must have the same type
+   = note: run `knave doc L0401` for an explanation

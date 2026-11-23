@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_closure_owner_fixed_otherwise.knv
+---
+error[L0401]: mismatched types
+ --> check/field_read_inferred_closure_owner_fixed_otherwise.knv:9:17
+  |
+8 |   (let (g (fn (x) (+ 1 (:n x))))
+  |                         -- this read of `:n` infers a `has` bound
+9 |     (println (g (->a (str "s"))))))
+  |                 ^^^^^^^^^^^^^^^ this `a` reads `:n` as `(ref string)`
+  |
+  = note: the function uses this read as `int`
+  = note: run `knave doc L0401` for an explanation

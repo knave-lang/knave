@@ -27,11 +27,16 @@ impl<'a> StructFieldTraits<'a> {
         }
     }
 
-    pub(super) fn traits(&self, written: &FxHashSet<Rc<str>>) -> Vec<FieldTrait> {
-        let mut shared: Vec<&Rc<str>> = (written.iter())
+    pub(super) fn traits(
+        &self,
+        written: &FxHashSet<Rc<str>>,
+        read: &FxHashSet<Rc<str>>,
+    ) -> Vec<FieldTrait> {
+        let mut shared: Vec<&Rc<str>> = (written.iter().chain(read))
             .filter(|field| self.is_shared(field))
             .collect();
         shared.sort();
+        shared.dedup();
         shared
             .into_iter()
             .map(|field| FieldTrait::new(Rc::clone(field), self.implementors(field)))

@@ -21,8 +21,16 @@ impl MissingAnnotations {
         });
     }
 
-    pub fn one_per_variable(self, roots_of: impl Fn(TypeVar) -> Vec<TypeVar>) -> Diagnostics {
-        let mut reported_roots = FxHashSet::default();
+    pub fn roots(&self, roots_of: impl Fn(TypeVar) -> Vec<TypeVar>) -> FxHashSet<TypeVar> {
+        let vars = self.reports.iter().flat_map(|report| &report.open_vars);
+        vars.flat_map(|var| roots_of(*var)).collect()
+    }
+
+    pub fn one_per_variable(
+        self,
+        mut reported_roots: FxHashSet<TypeVar>,
+        roots_of: impl Fn(TypeVar) -> Vec<TypeVar>,
+    ) -> Diagnostics {
         let mut diagnostics = Diagnostics::default();
         for report in self.reports {
             let roots = report.open_vars.iter().flat_map(|var| roots_of(*var));

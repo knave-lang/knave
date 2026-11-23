@@ -1,0 +1,25 @@
+(defstruct a1
+  :b b1)
+
+(defstruct a2
+  :b b1)
+
+(defstruct b1
+  :c c1)
+
+(defstruct b2
+  :c c1)
+
+(defstruct c1
+  :d int)
+
+(defstruct c2
+  :d int)
+
+(defn f (x) (:d (:c (:b x))))
+
+(defn main ()
+  (println (f (->a1 (->b1 (->c1 1)))))
+  (println (f (->a2 (->b1 (->c1 2)))))
+  (println (:d (->c2 5)))
+  (println (:d (:c (->b2 (->c1 6))))))

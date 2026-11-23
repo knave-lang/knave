@@ -9,5 +9,5 @@ error[L0427]: a struct with an open type argument reaches this `has` bound on `:
 13 |   (str "hello " (:name x)))
    |                  ^^^^^ this read goes through the `has` bound
    |
-   = help: pass the struct with its type arguments fixed, or name the struct
+   = help: pass the struct with its type arguments fixed, or name the struct in the signature, or write one function for each struct
    = note: run `knave doc L0427` for an explanation

@@ -1,0 +1,9 @@
+(defstruct a
+  :n string)
+
+(defstruct b
+  :n string)
+
+(defn main ()
+  (let (g (fn (x) (+ 1 (:n x))))
+    (println (g (->a (str "s"))))))

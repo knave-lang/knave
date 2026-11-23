@@ -1,0 +1,15 @@
+(defstruct cat
+  :n int)
+
+(defstruct dog
+  :n int)
+
+(defn r (x) (:n x))
+
+(type g
+  (where ((a (has :n int)))
+    (fn ((ref a)) int)))
+
+(defn g (x) (+ 1 (r x)))
+
+(defn main () (println (g (->cat 3))))

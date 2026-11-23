@@ -1,3 +1,4 @@
+use super::inferred_at::InferredAt;
 use super::selection::Selection;
 use super::traits::TraitTable;
 use super::ty::{Bound, Type};
@@ -64,12 +65,19 @@ impl<'u> FieldReadSelection<'u> {
         else {
             return Some(read);
         };
-        (expected == read || expected.has_vars()).then_some(read)
+        if expected == read || expected.has_vars() {
+            return Some(read);
+        }
+        InferredAt::of(&bound.origins)
+            .waits_to_settle()
+            .then_some(expected)
     }
 
-    pub(super) fn reads_open_field(traits: &TraitTable, bound: &Bound) -> bool {
+    pub(super) fn waits_for_open_read(traits: &TraitTable, bound: &Bound) -> bool {
         let open = (bound.argument.as_ref()).is_some_and(Type::has_vars);
-        Self::reads_field(traits, bound) && open
+        let inferred = InferredAt::of(&bound.origins);
+        let checked_later = !inferred.is_inferred() || inferred.waits_to_settle();
+        Self::reads_field(traits, bound) && open && checked_later
     }
 
     pub(super) fn reads_field(traits: &TraitTable, bound: &Bound) -> bool {

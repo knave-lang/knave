@@ -1,0 +1,21 @@
+(defstruct cat
+  :name string
+  :age int)
+
+(defstruct dog
+  :name string
+  :age int)
+
+(defn age-of (x) (:age x))
+
+(defn older (x) (+ 1 (age-of x)))
+
+(defn name-of (x) (:name x))
+
+(defn shout (x) (str (name-of x) "!"))
+
+(defn main ()
+  (println (older (->cat (str "tom") 1)))
+  (println (older (->dog (str "rex") 2)))
+  (println (shout (->cat (str "tom") 1)))
+  (println (shout (->dog (str "rex") 2))))

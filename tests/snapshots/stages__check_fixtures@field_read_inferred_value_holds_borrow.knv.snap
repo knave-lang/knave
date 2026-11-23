@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_value_holds_borrow.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_inferred_value_holds_borrow.knv:10:21
+   |
+10 | (defn owner-of (x) (:owner x))
+   |                     ^^^^^^ this read of `:owner` infers a `has` bound
+   |
+   = note: the bound `(has :owner user)` inferred from this read cannot be kept: a value read from `:owner` through a `has` bound holds a borrow that leaves this function
+   = help: return or store an owned value, or write one function for each struct
+   = note: run `knave doc L0407` for an explanation

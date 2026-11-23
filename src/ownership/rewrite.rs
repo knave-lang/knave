@@ -3,6 +3,7 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::functions::{FunctionTable, ParamMode};
+use super::reference_param_at_value::ReferenceParamAtValue;
 use super::uncoerced_parameters::UncoercedMethodParameters;
 use crate::core::{BindingId, ReferenceKind};
 use crate::types::{
@@ -337,6 +338,8 @@ impl<'a> ModeRewrite<'a> {
             if self.stops_coercion(function, position, param) {
                 Self::dereference_collapsed_borrow(argument);
             }
+            ReferenceParamAtValue::new(param, instantiated.get(position))
+                .keep_one_reference(argument);
             let param = Self::instantiated_at_shared_reference(param, instantiated.get(position));
             self.borrow_for(argument, param);
         }

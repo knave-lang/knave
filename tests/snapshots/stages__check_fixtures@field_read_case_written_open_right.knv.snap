@@ -9,5 +9,6 @@ error[L0427]: the read of `:n` in this `has` bound names a type variable
 11 | (defn n-or (x d) (unwrap-or (:n x) d))
    |                              ^^ this read goes through the `has` bound
    |
-   = help: write the read with no type variable, as the field declares it
+   = note: the structs that reach this function read `:n` as `(option int)`
+   = help: write the read with no type variable
    = note: run `knave doc L0427` for an explanation

@@ -1,0 +1,14 @@
+(defstruct cat
+  :key string)
+
+(defstruct dog
+  :key string)
+
+(defn key-of (x) (clone (:key x)))
+
+(defn main ()
+  (let (keys (hash-map (key-of (->cat (str "b"))) 1)
+        grown (key-of (->dog (str "a"))))
+    (push! grown "x")
+    (println (len keys))
+    (println grown)))

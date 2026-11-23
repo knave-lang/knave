@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_refusal_hides_annotations.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_inferred_refusal_hides_annotations.knv:7:30
+  |
+7 | (defn first-item (x) (first (:items x)))
+  |                              ^^^^^^ this read of `:items` infers a `has` bound
+  |
+  = note: the structs that reach this function read `:items` as different types: `book` as `(ref (vec int))`, `sack` as `(ref (vec string))`
+  = help: write one function for each struct, or declare the field with one type in every struct
+  = note: run `knave doc L0407` for an explanation

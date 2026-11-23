@@ -1,0 +1,13 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age float)
+
+(defn age-of (x) (:age x))
+
+(type show
+  (where ((a (has :age r)) r)
+    (fn ((ref a)) unit)))
+
+(defn show (x) (println (age-of x)))

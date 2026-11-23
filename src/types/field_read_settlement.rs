@@ -1,17 +1,17 @@
-use std::rc::Rc;
-
 use rustc_hash::FxHashMap;
 
-use super::copy::CopyRules;
 use super::declarations::Declarations;
 use super::field_owner_problems::FieldOwnerProblems;
 use super::field_reader::FieldReader;
+use super::field_readers::FieldReaders;
 use super::field_traits::FieldTraitPlan;
-use super::open_read::OpenRead;
+use super::inferred_bound_problems::InferredBoundProblems;
 use super::pinning::InstantiationReport;
-use super::reaching_structs::ReachingStructs;
+use super::reaching_read::ReachingRead;
+use super::reaching_reads::ReachingReads;
 use super::read_settlements::ReadSettlements;
 use super::reader_shape::ReaderShape;
+use super::refusal_wording::RefusalWording;
 use super::ty::{GenericId, Type};
 use super::typed::{TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
 use super::unborrowed::Unborrowed;
@@ -60,30 +60,15 @@ impl<'r> FieldReadSettlement<'r> {
         if let Err(refusal) = planned {
             tally
                 .errors
-                .extend(Self::refusals(program, &reader, refusal));
+                .extend(self.refusals(program, &reader, refusal));
         }
     }
 
     fn readers(program: &TypedProgram) -> Vec<FieldReader> {
-        let field_traits = program.declarations.traits().rust_paths().field_traits();
-        let definitions = (program.modules.iter()).flat_map(|module| &module.definitions);
-        let params = definitions.flat_map(|definition| {
-            (definition.scheme.params.iter()).map(move |param| (definition.binding, param))
-        });
-        params
-            .flat_map(|(binding, param)| {
-                param.bounds.iter().filter_map(move |bound| {
-                    let field = field_traits.bindings().field_of(bound.binding)?;
-                    Some(FieldReader {
-                        binding,
-                        owner: param.id,
-                        read: bound.argument.clone()?,
-                        field: Rc::clone(field),
-                        trait_binding: bound.binding,
-                    })
-                })
-            })
-            .collect()
+        let readers = FieldReaders::of(program).into_iter();
+        let reached_or_written =
+            |reader: &FieldReader| !reader.inferred_at.is_inferred() || reader.read.is_concrete();
+        readers.filter(reached_or_written).collect()
     }
 
     fn plan(
@@ -91,28 +76,21 @@ impl<'r> FieldReadSettlement<'r> {
         program: &TypedProgram,
         reader: &FieldReader,
     ) -> Result<Option<FieldTraitPlan>, WrittenRefusal> {
-        if !reader.read.is_concrete() {
-            return Err(WrittenRefusal::Read(ReadRefusal::Open));
+        let reads = ReachingReads::new(self.report, program).of(reader);
+        let unreached = matches!(&reads, Ok(found) if found.is_empty());
+        if !reader.read.is_concrete() && !unreached {
+            return Err(WrittenRefusal::Read(Self::open_refusal(&reads)));
         }
-        let structs = ReachingStructs::new(self.report)
-            .of(reader.binding, reader.owner)
-            .ok_or(WrittenRefusal::Read(ReadRefusal::OpenStruct))?;
-        let reads = OpenRead::new(CopyRules::new(&program.declarations, &program.generics));
+        let reads = reads?;
         let mut plan: Option<FieldTraitPlan> = None;
-        for (owner, arguments) in structs {
-            if !arguments.iter().all(Type::is_concrete) {
-                return Err(WrittenRefusal::Read(ReadRefusal::OpenStruct));
-            }
-            let definition = program.declarations.types().structs.get(owner);
-            let read =
-                definition.and_then(|found| reads.through_bound(found, &reader.field, &arguments));
-            let Some(read) = read.filter(|read| read.read == reader.read) else {
-                continue;
-            };
-            let implementor = Type::Named(owner, arguments);
+        for reached in reads
+            .into_iter()
+            .filter(|reached| reached.read.read == reader.read)
+        {
+            let implementor = Type::Named(reached.owner, reached.arguments);
             let found = plan.get_or_insert_with(|| FieldTraitPlan {
-                read: read.read,
-                kind: read.kind,
+                read: reached.read.read,
+                kind: reached.read.kind,
                 implementors: Vec::new(),
             });
             if !found.implementors.contains(&implementor) {
@@ -123,19 +101,62 @@ impl<'r> FieldReadSettlement<'r> {
     }
 
     fn refusals(
+        &self,
         program: &TypedProgram,
         reader: &FieldReader,
         refusal: WrittenRefusal,
     ) -> Diagnostics {
+        let note = self.reads_note(program, reader, refusal);
         let definitions = (program.modules.iter()).flat_map(|module| &module.definitions);
         let refused = definitions.filter(|definition| definition.binding == reader.binding);
         refused
             .map(|definition| {
                 let span = Self::first_read(&definition.value, reader.owner)
                     .map_or(definition.span, |label| label.span);
-                FieldOwnerProblems::unkept(refusal, &reader.field, span)
+                match (reader.inferred_at.first(), &note) {
+                    (Some(read), _) => InferredBoundProblems::new(&reader.field, read).unkept(
+                        refusal,
+                        Some(&InferredBoundProblems::shown_bound(reader, program)),
+                    ),
+                    (None, Some(note)) => {
+                        FieldOwnerProblems::unkept(refusal, &reader.field, span).with_note(note)
+                    }
+                    (None, None) => FieldOwnerProblems::unkept(refusal, &reader.field, span),
+                }
             })
             .collect()
+    }
+
+    fn open_refusal(reads: &Result<Vec<ReachingRead>, WrittenRefusal>) -> ReadRefusal {
+        let found = reads.as_ref().map(Vec::as_slice).unwrap_or_default();
+        let function = |reached: &ReachingRead| matches!(reached.read.read, Type::Function(..));
+        if found.iter().any(function) {
+            ReadRefusal::Function
+        } else if found.iter().any(|reached| reached.read != found[0].read) {
+            ReadRefusal::Differing
+        } else {
+            ReadRefusal::Open
+        }
+    }
+
+    fn reads_note(
+        &self,
+        program: &TypedProgram,
+        reader: &FieldReader,
+        refusal: WrittenRefusal,
+    ) -> Option<String> {
+        let reads = ReachingReads::new(self.report, program).of(reader).ok()?;
+        let shown = ReachingReads::shown(program, &reads);
+        match refusal {
+            WrittenRefusal::Read(ReadRefusal::Open) => Some(RefusalWording::agreed_read(
+                &reader.field,
+                &shown.first()?.1,
+            )),
+            WrittenRefusal::Read(ReadRefusal::Differing) => {
+                Some(RefusalWording::differing_reads(&reader.field, &shown))
+            }
+            _ => None,
+        }
     }
 
     fn first_read(expr: &TypedExpr, owner: GenericId) -> Option<&FieldLabel> {
@@ -159,7 +180,7 @@ impl Tally {
         if let Some(refusal) = shape.refusal(reader, &plan) {
             return Err(refusal);
         }
-        if shape.copies_owner(&plan) {
+        if !reader.inferred_at.is_inferred() && shape.copies_owner(&plan) {
             self.settlements.require_copy(reader.owner);
         }
         self.join(reader.trait_binding, plan)

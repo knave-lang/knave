@@ -5,9 +5,13 @@ use super::ty::{GenericId, Type};
 use super::unborrowed::Unborrowed;
 use crate::core::BindingId;
 
+type ReachedStruct = (BindingId, Vec<Type>);
+
 pub(super) struct ReachingStructs<'r> {
     report: &'r InstantiationReport,
     visited: FxHashSet<(BindingId, GenericId)>,
+    structs: Vec<ReachedStruct>,
+    reached_by_other: bool,
 }
 
 impl<'r> ReachingStructs<'r> {
@@ -15,6 +19,8 @@ impl<'r> ReachingStructs<'r> {
         Self {
             report,
             visited: FxHashSet::default(),
+            structs: Vec::new(),
+            reached_by_other: false,
         }
     }
 
@@ -22,27 +28,33 @@ impl<'r> ReachingStructs<'r> {
         mut self,
         binding: BindingId,
         generic: GenericId,
-    ) -> Option<Vec<(BindingId, Vec<Type>)>> {
-        self.collect(binding, generic)
+    ) -> Option<Vec<ReachedStruct>> {
+        self.walk(binding, generic);
+        (!self.reached_by_other).then_some(self.structs)
     }
 
-    fn collect(
-        &mut self,
+    pub(super) fn generic_callers(
+        mut self,
         binding: BindingId,
         generic: GenericId,
-    ) -> Option<Vec<(BindingId, Vec<Type>)>> {
-        let mut structs = Vec::new();
+    ) -> Vec<GenericId> {
+        self.walk(binding, generic);
+        self.visited.into_iter().map(|(_, caller)| caller).collect()
+    }
+
+    fn walk(&mut self, binding: BindingId, generic: GenericId) {
         for (enclosing, used) in self.report.sited_uses_of(binding, generic) {
             match used.as_ref().map(Unborrowed::of) {
-                Some(Type::Named(owner, arguments)) => structs.push((*owner, arguments.clone())),
+                Some(Type::Named(owner, arguments)) => {
+                    self.structs.push((*owner, arguments.clone()))
+                }
                 Some(Type::Generic(caller)) => {
                     if self.visited.insert((enclosing, *caller)) {
-                        structs.extend(self.collect(enclosing, *caller)?);
+                        self.walk(enclosing, *caller);
                     }
                 }
-                _ => return None,
+                _ => self.reached_by_other = true,
             }
         }
-        Some(structs)
     }
 }

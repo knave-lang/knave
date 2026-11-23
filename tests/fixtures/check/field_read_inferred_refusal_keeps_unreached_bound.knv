@@ -1,0 +1,20 @@
+(defstruct book
+  :title string
+  :age int)
+
+(defstruct film
+  :title int
+  :age string)
+
+(defn title (x) (:title x))
+
+(defn age (x) (:age x))
+
+(type show
+  (where (a) (fn ((ref a)) string)))
+
+(defn show (x) (str (title x)))
+
+(defn main ()
+  (println (str (age (->book (str "b") 1))))
+  (println (str (age (->film 4 (str "s"))))))

@@ -2725,7 +2725,8 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         let value = self.infer(value)?;
-        if let Some(ty) = self.field_bound().read(&value.ty, &label.name) {
+        let read = self.field_bound().read(&value.ty, &label.name);
+        if let Some(ty) = read.or_else(|| self.open_field_read().infer(&value.ty, label)) {
             return Ok(FieldReadExpr::new(value, label).typed(ty, span));
         }
         let (owner, arguments) = self.field_owner(&value, label)?;
@@ -2759,7 +2760,7 @@ impl TypeChecker {
             }
             Type::Var(var) => match self.unifier.literal_kind(var) {
                 Some(literal) => Err(FieldOwnerProblems::literal_owner(literal, value.span)),
-                None => self.unique_owner(&owner, label),
+                None => self.unique_owner_or_request_trait(&owner, label),
             },
             other => {
                 Err(self
@@ -2769,18 +2770,13 @@ impl TypeChecker {
         }
     }
 
-    fn unique_owner(
+    fn unique_owner_or_request_trait(
         &mut self,
         owner: &Type,
         label: &FieldLabel,
     ) -> Result<(BindingId, Vec<Type>), Diagnostic> {
-        match self
-            .declarations
-            .types()
-            .structs
-            .with_field(&label.name)
-            .as_slice()
-        {
+        let candidates = self.open_field_read().candidates(label);
+        match candidates.as_slice() {
             [binding] => {
                 let arguments = self.fresh_arguments(*binding);
                 let expected = Type::Named(*binding, arguments.clone());
@@ -2792,7 +2788,10 @@ impl TypeChecker {
                 label,
                 self.declarations.types().structs.closest_field(&label.name),
             )),
-            _ => Err(FieldOwnerProblems::ambiguous(&label.name, label.span)),
+            _ => {
+                self.open_field_read().request(&label.name);
+                Err(FieldOwnerProblems::ambiguous(&label.name, label.span))
+            }
         }
     }
 

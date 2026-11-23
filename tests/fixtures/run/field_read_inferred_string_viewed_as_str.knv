@@ -1,0 +1,11 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(defn t (x) (len (trim (:title x))))
+
+(defn main ()
+  (println (t (->book (str " ab "))))
+  (println (t (->film (str "c")))))

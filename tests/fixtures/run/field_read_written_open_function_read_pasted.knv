@@ -1,0 +1,15 @@
+(defstruct user
+  :name (fn (int) int))
+
+(defstruct animal
+  :name (fn (int) int))
+
+(defn hello-user (x)
+  (let (v (:name x)) (prn (v 1))))
+
+(defn hello-animal (x)
+  (let (v (:name x)) (prn (v 2))))
+
+(defn main ()
+  (hello-user (->user (fn (v) (+ v 1))))
+  (hello-animal (->animal (fn (v) (+ v 1)))))

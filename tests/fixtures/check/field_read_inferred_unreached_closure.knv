@@ -1,0 +1,9 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defn main ()
+  (let (f (fn (y) (str (:name y))))
+    (println "x")))

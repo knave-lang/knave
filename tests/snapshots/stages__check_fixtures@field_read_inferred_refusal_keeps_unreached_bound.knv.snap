@@ -1,0 +1,26 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_refusal_keeps_unreached_bound.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_inferred_refusal_keeps_unreached_bound.knv:11:16
+   |
+11 | (defn age (x) (:age x))
+   |                ^^^^ this read of `:age` infers a `has` bound
+   |
+   = note: the structs that reach this function read `:age` as different types: `book` as `int`, `film` as `(ref string)`
+   = help: write one function for each struct, or declare the field with one type in every struct
+   = note: run `knave doc L0407` for an explanation
+
+error[L0440]: `a` might not implement `(has :title r)`
+  --> check/field_read_inferred_refusal_keeps_unreached_bound.knv:16:28
+   |
+ 9 | (defn title (x) (:title x))
+   |                  ------ this read of an unknown struct needs the field
+...
+16 | (defn show (x) (str (title x)))
+   |                            ^ this needs `(has :title r)`
+   |
+   = help: add the trait and its read to the signature's `where`: `(a (has :title r)) r`
+   = note: run `knave doc L0440` for an explanation

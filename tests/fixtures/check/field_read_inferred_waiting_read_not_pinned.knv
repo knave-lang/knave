@@ -1,0 +1,18 @@
+(defstruct (boxed a)
+  :n int
+  :v a)
+
+(defstruct film
+  :n int)
+
+(defn n-of (b) (:n b))
+
+(defn wrap (v) (n-of (->boxed 1 v)))
+
+(defn show (f) (n-of f))
+
+(defn main ()
+  (println (wrap 5))
+  (println (wrap "s"))
+  (println (show (->film 4)))
+  (println (n-of (->film 3))))

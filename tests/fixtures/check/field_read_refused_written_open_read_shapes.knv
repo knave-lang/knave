@@ -1,0 +1,51 @@
+(defstruct user
+  :name str
+  :nick (option str)
+  :tags (vec str)
+  :words (ref (vec (ref str))))
+
+(defstruct animal
+  :name str
+  :nick (option str)
+  :tags (vec str)
+  :words (ref (vec (ref str))))
+
+(type name-of
+  (where (b (a (has :name b)))
+    (fn ((ref a)) bool)))
+
+(defn name-of (x) (do (:name x) true))
+
+(type nick-of
+  (where (b (a (has :nick b)))
+    (fn ((ref a)) bool)))
+
+(defn nick-of (x) (do (:nick x) true))
+
+(type tags-of
+  (where (b (a (has :tags b)))
+    (fn ((ref a)) bool)))
+
+(defn tags-of (x) (do (:tags x) true))
+
+(type words-of
+  (where (b (a (has :words b)))
+    (fn ((ref a)) bool)))
+
+(defn words-of (x) (do (:words x) true))
+
+(defn main ()
+  (let (words (vec "w")
+        u (->user "ana"
+                  (some "a")
+                  (vec "t")
+                  (ref words))
+        p (->animal "rex" none (vec "u") (ref words)))
+    (println (name-of (ref u))
+             (name-of (ref p)))
+    (println (nick-of (ref u))
+             (nick-of (ref p)))
+    (println (tags-of (ref u))
+             (tags-of (ref p)))
+    (println (words-of (ref u))
+             (words-of (ref p)))))

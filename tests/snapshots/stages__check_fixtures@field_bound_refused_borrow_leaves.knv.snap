@@ -9,5 +9,5 @@ error[L0427]: a borrow read from `:name` through a `has` bound leaves this funct
 11 | (defn name-of (x) (:name x))
    |                    ^^^^^ this read goes through the `has` bound
    |
-   = help: return or store an owned value, or name the struct in the signature
+   = help: return or store an owned value, or name the struct in the signature, or write one function for each struct
    = note: run `knave doc L0427` for an explanation

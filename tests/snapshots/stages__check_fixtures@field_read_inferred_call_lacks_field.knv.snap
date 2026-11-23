@@ -1,0 +1,26 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_call_lacks_field.knv
+---
+error[L0408]: `point` has no field `:age`
+  --> check/field_read_inferred_call_lacks_field.knv:14:20
+   |
+10 | (defn age-of (x) (:age x))
+   |                   ---- this read of `:age` infers a `has` bound
+...
+14 |   (println (age-of (->point 1.0)))
+   |                    ^^^^^^^^^^^^^ this has no field `:age`
+   |
+   = note: run `knave doc L0408` for an explanation
+
+error[L0410]: `int` has no fields
+  --> check/field_read_inferred_call_lacks_field.knv:15:13
+   |
+10 | (defn age-of (x) (:age x))
+   |                   ---- this read of `:age` infers a `has` bound
+...
+15 |   (println (age-of 5)))
+   |             ^^^^^^ only structs have fields
+   |
+   = note: run `knave doc L0410` for an explanation

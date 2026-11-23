@@ -1,3 +1,4 @@
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -28,6 +29,9 @@ use super::derive_rules::DeriveRules;
 use super::display::TypeDisplay;
 use super::enum_item::EnumItem;
 use super::explanation_sources::ExplanationSources;
+use super::field_bound_problems::FieldBoundProblems;
+use super::field_read_selection::FieldReadSelection;
+use super::field_readers::FieldReaders;
 use super::generalization::Generalization;
 use super::generalization_rules::GeneralizationRules;
 use super::generic_declarations::GenericDeclarations;
@@ -47,11 +51,15 @@ use super::literal_parameters::LiteralParameters;
 use super::literal_settlement::LiteralSettlement;
 use super::mentioned_generics::MentionedGenerics;
 use super::method_receivers::MethodReceivers;
+use super::missing_read::MissingRead;
 use super::missing_trait::MissingTrait;
 use super::missing_trait_explanation::MissingTraitExplanation;
 use super::obligation_pass::ObligationPass;
 use super::obligation_solver::ObligationSolver;
 use super::opaque_positions::OpaquePositions;
+use super::open_annotations::OpenAnnotations;
+use super::open_read_settlement::OpenReadSettlement;
+use super::open_round_end::OpenRoundEnd;
 use super::ownership_facts::OwnershipFacts;
 use super::parameter_call_search::CalledParameters;
 use super::passing_facts::PassingFacts;
@@ -66,10 +74,12 @@ use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
 use super::result_borrow_source::ResultBorrowSource;
 use super::round_facts::RoundFacts;
+use super::round_failure::RoundFailure;
 use super::shared_call::SharedCall;
 use super::shared_group::SharedGroup;
 use super::shared_member_passing::SharedMemberPassing;
 use super::shared_variable_group::SharedVariableGroup;
+use super::signature_names::SignatureNames;
 use super::solver_event::SolverEvent;
 use super::solver_sources::SolverSources;
 use super::solver_state::SolverState;
@@ -114,7 +124,7 @@ pub struct TypeChecker {
     pub(super) outcomes: DefinitionOutcomes,
     pub(super) diagnostics: Diagnostics,
     pub(super) warnings: Diagnostics,
-    pub(super) missing_annotations: super::missing_annotations::MissingAnnotations,
+    pub(super) open_annotations: super::open_annotations::OpenAnnotations,
     pub(super) unnameable_types: Diagnostics,
     pub(super) closure_types: Vec<super::typed::ClosureType>,
     pub(super) type_texts: super::type_text::TypeTexts,
@@ -176,7 +186,7 @@ impl TypeChecker {
             outcomes: DefinitionOutcomes::default(),
             diagnostics: Diagnostics::default(),
             warnings: Diagnostics::default(),
-            missing_annotations: super::missing_annotations::MissingAnnotations::default(),
+            open_annotations: super::open_annotations::OpenAnnotations::default(),
             unnameable_types: Diagnostics::default(),
             closure_types: Vec::new(),
             type_texts: super::type_text::TypeTexts::default(),
@@ -217,7 +227,12 @@ impl TypeChecker {
         }
     }
 
-    fn collect_declarations(&mut self, modules: &[CoreModule], graph: &DefinitionGraph) {
+    fn collect_declarations(
+        &mut self,
+        modules: &[CoreModule],
+        graph: &DefinitionGraph,
+        facts: &RoundFacts,
+    ) {
         self.record_type_arities(modules);
         self.record_projections(modules);
         let reached = graph.reach().traits();
@@ -240,9 +255,8 @@ impl TypeChecker {
         self.collect_trait_impls(modules);
         self.record_structural_traits(modules);
         self.register_derived_traits(modules);
-        let written = graph.reach().field_bounds();
-        let fields =
-            StructFieldTraits::new(&self.declarations, self.generics.params()).traits(written);
+        let fields = StructFieldTraits::new(&self.declarations, self.generics.params())
+            .traits(graph.reach().field_bounds(), facts.shared_fields());
         (self.declarations.builder().traits()).enter_field_traits(fields, &mut self.bindings);
         self.report_supertraits();
         self.check_trait_claims(modules, reached);
@@ -529,6 +543,11 @@ impl TypeChecker {
         super::field_bound::FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
     }
 
+    pub(super) fn open_field_read(&mut self) -> super::open_field_read::OpenFieldRead<'_> {
+        let reads = self.open_annotations.reads_mut();
+        super::open_field_read::OpenFieldRead::new(&mut self.unifier, reads, &self.declarations)
+    }
+
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
         VariantPayloads::new(self.declarations.types())
     }
@@ -702,21 +721,12 @@ impl TypeChecker {
         }
     }
 
+    fn signature_names(&self) -> SignatureNames<'_> {
+        SignatureNames::new(&self.schemes, &self.component, &self.generics)
+    }
+
     pub(super) fn display(&self) -> TypeDisplay<'_> {
         self.passing_tables().display()
-    }
-
-    fn resolve_missing_annotations(&mut self) {
-        if !self.diagnostics.has_errors() {
-            let missing = std::mem::take(&mut self.missing_annotations);
-            let reports = missing.one_per_variable(|var| self.open_roots(var));
-            self.diagnostics.extend(reports);
-        }
-    }
-
-    fn open_roots(&self, var: TypeVar) -> Vec<TypeVar> {
-        let roots = self.free_vars(&Type::Var(var));
-        if roots.is_empty() { vec![var] } else { roots }
     }
 
     pub(super) fn record_macro_field_read(&mut self, label: &crate::core::FieldLabel, span: Span) {
@@ -831,7 +841,7 @@ impl TypeChecker {
                     span,
                 } => self.report_unproven_bound(generic, bound, span),
                 SolverEvent::OpenObligation { open_vars, problem } => {
-                    self.missing_annotations.defer(open_vars, problem)
+                    self.open_annotations.defer(open_vars, problem)
                 }
             }
         }
@@ -1214,10 +1224,19 @@ impl TypeChecker {
                 vars.push(var);
             }
         }
+        self.read_variables()
+            .add_vars(vars, |read| self.free_vars(read));
+    }
+
+    fn read_variables(&self) -> super::read_variables::ReadVariables<'_> {
+        let fields = self.declarations.traits().rust_paths().field_traits();
+        super::read_variables::ReadVariables::new(fields.bindings(), &self.unifier)
     }
 
     fn mentioned_generics(&self, inferred: &Type) -> Vec<GenericParam> {
-        MentionedGenerics::of(inferred)
+        let mut mentioned = MentionedGenerics::of(inferred);
+        (self.read_variables()).add_generics(&mut mentioned, |id| self.generics.param(id));
+        mentioned
             .into_ids()
             .into_iter()
             .filter_map(|id| self.generics.param(id).cloned())
@@ -1382,8 +1401,21 @@ impl TypeChecker {
             .table
             .inclusions()
             .innermost(bound.binding);
-        let diagnostic =
-            TypeProblems::missing_bound(self.bindings.get(reported).name(), &generic_name, span);
+        let trait_name = self.bindings.get(reported).name();
+        let table = &self.declarations.traits().table;
+        let read =
+            (bound.argument.as_ref()).filter(|_| FieldReadSelection::reads_field(table, &bound));
+        let taken = self.signature_names().of(generic);
+        let missing = (read.map(|read| self.unifier.resolve(read)))
+            .map(|read| MissingRead::of(&read, &self.display(), &taken));
+        let problems = FieldBoundProblems::new(trait_name, &generic_name, span);
+        let diagnostic = match missing {
+            Some(MissingRead::Open(read)) => {
+                return self.open_annotations.hold(problems, read, bound.origins);
+            }
+            Some(known) => problems.missing(&known),
+            None => TypeProblems::missing_bound(trait_name, &generic_name, span),
+        };
         self.diagnostics
             .push(BoundOriginProblems::annotate(diagnostic, &bound.origins));
     }
@@ -1420,15 +1452,18 @@ impl TypeChecker {
             checker.literal_defaults = literal_defaults.clone();
             checker.default_literal_parameters = default_literal_parameters;
             checker.vector_bases = facts.vector_bases().clone();
+            checker.open_annotations = OpenAnnotations::new(Rc::clone(facts.settled_reads()));
             checker.call_origins = Rc::clone(&program.call_origins);
             checker
         };
         let mut facts = RoundFacts::default();
         loop {
-            match configured(&facts).check_program(program, graph, &facts) {
-                CheckRound::Checked(typed) => return Ok(*typed),
-                CheckRound::Failed(diagnostics) => return Err(diagnostics),
-                CheckRound::Grown(growth, checking) => facts.grow(growth, checking),
+            let round = configured(&facts).check_program(program, graph, &facts);
+            let settled =
+                OpenReadSettlement::new(program, graph, facts.settled_reads()).after(round);
+            match settled.next() {
+                ControlFlow::Break(checked) => return checked,
+                ControlFlow::Continue((growth, checking)) => facts.grow(growth, checking),
             }
         }
     }
@@ -1442,7 +1477,7 @@ impl TypeChecker {
         self.outcomes = DefinitionOutcomes::new(graph.reach().unreached());
         self.checking_facts
             .record_prelude(&program.modules, &program.pending_definitions);
-        self.collect_declarations(&program.modules, graph);
+        self.collect_declarations(&program.modules, graph, facts);
         self.impl_bounds().seed(facts.seeds());
         let mut round = ImplAbsorption::new(self.declarations.traits().impls());
         let mut definitions = self.check_definitions(program.entry.function, graph, &mut round);
@@ -1456,9 +1491,13 @@ impl TypeChecker {
         if let Some(grown) = round.into_rerun() {
             return CheckRound::Grown(RoundGrowth::ImplBounds(grown), self.checking);
         }
+        let shared = self.open_annotations.take_requested();
+        if !shared.is_empty() {
+            return CheckRound::Grown(RoundGrowth::SharedFields(shared), self.checking);
+        }
         self.discharge_obligations(ObligationPass::Final);
         self.check_written_projections();
-        self.resolve_missing_annotations();
+        let open = (self.open_annotations).end_round(&self.unifier, &self.diagnostics);
         self.label_parameter_calls(&program.modules);
         self.check_opaque_positions(&program.modules, &definitions);
         let open_collections = self.open_collections();
@@ -1467,24 +1506,31 @@ impl TypeChecker {
             .iter()
             .map(|module| TypedModuleBuilder::build(module, &mut definitions))
             .collect();
-        let typed = self.into_program(typed_modules, program);
-        open_collections.round(typed, program, graph)
+        match self.into_program(typed_modules, program, open) {
+            CheckRound::Checked(typed) => open_collections.round(Ok(*typed), program, graph),
+            failed => failed,
+        }
     }
 
     fn into_program(
-        self,
+        mut self,
         modules: Vec<super::typed::TypedModule>,
         program: &crate::expand::Program,
-    ) -> Result<super::typed::TypedProgram, Diagnostics> {
-        let warnings = self.warnings;
-        let mut diagnostics = self.diagnostics.distinct();
-        if diagnostics.has_errors() {
-            diagnostics.extend(self.unnameable_types);
-            diagnostics.extend(warnings);
-            return Err(diagnostics);
+        open: OpenRoundEnd,
+    ) -> CheckRound {
+        let reported = self.diagnostics.distinct();
+        let failure = RoundFailure::fails(&reported, &open).then(|| {
+            let mut trailing = std::mem::take(&mut self.unnameable_types);
+            trailing.extend(std::mem::take(&mut self.warnings));
+            RoundFailure::new(reported, open, trailing)
+        });
+        if !FieldReaders::may_exist(&self.declarations)
+            && let Some(failure) = failure
+        {
+            return CheckRound::Failed(failure.alone());
         }
         let generics = DeclaredGenerics::from(self.generics);
-        Ok(super::typed::TypedProgram {
+        let typed = Box::new(super::typed::TypedProgram {
             modules,
             entry: program.entry.module,
             entry_function: program.entry.function,
@@ -1505,8 +1551,12 @@ impl TypeChecker {
             unnameable_types: self.unnameable_types,
             closure_types: self.closure_types,
             type_texts: self.type_texts,
-            warnings,
+            warnings: self.warnings,
             checking: self.checking,
-        })
+        });
+        match failure {
+            Some(failure) => CheckRound::FailedWithProgram(failure, typed),
+            None => CheckRound::Checked(typed),
+        }
     }
 }

@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_changes_field.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_inferred_changes_field.knv:7:24
+  |
+7 | (defn grow! (x) (set! (:age x) 3))
+  |                        ^^^^ this read of `:age` infers a `has` bound
+  |
+  = note: a `has` bound inferred from this read cannot be kept: this function changes `:age` through a `has` bound
+  = help: write one function for each struct to change its fields
+  = note: run `knave doc L0407` for an explanation

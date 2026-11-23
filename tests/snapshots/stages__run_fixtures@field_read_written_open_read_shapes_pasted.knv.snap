@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_written_open_read_shapes_pasted.knv
+---
+truetrue
+truetrue
+truetrue
+truetrue

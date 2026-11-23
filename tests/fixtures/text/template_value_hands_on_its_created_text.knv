@@ -1,0 +1,10 @@
+(def upper
+  (rust "{0}.to_uppercase()"
+    (fn ((ref string)) string)))
+
+(defn main ()
+  (local words (vec (str "a") (str "b")))
+  (local loud
+    (the (vec string)
+         (collect (map (iter words) upper))))
+  (println (len loud)))

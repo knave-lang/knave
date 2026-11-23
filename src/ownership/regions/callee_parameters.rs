@@ -67,10 +67,6 @@ impl OpenCallees {
         self.provisional.get(&callee).cloned().unwrap_or_default()
     }
 
-    pub(super) fn propose(&mut self, callee: BindingId, parameters: CalleeParameters) {
-        self.provisional.insert(callee, parameters);
-    }
-
     pub(super) fn widen(&mut self, callee: BindingId, parameters: &CalleeParameters) -> bool {
         let current = self.provisional.get(&callee).cloned().unwrap_or_default();
         let widened = current.joined(parameters);

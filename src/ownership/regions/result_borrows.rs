@@ -116,9 +116,7 @@ impl<'a> ResultBorrows<'a> {
     fn proposed_visit(&self, callee: BindingId, lambda: &TypedLambda, order: usize) -> CalleeVisit {
         let analysed = BodyFlows::of(self, lambda, Some(order));
         let parameters = analysed.parameters(lambda);
-        self.open_callees
-            .borrow_mut()
-            .propose(callee, parameters.clone());
+        self.open_callees.borrow_mut().widen(callee, &parameters);
         CalleeVisit {
             parameters,
             earliest_reached: analysed.earliest_reached,

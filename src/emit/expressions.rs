@@ -1492,7 +1492,7 @@ impl<'a> ExpressionEmitter<'a> {
                 self.program
                     .ownership
                     .regions
-                    .of(ParameterRole::FlowsToResult, lambda.parameter_bindings())
+                    .of(ParameterRole::FlowsToResult, lambda)
             }
             _ => FxHashSet::default(),
         }

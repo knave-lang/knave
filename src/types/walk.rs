@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use super::Type;
+use super::parameterized::Parameterized;
 use super::typed::{
     LetValue, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
     TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
@@ -321,10 +322,6 @@ impl TypedLambda {
         self.params.iter().chain(self.body.binders())
     }
 
-    pub fn parameter_bindings(&self) -> impl Iterator<Item = BindingId> + Clone + '_ {
-        self.params.iter().map(|param| param.binding)
-    }
-
     fn binders_mut(&mut self) -> Vec<&mut TypedBinder> {
         self.params
             .iter_mut()
@@ -409,5 +406,11 @@ impl TypedBodyItem {
             TypedBodyItem::Let(binder, _) => Some(binder),
             TypedBodyItem::Expr(_) => None,
         }
+    }
+}
+
+impl Parameterized for TypedLambda {
+    fn parameter_bindings(&self) -> impl Iterator<Item = BindingId> + Clone + '_ {
+        self.params.iter().map(|param| param.binding)
     }
 }

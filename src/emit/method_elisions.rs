@@ -161,12 +161,11 @@ impl<'r, 'a> MethodElisions<'r, 'a> {
         let mut flowing = FxHashSet::default();
         for lambda in bodies {
             let regions = &self.program.ownership.regions;
-            let higher_ranked =
-                regions.of(ParameterRole::HigherRanked, lambda.parameter_bindings());
+            let higher_ranked = regions.of(ParameterRole::HigherRanked, *lambda);
             called_with_local.extend(Self::positions(lambda, &higher_ranked));
             flowing.extend(Self::positions(
                 lambda,
-                &regions.of(ParameterRole::FlowsToResult, lambda.parameter_bindings()),
+                &regions.of(ParameterRole::FlowsToResult, *lambda),
             ));
         }
         flowing.retain(|position| !called_with_local.contains(position));

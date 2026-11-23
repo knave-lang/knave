@@ -7,14 +7,14 @@ use super::body_flows::BodyFlows;
 use super::callee_parameters::{CalleeParameters, OpenCallees};
 use super::callee_visit::CalleeVisit;
 use super::definition_lookup::DefinitionLookup;
+use super::definition_stores::DefinitionStores;
 use super::lambda_flows::{FunctionFlows, LambdaFlows};
 use super::parameter_joins::ParameterJoins;
 use super::region_rules::RegionRules;
 use super::store_sites::StoreSites;
-use super::stored_flows::{DefinitionStores, StoredFlows};
 use crate::core::BindingId;
 use crate::ownership::TailCalls;
-use crate::types::{Type, TypedExprKind, TypedLambda, TypedProgram};
+use crate::types::{StoredFlows, Type, TypedExprKind, TypedLambda, TypedProgram};
 
 pub struct ResultBorrows<'a> {
     program: &'a TypedProgram,
@@ -69,9 +69,7 @@ impl<'a> ResultBorrows<'a> {
         lambda: &TypedLambda,
     ) -> Rc<DefinitionStores> {
         self.remember_stores(definition, &self.no_stores);
-        let flows = self.stored_at_sites(lambda);
-        let positions = flows.positions(lambda);
-        Rc::new(DefinitionStores { flows, positions })
+        Rc::new(DefinitionStores::new(self.stored_at_sites(lambda), lambda))
     }
 
     fn stored_at_sites(&self, lambda: &TypedLambda) -> StoredFlows {

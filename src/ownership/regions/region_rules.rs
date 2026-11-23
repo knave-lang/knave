@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::callee_visit::CalleeVisit;
-use super::stored_flows::DefinitionStores;
+use super::definition_stores::DefinitionStores;
 use crate::core::BindingId;
 use crate::types::{Type, TypedProgram};
 

@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use super::project_modules::ProjectModules;
 use crate::core::{BindingId, CoreModule, Import, ImportedName, WrittenName, WrittenUse};
 use crate::expand::imported_members::{ImportedMembers, MemberTables};
 use crate::modules::ModuleRegistry;
@@ -26,14 +25,9 @@ impl<'e> UsedImports<'e> {
         }
     }
 
-    pub(in crate::expand) fn read_each(
-        &self,
-        modules: &mut [CoreModule],
-        project: &ProjectModules,
-        sources: &SourceMap,
-    ) {
+    pub(in crate::expand) fn read_each(&self, modules: &mut [CoreModule], sources: &SourceMap) {
         for module in modules {
-            if !project.contains(module.id) || module.lint_facts.written_uses().is_empty() {
+            if module.lint_facts.written_uses().is_empty() {
                 continue;
             }
             let reader = ImportReader {

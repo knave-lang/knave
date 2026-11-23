@@ -26,8 +26,8 @@ impl UpgradeCommand {
         let edit = ProjectFileEdit::of_root_file(terminal, Self::COMMAND)?;
         let components = NewComponents::every();
         let writes = Self::pending_writes(edit.root(), &components)?;
-        let recorded = Self::record_version(&edit, terminal)?;
         Self::apply(&writes)?;
+        let recorded = Self::record_version(&edit, terminal)?;
         if !recorded && writes.is_empty() {
             Self::report_current();
         }

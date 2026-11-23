@@ -9292,6 +9292,29 @@ fn upgrade_rewrites_a_committed_workflow_with_an_added_step() {
 }
 
 #[test]
+fn upgrade_keeps_the_recorded_version_when_a_write_fails() {
+    let sandbox = Sandbox::with_recorded_version("upgrade_failed_write", EARLIER_VERSION);
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let outdated = format!("{}{OUTDATED_LINE}", sandbox.contents(&workflow));
+    let sandbox = sandbox.with_file(&workflow, &outdated);
+    sandbox.git(
+        "demo-app",
+        &["commit", "--quiet", "--all", "--message", "Old"],
+    );
+    fs::set_permissions(
+        sandbox.directory.join(&workflow),
+        fs::Permissions::from_mode(Sandbox::READ_ONLY),
+    )
+    .expect("the sandbox sets permissions");
+    let project = sandbox.contents("demo-app/project.knv");
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(2);
+    assert_eq!(sandbox.contents("demo-app/project.knv"), project);
+    assert!(project.contains(EARLIER_VERSION), "{project}");
+}
+
+#[test]
 fn upgrade_appends_the_linguist_line_on_a_line_of_its_own() {
     let sandbox = Sandbox::with_committed_project("upgrade_linguist_appended")
         .with_file(GITATTRIBUTES_FILE, "*.png binary");

@@ -1,0 +1,9 @@
+---
+source: tests/cli.rs
+expression: listing.assert_exit_code(0).stdout()
+---
+where
+
+lint
+  check [--path .]  Checks the files under a path.
+  lint/where

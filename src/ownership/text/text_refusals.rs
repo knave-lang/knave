@@ -173,7 +173,12 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
 #[cfg(test)]
 mod tests {
     use super::TextRefusals;
+    use crate::ownership::text::flow_fixture::FlowFixture;
+    use crate::ownership::text::need::Need;
+    use crate::ownership::text::reaching_text::ReachingText;
     use crate::ownership::text::representation::Representation;
+    use crate::ownership::text::slot_owner::SlotOwner;
+    use crate::ownership::text::transfer::Transfer;
 
     #[test]
     fn owned_keys_refuse_a_static_query_and_mixed_keys_take_it() {
@@ -186,12 +191,6 @@ mod tests {
             ReachingText::BORROWED
         ));
     }
-
-    use crate::ownership::text::flow_fixture::FlowFixture;
-    use crate::ownership::text::need::Need;
-    use crate::ownership::text::reaching_text::ReachingText;
-    use crate::ownership::text::slot_owner::SlotOwner;
-    use crate::ownership::text::transfer::Transfer;
 
     #[test]
     fn a_clone_of_a_parameter_with_no_owned_text_is_refused() {

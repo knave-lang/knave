@@ -83,7 +83,7 @@ impl<'w, 'p> TextWalk<'w, 'p> {
             for (field, ty) in case.payload_types().into_iter().enumerate() {
                 let owner = SlotOwner::Field(binding, EnumPayloads::label(case, field));
                 self.listing.list(&owner, ty);
-                if !case.bare_text_fields.contains(&field) {
+                if !case.is_bare_text(field) {
                     self.keep_written_view(&owner, ty);
                 }
             }

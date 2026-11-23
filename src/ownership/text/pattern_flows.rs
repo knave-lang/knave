@@ -1,4 +1,5 @@
 use super::slot::Slot;
+use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
 use super::text_position::TextPositions;
 use super::text_read::TextRead;
@@ -24,7 +25,19 @@ impl<'c, 'w, 'p> PatternFlows<'c, 'w, 'p> {
         Self { context, transfer }
     }
 
-    pub fn bind(&mut self, pattern: &TypedPattern, value: &TextValue) {
+    pub fn bind_arm(
+        mut self,
+        listing: &mut SlotListing,
+        pattern: &TypedPattern,
+        value: &TextValue,
+    ) {
+        for binder in pattern.binders() {
+            listing.list(&SlotOwner::Local(binder.binding), &binder.ty);
+        }
+        self.bind(pattern, value);
+    }
+
+    fn bind(&mut self, pattern: &TypedPattern, value: &TextValue) {
         match &pattern.kind {
             TypedPatternKind::Bind(binder) if TextPositions::holds_text(&binder.ty) => {
                 let slot = Slot::from(SlotOwner::Local(binder.binding));

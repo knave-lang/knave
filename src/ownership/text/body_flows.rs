@@ -9,6 +9,7 @@ use super::need::Need;
 use super::pattern_flows::PatternFlows;
 use super::place_writes::PlaceWrites;
 use super::reaching_text::ReachingText;
+use super::return_targets::{ReturnTarget, ReturnTargets};
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
@@ -21,8 +22,8 @@ use super::try_flows::TryFlows;
 use super::walk_context::WalkContext;
 use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
-    FieldOrder, TryErrorConversion, Type, TypedArgument, TypedArm, TypedBlock, TypedBodyItem,
-    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
+    TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 pub struct BodyFlows<'b, 'p> {
@@ -30,7 +31,7 @@ pub struct BodyFlows<'b, 'p> {
     listing: &'b mut SlotListing,
     function: BindingId,
     owners: BindingOwners,
-    closure_results: Vec<(SlotOwner, Type)>,
+    returns: ReturnTargets,
 }
 
 impl<'b, 'p> BodyFlows<'b, 'p> {
@@ -39,12 +40,24 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         listing: &'b mut SlotListing,
         function: BindingId,
     ) -> Self {
+        let result = context
+            .program()
+            .definition(function)
+            .and_then(|definition| match &definition.value.ty {
+                Type::Function(_, _, result) => Some(result.as_ref().clone()),
+                _ => None,
+            })
+            .unwrap_or_else(Type::unit);
+        let returns = ReturnTargets::new(ReturnTarget {
+            owner: SlotOwner::Result(function),
+            ty: result,
+        });
         Self {
             context,
             listing,
             function,
             owners: BindingOwners::default(),
-            closure_results: Vec::new(),
+            returns,
         }
     }
 
@@ -58,10 +71,10 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             }
         }
         let value = self.block(&lambda.body);
-        if let Some(result) = self.result_type().filter(TextPositions::holds_text) {
-            let owner = SlotOwner::Result(self.function);
-            self.listing.list(&owner, &result);
-            self.context.receive(&Slot::from(owner), &value);
+        let result = self.returns.function().clone();
+        if TextPositions::holds_text(&result.ty) {
+            self.listing.list(&result.owner, &result.ty);
+            self.context.receive(&Slot::from(result.owner), &value);
         }
     }
 
@@ -93,7 +106,13 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             TypedExprKind::Control(control) => self.control(control),
             TypedExprKind::Struct(structure) => self.structure(structure, expr),
             TypedExprKind::Variant(binding, payloads, order) => {
-                self.variant((*binding, order), payloads, expr)
+                let values = self.values(payloads.iter());
+                let placed: Vec<(usize, TextValue)> = values
+                    .into_iter()
+                    .enumerate()
+                    .map(|(written, value)| (order.field_of(written), value))
+                    .collect();
+                ConstructionFlows::new(&mut self.context, expr).variant(*binding, &placed)
             }
             TypedExprKind::Try { value, conversion } => self.tried(value, *conversion, expr),
             TypedExprKind::Assoc(base, keys, item) => self.associated(base, (keys, item), expr),
@@ -149,14 +168,6 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         }
     }
 
-    fn result_type(&self) -> Option<Type> {
-        let definition = self.context.program().definition(self.function)?;
-        match &definition.value.ty {
-            Type::Function(_, _, result) => Some(result.as_ref().clone()),
-            _ => None,
-        }
-    }
-
     fn leaf(&mut self, leaf: &TypedLeaf, expr: &TypedExpr) -> TextValue {
         match leaf {
             TypedLeaf::Literal(Literal::String(_)) => {
@@ -181,10 +192,12 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         let slots = ClosureSlots::new(lambda, expr, closure_use);
         slots.list(self.listing);
         self.owners.add_closure_parameters(slots.free_parameters());
-        self.closure_results
-            .push((slots.result(), slots.result_type().clone()));
+        self.returns.enter(ReturnTarget {
+            owner: slots.result(),
+            ty: slots.result_type().clone(),
+        });
         let body = self.block(&lambda.body);
-        self.closure_results.pop();
+        self.returns.leave();
         slots.close(&mut self.context, &body)
     }
 
@@ -233,19 +246,15 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
                     .arms
                     .iter()
                     .fold(TextValue::default(), |value, arm| {
-                        value.merged(self.arm(arm, (&scrutinee, &matched.value.ty)))
+                        PatternFlows::new(&mut self.context, &matched.value.ty).bind_arm(
+                            self.listing,
+                            &arm.pattern,
+                            &scrutinee,
+                        );
+                        value.merged(self.block(&arm.body))
                     })
             }
         }
-    }
-
-    fn arm(&mut self, arm: &TypedArm, (scrutinee, matched): (&TextValue, &Type)) -> TextValue {
-        for binder in arm.pattern.binders() {
-            self.listing
-                .list(&SlotOwner::Local(binder.binding), &binder.ty);
-        }
-        PatternFlows::new(&mut self.context, matched).bind(&arm.pattern, scrutinee);
-        self.block(&arm.body)
     }
 
     fn structure(&mut self, structure: &TypedStructExpr, expr: &TypedExpr) -> TextValue {
@@ -268,25 +277,14 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         fields: &[(FieldLabel, TypedExpr)],
         expr: &TypedExpr,
     ) -> TextValue {
-        let values: Vec<(&FieldLabel, TextValue)> = fields
-            .iter()
-            .map(|(label, value)| (label, self.value(value)))
-            .collect();
-        ConstructionFlows::new(&mut self.context, expr).fields(binding, &values)
+        let values = self.values(fields.iter().map(|(_, value)| value));
+        let labeled: Vec<(&FieldLabel, TextValue)> =
+            fields.iter().map(|(label, _)| label).zip(values).collect();
+        ConstructionFlows::new(&mut self.context, expr).fields(binding, &labeled)
     }
 
-    fn variant(
-        &mut self,
-        (binding, order): (BindingId, &FieldOrder),
-        payloads: &[TypedExpr],
-        expr: &TypedExpr,
-    ) -> TextValue {
-        let values: Vec<(usize, TextValue)> = payloads
-            .iter()
-            .enumerate()
-            .map(|(written, payload)| (order.field_of(written), self.value(payload)))
-            .collect();
-        ConstructionFlows::new(&mut self.context, expr).variant(binding, &values)
+    fn values<'e>(&mut self, exprs: impl Iterator<Item = &'e TypedExpr>) -> Vec<TextValue> {
+        exprs.map(|expr| self.value(expr)).collect()
     }
 
     fn tried(
@@ -296,17 +294,11 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         expr: &TypedExpr,
     ) -> TextValue {
         let tried = self.value(value);
-        let (returned, returned_type) = match self.closure_results.last() {
-            Some(closure) => closure.clone(),
-            None => (
-                SlotOwner::Result(self.function),
-                self.result_type().unwrap_or_else(Type::unit),
-            ),
-        };
+        let returned = self.returns.innermost().clone();
         let mut flows = TryFlows::new(&mut self.context, expr.span);
         match conversion {
-            TryErrorConversion::Identity => flows.propagate(&tried, &returned),
-            TryErrorConversion::Converted => flows.convert(&tried, (&value.ty, &returned_type)),
+            TryErrorConversion::Identity => flows.propagate(&tried, &returned.owner),
+            TryErrorConversion::Converted => flows.convert(&tried, (&value.ty, &returned.ty)),
         }
         flows.payload(&tried)
     }
@@ -318,7 +310,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         expr: &TypedExpr,
     ) -> TextValue {
         let base = self.value(base);
-        let keys: Vec<TextValue> = keys.iter().map(|key| self.value(key)).collect();
+        let keys = self.values(keys.iter());
         let item = self.value(item);
         AssocFlows::new(&mut self.context, expr).value(&base, (&keys, &item))
     }

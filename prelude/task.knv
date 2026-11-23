@@ -776,13 +776,85 @@
 
 (def task-listing
   (macro (form)
-    (local notes (sorted-tasks (program-tasks)))
-    (local width (widest (map-list notes task-call) 0))
-    (string-joined (map-list notes
-                     (fn (note) (listing-line note width))))))
+    (local block
+      (listing-block (rest form)
+                     (list)
+                     (list)
+                     (list)))
+    (local notes
+      (shown-tasks (sorted-tasks (program-tasks)) block))
+    (local calls
+      (map-list notes
+        (fn (note) (shown-call note block))))
+    (local width (widest calls 0))
+    (local lines
+      (map-list notes
+        (fn (note)
+          (listing-line note (shown-call note block) width))))
+    (if (empty? (block-library block))
+      (string-joined lines)
+      (string-joined (prepend (first (block-library block))
+                              (map-list lines
+                                (fn (line) (string "  " line))))))))
 
 (document (task-listing)
-  "Returns one line per task: its name, its parameters and its summary.")
+  "Returns one line per task: its name, its parameters and its summary.
+
+  With a `:library` pair, it returns a block for the library of that name
+  instead: its name on a line, then one indented line for each task that an
+  `:exported` pair names. A task that a `:qualified` pair names shows the
+  library's name before its own, as `library/task`, the name that runs it.")
+
+(def listing-block
+  (fn (forms library exported qualified)
+    (if (empty? forms)
+      (list library exported qualified)
+      (listing-block (rest (rest forms))
+                     (if (value-eq (keyword-name (first forms)) "library")
+                       (list (string (nth forms 1)))
+                       library)
+                     (if (value-eq (keyword-name (first forms)) "exported")
+                       (concat exported
+                               (list (string (nth forms 1))))
+                       exported)
+                     (if (value-eq (keyword-name (first forms)) "qualified")
+                       (concat qualified
+                               (list (string (nth forms 1))))
+                       qualified)))))
+
+(def block-library
+  (fn (block) (nth block 0)))
+
+(def block-exported
+  (fn (block) (nth block 1)))
+
+(def block-qualified
+  (fn (block) (nth block 2)))
+
+(def shown-tasks
+  (fn (notes block)
+    (if (empty? (block-library block))
+      notes
+      (exported-notes notes (block-exported block)))))
+
+(def exported-notes
+  (fn (notes exported)
+    (if (empty? notes)
+      (list)
+      (if (one-of? (symbol-name (note-name (first notes)))
+                   exported)
+        (prepend (first notes)
+                 (exported-notes (rest notes) exported))
+        (exported-notes (rest notes) exported)))))
+
+(def shown-call
+  (fn (note block)
+    (local name (symbol-name (note-name note)))
+    (if (one-of? name (block-qualified block))
+      (string (first (block-library block))
+              "/"
+              (task-call note))
+      (task-call note))))
 
 (def task-call
   (fn (note)
@@ -790,8 +862,7 @@
             (usage-after (note-parameters note)))))
 
 (def listing-line
-  (fn (note width)
-    (local call (task-call note))
+  (fn (note call width)
     (if (value-eq (note-summary note) "")
       call
       (string call

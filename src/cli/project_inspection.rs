@@ -3,6 +3,7 @@ use std::rc::Rc;
 use super::entry_argument::EntryArgument;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
+use super::library_tasks::LibraryTasks;
 use super::located_program::LocatedProgram;
 use super::program_file::ProgramFile;
 use super::separated_batches::SeparatedBatches;
@@ -48,6 +49,11 @@ impl ProjectInspection {
         } else {
             inspect_entry(terminal, program.file(), print_warnings)
         };
+        let libraries = program
+            .project()
+            .filter(|_| checks_tasks)
+            .map(|project| project.task_layout().libraries().to_vec())
+            .unwrap_or_default();
         let tree = program
             .into_project()
             .filter(|_| checks_tasks)
@@ -57,7 +63,8 @@ impl ProjectInspection {
             Some(tree) => Self::check_tasks(terminal, &tree, print_warnings),
             None => Ok(()),
         };
-        entry.and(tasks)
+        let lent = LibraryTasks::check_lenders(terminal, &libraries);
+        entry.and(tasks).and(lent)
     }
 
     fn names_a_task_file(program: &LocatedProgram) -> bool {
@@ -72,8 +79,8 @@ impl ProjectInspection {
         tree: &EntryTree,
         print_warnings: &WarningPrinter,
     ) -> Result<(), ExitStatus> {
-        let catalog = TaskCatalog::load(tree, terminal, None)?;
-        let warnings = TaskRunners::new(&catalog).check(terminal)?;
+        let (catalog, exports) = TaskCatalog::load(tree, terminal, None)?;
+        let warnings = TaskRunners::new(&catalog).check(terminal, exports)?;
         print_warnings(&terminal.source_report(), &warnings).passed()
     }
 }

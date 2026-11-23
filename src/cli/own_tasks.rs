@@ -28,13 +28,13 @@ impl OwnTasks {
                 names: Vec::new(),
             });
         }
-        let catalog = TaskCatalog::load(&tree, terminal, None)?;
+        let (catalog, exports) = TaskCatalog::load(&tree, terminal, None)?;
         let names = catalog
             .names(terminal)?
             .iter()
             .map(|name| Rc::from(name.as_str()))
             .collect();
-        catalog.exports()?;
+        exports.result()?;
         Ok(Self {
             tree,
             catalog: Some(catalog),

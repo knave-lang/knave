@@ -1,6 +1,6 @@
 # RFC 0066: Project tasks
 
-**Status:** Proposed
+**Status:** Superseded by 0081 in part: recommendation items 7, 8, 9 and 10
 **Date:** 2026-11-09
 
 ## Problem

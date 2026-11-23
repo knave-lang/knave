@@ -11569,6 +11569,36 @@ fn task_with_a_missing_export_fails_before_it_runs() {
 }
 
 #[test]
+fn lint_prints_the_tasks_diagnostics_beside_a_missing_export() {
+    let lint = ExportingProject::of(
+        "lint_tasks_beside_missing_export",
+        "(defproject linter (exported-tasks lnt))\n",
+    )
+    .with_file(
+        "tasks/spare.knv",
+        "(deftask spare () (let (unused 1) (println \"spare\")))\n",
+    )
+    .compiler(&["lint"]);
+    let stderr = lint.assert_exit_code(1).stderr();
+    let codes = ["error[L0367]", "warning[L0801]"];
+    assert_eq!(
+        codes.map(|code| stderr.contains(code)),
+        [true, true],
+        "{stderr}"
+    );
+}
+
+#[test]
+fn task_named_by_a_missing_export_stops_at_the_export() {
+    let task = ExportingProject::of(
+        "task_named_by_missing_export",
+        "(defproject linter (exported-tasks lnt))\n",
+    )
+    .compiler(&["task", "lnt"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn an_empty_exported_tasks_section_counts_as_tasks() {
     let sandbox = Sandbox::new("exported_tasks_empty").with_file(
         &Language::project_file_name(),

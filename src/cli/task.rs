@@ -58,6 +58,7 @@ impl TaskCommand {
             .iter()
             .map(|known| Rc::from(known.as_str()))
             .collect();
+        catalog.exports()?;
         Self::expect_task(&names, name)?;
         let task = ProjectTask::new(project, TaskName::new(name.clone()));
         let binary = TaskRunners::new(&catalog).build(terminal, &task, self.profile)?;

@@ -38,11 +38,13 @@ impl<'c> TaskRunners<'c> {
     }
 
     pub fn check(&self, terminal: &mut Terminal) -> Result<Diagnostics, ExitStatus> {
-        let entered = self.program(terminal)?;
-        let checked = terminal
-            .checking()
-            .check_keeping_warnings(&entered.program)?;
-        Ok(checked.warnings)
+        let checked = self
+            .program(terminal)
+            .and_then(|entered| terminal.checking().check_keeping_warnings(&entered.program));
+        self.catalog
+            .exports()
+            .and(checked)
+            .map(|checked| checked.warnings)
     }
 
     pub fn program(&self, terminal: &mut Terminal) -> Result<EnteredProgram, ExitStatus> {

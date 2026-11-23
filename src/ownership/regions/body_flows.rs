@@ -30,22 +30,31 @@ impl<'r> BodyFlows<'r> {
         lambda: &TypedLambda,
         order: Option<usize>,
     ) -> LambdaFlows {
-        Self::new(rules, lambda, order).lambda_flows(lambda)
+        let mut borrows = Self::new(rules, lambda, order);
+        let flows = borrows.block(&lambda.body);
+        borrows.separating_higher_ranked(flows, lambda)
     }
 
     pub(super) fn of_shared_arguments(
         rules: &'r dyn RegionRules,
         lambda: &TypedLambda,
-    ) -> LambdaFlows {
+    ) -> FxHashSet<BindingId> {
         let mut borrows = Self {
             calls: CallFlows::SharedArguments,
             ..Self::new(rules, lambda, None)
         };
-        borrows.lambda_flows(lambda)
+        let flows = borrows.block(&lambda.body);
+        if flows.is_empty() {
+            return flows;
+        }
+        borrows.separating_higher_ranked(flows, lambda).flows
     }
 
-    pub(super) fn lambda_flows(&mut self, lambda: &TypedLambda) -> LambdaFlows {
-        let mut flows = self.block(&lambda.body);
+    pub(super) fn separating_higher_ranked(
+        &mut self,
+        mut flows: FxHashSet<BindingId>,
+        lambda: &TypedLambda,
+    ) -> LambdaFlows {
         let calls = LocalBorrowCalls::of(self.rules.program(), lambda);
         let mut higher_ranked: FxHashSet<BindingId> = calls
             .callees

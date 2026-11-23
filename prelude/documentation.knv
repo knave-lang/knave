@@ -3,10 +3,9 @@
           module-exports module-symbol nth number-add
           number-sub read-form rest same-binding?
           sorted-names string string-contains? string-drop
-          string-length string-lines string-strip-prefix
-          string-strip-suffix string-trim-end
-          string-trim-start string? symbol symbol-name
-          symbol? take value-eq warn)
+          string-length string-lines string-strip-suffix
+          string-trim-end string-trim-start string? symbol
+          symbol-name symbol? take value-eq warn)
 
 (use prelude/internal/code require-module)
 

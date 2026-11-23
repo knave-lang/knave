@@ -1,11 +1,13 @@
 mod cache_only_store;
 mod fetching_store;
 mod library_store;
+mod seen_libraries;
 mod user_git_store;
 
 use std::path::{Path, PathBuf};
 
 use super::checkout_bounds::{CheckoutBounds, RepositoryAddress};
+use super::direct_library::DirectLibrary;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
@@ -18,18 +20,19 @@ use crate::project::{
     CrateDependency, CrateSet, DependencySection, LibraryDependency, LibrarySource, Project,
     ProjectProblems, Section,
 };
-use crate::source::Span;
 pub use cache_only_store::CacheOnlyStore;
 pub use fetching_store::FetchingStore;
 pub use library_store::LibraryStore;
+use seen_libraries::SeenLibraries;
 
 pub struct LibraryWalk<'t, S: LibraryStore> {
     terminal: &'t mut Terminal,
-    seen: Vec<SeenLibrary>,
+    seen: SeenLibraries,
     roots: Vec<LibraryRoot>,
     store: S,
     crates: CrateSet,
     crate_library: Option<String>,
+    direct: Vec<DirectLibrary>,
 }
 
 pub struct WalkedLibraries {
@@ -38,6 +41,7 @@ pub struct WalkedLibraries {
     pub crates: Vec<CrateDependency>,
     pub dev_crates: Vec<CrateDependency>,
     pub crate_library: Option<String>,
+    pub direct_libraries: Vec<DirectLibrary>,
 }
 
 #[derive(Clone, Copy)]
@@ -60,12 +64,6 @@ struct VisitedLibrary<'v> {
     checkout: Option<&'v CheckoutBounds>,
 }
 
-struct SeenLibrary {
-    name: String,
-    root: PathBuf,
-    span: Span,
-}
-
 impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
     const LIB_KEY: &'static str = ":lib";
     const PATH_KEY: &'static str = ":path";
@@ -82,11 +80,12 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             .load(&root.join(Language::project_file_name()))?;
         let mut walk = Self {
             terminal,
-            seen: Vec::new(),
+            seen: SeenLibraries::default(),
             roots: Vec::new(),
             store,
             crates: CrateSet::default(),
             crate_library: None,
+            direct: Vec::new(),
         };
         walk.add_crates(root, &project)?;
         walk.visit_all(root, &project, Listing::PROGRAM)?;
@@ -103,6 +102,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             dev_crates,
             crates: walk.crates.into_crates(),
             crate_library: walk.crate_library,
+            direct_libraries: walk.direct,
         })
     }
 
@@ -146,6 +146,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             let crates_before = self.crates.count();
             self.visit(&library_root, library, listing)?;
             self.note_crate_library(library, listing, crates_before);
+            self.note_direct_library(library, &library_root, listing);
             Ok(())
         })
     }
@@ -161,6 +162,23 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         if listed_by_program && added_crates && self.crate_library.is_none() {
             self.crate_library = Some(library.name.clone());
         }
+    }
+
+    fn note_direct_library(
+        &mut self,
+        library: &LibraryDependency,
+        library_root: &Path,
+        listing: Listing<'_>,
+    ) {
+        if listing.entry.is_some() {
+            return;
+        }
+        self.direct.push(DirectLibrary {
+            name: library.name.clone(),
+            root: library_root.to_path_buf(),
+            exported_tasks: self.seen.exported_tasks_at(library_root),
+            fetched: matches!(library.source, LibrarySource::Git { .. }),
+        });
     }
 
     fn library_directory(
@@ -230,10 +248,12 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         listing: Listing<'_>,
     ) -> Result<(), ExitStatus> {
         let project_file = self.project_file_of(library_root, library)?;
-        if !self.is_first_visit(library_root, library)? {
+        let seen = self.seen.holds(library, library_root);
+        if seen.map_err(|problem| self.report(problem))? {
             return Ok(());
         }
         let project = self.terminal.sources().projects().load(&project_file)?;
+        self.seen.add(library_root, library, &project);
         let own_checkout = Self::own_checkout(library_root, library);
         let visited = VisitedLibrary {
             root: library_root,
@@ -263,23 +283,6 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             library.name_span,
             &project_file.display().to_string(),
         )))
-    }
-
-    fn is_first_visit(
-        &mut self,
-        library_root: &Path,
-        library: &LibraryDependency,
-    ) -> Result<bool, ExitStatus> {
-        let identity = ProgramFile::canonical(library_root).unwrap_or(library_root.to_path_buf());
-        if self.is_seen(library, &identity)? {
-            return Ok(false);
-        }
-        self.seen.push(SeenLibrary {
-            name: library.name.clone(),
-            root: identity,
-            span: library.name_span,
-        });
-        Ok(true)
     }
 
     fn own_checkout(library_root: &Path, library: &LibraryDependency) -> Option<CheckoutBounds> {
@@ -365,20 +368,6 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             },
         };
         (!bounds.contains(&library_root.join(path))).then_some((library, key))
-    }
-
-    fn is_seen(&self, library: &LibraryDependency, identity: &Path) -> Result<bool, ExitStatus> {
-        let Some(seen) = self.seen.iter().find(|seen| seen.name == library.name) else {
-            return Ok(false);
-        };
-        if seen.root == identity {
-            return Ok(true);
-        }
-        Err(self.report(ProjectProblems::library_at_two_sources(
-            &library.name,
-            library.name_span,
-            seen.span,
-        )))
     }
 
     fn library_root(

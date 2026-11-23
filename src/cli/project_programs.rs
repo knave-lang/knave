@@ -106,7 +106,7 @@ impl ProjectPrograms {
     ) -> LocatedProject {
         let tree = EntryTree::of_tasks(project);
         if tree.holds_tasks() {
-            match TaskCatalog::load(&tree, terminal) {
+            match TaskCatalog::load(&tree, terminal, None) {
                 Ok(catalog) => Self::task_program(terminal, &catalog, loaded),
                 Err(status) => loaded.fail(status),
             }

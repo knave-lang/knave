@@ -1,0 +1,13 @@
+---
+source: tests/cli.rs
+expression: "sandbox.masked(&stderr).replace(&commit, \"<commit>\")"
+---
+error[L0367]: no task named `chek` to export
+ --> <sandbox>/cache/knave/git/<commit>/project.knv:1:34
+  |
+1 | (defproject lint (exported-tasks chek check))
+  |                                  ^^^^ no `deftask` under `tasks/` defines this name
+  |
+  = note: library `lint` exports this name
+  = help: pin a `:rev` of `lint` that defines the task
+  = note: run `knave doc L0367` for an explanation

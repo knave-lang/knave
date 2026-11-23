@@ -1,0 +1,6 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(2).stderr()
+---
+error: libraries `lint`, `other` and `third` export a task named `check`
+help: run `knave task lint/check`, `knave task other/check` or `knave task third/check`

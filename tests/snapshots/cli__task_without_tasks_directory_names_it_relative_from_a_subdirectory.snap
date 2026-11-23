@@ -3,4 +3,4 @@ source: tests/cli.rs
 expression: task.assert_exit_code(2).stderr()
 ---
 error: no `tasks/` directory at the project root
-help: define a task with `deftask` in a file under `tasks/`
+help: define a task with `deftask` in a file under `tasks/`, or list a library whose `exported-tasks` section names one

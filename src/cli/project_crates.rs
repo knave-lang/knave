@@ -4,8 +4,10 @@ use super::build_directory::BuildDirectory;
 use crate::build::{CargoManifest, CargoTarget, CargoTargetKind, DirectoryHash};
 use crate::project::CrateDependency;
 
+#[derive(Clone)]
 pub struct ProjectCrates {
     root: PathBuf,
+    lock_file: PathBuf,
     name: String,
     crates: Vec<CrateDependency>,
     dev_crates: Vec<CrateDependency>,
@@ -22,11 +24,23 @@ impl ProjectCrates {
         dev_crates: Vec<CrateDependency>,
     ) -> Self {
         Self {
+            lock_file: root.join(Self::LOCK_FILE),
             root,
             name,
             crates,
             dev_crates,
         }
+    }
+
+    pub fn locked_at(&self, lock_file: PathBuf) -> Self {
+        Self {
+            lock_file,
+            ..self.clone()
+        }
+    }
+
+    pub fn lock_file(&self) -> &Path {
+        &self.lock_file
     }
 
     pub fn has_crates(&self) -> bool {
@@ -81,7 +95,7 @@ impl ProjectCrates {
         CargoTarget {
             manifest,
             directory,
-            lock_file: self.root.join(Self::LOCK_FILE),
+            lock_file: self.lock_file.clone(),
             output,
         }
     }

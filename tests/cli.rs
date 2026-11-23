@@ -11686,6 +11686,191 @@ fn check_without_an_entry_or_tasks_stays_an_error() {
     insta::assert_snapshot!(check.assert_exit_code(2).stderr());
 }
 
+const LENDING_PROJECT: &str = "(defproject lint :knave \"99.0.0\" (exported-tasks check where) (lints (unused-binding deny)))\n";
+const LENT_TASKS: &str = "(deftask check (:path string \".\")
+  \"Checks the files under a path.\"
+  (let (unused 1) (println (str \"checking \" path))))
+
+(deftask where () (println (working-directory)))
+
+(deftask release () (println \"releasing\"))
+
+(def working-directory
+  (rust \"std::env::current_dir().unwrap().display().to_string()\"
+    (fn () string)))
+";
+const OTHER_LENDER: &str = "(defproject other (exported-tasks check))\n";
+const OTHER_LENT_TASK: &str = "(deftask check () (println \"other check\"))\n";
+
+struct LendingLibraries;
+
+impl LendingLibraries {
+    fn of(test_name: &str, app: &str) -> Sandbox {
+        Sandbox::new(test_name)
+            .with_file("lint/project.knv", LENDING_PROJECT)
+            .with_file("lint/tasks/check.knv", LENT_TASKS)
+            .with_file("other/project.knv", OTHER_LENDER)
+            .with_file("other/tasks/check.knv", OTHER_LENT_TASK)
+            .with_file("app/project.knv", app)
+    }
+
+    fn lint_only(test_name: &str) -> Sandbox {
+        Self::of(
+            test_name,
+            "(defproject app (libraries (lint :path \"../lint\")))\n",
+        )
+    }
+
+    fn both(test_name: &str) -> Sandbox {
+        Self::of(
+            test_name,
+            "(defproject app (libraries (lint :path \"../lint\") (other :path \"../other\")))\n",
+        )
+    }
+}
+
+#[test]
+fn a_library_task_runs_with_its_arguments_and_no_library_lint() {
+    let run = LendingLibraries::lint_only("library_task_run")
+        .compiler_in("app", &["task", "check", "--path", "src"]);
+    let run = run.assert_exit_code(0);
+    assert_eq!(
+        (run.stdout(), run.stderr()),
+        ("checking src\n".to_string(), String::new())
+    );
+}
+
+#[test]
+fn a_library_task_runs_at_the_dependents_root() {
+    let sandbox = LendingLibraries::lint_only("library_task_root");
+    let root = fs::canonicalize(sandbox.directory.join("app")).expect("the app resolves");
+    let run = sandbox.compiler_in("app", &["task", "where"]);
+    assert_eq!(
+        run.assert_exit_code(0).stdout(),
+        format!("{}\n", root.display())
+    );
+}
+
+#[test]
+fn a_library_task_builds_beside_the_dependents_program() {
+    let sandbox = LendingLibraries::lint_only("library_task_build");
+    sandbox
+        .compiler_in("app", &["task", "check"])
+        .assert_exit_code(0);
+    let binary = sandbox
+        .directory
+        .join("app/target/knave/app/library_tasks/lint/check/check");
+    assert!(binary.is_file(), "no binary at {}", binary.display());
+}
+
+#[test]
+fn a_qualified_task_runs_the_librarys_task() {
+    let run = LendingLibraries::both("library_task_qualified")
+        .compiler_in("app", &["task", "other/check"]);
+    assert_eq!(run.assert_exit_code(0).stdout(), "other check\n");
+}
+
+#[test]
+fn the_projects_own_task_shadows_a_librarys() {
+    let sandbox = LendingLibraries::lint_only("library_task_shadowed").with_file(
+        "app/tasks/own.knv",
+        "(deftask check () (println \"own check\"))\n",
+    );
+    let own = sandbox.compiler_in("app", &["task", "check"]);
+    let lent = sandbox.compiler_in("app", &["task", "lint/check"]);
+    assert_eq!(
+        [
+            own.assert_exit_code(0).stdout(),
+            lent.assert_exit_code(0).stdout()
+        ],
+        ["own check\n", "checking .\n"]
+    );
+}
+
+#[test]
+fn library_task_names_that_resolve_to_nothing_are_usage_errors() {
+    let sandbox = LendingLibraries::both("library_task_unresolved")
+        .with_file("hints/project.knv", "(defproject hints)\n")
+        .with_file(
+            "app/project.knv",
+            "(defproject app (libraries (lint :path \"../lint\") (other :path \"../other\") (hints :path \"../hints\")))\n",
+        );
+    let errors: Vec<String> = [
+        "check",
+        "lnt/check",
+        "hints/check",
+        "lint/release",
+        "release",
+        "wher",
+        "lint/",
+        "/check",
+        "lint/check/again",
+    ]
+    .iter()
+    .map(|name| {
+        sandbox
+            .compiler_in("app", &["task", name])
+            .assert_exit_code(2)
+            .stderr()
+    })
+    .collect();
+    insta::assert_snapshot!(errors.join("---\n"));
+}
+
+#[test]
+fn three_libraries_exporting_one_name_are_each_named() {
+    let task = LendingLibraries::both("library_task_three_way")
+        .with_file("third/project.knv", OTHER_LENDER.replace("other", "third").as_str())
+        .with_file("third/tasks/check.knv", OTHER_LENT_TASK)
+        .with_file(
+            "app/project.knv",
+            "(defproject app (libraries (lint :path \"../lint\") (other :path \"../other\") (third :path \"../third\")))\n",
+        )
+        .compiler_in("app", &["task", "check"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn a_missing_export_of_a_path_library_names_the_library() {
+    let sandbox = LendingLibraries::lint_only("library_missing_export_path").with_file(
+        "lint/project.knv",
+        "(defproject lint (exported-tasks chek check))\n",
+    );
+    let task = sandbox.compiler_in("app", &["task", "lint/check"]);
+    let stderr = task.assert_exit_code(1).stderr();
+    insta::assert_snapshot!(sandbox.masked(&stderr));
+}
+
+#[test]
+fn a_missing_export_of_a_git_library_asks_for_another_commit() {
+    let sandbox = Sandbox::new("library_missing_export_git")
+        .with_file(
+            "lint/project.knv",
+            "(defproject lint (exported-tasks chek check))\n",
+        )
+        .with_file("lint/tasks/check.knv", LENT_TASKS);
+    let commit = sandbox.git_repository("lint");
+    let sandbox = sandbox.with_file(
+        "app/project.knv",
+        &format!("(defproject app (libraries (lint :git \"../lint.git\" :rev \"{commit}\")))\n"),
+    );
+    let task = sandbox.compiler_in("app", &["task", "lint/check"]);
+    let stderr = task.assert_exit_code(1).stderr();
+    insta::assert_snapshot!(sandbox.masked(&stderr).replace(&commit, "<commit>"));
+}
+
+#[test]
+fn a_project_without_tasks_or_lending_libraries_is_a_usage_error() {
+    let task = Sandbox::new("task_no_tasks_no_lenders")
+        .with_file("hints/project.knv", "(defproject hints)\n")
+        .with_file(
+            "app/project.knv",
+            "(defproject app (libraries (hints :path \"../hints\")))\n",
+        )
+        .compiler_in("app", &["task", "check"]);
+    insta::assert_snapshot!(task.assert_exit_code(2).stderr());
+}
+
 #[test]
 fn task_outside_a_project_is_a_usage_error() {
     let task = Sandbox::new("task_outside_project").compiler(&["task", "greet"]);

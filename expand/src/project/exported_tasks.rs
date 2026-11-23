@@ -12,6 +12,13 @@ impl ExportedTasks {
         matches!(self, Self::Written(_))
     }
 
+    pub fn names(&self) -> Vec<String> {
+        match self {
+            Self::Unwritten => Vec::new(),
+            Self::Written(tasks) => tasks.iter().map(|task| task.name.clone()).collect(),
+        }
+    }
+
     pub fn into_tasks(self) -> Vec<ExportedTask> {
         match self {
             Self::Unwritten => Vec::new(),

@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::announced_write::AnnouncedWrite;
 use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::new_file::NewFile;
@@ -29,19 +30,19 @@ impl OwnedFile {
         root.join(&self.path).exists()
     }
 
-    pub fn bring_current(&self, root: &Path) -> Result<bool, ExitStatus> {
+    pub fn pending_write(&self, root: &Path) -> Result<Option<AnnouncedWrite>, ExitStatus> {
         let file = self.new_file(root);
         if !file.path().exists() {
-            file.write_announced(&format!("wrote `{}`", self.path.display()))?;
-            return Ok(true);
+            let announcement = format!("wrote `{}`", self.path.display());
+            return Ok(Some(AnnouncedWrite::new(file, announcement)));
         }
         let written = fs::read(file.path()).map_err(|error| {
             UnreadableFile::new(file.path(), &error).report_to(&StandardErrorMessages)
         })?;
         if written == file.text().as_bytes() {
-            return Ok(false);
+            return Ok(None);
         }
-        file.write_announced(&format!("rewrote `{}`", self.path.display()))?;
-        Ok(true)
+        let announcement = format!("rewrote `{}`", self.path.display());
+        Ok(Some(AnnouncedWrite::new(file, announcement)))
     }
 }

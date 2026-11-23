@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use super::announced_write::AnnouncedWrite;
 use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::line_upgrade::LineUpgrade;
@@ -33,21 +34,19 @@ impl OwnedLine {
         NewFile::new(root.join(self.path), format!("{}\n", self.line))
     }
 
-    pub fn bring_current(&self, root: &Path) -> Result<bool, ExitStatus> {
+    pub fn pending_write(&self, root: &Path) -> Result<Option<AnnouncedWrite>, ExitStatus> {
         let file = self.new_file(root);
         if !file.path().exists() {
-            file.write_announced(&format!("wrote `{}`", self.path))?;
-            return Ok(true);
+            let announcement = format!("wrote `{}`", self.path);
+            return Ok(Some(AnnouncedWrite::new(file, announcement)));
         }
         let written = fs::read_to_string(file.path()).map_err(|error| {
             UnreadableFile::new(file.path(), &error).report_to(&StandardErrorMessages)
         })?;
-        let Some(upgrade) = self.upgrade(&written) else {
-            return Ok(false);
-        };
-        file.with_text(upgrade.text().to_string())
-            .write_announced(upgrade.announcement())?;
-        Ok(true)
+        Ok(self.upgrade(&written).map(|upgrade| {
+            let text = upgrade.text().to_string();
+            AnnouncedWrite::new(file.with_text(text), upgrade.announcement().to_string())
+        }))
     }
 
     fn upgrade(&self, written: &str) -> Option<LineUpgrade> {

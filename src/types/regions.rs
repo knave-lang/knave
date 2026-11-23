@@ -1,16 +1,11 @@
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
+use super::ResultRegion;
 use crate::core::BindingId;
 
 #[derive(Default)]
 pub struct Regions {
     results: FxHashMap<BindingId, ResultRegion>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct ResultRegion {
-    borrowed: FxHashSet<BindingId>,
-    higher_ranked: FxHashSet<BindingId>,
 }
 
 impl Regions {
@@ -20,14 +15,5 @@ impl Regions {
 
     pub fn of(&self, function: BindingId) -> Option<&ResultRegion> {
         self.results.get(&function)
-    }
-}
-
-impl ResultRegion {
-    pub fn new(borrowed: FxHashSet<BindingId>, higher_ranked: FxHashSet<BindingId>) -> Self {
-        Self {
-            borrowed,
-            higher_ranked,
-        }
     }
 }

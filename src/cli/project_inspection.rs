@@ -6,6 +6,7 @@ use super::entry_argument::EntryArgument;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::located_program::LocatedProgram;
+use super::located_project::TaskLayout;
 use super::program_file::ProgramFile;
 use super::source_report::SourceReport;
 use super::task_catalog::TaskCatalog;
@@ -38,10 +39,17 @@ impl ProjectInspection {
         let defaults_to_project_entry = self.entry.defaults_to_project_entry();
         let program = self.entry.locate(terminal)?;
         let checks_tasks = defaults_to_project_entry || Self::names_a_task_file(&program);
+        let skips_entry = defaults_to_project_entry
+            && program
+                .project()
+                .is_some_and(|project| Self::checks_tasks_alone(project.task_layout()));
         let separated = Rc::new(SeparatedBatches::new(terminal.diagnostic_output()));
         let output = TaskCatalog::user_output(separated);
         terminal.configure(|settings| settings.rerouted_to(output));
-        let entry = inspect_entry(terminal, program.file(), print_warnings);
+        let entry = match skips_entry {
+            true => Ok(()),
+            false => inspect_entry(terminal, program.file(), print_warnings),
+        };
         let tasks = match program.into_project().filter(|_| checks_tasks) {
             Some(project) => {
                 Self::check_tasks(terminal, EntryTree::of_tasks(project), print_warnings)
@@ -49,6 +57,10 @@ impl ProjectInspection {
             None => Ok(()),
         };
         entry.and(tasks)
+    }
+
+    fn checks_tasks_alone(layout: TaskLayout) -> bool {
+        layout.entry_left_out && (layout.tasks_folder || layout.exports_tasks)
     }
 
     fn names_a_task_file(program: &LocatedProgram) -> bool {
@@ -63,7 +75,7 @@ impl ProjectInspection {
         tree: EntryTree,
         print_warnings: &WarningPrinter,
     ) -> Result<(), ExitStatus> {
-        if !tree.path().is_dir() {
+        if !tree.holds_tasks() {
             return Ok(());
         }
         let catalog = TaskCatalog::load(&tree, terminal)?;

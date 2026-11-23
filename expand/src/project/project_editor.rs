@@ -204,6 +204,7 @@ mod tests {
             dependencies: "dependencies".to_string(),
             dev_dependencies: "dev-dependencies".to_string(),
             lints: "lints".to_string(),
+            exported_tasks: "exported-tasks".to_string(),
         };
         let levels = LevelWords::new(
             LintLevel::ALL

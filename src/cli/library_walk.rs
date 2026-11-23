@@ -312,7 +312,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         library: &LibraryDependency,
         project: &Project,
     ) -> Result<(), ExitStatus> {
-        if !bounds.contains(&library_root.join(&project.library_root)) {
+        if !bounds.contains(&library_root.join(&project.modules.library_root)) {
             return Err(self.report(ProjectProblems::path_outside_checkout(
                 &library.name,
                 Self::LIB_KEY,
@@ -386,7 +386,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         library_root: &Path,
         project: &Project,
     ) -> LibraryRoot {
-        let root_file = library_root.join(&project.library_root);
+        let root_file = library_root.join(&project.modules.library_root);
         let source_root = ProgramFile::directory_of(&root_file);
         let folder = LibraryFolder {
             project_file: library_root.join(Language::project_file_name()),

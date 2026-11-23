@@ -67,10 +67,11 @@ impl TaskCommand {
         let project =
             LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?
                 .ok_or_else(Self::report_no_project)?;
-        if !project.placement().tasks_directory().is_dir() {
+        let tree = EntryTree::of_tasks(project);
+        if !tree.holds_tasks() {
             return Err(Self::report_no_tasks_directory());
         }
-        Ok(EntryTree::of_tasks(project))
+        Ok(tree)
     }
 
     fn expect_task(names: &[Rc<str>], name: &str) -> Result<(), ExitStatus> {

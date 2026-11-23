@@ -1,0 +1,3 @@
+(defproject linter
+            :entry "main.knv"
+            (exported-tasks lint fix))

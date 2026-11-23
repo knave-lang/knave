@@ -11475,6 +11475,119 @@ fn task_in_a_project_without_tasks_directory_is_a_usage_error() {
     insta::assert_snapshot!(task.assert_exit_code(2).stderr());
 }
 
+const LINT_TASK: &str = "(deftask lint () (println \"no problems found\"))\n";
+
+struct ExportingProject;
+
+impl ExportingProject {
+    fn of(test_name: &str, project: &str) -> Sandbox {
+        Sandbox::new(test_name)
+            .with_file(&Language::project_file_name(), project)
+            .with_file("tasks/lint.knv", LINT_TASK)
+    }
+}
+
+#[test]
+fn a_project_checks_the_tasks_its_section_exports() {
+    let sandbox = ExportingProject::of(
+        "exported_task_checks",
+        "(defproject linter (exported-tasks lint))\n",
+    );
+    sandbox.compiler(&["check"]).assert_exit_code(0);
+    let listing = sandbox.compiler(&["task"]);
+    assert_eq!(listing.assert_exit_code(0).stdout(), "lint\n");
+}
+
+#[test]
+fn an_exported_name_close_to_a_task_suggests_the_task() {
+    let check = ExportingProject::of(
+        "exported_task_misspelled",
+        "(defproject linter (exported-tasks lnt))\n",
+    )
+    .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn an_exported_name_far_from_every_task_says_how_to_define_it() {
+    let task = ExportingProject::of(
+        "exported_task_far",
+        "(defproject linter (exported-tasks release-everything))\n",
+    )
+    .compiler(&["task"]);
+    insta::assert_snapshot!(task.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn an_exporting_project_without_tasks_reports_each_name() {
+    let sandbox = Sandbox::new("exported_tasks_without_tasks").with_file(
+        &Language::project_file_name(),
+        "(defproject linter (exported-tasks lint))\n",
+    );
+    let check = sandbox.compiler(&["check"]).assert_exit_code(1).stderr();
+    let task = sandbox.compiler(&["task"]).assert_exit_code(1).stderr();
+    assert_eq!(check, task);
+    insta::assert_snapshot!(check);
+}
+
+#[test]
+fn an_exported_entry_that_is_no_name_is_an_unexpected_form() {
+    let check = ExportingProject::of(
+        "exported_task_string",
+        "(defproject linter (exported-tasks \"lint\"))\n",
+    )
+    .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn an_exported_name_listed_twice_is_a_duplicate_entry() {
+    let check = ExportingProject::of(
+        "exported_task_twice",
+        "(defproject linter (exported-tasks lint lint))\n",
+    )
+    .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn a_program_that_calls_the_exported_tasks_section_is_an_error() {
+    let check = Sandbox::new("exported_tasks_in_program")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .with_file(
+            "src/main.knv",
+            "(use prelude/project-file exported-tasks)\n\n(exported-tasks lint)\n\n(defn main () (println 1))\n",
+        )
+        .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn check_without_an_unwritten_entry_checks_the_tasks_alone() {
+    let check = ExportingProject::of("tasks_without_entry", TASK_PROJECT)
+        .with_file("tasks/broken.knv", MISTYPED_TASK)
+        .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn check_with_a_written_entry_that_names_no_file_stays_an_error() {
+    let check = ExportingProject::of(
+        "tasks_with_missing_written_entry",
+        "(defproject linter :entry \"src/app.knv\")\n",
+    )
+    .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(2).stderr());
+}
+
+#[test]
+fn check_without_an_entry_or_tasks_stays_an_error() {
+    let check = Sandbox::new("no_entry_no_tasks")
+        .with_file(&Language::project_file_name(), TASK_PROJECT)
+        .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(2).stderr());
+}
+
 #[test]
 fn task_outside_a_project_is_a_usage_error() {
     let task = Sandbox::new("task_outside_project").compiler(&["task", "greet"]);

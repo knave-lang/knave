@@ -8,6 +8,7 @@ use super::distinct_output::DistinctOutput;
 use super::entry_tree::EntryTree;
 use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
+use super::exported_task_pairs::ExportedTaskPairs;
 use super::program_file::ProgramFile;
 use super::project_task::TaskName;
 use super::standard_error::StandardError;
@@ -18,7 +19,7 @@ use crate::core::{Expr, ExprKind, Leaf, Literal, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
 use crate::modules::ModuleSources;
-use crate::reader::StringLiteral;
+use crate::reader::{Form, FormKind, StringLiteral};
 use crate::source::{SourceId, Span};
 use crate::types::{TypedExpr, TypedExprKind, TypedLeaf, TypedProgram};
 
@@ -30,6 +31,7 @@ struct TaskLookup {
 pub struct TaskCatalog {
     request: EvaluationRequest,
     names_lookup: String,
+    exported_tasks: Option<ExportedTaskPairs>,
 }
 
 pub struct EnteredProgram {
@@ -66,7 +68,18 @@ impl TaskCatalog {
                 evaluated: Vec::new(),
             },
             names_lookup: format!("(task-names {})", modules.join(Self::SEPARATOR)),
+            exported_tasks: Self::exported_task_pairs(tree)?,
         })
+    }
+
+    fn exported_task_pairs(tree: &EntryTree) -> Result<Option<ExportedTaskPairs>, ExitStatus> {
+        match tree
+            .project()
+            .filter(|project| project.task_layout().exports_tasks)
+        {
+            Some(project) => ExportedTaskPairs::read(&project.project_file()).map(Some),
+            None => Ok(None),
+        }
     }
 
     fn tree_arguments(tree: &TreeModules) -> Vec<String> {
@@ -86,7 +99,9 @@ impl TaskCatalog {
     }
 
     pub fn names(&self, terminal: &mut Terminal) -> Result<Vec<TaskName>, ExitStatus> {
-        let names = self.expanded_text(terminal, &self.names_lookup)?;
+        let names = self
+            .expanded(terminal, &self.names_lookup, self.exported_tasks.as_ref())?
+            .text(&self.names_lookup)?;
         Ok(names
             .lines()
             .map(|name| TaskName::new(name.to_string()))
@@ -95,7 +110,7 @@ impl TaskCatalog {
 
     pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
         self.names(terminal)?;
-        let lookup = self.expanded(terminal, Self::LISTING)?;
+        let lookup = self.expanded(terminal, Self::LISTING, None)?;
         terminal.source_report().print(&lookup.warnings).passed()?;
         let listing = lookup.text(Self::LISTING)?;
         Ok(if listing.is_empty() {
@@ -196,31 +211,44 @@ impl TaskCatalog {
         }
     }
 
-    fn expanded_text(&self, terminal: &mut Terminal, lookup: &str) -> Result<String, ExitStatus> {
-        self.expanded(terminal, lookup)?.text(lookup)
-    }
-
-    fn expanded(&self, terminal: &mut Terminal, lookup: &str) -> Result<TaskLookup, ExitStatus> {
+    fn expanded(
+        &self,
+        terminal: &mut Terminal,
+        lookup: &str,
+        exported_tasks: Option<&ExportedTaskPairs>,
+    ) -> Result<TaskLookup, ExitStatus> {
         terminal
             .expansion()
             .sessions()
             .within_evaluation(&self.request, |mut session| {
                 let source = session.add_source(Self::LOOKUP_SOURCE, lookup);
-                Self::task_lookup(session, source)
+                let arguments = match exported_tasks {
+                    Some(pairs) => pairs.forms(&mut session)?,
+                    None => Vec::new(),
+                };
+                Self::task_lookup(session, source, &arguments)
             })
     }
 
     fn task_lookup(
         mut session: ExpansionSession<'_>,
         source: SourceId,
+        arguments: &[Form],
     ) -> Result<TaskLookup, Diagnostics> {
-        let form = session.read(source)?.remove(0);
+        let written = session.read(source)?.remove(0);
+        let form = Self::with_arguments(&written, arguments);
         let expression = session.expression_in(&ModulePath::new(ModuleSources::TASK), form)?;
         let warnings = session.finish()?.warnings;
         Ok(TaskLookup {
             expression,
             warnings,
         })
+    }
+
+    fn with_arguments(lookup: &Form, arguments: &[Form]) -> Form {
+        let items = lookup.as_list().unwrap_or_default();
+        let items = items.iter().chain(arguments).cloned().collect();
+        Form::new(FormKind::List(items), lookup.span())
     }
 
     fn report_no_signature(name: &TaskName) -> ExitStatus {

@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/template_text_written_at_two_types_reads_each_call_type.knv
+---
+defn main
+  local made: owned
+  local lent: a view, written lent
+  local created: owned

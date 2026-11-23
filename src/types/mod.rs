@@ -106,6 +106,7 @@ mod indexed_implementors;
 mod infer;
 mod inferred_span;
 mod inferring_checker;
+mod inline_scheme;
 mod inline_templates;
 mod instantiation;
 mod lifetime_problems;

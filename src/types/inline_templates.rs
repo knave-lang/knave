@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::inline_scheme::InlineScheme;
 use super::registered_template::RegisteredTemplate;
 use super::synthetic_template::SyntheticTemplate;
 use super::template_ties::TemplateTies;
@@ -12,15 +13,17 @@ use crate::core::RustTemplate;
 #[derive(Default)]
 pub struct InlineTemplates {
     written: FxHashMap<Rc<str>, RegisteredTemplate>,
-    schemes: FxHashMap<Rc<str>, Rc<Scheme>>,
+    schemes: FxHashMap<Rc<str>, InlineScheme>,
     compiler: RefCell<FxHashMap<Rc<str>, RegisteredTemplate>>,
 }
 
 impl InlineTemplates {
-    pub fn register(&mut self, text: &Rc<str>, (scheme, ties): (&Scheme, Option<TemplateTies>)) {
-        self.schemes
-            .entry(Rc::clone(text))
-            .or_insert_with(|| Rc::new(scheme.clone()));
+    pub fn register(&mut self, text: &Rc<str>, scheme: &Scheme, ties: Option<TemplateTies>) {
+        let widened = match self.schemes.remove(text) {
+            Some(known) => known.widened(scheme),
+            None => InlineScheme::One(Rc::new(scheme.clone())),
+        };
+        self.schemes.insert(Rc::clone(text), widened);
         match self.written.get_mut(text) {
             Some(known) => known.widen(ties),
             None => {
@@ -31,7 +34,7 @@ impl InlineTemplates {
     }
 
     pub fn scheme(&self, text: &str) -> Option<&Scheme> {
-        self.schemes.get(text).map(Rc::as_ref)
+        self.schemes.get(text).and_then(InlineScheme::single)
     }
 
     pub fn read<T>(
@@ -110,7 +113,8 @@ mod tests {
         let written = InlineFixture::written("{0}");
         templates.register(
             &written.template,
-            (&InlineFixture::scheme(), Some(TemplateTies::new(&[], &[0]))),
+            &InlineFixture::scheme(),
+            Some(TemplateTies::new(&[], &[0])),
         );
         assert_eq!(
             InlineFixture::ties(&templates, &written),
@@ -118,7 +122,8 @@ mod tests {
         );
         templates.register(
             &written.template,
-            (&InlineFixture::scheme(), Some(TemplateTies::new(&[0], &[]))),
+            &InlineFixture::scheme(),
+            Some(TemplateTies::new(&[0], &[])),
         );
         assert_eq!(
             InlineFixture::ties(&templates, &written),
@@ -127,11 +132,11 @@ mod tests {
     }
 
     #[test]
-    fn a_template_text_keeps_the_scheme_it_was_first_registered_with() {
+    fn a_text_registered_twice_with_one_shape_keeps_its_scheme() {
         let mut templates = InlineTemplates::default();
         let written = InlineFixture::written("{0}");
-        assert!(templates.scheme("{0}").is_none());
-        templates.register(&written.template, (&InlineFixture::scheme(), None));
+        templates.register(&written.template, &InlineFixture::scheme(), None);
+        templates.register(&written.template, &InlineFixture::scheme(), None);
         assert_eq!(
             templates.scheme("{0}").map(|scheme| &scheme.body),
             Some(&Type::unit())
@@ -139,11 +144,22 @@ mod tests {
     }
 
     #[test]
+    fn a_text_registered_with_two_shapes_has_no_single_scheme() {
+        let mut templates = InlineTemplates::default();
+        let written = InlineFixture::written("{0}");
+        let mut other = InlineFixture::scheme();
+        other.body = Type::bool();
+        templates.register(&written.template, &InlineFixture::scheme(), None);
+        templates.register(&written.template, &other, None);
+        assert!(templates.scheme("{0}").is_none());
+    }
+
+    #[test]
     fn a_compiler_call_keeps_its_record_beside_a_written_template_of_the_same_text() {
         let text = SyntheticTemplate::LOOK_UP.text();
         let mut templates = InlineTemplates::default();
         let written = InlineFixture::written(text);
-        templates.register(&written.template, (&InlineFixture::scheme(), None));
+        templates.register(&written.template, &InlineFixture::scheme(), None);
         let compiler = InlineFixture::template(text, TypeExprKind::Hole);
         assert_eq!(InlineFixture::ties(&templates, &written), None);
         assert_eq!(

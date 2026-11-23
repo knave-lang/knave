@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_borrowed_owner_returns_borrow.knv
+---
+dune
+up

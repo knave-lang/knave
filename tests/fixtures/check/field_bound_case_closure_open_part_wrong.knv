@@ -1,0 +1,11 @@
+(defstruct user
+  :n int)
+
+(defstruct animal
+  :n int)
+
+(defn apply-n (x f) (f (:n x)))
+
+(defn main ()
+  (println (apply-n (->user 1) (fn (v) (+ v 1))))
+  (println (apply-n (->animal 2) (fn (v) (len v)))))

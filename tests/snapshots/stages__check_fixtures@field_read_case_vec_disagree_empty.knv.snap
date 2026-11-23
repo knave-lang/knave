@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_vec_disagree_empty.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_vec_disagree_empty.knv:7:26
+  |
+7 | (defn none? (x) (empty? (:xs x)))
+  |                          ^^^ this read of `:xs` infers a `has` bound
+  |
+  = note: the structs that reach this function read `:xs` as different types: `user` as `(ref (vec int))`, `animal` as `(ref (vec bool))`
+  = help: write one function for each struct, or declare the field with one type in every struct
+  = note: run `knave doc L0407` for an explanation

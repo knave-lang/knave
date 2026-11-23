@@ -1,0 +1,14 @@
+(defstruct toy
+  :size int)
+
+(defstruct cat
+  :toy toy)
+
+(defstruct dog
+  :toy toy)
+
+(defn same? (x y) (= (:toy x) (:toy y)))
+
+(defn main ()
+  (println (same? (->cat (->toy 1))
+                  (->dog (->toy 1)))))

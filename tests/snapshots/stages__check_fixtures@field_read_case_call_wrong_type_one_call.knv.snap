@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_call_wrong_type_one_call.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_call_wrong_type_one_call.knv:10:36
+   |
+10 |   (println (n-or (->user (some 1)) true)))
+   |                                    ^^^^ expected `int`, found `bool`
+   |
+   = note: run `knave doc L0401` for an explanation

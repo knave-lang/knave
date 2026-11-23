@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_user_trait_on_read.knv
+---
+(derive cat clone partial-eq eq hash show)
+(derive dog clone partial-eq eq hash show)
+(type ->cat (fn (string) cat))
+(type ->dog (fn (string) dog))
+(type yell (where ((a (has :name (ref string)))) (fn ((ref a)) string)))
+(type main (fn () unit))

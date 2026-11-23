@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_display_unmet_option.knv
+---
+error[L0404]: `(option int)` does not implement `display`
+ --> check/field_read_join_display_unmet_option.knv:7:25
+  |
+7 | (defn show (x) (println (:n x)))
+  |                         ^^^^^^ this needs `display`
+  |
+  = help: write `(display type (value) ...)`, or print the value with `prn`
+  = note: run `knave doc L0404` for an explanation

@@ -1,0 +1,13 @@
+(defstruct user
+  :n (option int))
+
+(defstruct animal
+  :n (option int))
+
+(defn same-n? (x y) (= (:n x) (some y)))
+
+(defn relay (x y) (same-n? x y))
+
+(defn main ()
+  (println (relay (->user (some 1)) 1))
+  (println (relay (->animal none) "b")))

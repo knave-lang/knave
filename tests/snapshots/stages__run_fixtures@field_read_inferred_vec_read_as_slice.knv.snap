@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_inferred_vec_read_as_slice.knv
+---
+2
+3
+(some 7)
+(some 8)

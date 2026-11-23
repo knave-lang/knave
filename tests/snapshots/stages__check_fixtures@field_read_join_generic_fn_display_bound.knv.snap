@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_generic_fn_display_bound.knv
+---
+error[L0404]: `toy` does not implement `display`
+  --> check/field_read_join_generic_fn_display_bound.knv:12:21
+   |
+12 | (defn show (x) (say (:toy x)))
+   |                     ^^^^^^^^ this needs `display`
+   |
+   = help: write `(display type (value) ...)`, or print the value with `prn`
+   = note: run `knave doc L0404` for an explanation

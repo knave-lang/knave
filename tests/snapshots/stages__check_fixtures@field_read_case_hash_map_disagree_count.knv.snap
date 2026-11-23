@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_hash_map_disagree_count.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_case_hash_map_disagree_count.knv:7:24
+  |
+7 | (defn size (x) (count (:m x)))
+  |                        ^^ this read of `:m` infers a `has` bound
+  |
+  = note: the structs that reach this function read `:m` as different types: `user` as `(ref (hash-map string int))`, `animal` as `(ref (hash-map int bool))`
+  = help: write one function for each struct, or declare the field with one type in every struct
+  = note: run `knave doc L0407` for an explanation

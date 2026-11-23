@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_clone_field_on_copy_owner.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_refused_clone_field_on_copy_owner.knv:9:7
+  |
+9 |   (+ (:clone x) (:clone y)))
+  |       ^^^^^^ this read of `:clone` infers a `has` bound
+  |
+  = note: the bound `(has :clone int)` inferred from this read cannot be kept: the Rust trait `HasClone`, its method `clone` or the module `field_traits` for `:clone` would take a name the program already uses
+  = help: rename what the program names that way, or write one function for each struct
+  = note: run `knave doc L0407` for an explanation

@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_inferred_vec_of_borrows_read_as_slice.knv
+---
+ann bo

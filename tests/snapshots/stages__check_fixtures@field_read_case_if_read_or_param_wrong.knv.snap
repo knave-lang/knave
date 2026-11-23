@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_if_read_or_param_wrong.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_if_read_or_param_wrong.knv:11:31
+   |
+11 |   (println (pick (->animal 2) "nine" false)))
+   |                               ^^^^^^ expected `int`, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

@@ -1,0 +1,6 @@
+(defstruct (box t)
+  :v t)
+
+(defn f () (let (b (->box 1)) (:v b)))
+
+(defn main () (println (f)))

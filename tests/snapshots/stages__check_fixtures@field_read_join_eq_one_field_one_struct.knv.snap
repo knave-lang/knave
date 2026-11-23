@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_eq_one_field_one_struct.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_join_eq_one_field_one_struct.knv:10:25
+   |
+10 | (defn f (x y) (= (:a x) (:b y)))
+   |                         ^^^^^^ expected `int`, found `float`
+   |
+   = note: run `knave doc L0401` for an explanation

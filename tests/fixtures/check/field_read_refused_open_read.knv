@@ -1,0 +1,14 @@
+(defstruct (boxed a)
+  :title a)
+
+(defstruct film
+  :title string)
+
+(defn get (b) (:title b))
+
+(defn both (v) (get (->boxed v)))
+
+(defn main ()
+  (println (both 5))
+  (println (both (str "x")))
+  (println (get (->film (str "f")))))

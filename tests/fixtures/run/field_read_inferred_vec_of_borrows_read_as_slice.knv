@@ -1,0 +1,13 @@
+(defstruct roster
+  :names (vec (ref str)))
+
+(defstruct team
+  :names (vec (ref str)))
+
+(defn lead (x)
+  (deref (unwrap (get (:names x) 0))))
+
+(defn main ()
+  (local n (lead (->roster (vec "ann"))))
+  (local m (lead (->team (vec "bo"))))
+  (println n " " m))

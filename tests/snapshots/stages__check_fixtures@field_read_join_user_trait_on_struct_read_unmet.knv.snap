@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_user_trait_on_struct_read_unmet.knv
+---
+error[L0404]: `ball` does not implement `shout`
+  --> check/field_read_join_user_trait_on_struct_read_unmet.knv:19:22
+   |
+19 | (defn yell (x) (loud (:toy x)))
+   |                      ^^^^^^^^ this needs `shout`
+   |
+   = note: run `knave doc L0404` for an explanation

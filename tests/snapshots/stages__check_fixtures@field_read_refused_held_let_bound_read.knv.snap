@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_held_let_bound_read.knv
+---
+error[L0510]: cannot return a borrow of a local value
+  --> check/field_read_refused_held_let_bound_read.knv:12:11
+   |
+11 |   (let (b (->box (:a x))
+   |         - this local is dropped when the function returns
+12 |         n (:v b))
+   |           ^^^^^^ this borrows a local value
+   |
+   = help: return an owned value with `(clone ...)`, or borrow from a parameter
+   = note: run `knave doc L0510` for an explanation

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_call_same_struct_two_types.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_call_same_struct_two_types.knv:11:32
+   |
+11 |   (println (n-or (->user none) "w"))
+   |                                ^^^ expected `int`, found `str`
+   |
+   = note: run `knave doc L0401` for an explanation

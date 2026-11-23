@@ -1,0 +1,17 @@
+(defstruct cat
+  :a int)
+
+(defstruct dog
+  :a int)
+
+(defstruct fox
+  :b float)
+
+(defstruct owl
+  :b float)
+
+(defn same? (x y) (= (:a x) (:b y)))
+
+(defn main ()
+  (println (same? (->cat 1) (->fox 1.0)))
+  (println (same? (->dog 2) (->owl 3.0))))

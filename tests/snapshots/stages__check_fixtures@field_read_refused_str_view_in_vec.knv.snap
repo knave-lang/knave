@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_str_view_in_vec.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_refused_str_view_in_vec.knv:10:21
+   |
+ 7 | / (type count-all
+ 8 | |   (fn ((vec (ref str))) usize))
+   | |_______________________________- expected because of this signature
+ 9 |
+10 |   (defn count-all (v) (len v))
+   |                       ^^^^^^^ expected `usize`, found `int`
+   |
+   = note: run `knave doc L0401` for an explanation

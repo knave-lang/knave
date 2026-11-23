@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_string_push_into_str_vec.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_case_string_push_into_str_vec.knv:13:44
+   |
+13 |   (println (len (pick (->user (str "ana")) "zz" true)))
+   |                                            ^^^^ expected `(ref string)`, found `(ref str)`
+   |
+   = note: run `knave doc L0401` for an explanation

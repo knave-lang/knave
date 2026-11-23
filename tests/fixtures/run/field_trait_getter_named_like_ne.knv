@@ -1,0 +1,12 @@
+(defstruct cat
+  :ne int)
+
+(defstruct dog
+  :ne int)
+
+(defn diff (x y)
+  (if (not= x y) (:ne x) 0))
+
+(defn main ()
+  (println (diff (->cat 1) (->cat 2)))
+  (println (diff (->dog 2) (->dog 3))))

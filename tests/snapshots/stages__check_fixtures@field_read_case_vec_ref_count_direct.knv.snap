@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_vec_ref_count_direct.knv
+---
+(derive user clone partial-eq eq hash show)
+(derive animal clone partial-eq eq hash show)
+(type ->user (fn ((vec int)) user))
+(type ->animal (fn ((vec int)) animal))
+(type ps (fn ((ref user)) (ref (vec int))))
+(type main (fn () unit))

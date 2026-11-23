@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_owned_use_in_match.knv
+---
+error[L0401]: mismatched types
+  --> check/field_read_refused_owned_use_in_match.knv:10:11
+   |
+10 |     (none (str ""))))
+   |           ^^^^^^^^ expected `(ref string)`, found `string`
+   |
+   = note: run `knave doc L0401` for an explanation

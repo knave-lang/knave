@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_case_struct_lacks_field.knv
+---
+error[L0408]: `rock` has no field `:n`
+  --> check/field_bound_case_struct_lacks_field.knv:15:18
+   |
+10 | (defn n-or (x d) (unwrap-or (:n x) d))
+   |                              -- this read of `:n` infers a `has` bound
+...
+15 |   (println (n-or (->rock 5) 3)))
+   |                  ^^^^^^^^^^ this has no field `:n`
+   |
+   = note: run `knave doc L0408` for an explanation

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_option_string_unwrap_or_owned.knv
+---
+error[L0503]: this value is borrowed, but the call needs to own it
+ --> check/field_read_case_option_string_unwrap_or_owned.knv:7:29
+  |
+7 | (defn n-or (x d) (unwrap-or (:n x) d))
+  |                             ^^^^^^ only a borrow is available here
+  |
+  = help: pass a copy with `(clone ...)`
+  = note: run `knave doc L0503` for an explanation

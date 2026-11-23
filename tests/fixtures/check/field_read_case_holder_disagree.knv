@@ -1,0 +1,14 @@
+(defstruct (holder a)
+  :v (option a))
+
+(defstruct user
+  :h (holder int))
+
+(defstruct animal
+  :h (holder string))
+
+(defn has-v (x) (some? (:v (:h x))))
+
+(defn main ()
+  (println (has-v (->user (->holder (some 1)))))
+  (println (has-v (->animal (->holder none)))))

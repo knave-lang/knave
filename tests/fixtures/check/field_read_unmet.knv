@@ -1,0 +1,15 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defstruct product
+  :name i32)
+
+(defn uppercase-name (x)
+  (upper-case (:name x)))
+
+(defn main ()
+  (println (uppercase-name (->user "ana")))
+  (println (uppercase-name (->product 7))))

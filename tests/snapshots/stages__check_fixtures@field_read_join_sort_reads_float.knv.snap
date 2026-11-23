@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_sort_reads_float.knv
+---
+error[L0401]: mismatched types
+ --> check/field_read_join_sort_reads_float.knv:8:23
+  |
+8 |   (let (v (vec (deref (:w x)) (deref (:w y))))
+  |                       ^^^^^^ expected `(ref _)`, found `float`
+  |
+  = note: run `knave doc L0401` for an explanation

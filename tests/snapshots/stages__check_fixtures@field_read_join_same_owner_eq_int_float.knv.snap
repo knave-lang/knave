@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_same_owner_eq_int_float.knv
+---
+error[L0401]: mismatched types
+ --> check/field_read_join_same_owner_eq_int_float.knv:9:23
+  |
+9 | (defn f (x) (= (:a x) (:b x)))
+  |                       ^^^^^^ expected `int`, found `float`
+  |
+  = note: run `knave doc L0401` for an explanation

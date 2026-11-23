@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_case_struct_with_str_match.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_case_struct_with_str_match.knv:11:11
+   |
+11 |   (match (:t x)
+   |           ^^ this read of `:t` infers a `has` bound
+   |
+   = note: the bound `(has :t (option tag))` inferred from this read cannot be kept: a value read from `:t` through a `has` bound holds a borrow that leaves this function
+   = help: return or store an owned value, or write one function for each struct
+   = note: run `knave doc L0407` for an explanation

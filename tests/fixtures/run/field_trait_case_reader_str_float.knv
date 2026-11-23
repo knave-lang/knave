@@ -1,0 +1,11 @@
+(defstruct user
+  :w float)
+
+(defstruct animal
+  :w float)
+
+(defn label (x) (str "w=" (:w x)))
+
+(defn main ()
+  (println (label (->user 1.5)))
+  (println (label (->animal 2.0))))

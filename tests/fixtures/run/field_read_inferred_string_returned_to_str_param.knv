@@ -1,0 +1,17 @@
+(defstruct user
+  :name string)
+
+(defstruct animal
+  :name string)
+
+(type shout (fn ((ref str)) int))
+
+(defn shout (s) (len s))
+
+(defn nm (x) (:name x))
+
+(defn main ()
+  (let (u (->user (str "ana"))
+        a (->animal (str "bo")))
+    (println (shout (nm u)))
+    (println (shout (nm a)))))

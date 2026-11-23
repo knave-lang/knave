@@ -1,0 +1,12 @@
+(defstruct user
+  :n int)
+
+(defstruct animal
+  :n int)
+
+(defn n-of (x) (:n x))
+
+(defn main ()
+  (let (f (fn (u) (+ (n-of u) 1)))
+    (println (f (->user 1))))
+  (println (n-of (->animal 4))))

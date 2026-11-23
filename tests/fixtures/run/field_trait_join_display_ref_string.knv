@@ -1,0 +1,11 @@
+(defstruct cat
+  :name string)
+
+(defstruct dog
+  :name string)
+
+(defn show (x) (println (:name x)))
+
+(defn main ()
+  (show (->cat (str "tom")))
+  (show (->dog (str "rex"))))

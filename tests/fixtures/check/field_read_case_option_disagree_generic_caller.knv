@@ -1,0 +1,13 @@
+(defstruct user
+  :n (option int))
+
+(defstruct animal
+  :n (option bool))
+
+(defn has-n (x) (some? (:n x)))
+
+(defn check (y) (has-n y))
+
+(defn main ()
+  (println (check (->user (some 1))))
+  (println (has-n (->animal none))))

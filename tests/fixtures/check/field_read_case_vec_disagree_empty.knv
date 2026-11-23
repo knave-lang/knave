@@ -1,0 +1,11 @@
+(defstruct user
+  :xs (vec int))
+
+(defstruct animal
+  :xs (vec bool))
+
+(defn none? (x) (empty? (:xs x)))
+
+(defn main ()
+  (println (none? (->user (vec 1 2))))
+  (println (none? (->animal (vec)))))

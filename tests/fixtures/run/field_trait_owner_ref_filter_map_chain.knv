@@ -1,0 +1,18 @@
+(defstruct cat
+  :age int
+  :name string)
+
+(defstruct dog
+  :age int
+  :name string)
+
+(defn old-names (xs)
+  (the (vec (ref string))
+       (collect (map (filter (iter xs)
+                       (fn (x) (> (len (:name x)) 2)))
+                     (fn (x) (:name x))))))
+
+(defn main ()
+  (prn (old-names (vec (->cat 1 (str "tom"))
+                       (->cat 5 (str "al")))))
+  (prn (old-names (vec (->dog 9 (str "rex"))))))

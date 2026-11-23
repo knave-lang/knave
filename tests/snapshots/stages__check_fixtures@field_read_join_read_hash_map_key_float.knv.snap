@@ -1,0 +1,22 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_join_read_hash_map_key_float.knv
+---
+error[L0404]: `float` does not implement `hash`
+ --> check/field_read_join_read_hash_map_key_float.knv:8:18
+  |
+8 |   (len (hash-map (:w x) 1)))
+  |                  ^^^^^^ this needs `hash`
+  |
+  = note: `hash` is implemented for: bool, char, str, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, infallible, duration, instant, (where ((a hash)) (vec a)), (where ((a hash)) (option a)), (where ((a hash) (b hash)) (result a b)), (where ((a hash)) (box a)), (where ((a hash) (b hash)) (pair a b))
+  = note: run `knave doc L0404` for an explanation
+
+error[L0404]: `float` does not implement `eq`
+ --> check/field_read_join_read_hash_map_key_float.knv:8:18
+  |
+8 |   (len (hash-map (:w x) 1)))
+  |                  ^^^^^^ this needs `eq`
+  |
+  = note: `eq` is implemented for: bool, char, str, string, (ref str), i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, infallible, parse-bool-error, parse-char-error, parse-float-error, parse-int-error, duration, instant, (where ((a eq)) (vec a)), (where ((a eq)) (option a)), (where ((a eq) (b eq)) (result a b)), (where ((a eq)) (box a)), (where ((a eq) (b eq)) (pair a b))
+  = note: run `knave doc L0404` for an explanation

@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_nested_set.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_refused_nested_set.knv:11:16
+   |
+11 |   (set! (:age (:pet x)) 9)
+   |                ^^^^ this read of `:pet` infers a `has` bound
+   |
+   = note: a `has` bound inferred from this read cannot be kept: this function changes `:pet` through a `has` bound
+   = help: write one function for each struct to change its fields
+   = note: run `knave doc L0407` for an explanation

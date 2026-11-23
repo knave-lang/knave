@@ -54,7 +54,7 @@ impl<'p> ProgramBinary<'p> {
     fn place(&self, crate_name: &CrateName) -> Result<BinaryPlace, ExitStatus> {
         match self.program.entry_project() {
             Some(project) => Ok(BinaryPlace::named(
-                project.build_directory(),
+                project.crates().build_directory(),
                 project.name(),
             )),
             None => self.entry_place(crate_name),

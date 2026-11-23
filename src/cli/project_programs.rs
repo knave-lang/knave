@@ -68,7 +68,9 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
-        loaded.add(Self::entry(terminal, project.entry()));
+        if !project.task_layout().checks_tasks_alone() {
+            loaded.add(Self::entry(terminal, project.entry()));
+        }
         let project = Self::tests(terminal, project, loaded);
         let project = Self::tasks(terminal, project, loaded);
         Self::unreached(terminal, &project, loaded)
@@ -104,15 +106,23 @@ impl ProjectPrograms {
     ) -> LocatedProject {
         let tree = EntryTree::of_tasks(project);
         if tree.holds_tasks() {
-            loaded.add(TaskCatalog::load(&tree, terminal).and_then(|catalog| {
-                let entered = TaskRunners::new(&catalog).program(terminal)?;
-                Ok(ProjectProgram {
-                    file: entered.file,
-                    program: entered.program,
-                })
-            }));
+            match TaskCatalog::load(&tree, terminal) {
+                Ok(catalog) => Self::task_program(terminal, &catalog, loaded),
+                Err(status) => loaded.fail(status),
+            }
         }
         Self::project_of(tree)
+    }
+
+    fn task_program(terminal: &mut Terminal, catalog: &TaskCatalog, loaded: &mut LoadedPrograms) {
+        if let Err(status) = catalog.check_exports(terminal) {
+            loaded.fail(status);
+        }
+        let program = TaskRunners::new(catalog).program(terminal);
+        loaded.add(program.map(|entered| ProjectProgram {
+            file: entered.file,
+            program: entered.program,
+        }));
     }
 
     fn project_of(tree: EntryTree) -> LocatedProject {

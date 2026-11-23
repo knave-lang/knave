@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::Path;
+use std::rc::Rc;
 
 use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
@@ -10,6 +11,7 @@ use super::located_program::LocatedProgram;
 use super::located_project::LocatedProject;
 use super::path_scope::PathScope;
 use super::project_programs::ProjectPrograms;
+use super::separated_batches::SeparatedBatches;
 use super::standard_error::StandardError;
 use super::task_catalog::TaskCatalog;
 use super::terminal::Terminal;
@@ -29,7 +31,8 @@ impl LintCommand {
     }
 
     fn lint(self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
-        let output = TaskCatalog::user_output(terminal.diagnostic_output());
+        let separated = Rc::new(SeparatedBatches::new(terminal.diagnostic_output()));
+        let output = TaskCatalog::user_output(separated);
         terminal.configure(|settings| settings.rerouted_to(output));
         let (programs, scope) = self.programs(terminal)?;
         let loaded = programs.load(terminal);

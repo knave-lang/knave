@@ -56,10 +56,9 @@ impl LocatedProgram {
     }
 
     pub fn entry_project(&self) -> Option<&LocatedProject> {
-        self.project.as_ref().filter(|project| {
-            ProgramFile::canonical(project.entry().path())
-                == ProgramFile::canonical(self.file.path())
-        })
+        self.project
+            .as_ref()
+            .filter(|project| project.is_entry(&self.file))
     }
 
     fn report_no_program() -> ExitStatus {

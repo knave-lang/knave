@@ -3,6 +3,7 @@ mod compiler_version_problems;
 mod crate_set;
 mod dependency_reader;
 mod dependency_section;
+mod entry_module;
 mod exported_task_problems;
 mod exported_task_reader;
 mod fields;
@@ -33,6 +34,7 @@ use std::path::PathBuf;
 pub use compiler_version::CompilerVersion;
 pub use crate_set::CrateSet;
 pub use dependency_section::DependencySection;
+pub use entry_module::EntryModule;
 pub(crate) use level_keys::LevelKeys;
 pub use lint_level::LintLevel;
 pub use lint_table::LintTable;
@@ -59,7 +61,7 @@ pub struct Project {
     pub dependencies: Vec<CrateDependency>,
     pub dev_dependencies: Vec<CrateDependency>,
     pub lints: LintTable,
-    pub exported_tasks: Vec<ExportedTask>,
+    pub exported_tasks: Option<Vec<ExportedTask>>,
 }
 
 #[derive(Debug)]

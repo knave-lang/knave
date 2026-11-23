@@ -1,19 +1,16 @@
-use std::cell::Cell;
 use std::rc::Rc;
 
-use super::diagnostic_output::{DiagnosticOutput, MessageOutput};
 use super::entry_argument::EntryArgument;
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::located_program::LocatedProgram;
-use super::located_project::TaskLayout;
 use super::program_file::ProgramFile;
+use super::separated_batches::SeparatedBatches;
 use super::source_report::SourceReport;
 use super::task_catalog::TaskCatalog;
 use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
 use crate::diagnostic::Diagnostics;
-use crate::source::SourceMap;
 
 pub type WarningPrinter = dyn Fn(&SourceReport<'_>, &Diagnostics) -> ExitStatus;
 
@@ -42,7 +39,7 @@ impl ProjectInspection {
         let skips_entry = defaults_to_project_entry
             && program
                 .project()
-                .is_some_and(|project| Self::checks_tasks_alone(project.task_layout()));
+                .is_some_and(|project| project.task_layout().checks_tasks_alone());
         let separated = Rc::new(SeparatedBatches::new(terminal.diagnostic_output()));
         let output = TaskCatalog::user_output(separated);
         terminal.configure(|settings| settings.rerouted_to(output));
@@ -57,10 +54,6 @@ impl ProjectInspection {
             None => Ok(()),
         };
         entry.and(tasks)
-    }
-
-    fn checks_tasks_alone(layout: TaskLayout) -> bool {
-        layout.entry_left_out && (layout.tasks_folder || layout.exports_tasks)
     }
 
     fn names_a_task_file(program: &LocatedProgram) -> bool {
@@ -81,34 +74,5 @@ impl ProjectInspection {
         let catalog = TaskCatalog::load(&tree, terminal)?;
         let warnings = TaskRunners::new(&catalog).check(terminal)?;
         print_warnings(&terminal.source_report(), &warnings).passed()
-    }
-}
-
-struct SeparatedBatches {
-    inner: Rc<dyn DiagnosticOutput>,
-    wrote_a_batch: Cell<bool>,
-}
-
-impl SeparatedBatches {
-    fn new(inner: Rc<dyn DiagnosticOutput>) -> Self {
-        Self {
-            inner,
-            wrote_a_batch: Cell::new(false),
-        }
-    }
-}
-
-impl MessageOutput for SeparatedBatches {}
-
-impl DiagnosticOutput for SeparatedBatches {
-    fn write(&self, sources: &SourceMap, diagnostics: &Diagnostics) {
-        match self.wrote_a_batch.replace(true) {
-            true => self.inner.write_after_earlier(sources, diagnostics),
-            false => self.inner.write(sources, diagnostics),
-        }
-    }
-
-    fn write_note(&self, sources: &SourceMap, message: &str) {
-        self.inner.write_note(sources, message);
     }
 }

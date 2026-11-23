@@ -16,13 +16,14 @@ impl<'p> ExportedTaskReader<'p> {
 
     pub fn read(mut self, entries: &[Form], exported: &mut Vec<ExportedTask>) {
         for entry in entries {
-            if let Some(task) = self.exported_task(entry, exported) {
+            if let Some(task) = self.exported_task(entry) {
+                self.report_repeat(&task, exported);
                 exported.push(task);
             }
         }
     }
 
-    fn exported_task(&mut self, entry: &Form, exported: &[ExportedTask]) -> Option<ExportedTask> {
+    fn exported_task(&mut self, entry: &Form) -> Option<ExportedTask> {
         let Some(symbol) = entry.as_symbol() else {
             self.problems.push(ExportedTaskProblems::unexpected_name(
                 entry.span(),
@@ -30,20 +31,19 @@ impl<'p> ExportedTaskReader<'p> {
             ));
             return None;
         };
-        let task = ExportedTask {
+        Some(ExportedTask {
             name: symbol.name().to_string(),
             span: entry.span(),
-        };
-        match exported.iter().find(|earlier| earlier.name == task.name) {
-            Some(earlier) => {
-                self.problems.push(ProjectProblems::duplicate_entry(
-                    &task.name,
-                    task.span,
-                    earlier.span,
-                ));
-                None
-            }
-            None => Some(task),
+        })
+    }
+
+    fn report_repeat(&mut self, task: &ExportedTask, exported: &[ExportedTask]) {
+        if let Some(earlier) = exported.iter().find(|earlier| earlier.name == task.name) {
+            self.problems.push(ProjectProblems::duplicate_entry(
+                &task.name,
+                task.span,
+                earlier.span,
+            ));
         }
     }
 }

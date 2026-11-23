@@ -1,4 +1,3 @@
-use std::ops::Range;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
@@ -8,10 +7,12 @@ use super::distinct_output::DistinctOutput;
 use super::entry_tree::EntryTree;
 use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
-use super::exported_task_pairs::ExportedTaskPairs;
+use super::exported_task_names::ExportedTaskNames;
+use super::form_block::FormBlock;
 use super::program_file::ProgramFile;
 use super::project_task::TaskName;
 use super::standard_error::StandardError;
+use super::task_lookup_call::TaskLookupCall;
 use super::terminal::Terminal;
 use super::tree_modules::TreeModules;
 use super::user_label_output::UserLabelOutput;
@@ -19,7 +20,7 @@ use crate::core::{Expr, ExprKind, Leaf, Literal, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
 use crate::modules::ModuleSources;
-use crate::reader::{Form, FormKind, StringLiteral};
+use crate::reader::StringLiteral;
 use crate::source::{SourceId, Span};
 use crate::types::{TypedExpr, TypedExprKind, TypedLeaf, TypedProgram};
 
@@ -30,8 +31,8 @@ struct TaskLookup {
 
 pub struct TaskCatalog {
     request: EvaluationRequest,
-    names_lookup: String,
-    exported_tasks: Option<ExportedTaskPairs>,
+    names_lookup: TaskLookupCall,
+    exported_tasks: Option<Rc<ExportedTaskNames>>,
 }
 
 pub struct EnteredProgram {
@@ -44,8 +45,7 @@ impl TaskCatalog {
     pub const LOOKUP_SOURCE: &'static str = "<task lookup>";
     pub const RUNNER_SOURCE: &'static str = "<task runner>";
     const LISTING: &'static str = "(task-listing)";
-    const BLOCK_START: &'static str = "(do ";
-    const BLOCK_END: &'static str = " (do))";
+    const EXPORT_CHECK: &'static str = "(exported-task-check)";
     const SEPARATOR: &'static str = " ";
     const HIDDEN_FOLDER: &'static str = ":hidden-folder";
     const PROJECT_FILE: &'static str = ":project-file";
@@ -67,17 +67,20 @@ impl TaskCatalog {
                 module: tree.load(terminal)?,
                 evaluated: Vec::new(),
             },
-            names_lookup: format!("(task-names {})", modules.join(Self::SEPARATOR)),
-            exported_tasks: Self::exported_task_pairs(tree)?,
+            names_lookup: TaskLookupCall::new(format!(
+                "(task-names {})",
+                modules.join(Self::SEPARATOR)
+            )),
+            exported_tasks: Self::exported_task_names(tree)?.map(Rc::new),
         })
     }
 
-    fn exported_task_pairs(tree: &EntryTree) -> Result<Option<ExportedTaskPairs>, ExitStatus> {
+    fn exported_task_names(tree: &EntryTree) -> Result<Option<ExportedTaskNames>, ExitStatus> {
         match tree
             .project()
-            .filter(|project| project.task_layout().exports_tasks)
+            .filter(|project| project.task_layout().exports_tasks())
         {
-            Some(project) => ExportedTaskPairs::read(&project.project_file()).map(Some),
+            Some(project) => ExportedTaskNames::read(&project.project_file()).map(Some),
             None => Ok(None),
         }
     }
@@ -100,17 +103,35 @@ impl TaskCatalog {
 
     pub fn names(&self, terminal: &mut Terminal) -> Result<Vec<TaskName>, ExitStatus> {
         let names = self
-            .expanded(terminal, &self.names_lookup, self.exported_tasks.as_ref())?
-            .text(&self.names_lookup)?;
+            .expanded(terminal, &self.names_lookup)?
+            .text(self.names_lookup.text())?;
         Ok(names
             .lines()
             .map(|name| TaskName::new(name.to_string()))
             .collect())
     }
 
+    pub fn check_exports(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
+        let Some(names) = &self.exported_tasks else {
+            return Ok(());
+        };
+        (0..names.count())
+            .map(|index| {
+                let call = TaskLookupCall::checking_export(
+                    Self::EXPORT_CHECK.to_string(),
+                    Rc::clone(names),
+                    index,
+                );
+                self.expanded(terminal, &call).map(|_| ())
+            })
+            .fold(Ok(()), Result::and)
+    }
+
     pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
         self.names(terminal)?;
-        let lookup = self.expanded(terminal, Self::LISTING, None)?;
+        self.check_exports(terminal)?;
+        let listing = TaskLookupCall::new(Self::LISTING.to_string());
+        let lookup = self.expanded(terminal, &listing)?;
         terminal.source_report().print(&lookup.warnings).passed()?;
         let listing = lookup.text(Self::LISTING)?;
         Ok(if listing.is_empty() {
@@ -129,7 +150,10 @@ impl TaskCatalog {
             .iter()
             .map(|name| format!("(task-signature {})", StringLiteral::quoted(name.as_str())))
             .collect();
-        let (block, ranges) = Self::block_of(&lookups);
+        let FormBlock {
+            text: block,
+            ranges,
+        } = FormBlock::of(&lookups);
         let entered = self.entered_program(terminal, &block)?;
         let typed = terminal.checking().check(&entered.program)?;
         let texts = Self::texts_by_span(&typed);
@@ -143,18 +167,6 @@ impl TaskCatalog {
                     .ok_or_else(|| Self::report_no_signature(name))
             })
             .collect()
-    }
-
-    pub fn block_of(forms: &[String]) -> (String, Vec<Range<usize>>) {
-        let mut block = String::from(Self::BLOCK_START);
-        let mut ranges = Vec::new();
-        for form in forms {
-            block.push_str(Self::SEPARATOR);
-            ranges.push(block.len()..block.len() + form.len());
-            block.push_str(form);
-        }
-        block.push_str(Self::BLOCK_END);
-        (block, ranges)
     }
 
     pub fn entered_program(
@@ -214,41 +226,25 @@ impl TaskCatalog {
     fn expanded(
         &self,
         terminal: &mut Terminal,
-        lookup: &str,
-        exported_tasks: Option<&ExportedTaskPairs>,
+        call: &TaskLookupCall,
     ) -> Result<TaskLookup, ExitStatus> {
         terminal
             .expansion()
             .sessions()
-            .within_evaluation(&self.request, |mut session| {
-                let source = session.add_source(Self::LOOKUP_SOURCE, lookup);
-                let arguments = match exported_tasks {
-                    Some(pairs) => pairs.forms(&mut session)?,
-                    None => Vec::new(),
-                };
-                Self::task_lookup(session, source, &arguments)
-            })
+            .within_evaluation(&self.request, |session| Self::task_lookup(session, call))
     }
 
     fn task_lookup(
         mut session: ExpansionSession<'_>,
-        source: SourceId,
-        arguments: &[Form],
+        call: &TaskLookupCall,
     ) -> Result<TaskLookup, Diagnostics> {
-        let written = session.read(source)?.remove(0);
-        let form = Self::with_arguments(&written, arguments);
+        let form = call.form(&mut session, Self::LOOKUP_SOURCE)?;
         let expression = session.expression_in(&ModulePath::new(ModuleSources::TASK), form)?;
         let warnings = session.finish()?.warnings;
         Ok(TaskLookup {
             expression,
             warnings,
         })
-    }
-
-    fn with_arguments(lookup: &Form, arguments: &[Form]) -> Form {
-        let items = lookup.as_list().unwrap_or_default();
-        let items = items.iter().chain(arguments).cloned().collect();
-        Form::new(FormKind::List(items), lookup.span())
     }
 
     fn report_no_signature(name: &TaskName) -> ExitStatus {

@@ -93,17 +93,17 @@ impl LocatedProject {
     }
 
     pub fn entry(&self) -> ProgramFile {
-        let entry = self.root.join(&self.project.modules.entry);
+        let entry = self.root.join(self.project.modules.entry.path());
         self.placement().file_within(entry)
     }
 
     pub fn task_layout(&self) -> TaskLayout {
-        let modules = &self.project.modules;
-        TaskLayout {
-            exports_tasks: !self.project.exported_tasks.is_empty(),
-            tasks_folder: self.placement().tasks_directory().is_dir(),
-            entry_left_out: !modules.entry_written && !self.root.join(&modules.entry).exists(),
-        }
+        TaskLayout::of(&self.project, &self.placement(), &self.root)
+    }
+
+    pub fn is_entry(&self, file: &ProgramFile) -> bool {
+        let entry = self.root.join(self.project.modules.entry.path());
+        ProgramFile::canonical(&entry) == ProgramFile::canonical(file.path())
     }
 
     pub fn placement(&self) -> FilePlacement<'_> {
@@ -115,7 +115,7 @@ impl LocatedProject {
     }
 
     pub fn source_root(&self) -> PathBuf {
-        ProgramFile::directory_of(&self.root.join(&self.project.modules.entry))
+        ProgramFile::directory_of(&self.root.join(self.project.modules.entry.path()))
     }
 
     pub fn refuse_crates(&self, command: &str, terminal: &Terminal) -> Result<(), ExitStatus> {
@@ -145,10 +145,6 @@ impl LocatedProject {
 
     pub fn project_file(&self) -> PathBuf {
         self.root.join(Language::project_file_name())
-    }
-
-    pub fn build_directory(&self) -> PathBuf {
-        self.crates.build_directory()
     }
 
     pub fn crates(&self) -> &ProjectCrates {

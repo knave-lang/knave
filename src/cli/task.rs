@@ -6,6 +6,7 @@ use super::finished_program::FinishedProgram;
 use super::library_walk::FetchingStore;
 use super::located_project::LocatedProject;
 use super::project_task::{ProjectTask, TaskName};
+use super::separated_batches::SeparatedBatches;
 use super::standard_error::StandardError;
 use super::standard_output::StandardOutput;
 use super::task_catalog::TaskCatalog;
@@ -36,7 +37,8 @@ impl TaskCommand {
     }
 
     pub fn run(self, terminal: &mut Terminal) -> ExitStatus {
-        let output = TaskCatalog::user_output(terminal.diagnostic_output());
+        let separated = Rc::new(SeparatedBatches::new(terminal.diagnostic_output()));
+        let output = TaskCatalog::user_output(separated);
         terminal.configure(|settings| settings.rerouted_to(output));
         match self.execute(terminal) {
             Ok(status) | Err(status) => status,
@@ -56,6 +58,7 @@ impl TaskCommand {
             .iter()
             .map(|known| Rc::from(known.as_str()))
             .collect();
+        catalog.check_exports(terminal)?;
         Self::expect_task(&names, name)?;
         let task = ProjectTask::new(project, TaskName::new(name.clone()));
         let binary = TaskRunners::new(&catalog).build(terminal, &task, self.profile)?;

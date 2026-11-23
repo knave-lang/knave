@@ -11522,12 +11522,53 @@ fn an_exported_name_far_from_every_task_says_how_to_define_it() {
 fn an_exporting_project_without_tasks_reports_each_name() {
     let sandbox = Sandbox::new("exported_tasks_without_tasks").with_file(
         &Language::project_file_name(),
-        "(defproject linter (exported-tasks lint))\n",
+        "(defproject linter (exported-tasks lint fix))\n",
     );
     let check = sandbox.compiler(&["check"]).assert_exit_code(1).stderr();
     let task = sandbox.compiler(&["task"]).assert_exit_code(1).stderr();
     assert_eq!(check, task);
     insta::assert_snapshot!(check);
+}
+
+#[test]
+fn every_missing_exported_name_is_reported_beside_the_tasks_errors() {
+    let check = ExportingProject::of(
+        "exported_tasks_missing_with_errors",
+        "(defproject linter (exported-tasks lnt release-all))\n",
+    )
+    .with_file("tasks/broken.knv", MISTYPED_TASK)
+    .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn an_empty_exported_tasks_section_counts_as_tasks() {
+    let sandbox = Sandbox::new("exported_tasks_empty").with_file(
+        &Language::project_file_name(),
+        "(defproject linter (exported-tasks))\n",
+    );
+    sandbox.compiler(&["check"]).assert_exit_code(0);
+    let listing = sandbox.compiler(&["task"]);
+    assert_eq!(listing.assert_exit_code(0).stdout(), "");
+}
+
+#[test]
+fn a_tasks_file_in_an_exporting_project_is_an_absent_folder() {
+    let check = Sandbox::new("exported_tasks_tasks_file")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject linter (exported-tasks lint))\n",
+        )
+        .with_file("tasks", "not a folder\n")
+        .compiler(&["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
+fn lint_without_an_unwritten_entry_lints_the_tasks_alone() {
+    ExportingProject::of("lint_tasks_without_entry", TASK_PROJECT)
+        .compiler(&["lint"])
+        .assert_exit_code(0);
 }
 
 #[test]

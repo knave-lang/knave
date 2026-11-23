@@ -5,8 +5,17 @@ expression: check
 error[L0367]: no task named `lint` to export
  --> project.knv:1:36
   |
-1 | (defproject linter (exported-tasks lint))
+1 | (defproject linter (exported-tasks lint fix))
   |                                    ^^^^ no `deftask` under `tasks/` defines this name
+  |
+  = help: define the task with `deftask` in a file under `tasks/`, or remove the name
+  = note: run `knave doc L0367` for an explanation
+
+error[L0367]: no task named `fix` to export
+ --> project.knv:1:41
+  |
+1 | (defproject linter (exported-tasks lint fix))
+  |                                         ^^^ no `deftask` under `tasks/` defines this name
   |
   = help: define the task with `deftask` in a file under `tasks/`, or remove the name
   = note: run `knave doc L0367` for an explanation

@@ -2,8 +2,8 @@ use rustc_hash::FxHashMap;
 
 use crate::core::{BindingId, ModuleId};
 use crate::types::{
-    DefinitionTable, GenericParam, ProgramReach, Type, TypedExpr, TypedExprKind, TypedLeaf,
-    TypedProgram,
+    DefinitionEntry, DefinitionTable, GenericParam, ProgramReach, Type, TypedExpr, TypedExprKind,
+    TypedLeaf, TypedProgram,
 };
 
 pub struct ReachSearch<'p, 'd> {
@@ -96,7 +96,7 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
     }
 
     fn visit_definition(&mut self, binding: BindingId) {
-        let Some((definition, module)) = self.definitions.entry(binding) else {
+        let Some(DefinitionEntry { definition, module }) = self.definitions.entry(binding) else {
             return;
         };
         if matches!(
@@ -223,8 +223,8 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
     }
 
     fn reference(&mut self, binding: BindingId, from: ModuleId) {
-        if let Some((_, owner)) = self.definitions.entry(binding) {
-            self.note_use(binding, owner, from);
+        if let Some(entry) = self.definitions.entry(binding) {
+            self.note_use(binding, entry.module, from);
         }
         self.visit_definition(binding);
     }

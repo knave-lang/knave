@@ -334,7 +334,7 @@ impl<'p> EmitPlan<'p> {
     fn item_info(&self, binding: BindingId) -> ItemInfo {
         let name = self.program.bindings.get(binding).name();
         let (module, kind) = match self.definitions.entry(binding) {
-            Some((definition, module)) => (module, self.definition_kind(definition)),
+            Some(entry) => (entry.module, self.definition_kind(entry.definition)),
             None => (
                 self.reach.type_modules[&binding],
                 self.named_type_kind(binding),

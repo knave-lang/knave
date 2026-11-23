@@ -1,10 +1,11 @@
 use rustc_hash::FxHashMap;
 
+use super::definition_entry::DefinitionEntry;
 use super::typed::{TypedDefinition, TypedProgram};
-use crate::core::{BindingId, ModuleId};
+use crate::core::BindingId;
 
 pub struct DefinitionTable<'p> {
-    entries: FxHashMap<BindingId, (&'p TypedDefinition, ModuleId)>,
+    entries: FxHashMap<BindingId, DefinitionEntry<'p>>,
 }
 
 impl<'p> DefinitionTable<'p> {
@@ -14,20 +15,23 @@ impl<'p> DefinitionTable<'p> {
                 .modules
                 .iter()
                 .flat_map(|module| {
-                    module
-                        .definitions
-                        .iter()
-                        .map(move |definition| (definition.binding, (definition, module.id)))
+                    module.definitions.iter().map(move |definition| {
+                        let entry = DefinitionEntry {
+                            definition,
+                            module: module.id,
+                        };
+                        (definition.binding, entry)
+                    })
                 })
                 .collect(),
         }
     }
 
-    pub fn entry(&self, binding: BindingId) -> Option<(&'p TypedDefinition, ModuleId)> {
+    pub fn entry(&self, binding: BindingId) -> Option<DefinitionEntry<'p>> {
         self.entries.get(&binding).copied()
     }
 
     pub fn definition(&self, binding: BindingId) -> Option<&'p TypedDefinition> {
-        self.entry(binding).map(|(definition, _)| definition)
+        self.entry(binding).map(|entry| entry.definition)
     }
 }

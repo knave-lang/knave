@@ -15,6 +15,7 @@ mod function_declaration;
 mod library_declarations;
 mod lint_defaults;
 mod linted_module;
+mod linted_modules;
 mod linted_program;
 mod linter;
 mod module_alone_search;

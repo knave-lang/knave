@@ -1,6 +1,7 @@
 use super::bound_names::BoundNames;
 use super::definition_reach::DefinitionReach;
 use super::linted_module::LintedModule;
+use super::linted_modules::LintedModules;
 use super::module_table::ModuleTable;
 use super::problems::LintProblems;
 use super::read_back_definition::ReadBackDefinition;
@@ -18,6 +19,7 @@ use crate::source::{SourceMap, Span};
 pub struct Linter<'p> {
     program: &'p Program,
     sources: &'p SourceMap,
+    linted: LintedModules<'p>,
     step_limit: u64,
 }
 
@@ -26,7 +28,16 @@ impl<'p> Linter<'p> {
         Self {
             program,
             sources,
+            linted: LintedModules::of_project(program),
             step_limit: StepBudget::DEFAULT_LIMIT,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn over_prelude(program: &'p Program, sources: &'p SourceMap) -> Self {
+        Self {
+            linted: LintedModules::of_prelude(program),
+            ..Self::new(program, sources)
         }
     }
 
@@ -38,8 +49,8 @@ impl<'p> Linter<'p> {
     pub fn lint(&self, rules: &mut RuleProgram) -> Result<Diagnostics, RuleFailure> {
         let mut read_back = rules.read_back(&self.program.bindings);
         let modules: Vec<LintedModule<'_>> = self
-            .program
-            .project_modules()
+            .linted
+            .iter()
             .map(|module| LintedModule::new(module, read_back.definitions(std::iter::once(module))))
             .collect();
         let names = read_back.into_names();
@@ -66,7 +77,7 @@ impl<'p> Linter<'p> {
         rules: &RuleProgram,
         host: &mut RuleHost<'_>,
     ) -> Result<DefinitionReach, RuleFailure> {
-        DefinitionReach::of(self.program, &mut |binding, span| {
+        DefinitionReach::of(self.program, &self.linted, &mut |binding, span| {
             self.is_kept(host, binding, span)
         })
         .map_err(|failure| rules.failure(failure))
@@ -150,12 +161,16 @@ impl<'p> Linter<'p> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use super::Linter;
-    use crate::diagnostic::Diagnostic;
+    use crate::diagnostic::{Diagnostic, DiagnosticRenderer, Diagnostics};
     use crate::interpret::StepBudget;
     use crate::lint::expanded_source::ExpandedSource;
+    use crate::lint::linted_modules::LintedModules;
     use crate::lint::rule_host::RuleHost;
     use crate::lint::rule_program::RuleProgram;
+    use crate::modules::{EmbeddedModules, PublicPrelude};
 
     struct LinterFixture;
 
@@ -183,6 +198,68 @@ mod tests {
                 .span()
                 .expect("helper is written");
             linter.is_kept(&mut host, helper, span)
+        }
+
+        fn lint_prelude(
+            source: &ExpandedSource,
+            rules: &mut RuleProgram,
+            step_limit: u64,
+        ) -> Diagnostics {
+            Linter::over_prelude(source.program(), source.sources())
+                .with_step_limit(step_limit)
+                .lint(rules)
+                .expect("the lint rules run")
+        }
+
+        fn prelude_programs() -> Vec<ExpandedSource> {
+            let main = ExpandedSource::expand("(defn main ())");
+            let loaded: Vec<&str> = main
+                .program()
+                .modules
+                .iter()
+                .map(|module| module.path.as_str())
+                .collect();
+            let tools: Vec<ExpandedSource> = PublicPrelude::paths()
+                .iter()
+                .filter(|path| !loaded.contains(&path.as_str()))
+                .map(|path| ExpandedSource::expand(&format!("(use {path})")))
+                .collect();
+            std::iter::once(main).chain(tools).collect()
+        }
+
+        fn linted_paths(programs: &[ExpandedSource]) -> BTreeSet<String> {
+            let mut paths = BTreeSet::new();
+            for source in programs {
+                let linted = LintedModules::of_prelude(source.program());
+                paths.extend(linted.iter().map(|module| module.path.as_str().to_string()));
+            }
+            paths
+        }
+
+        fn embedded_paths() -> BTreeSet<String> {
+            EmbeddedModules::paths().map(String::from).collect()
+        }
+
+        fn prelude_warnings(programs: &[ExpandedSource]) -> String {
+            let mut rules = RuleProgram::expand_from_sources().expect("the lint rules expand");
+            let rendered: BTreeSet<String> = programs
+                .iter()
+                .flat_map(|source| Self::rendered_prelude_warnings(source, &mut rules))
+                .collect();
+            rendered.into_iter().collect::<Vec<_>>().join("\n")
+        }
+
+        fn rendered_prelude_warnings(
+            source: &ExpandedSource,
+            rules: &mut RuleProgram,
+        ) -> Vec<String> {
+            let warnings = Self::lint_prelude(source, rules, StepBudget::DEFAULT_LIMIT);
+            let renderer = DiagnosticRenderer::plain(source.sources());
+            warnings
+                .in_source_order()
+                .into_iter()
+                .map(|warning| renderer.render(warning))
+                .collect()
         }
 
         fn short_definition_and_long_chain() -> ExpandedSource {
@@ -263,6 +340,20 @@ mod tests {
         );
         assert!(titles[0].ends_with("in `main`"), "{titles:?}");
         assert!(titles[1].ends_with("in `fixture`"), "{titles:?}");
+    }
+
+    #[test]
+    fn the_prelude_lints_clean() {
+        let programs = LinterFixture::prelude_programs();
+        let linted = LinterFixture::linted_paths(&programs);
+        let embedded = LinterFixture::embedded_paths();
+        let unmatched: Vec<&String> = linted.symmetric_difference(&embedded).collect();
+        assert!(
+            unmatched.is_empty(),
+            "linted or embedded, not both: {unmatched:?}"
+        );
+        let warnings = LinterFixture::prelude_warnings(&programs);
+        assert!(warnings.is_empty(), "the prelude prints lints:\n{warnings}");
     }
 
     #[test]

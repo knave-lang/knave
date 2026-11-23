@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_misspelled_read.knv
+---
+error[L0408]: no struct has a field `:agee`
+  --> check/field_bound_misspelled_read.knv:11:19
+   |
+11 | (defn age-of (x) (:agee x))
+   |                   ^^^^^ unknown field
+   |
+help: a field with a similar name exists
+   |
+11 - (defn age-of (x) (:agee x))
+11 + (defn age-of (x) (:age x))
+   |
+   = note: run `knave doc L0408` for an explanation

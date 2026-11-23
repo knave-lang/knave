@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::bounded_owner_problems::BoundedOwnerProblems;
 use super::declarations::Declarations;
+use super::field_owner_problems::FieldOwnerProblems;
 use super::problems::TypeProblems;
 use super::ty::{GenericId, Type};
 use super::typed::TypedExpr;
@@ -41,10 +42,23 @@ impl<'c> FieldBound<'c> {
     ) -> Diagnostic {
         match self.bound_fields(&value.ty) {
             Some(fields) => {
-                BoundedOwnerProblems::new(shown, &fields).unbound_read(label, value.span)
+                self.unbound_field(BoundedOwnerProblems::new(shown, &fields), label, value.span)
             }
             None => TypeProblems::no_fields(shown, value.span),
         }
+    }
+
+    fn unbound_field(
+        &self,
+        problems: BoundedOwnerProblems,
+        label: &FieldLabel,
+        span: Span,
+    ) -> Diagnostic {
+        let structs = &self.declarations.types().structs;
+        if structs.with_field(&label.name).is_empty() {
+            return FieldOwnerProblems::undeclared(label, structs.closest_field(&label.name));
+        }
+        problems.unbound_read(label, span)
     }
 
     pub(super) fn unbound_update(&self, shown: &str, owner: &Type, span: Span) -> Diagnostic {

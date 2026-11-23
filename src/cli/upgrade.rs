@@ -26,13 +26,15 @@ impl UpgradeCommand {
         let components = NewComponents::every();
         let writes = Self::pending_writes(edit.root(), &components)?;
         let recorded = Self::record_version(&edit, terminal)?;
-        for write in &writes {
-            write.apply()?;
-        }
+        Self::apply(&writes)?;
         if !recorded && writes.is_empty() {
             Self::report_current();
         }
         Ok(())
+    }
+
+    fn apply(writes: &[AnnouncedWrite]) -> Result<(), ExitStatus> {
+        writes.iter().try_for_each(AnnouncedWrite::apply)
     }
 
     fn record_version(edit: &ProjectFileEdit, terminal: &Terminal) -> Result<bool, ExitStatus> {

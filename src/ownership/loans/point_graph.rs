@@ -56,3 +56,37 @@ impl PointGraph {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use crate::ownership::loans::control_flow_graph::ControlFlowGraph;
+    use crate::ownership::loans::point_id::PointId;
+
+    #[test]
+    fn a_join_follows_each_point_before_it() {
+        let mut graph = ControlFlowGraph::default();
+        let left = graph.join(&[PointId::ENTRY]);
+        let right = graph.join(&[PointId::ENTRY]);
+        let joined = graph.join(&[left, right]);
+        let successors: Vec<Vec<PointId>> = graph
+            .finished()
+            .points()
+            .map(|(_, facts)| facts.successors().collect())
+            .collect();
+        assert_eq!(
+            successors,
+            [vec![left, right], vec![joined], vec![joined], vec![]]
+        );
+    }
+
+    #[test]
+    fn reaches_every_point_after_a_start_around_a_loop_but_none_before_it() {
+        let mut graph = ControlFlowGraph::default();
+        let head = graph.join(&[PointId::ENTRY]);
+        let body = graph.join(&[head]);
+        graph.link(body, head);
+        let after = graph.join(&[head]);
+        let reached = graph.finished().reachable_from(body);
+        assert!(reached.contains(&head) && reached.contains(&after));
+        assert!(!reached.contains(&PointId::ENTRY));
+    }
+}

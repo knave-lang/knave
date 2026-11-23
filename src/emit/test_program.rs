@@ -3,7 +3,7 @@ use super::plan::EmitPlan;
 use super::short_form::ShortForm;
 use crate::source::{SourceId, Span};
 use crate::types::{
-    TypedArgument, TypedBodyItem, TypedExpr, TypedExprKind, TypedProgram, TypedSource,
+    ReachSearch, TypedArgument, TypedBodyItem, TypedExpr, TypedExprKind, TypedProgram, TypedSource,
 };
 
 pub struct TestProgram {
@@ -13,10 +13,9 @@ pub struct TestProgram {
 
 impl TestProgram {
     pub fn new(source: &'static str) -> Self {
-        Self {
-            source,
-            program: TypedSource::expand(source).typed(),
-        }
+        let mut program = TypedSource::expand(source).typed();
+        program.ownership.reach = ReachSearch::of(&program);
+        Self { source, program }
     }
 
     pub fn program(&self) -> &TypedProgram {

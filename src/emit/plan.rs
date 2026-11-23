@@ -15,10 +15,7 @@ use super::visibility::Visibility;
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
-use crate::types::{
-    DefinitionTable, GenericParam, Type, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
-    TypedProgram,
-};
+use crate::types::{DefinitionTable, ProgramReach, TypedDefinition, TypedExprKind, TypedProgram};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ItemKind {
@@ -40,11 +37,9 @@ pub struct EmitPlan<'p> {
     program: &'p TypedProgram,
     entry: EntryPoint,
     definitions: DefinitionTable<'p>,
-    type_modules: FxHashMap<BindingId, ModuleId>,
-    reached: Vec<BindingId>,
+    reach: &'p ProgramReach,
     visibilities: ItemVisibilities,
     items: FxHashMap<BindingId, ItemInfo>,
-    used_rust_types: BTreeSet<BindingId>,
     trait_uses: FxHashMap<ModuleId, BTreeSet<BindingId>>,
     templates: JudgedTemplates,
 }
@@ -55,39 +50,27 @@ impl<'p> EmitPlan<'p> {
     const FIRST_RENAME_SUFFIX: usize = 2;
 
     pub fn build(program: &'p TypedProgram, entry_span: Span) -> Result<Self, Diagnostics> {
-        let main = Self::find_main(program)
+        let reach = &program.ownership.reach;
+        let main = reach
+            .main
             .ok_or_else(|| Diagnostics::from(EmitProblems::missing_main(entry_span)))?;
         let mut plan = Self {
             program,
             entry: EntryPoint::new(main),
             definitions: DefinitionTable::of(program),
-            type_modules: program
-                .modules
-                .iter()
-                .flat_map(|module| {
-                    module
-                        .structs
-                        .iter()
-                        .chain(module.enums.iter())
-                        .map(move |binding| (*binding, module.id))
-                })
-                .collect(),
-            reached: Vec::new(),
+            reach,
             visibilities: ItemVisibilities::new(
                 program
                     .modules
                     .iter()
                     .flat_map(|module| module.exports.iter().copied())
                     .collect(),
+                reach.used_from_other_modules.clone(),
             ),
             items: FxHashMap::default(),
-            used_rust_types: BTreeSet::new(),
             trait_uses: FxHashMap::default(),
             templates: JudgedTemplates::default(),
         };
-        plan.visit_definition(main);
-        plan.reach_implementations();
-        plan.reach_trait_defaults();
         plan.entry.name_body(plan.choose_main_body_name());
         plan.assign_items()?;
         plan.collect_trait_uses();
@@ -95,7 +78,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     pub fn reached(&self) -> &[BindingId] {
-        &self.reached
+        &self.reach.reached
     }
 
     pub fn item(&self, binding: BindingId) -> Option<&ItemInfo> {
@@ -114,6 +97,7 @@ impl<'p> EmitPlan<'p> {
         self.definition(self.entry.function())?
             .result_error(self.program.declarations.types().enums())?;
         let taken: BTreeSet<String> = self
+            .reach
             .reached
             .iter()
             .filter(|binding| **binding != self.entry.function())
@@ -265,190 +249,6 @@ impl<'p> EmitPlan<'p> {
         })
     }
 
-    fn find_main(program: &TypedProgram) -> Option<BindingId> {
-        program
-            .entry_module()
-            .definitions
-            .iter()
-            .find(|definition| {
-                program.entry_function == Some(definition.binding)
-                    && matches!(definition.value.kind, TypedExprKind::Fn(_))
-            })
-            .map(|definition| definition.binding)
-    }
-
-    fn reach_trait_defaults(&mut self) {
-        let traits = &self.program.declarations.traits();
-        let defaults: Vec<BindingId> = traits
-            .definitions()
-            .iter()
-            .flat_map(|trait_definition| trait_definition.methods.iter())
-            .filter_map(|method| method.default)
-            .collect();
-        for binding in defaults {
-            self.visit_definition(binding);
-        }
-    }
-
-    fn reach_implementations(&mut self) {
-        let traits = &self.program.declarations.traits();
-        let implementations: Vec<(Type, ModuleId, Vec<BindingId>)> = traits
-            .impls()
-            .iter()
-            .map(|implementation| {
-                (
-                    implementation.implementor.clone(),
-                    implementation.module,
-                    implementation
-                        .methods
-                        .iter()
-                        .map(|method| method.binding)
-                        .collect(),
-                )
-            })
-            .collect();
-        for (implementor, module, methods) in implementations {
-            self.visit_type(&implementor, module);
-            for method in methods {
-                self.visit_definition(method);
-            }
-        }
-    }
-
-    fn visit_definition(&mut self, binding: BindingId) {
-        let Some((definition, module)) = self.definitions.entry(binding) else {
-            return;
-        };
-        if matches!(
-            definition.value.kind,
-            TypedExprKind::Leaf(TypedLeaf::Rust(_))
-        ) || self.reached.contains(&binding)
-        {
-            return;
-        }
-        self.reached.push(binding);
-        self.visit_type(&definition.scheme.body, module);
-        self.visit_params(&definition.scheme.params, module);
-        self.visit_expr(&definition.value, module);
-    }
-
-    fn visit_params(&mut self, params: &[GenericParam], module: ModuleId) {
-        for param in params {
-            let mut arguments: Vec<Type> = param
-                .bounds
-                .iter()
-                .filter_map(|bound| bound.argument.clone())
-                .collect();
-            arguments.extend(
-                self.program
-                    .implied_bounds
-                    .get(&param.id)
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|bound| bound.argument.clone()),
-            );
-            for argument in &arguments {
-                self.visit_type(argument, module);
-            }
-        }
-    }
-
-    fn visit_expr(&mut self, expr: &TypedExpr, module: ModuleId) {
-        self.visit_type(&expr.ty, module);
-        if let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &expr.kind {
-            self.reference(*binding, module);
-        }
-        for binder in expr.binders() {
-            self.visit_type(&binder.ty, module);
-        }
-        for child in expr.children() {
-            self.visit_expr(child, module);
-        }
-    }
-
-    fn visit_type(&mut self, visited: &Type, module: ModuleId) {
-        match visited {
-            Type::Named(binding, arguments) => {
-                arguments
-                    .iter()
-                    .for_each(|argument| self.visit_type(argument, module));
-                self.reach_named(*binding, module);
-            }
-            Type::Function(_, parameters, result) => {
-                parameters
-                    .iter()
-                    .for_each(|parameter| self.visit_type(parameter, module));
-                self.visit_type(result, module);
-            }
-            Type::Ref(_, inner) | Type::Mut(_, inner) => self.visit_type(inner, module),
-            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_) => {}
-        }
-    }
-
-    fn reach_named(&mut self, binding: BindingId, from: ModuleId) {
-        let types = &self.program.declarations.types();
-        if types.rust_types().get(binding).is_some() {
-            self.used_rust_types.insert(binding);
-        } else if types.enums().get(binding).is_some() {
-            self.reach_enum(binding, from);
-        } else {
-            self.reach_struct(binding, from);
-        }
-    }
-
-    fn reach_enum(&mut self, binding: BindingId, from: ModuleId) {
-        let Some(owner) = self.type_modules.get(&binding).copied() else {
-            return;
-        };
-        self.visibilities.note_use(binding, owner, from);
-        if self.reached.contains(&binding) {
-            return;
-        }
-        self.reached.push(binding);
-        let types = &self.program.declarations.types();
-        let payloads: Vec<Type> = types
-            .enums()
-            .get(binding)
-            .map(|definition| definition.payload_types().cloned().collect())
-            .unwrap_or_default();
-        payloads
-            .iter()
-            .for_each(|payload| self.visit_type(payload, owner));
-    }
-
-    fn reach_struct(&mut self, binding: BindingId, from: ModuleId) {
-        let Some(owner) = self.type_modules.get(&binding).copied() else {
-            return;
-        };
-        self.visibilities.note_use(binding, owner, from);
-        if self.reached.contains(&binding) {
-            return;
-        }
-        self.reached.push(binding);
-        let types = &self.program.declarations.types();
-        let fields: Vec<Type> = types
-            .structs()
-            .get(binding)
-            .map(|definition| {
-                definition
-                    .fields
-                    .iter()
-                    .map(|(_, field)| field.clone())
-                    .collect()
-            })
-            .unwrap_or_default();
-        fields
-            .iter()
-            .for_each(|field| self.visit_type(field, owner));
-    }
-
-    fn reference(&mut self, binding: BindingId, from: ModuleId) {
-        if let Some((_, owner)) = self.definitions.entry(binding) {
-            self.visibilities.note_use(binding, owner, from);
-        }
-        self.visit_definition(binding);
-    }
-
     fn assign_items(&mut self) -> Result<(), Diagnostics> {
         let mut taken: FxHashMap<(ModuleId, String), BindingId> = FxHashMap::default();
         let mut diagnostics = Diagnostics::default();
@@ -477,6 +277,7 @@ impl<'p> EmitPlan<'p> {
 
     fn entry_and_written_items_first(&self) -> Vec<BindingId> {
         let (introduced, written): (Vec<BindingId>, Vec<BindingId>) = self
+            .reach
             .reached
             .iter()
             .copied()
@@ -522,7 +323,7 @@ impl<'p> EmitPlan<'p> {
     fn shadowed_rust_type(&self, info: &ItemInfo) -> Option<BindingId> {
         let is_type = matches!(info.kind, ItemKind::Struct | ItemKind::Enum);
         let rust_types = self.program.declarations.types().rust_types();
-        self.used_rust_types.iter().copied().find(|binding| {
+        self.reach.used_rust_types.iter().copied().find(|binding| {
             is_type
                 && rust_types
                     .get(*binding)
@@ -534,7 +335,10 @@ impl<'p> EmitPlan<'p> {
         let name = self.program.bindings.get(binding).name();
         let (module, kind) = match self.definitions.entry(binding) {
             Some((definition, module)) => (module, self.definition_kind(definition)),
-            None => (self.type_modules[&binding], self.named_type_kind(binding)),
+            None => (
+                self.reach.type_modules[&binding],
+                self.named_type_kind(binding),
+            ),
         };
         let rust_name = match (
             kind,
@@ -595,7 +399,7 @@ impl<'p> EmitPlan<'p> {
 mod tests {
     use crate::emit::RustEmitter;
     use crate::source::{SourceId, Span};
-    use crate::types::TypedSource;
+    use crate::types::{ReachSearch, TypedSource};
 
     struct EntryFixture {
         source: TypedSource,
@@ -613,7 +417,9 @@ mod tests {
         }
 
         fn emitted(&self) -> String {
-            RustEmitter::emit(&self.source.typed(), Span::new(SourceId::new(0), 0..0))
+            let mut program = self.source.typed();
+            program.ownership.reach = ReachSearch::of(&program);
+            RustEmitter::emit(&program, Span::new(SourceId::new(0), 0..0))
                 .unwrap_or_else(|_| panic!("the fixture emits"))
                 .code
         }

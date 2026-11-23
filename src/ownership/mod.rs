@@ -70,8 +70,8 @@ use rustc_hash::FxHashMap;
 use crate::core::{BindingArena, BindingId};
 use crate::diagnostic::Diagnostics;
 use crate::types::{
-    CopyRules, InferredCopies, ParameterModes, PendingModeCheck, Pipelines, TypedExprKind,
-    TypedProgram,
+    CopyRules, InferredCopies, ParameterModes, PendingModeCheck, Pipelines, ReachSearch,
+    TypedExprKind, TypedProgram,
 };
 use aliased_changes::AliasedChanges;
 use borrowing_lambdas::BorrowingLambdas;
@@ -235,6 +235,7 @@ impl OwnershipChecker {
             .check(&LabeledSpans::of(&diagnostics))
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
+        program.ownership.reach = ReachSearch::of(program);
         program.ownership.regions = RegionRecord::of(program);
         OwnershipFindings {
             inferred_copies,

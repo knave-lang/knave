@@ -6,7 +6,6 @@ use rustc_hash::FxHashMap;
 use super::body_flows::BodyFlows;
 use super::callee_parameters::{CalleeParameters, OpenCallees};
 use super::callee_visit::CalleeVisit;
-use super::definition_lookup::DefinitionLookup;
 use super::definition_stores::DefinitionStores;
 use super::lambda_flows::{FunctionFlows, LambdaFlows};
 use super::parameter_joins::ParameterJoins;
@@ -14,11 +13,11 @@ use super::region_rules::RegionRules;
 use super::store_sites::StoreSites;
 use crate::core::BindingId;
 use crate::ownership::TailCalls;
-use crate::types::{StoredFlows, Type, TypedExprKind, TypedLambda, TypedProgram};
+use crate::types::{DefinitionTable, StoredFlows, Type, TypedExprKind, TypedLambda, TypedProgram};
 
-pub struct ResultBorrows<'a> {
+pub(super) struct ResultBorrows<'a> {
     program: &'a TypedProgram,
-    definitions: &'a dyn DefinitionLookup,
+    definitions: &'a DefinitionTable<'a>,
     parameters_by_callee: RefCell<FxHashMap<BindingId, CalleeParameters>>,
     open_callees: RefCell<OpenCallees>,
     stores_by_definition: RefCell<FxHashMap<BindingId, Rc<DefinitionStores>>>,
@@ -26,7 +25,7 @@ pub struct ResultBorrows<'a> {
 }
 
 impl<'a> ResultBorrows<'a> {
-    pub fn new(program: &'a TypedProgram, definitions: &'a dyn DefinitionLookup) -> Self {
+    pub fn new(program: &'a TypedProgram, definitions: &'a DefinitionTable<'a>) -> Self {
         Self {
             program,
             definitions,

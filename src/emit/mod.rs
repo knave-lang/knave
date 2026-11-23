@@ -48,7 +48,6 @@ mod open_delimiter;
 mod open_literals;
 mod operator;
 mod plan;
-mod plan_definitions;
 mod preceded_code;
 mod print_formats;
 mod problems;

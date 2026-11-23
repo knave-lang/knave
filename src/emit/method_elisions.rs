@@ -6,9 +6,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::plan::EmitPlan;
 use super::signature_borrows::SignatureBorrows;
 use crate::core::BindingId;
-use crate::ownership::ResultBorrows;
 use crate::types::{
-    ReceiverKind, Type, TypedExprKind, TypedLambda, TypedProgram, TypedTraitMethod,
+    ParameterRole, ReceiverKind, Type, TypedExprKind, TypedLambda, TypedProgram, TypedTraitMethod,
 };
 
 type TraitMethodKey = (BindingId, String);
@@ -92,7 +91,6 @@ impl TraitMethodElisions {
 pub struct MethodElisions<'r, 'a> {
     program: &'a TypedProgram,
     plan: &'a EmitPlan<'a>,
-    result_borrows: &'r ResultBorrows<'a>,
     trait_method_elisions: &'r TraitMethodElisions,
 }
 
@@ -100,13 +98,11 @@ impl<'r, 'a> MethodElisions<'r, 'a> {
     pub fn new(
         program: &'a TypedProgram,
         plan: &'a EmitPlan<'a>,
-        result_borrows: &'r ResultBorrows<'a>,
         trait_method_elisions: &'r TraitMethodElisions,
     ) -> Self {
         Self {
             program,
             plan,
-            result_borrows,
             trait_method_elisions,
         }
     }
@@ -164,9 +160,14 @@ impl<'r, 'a> MethodElisions<'r, 'a> {
         let mut called_with_local = FxHashSet::default();
         let mut flowing = FxHashSet::default();
         for lambda in bodies {
-            let borrows = self.result_borrows.analyse(lambda);
-            called_with_local.extend(Self::positions(lambda, &borrows.higher_ranked));
-            flowing.extend(Self::positions(lambda, &borrows.flows));
+            let regions = &self.program.ownership.regions;
+            let higher_ranked =
+                regions.of(ParameterRole::HigherRanked, lambda.parameter_bindings());
+            called_with_local.extend(Self::positions(lambda, &higher_ranked));
+            flowing.extend(Self::positions(
+                lambda,
+                &regions.of(ParameterRole::FlowsToResult, lambda.parameter_bindings()),
+            ));
         }
         flowing.retain(|position| !called_with_local.contains(position));
         (called_with_local, flowing)

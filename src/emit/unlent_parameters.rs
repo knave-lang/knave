@@ -1,9 +1,9 @@
-use super::held_borrows::HeldBorrows;
 use super::problems::EmitProblems;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
-use crate::types::{CopyRules, ParameterCopy, Type, TypedBinder, TypedLambda, TypedProgram};
-use rustc_hash::FxHashSet;
+use crate::types::{
+    CopyRules, ParameterCopy, ParameterRole, Type, TypedBinder, TypedLambda, TypedProgram,
+};
 
 pub struct UnlentParameters<'a> {
     program: &'a TypedProgram,
@@ -12,17 +12,13 @@ pub struct UnlentParameters<'a> {
 }
 
 impl<'a> UnlentParameters<'a> {
-    pub fn of(
-        program: &'a TypedProgram,
-        lambda: &'a TypedLambda,
-        shared_flows: impl FnOnce() -> FxHashSet<BindingId>,
-    ) -> Self {
+    pub fn of(program: &'a TypedProgram, lambda: &'a TypedLambda) -> Self {
         let mut parameters = Self {
             program,
             lambda,
             unlent: Vec::new(),
         };
-        parameters.unlent = parameters.changed_parameters(shared_flows);
+        parameters.unlent = parameters.changed_parameters();
         parameters
     }
 
@@ -53,10 +49,7 @@ impl<'a> UnlentParameters<'a> {
         !param.annotated
     }
 
-    fn changed_parameters(
-        &self,
-        shared_flows: impl FnOnce() -> FxHashSet<BindingId>,
-    ) -> Vec<BindingId> {
+    fn changed_parameters(&self) -> Vec<BindingId> {
         let changed: Vec<&TypedBinder> = self
             .lambda
             .params
@@ -72,8 +65,9 @@ impl<'a> UnlentParameters<'a> {
         if changed.is_empty() {
             return Vec::new();
         }
-        let held = HeldBorrows::new(self.program).kept_parameters(self.lambda);
-        let flowing = shared_flows();
+        let regions = &self.program.ownership.regions;
+        let held = regions.of(ParameterRole::HeldByResult, self.lambda);
+        let flowing = regions.of(ParameterRole::FlowsThroughSharedArguments, self.lambda);
         changed
             .into_iter()
             .map(|param| param.binding)

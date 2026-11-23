@@ -1,5 +1,6 @@
 use rustc_hash::FxHashSet;
 
+use super::held_borrows::HeldBorrows;
 use super::lambda_flows::{FunctionFlows, LambdaFlows};
 use super::region_rules::RegionRules;
 use super::result_borrows::ResultBorrows;
@@ -81,6 +82,9 @@ impl RegionRecord<'_> {
         let shared = self.analysis.analyse_shared_arguments(lambda);
         self.regions
             .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
+        let held = HeldBorrows::new(self.program).kept_parameters(lambda);
+        self.regions
+            .record(ParameterRole::HeldByResult, lambda, held);
         self.regions
             .record(ParameterRole::Reassigned, lambda, reassigned_parameters);
         let stored = self.analysis.stores_of(function).flows.clone();

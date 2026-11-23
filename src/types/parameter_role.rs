@@ -2,6 +2,7 @@
 pub enum ParameterRole {
     FlowsToResult,
     FlowsThroughSharedArguments,
+    HeldByResult,
     HigherRanked,
     Reassigned,
     StoredValue,

@@ -188,7 +188,7 @@ impl TypeChecker {
             single_field_readers: FxHashMap::default(),
             deferred: DeferredDecisions::default(),
             vector_bases: FxHashSet::default(),
-            template_borrows: TemplateBorrows::from(Schemes::RECORDING),
+            template_borrows: Schemes::template_borrows(),
             template_clauses: TemplateClauses::default(),
             recur_target: None,
             checking_function_body: false,

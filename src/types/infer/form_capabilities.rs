@@ -4,10 +4,12 @@ use crate::core::{BindingId, Expr, TypeExpr, VariantInfo};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::checker::TypeChecker;
+use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, ChildTyping, ExpectedChildTyping, LocalScope, MacroOrigins, Obligations,
-    OperandTyping, PlaceReads, TypeFitting, TypeTextRecords, Unknowns, VariantSites,
+    AnnotationLowering, ChildTyping, CollectionShapes, ExpectedChildTyping, FieldMoves, LocalScope,
+    MacroOrigins, MapKeys, Obligations, OperandTyping, PlaceReads, StructBases, TypeFitting,
+    TypeTextRecords, Unknowns, VariantSites,
 };
 use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
@@ -111,5 +113,33 @@ impl AnnotationLowering for TypeChecker {
 impl LocalScope for TypeChecker {
     fn bind_local(&mut self, binding: BindingId, ty: Type) {
         self.locals.insert(binding, ty);
+    }
+}
+
+impl CollectionShapes for TypeChecker {
+    fn collection_of(&self, ty: &Type) -> Option<Collection> {
+        Collection::of(ty, &self.declarations.types().rust_types)
+    }
+
+    fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
+        self.prelude_types().nested_vector_of(depth, element)
+    }
+}
+
+impl MapKeys for TypeChecker {
+    fn require_map_key(&mut self, map: &Collection, span: Span) {
+        self.check_map_key(map, span);
+    }
+}
+
+impl StructBases for TypeChecker {
+    fn explain_struct_base(&self, error: Diagnostic, base: &Type) -> Diagnostic {
+        self.point_struct_base_to_fields(error, base)
+    }
+}
+
+impl FieldMoves for TypeChecker {
+    fn moved_base(&mut self, base: TypedExpr) -> TypedExpr {
+        self.moved_field_base(base)
     }
 }

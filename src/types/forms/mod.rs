@@ -1,3 +1,4 @@
+mod association;
 mod body;
 #[cfg(test)]
 mod body_fixture;
@@ -14,11 +15,13 @@ mod sequence;
 mod type_text_request;
 mod variant_construction;
 
+pub(super) use association::Association;
 pub(super) use body::Body;
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
-    AnnotationLowering, BodyTyping, ChildTyping, ExpectedChildTyping, LocalScope, MacroOrigins,
-    Obligations, OperandTyping, PlaceReads, TypeFitting, TypeTextRecords, Unknowns, VariantSites,
+    AnnotationLowering, AssociationTyping, BodyTyping, ChildTyping, CollectionShapes,
+    ExpectedChildTyping, FieldMoves, LocalScope, MacroOrigins, MapKeys, Obligations, OperandTyping,
+    PlaceReads, StructBases, TypeFitting, TypeTextRecords, Unknowns, VariantSites,
 };
 pub(super) use conditional::Conditional;
 pub(super) use dereference::Dereference;

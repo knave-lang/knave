@@ -7,4 +7,4 @@ defn swap-in!
   m: a view
 defn main
   local s: owned
-  local r: lent, written a view
+  local r: a view

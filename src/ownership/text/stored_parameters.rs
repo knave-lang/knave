@@ -45,7 +45,8 @@ impl<'g> StoredParameters<'g> {
     fn newly_stored(&self, stored: &FxHashSet<BindingId>) -> Vec<BindingId> {
         self.parameters()
             .filter(|(binding, class)| {
-                !stored.contains(binding) && self.reaches_storage(*class, stored)
+                let pinned = self.graph.partition().need(*class) == Some(Need::View);
+                !pinned && !stored.contains(binding) && self.reaches_storage(*class, stored)
             })
             .map(|(binding, _)| binding)
             .collect()

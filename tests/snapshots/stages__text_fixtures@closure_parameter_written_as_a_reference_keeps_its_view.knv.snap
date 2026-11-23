@@ -4,7 +4,9 @@ expression: report
 input_file: tests/fixtures/text/closure_parameter_written_as_a_reference_keeps_its_view.knv
 ---
 struct car
-  make: a 'static view, written a view
+  make: owned, written a view
 defn main
   name: a view
   local build[0]: a view
+needs owned text
+  text/closure_parameter_written_as_a_reference_keeps_its_view.knv:7:20

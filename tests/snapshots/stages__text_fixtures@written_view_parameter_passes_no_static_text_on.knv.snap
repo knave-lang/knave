@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/written_view_parameter_passes_no_static_text_on.knv
+---
+struct item
+  name: owned, written a view
+defn keep
+  n: a view
+defn pass-on
+  n: a view
+  result: a view
+needs owned text
+  text/written_view_parameter_passes_no_static_text_on.knv:5:17

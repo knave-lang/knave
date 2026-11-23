@@ -36,6 +36,7 @@ mod pattern_flows;
 mod place_writes;
 mod reaching_text;
 mod refusal;
+mod refusal_sites;
 mod representation;
 mod return_targets;
 mod scheme_position;
@@ -72,6 +73,7 @@ mod walk_context;
 mod written_bindings;
 
 use call_results::CallResults;
+use refusal_sites::RefusalSites;
 use slot_classes::SlotClasses;
 use text_decision_table::TextDecisionTable;
 use text_facts::TextFacts;
@@ -100,7 +102,8 @@ impl<'p> TextDecisions<'p> {
         let calls = CallResults::of(&graph, &classes);
         let facts = TextFacts::spread(&classes, &calls);
         let table = TextDecisionTable::decide(&graph, &classes, &facts);
-        let refusals = TextRefusals::new(&classes, &facts, &table).found();
+        let found = TextRefusals::new(&classes, &facts, &table).found();
+        let refusals = RefusalSites::new(&classes, &facts).placed(found);
         TextReport::new(&self.program, &table, &refusals).written(&listing, sources)
     }
 }

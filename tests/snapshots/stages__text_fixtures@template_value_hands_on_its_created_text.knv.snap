@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/template_value_hands_on_its_created_text.knv
+---
+defn main
+  local words[0]: owned
+  local result[0]: owned
+  local loud[0]: owned

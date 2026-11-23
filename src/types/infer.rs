@@ -6,7 +6,8 @@ mod short_pattern;
 mod variant_target;
 
 use super::forms::{
-    Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, VariantConstruction,
+    Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, TypeTextRequest,
+    VariantConstruction,
 };
 use super::result_span::ResultSpan;
 use super::variant_site::VariantSite;
@@ -131,7 +132,9 @@ impl TypeChecker {
         match kind {
             ExprKind::Recur(arguments) => self.infer_recur(arguments, span),
             ExprKind::Try(value) => self.infer_try(value, span),
-            ExprKind::Infer(operand) => self.infer_type_text(operand, span),
+            ExprKind::Infer(operand) => {
+                TypeTextRequest::new(operand, span).type_against(self, None)
+            }
             ExprKind::Borrow(kind, value) => {
                 Borrowing::new(*kind, value, span).type_against(self, None)
             }
@@ -1376,16 +1379,6 @@ impl TypeChecker {
         Ok(TypedExpr {
             kind: TypedExprKind::Recur(typed_arguments),
             ty: target.result,
-            span,
-        })
-    }
-
-    fn infer_type_text(&mut self, operand: &Expr, span: Span) -> Result<TypedExpr, Diagnostic> {
-        self.holds_infer_forms = true;
-        let operand = self.with_operand_mark(true, |checker| checker.infer(operand))?;
-        Ok(TypedExpr {
-            kind: TypedExprKind::Infer(Box::new(operand)),
-            ty: Type::str_ref(),
             span,
         })
     }

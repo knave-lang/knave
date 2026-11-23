@@ -6,8 +6,8 @@ use crate::source::Span;
 use crate::types::checker::TypeChecker;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    ChildTyping, ExpectedChildTyping, MacroOrigins, Obligations, PlaceReads, TypeFitting, Unknowns,
-    VariantSites,
+    ChildTyping, ExpectedChildTyping, MacroOrigins, Obligations, OperandTyping, PlaceReads,
+    TypeFitting, TypeTextRecords, Unknowns, VariantSites,
 };
 use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
@@ -87,5 +87,17 @@ impl VariantSites for TypeChecker {
             .enums
             .variant_shape(info)
             .is_result_ok()
+    }
+}
+
+impl OperandTyping for TypeChecker {
+    fn type_operand(&mut self, operand: &Expr) -> Result<TypedExpr, Diagnostic> {
+        self.with_operand_mark(true, |checker| checker.infer(operand))
+    }
+}
+
+impl TypeTextRecords for TypeChecker {
+    fn note_type_text(&mut self) {
+        self.holds_infer_forms = true;
     }
 }

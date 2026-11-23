@@ -79,7 +79,6 @@ mod library_task_run;
 mod library_tasks;
 mod library_walk;
 mod line_ending;
-mod line_upgrade;
 mod lint;
 mod lint_levels;
 mod lint_pages;

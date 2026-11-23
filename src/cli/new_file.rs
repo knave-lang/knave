@@ -7,6 +7,7 @@ use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
 use super::unreadable_file::UnreadableFile;
 
+#[derive(Debug, PartialEq)]
 pub struct NewFile {
     path: PathBuf,
     text: String,

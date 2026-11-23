@@ -3,7 +3,6 @@ use crate::core::{Binder, Expr};
 use crate::diagnostic::Diagnostic;
 use crate::types::expectation::Expectation;
 use crate::types::problems::MismatchContext;
-use crate::types::ty::Type;
 use crate::types::typed::{TypedBinder, TypedBodyItem};
 
 pub(in crate::types) struct LocalBinding<'e> {
@@ -16,10 +15,7 @@ impl<'e> LocalBinding<'e> {
         Self { binder, value }
     }
 
-    pub(in crate::types) fn bind<C>(
-        &self,
-        context: &mut C,
-    ) -> Result<(TypedBodyItem, Type), Diagnostic>
+    pub(in crate::types) fn bind<C>(&self, context: &mut C) -> Result<TypedBodyItem, Diagnostic>
     where
         C: ChildTyping + ExpectedChildTyping + AnnotationLowering + LocalScope,
     {
@@ -46,7 +42,7 @@ impl<'e> LocalBinding<'e> {
             annotated: self.binder.annotation.is_some(),
             written_view: false,
         };
-        Ok((TypedBodyItem::Let(binder, value), Type::unit()))
+        Ok(TypedBodyItem::Let(binder, value))
     }
 }
 
@@ -62,10 +58,7 @@ mod tests {
     struct LetFixture;
 
     impl LetFixture {
-        fn bind(
-            annotation: Option<PrimitiveType>,
-            fixture: &mut BodyFixture,
-        ) -> (TypedBodyItem, Type) {
+        fn bind(annotation: Option<PrimitiveType>, fixture: &mut BodyFixture) -> TypedBodyItem {
             let binder = BodyFixture::binder(annotation);
             let value = FormFixtures::leaf(Literal::Bool(true));
             LocalBinding::new(&binder, &value)
@@ -99,14 +92,8 @@ mod tests {
     }
 
     #[test]
-    fn a_let_is_unit() {
-        let (_, ty) = LetFixture::bind(None, &mut BodyFixture::default());
-        assert_eq!(ty, Type::unit());
-    }
-
-    #[test]
     fn a_let_records_whether_it_was_annotated() {
-        let (item, _) = LetFixture::bind(Some(PrimitiveType::I64), &mut BodyFixture::default());
+        let item = LetFixture::bind(Some(PrimitiveType::I64), &mut BodyFixture::default());
         assert!(matches!(item, TypedBodyItem::Let(binder, _) if binder.annotated));
     }
 }

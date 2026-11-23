@@ -1,5 +1,6 @@
-use super::{AnnotationLowering, ChildTyping, ExpectedChildTyping, LocalBinding, LocalScope};
-use crate::core::{Block, BodyItem};
+use super::BodyTyping;
+use super::local_binding::LocalBinding;
+use crate::core::{Block, BodyItem, Expr};
 use crate::diagnostic::Diagnostic;
 use crate::types::expectation::Expectation;
 use crate::types::ty::Type;
@@ -17,12 +18,11 @@ impl<'e> Body<'e> {
     pub(in crate::types) fn type_with<C>(
         &self,
         context: &mut C,
-        tail: Option<Expectation>,
+        mut tail: Option<Expectation>,
     ) -> Result<(TypedBlock, Type), Diagnostic>
     where
-        C: ChildTyping + ExpectedChildTyping + AnnotationLowering + LocalScope,
+        C: BodyTyping,
     {
-        let mut tail = tail;
         let mut items = Vec::new();
         let mut result = Type::unit();
         let last = self.block.items.len().checked_sub(1);
@@ -45,16 +45,28 @@ impl<'e> Body<'e> {
         fitted: Option<Expectation>,
     ) -> Result<(TypedBodyItem, Type), Diagnostic>
     where
-        C: ChildTyping + ExpectedChildTyping + AnnotationLowering + LocalScope,
+        C: BodyTyping,
     {
-        let typed = match (item, fitted) {
-            (BodyItem::Let(binder, value), _) => {
-                return LocalBinding::new(binder, value).bind(context);
+        match item {
+            BodyItem::Let(binder, value) => {
+                let typed = LocalBinding::new(binder, value).bind(context)?;
+                Ok((typed, Type::unit()))
             }
-            (BodyItem::Expr(expr), Some(expectation)) => {
-                context.type_child_against(expr, expectation)?
-            }
-            (BodyItem::Expr(expr), None) => context.type_child(expr)?,
+            BodyItem::Expr(expr) => Self::type_expression(context, expr, fitted),
+        }
+    }
+
+    fn type_expression<C>(
+        context: &mut C,
+        expr: &Expr,
+        fitted: Option<Expectation>,
+    ) -> Result<(TypedBodyItem, Type), Diagnostic>
+    where
+        C: BodyTyping,
+    {
+        let typed = match fitted {
+            Some(expectation) => context.type_child_against(expr, expectation)?,
+            None => context.type_child(expr)?,
         };
         let ty = typed.ty.clone();
         Ok((TypedBodyItem::Expr(typed), ty))

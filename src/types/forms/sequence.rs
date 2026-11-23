@@ -1,6 +1,4 @@
-use super::{
-    AnnotationLowering, Body, ChildTyping, ExpectedChildTyping, ExpressionForm, LocalScope,
-};
+use super::{Body, BodyTyping, ExpressionForm};
 use crate::core::Block;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -23,7 +21,7 @@ impl<'e> Sequence<'e> {
 
 impl<C> ExpressionForm<C> for Sequence<'_>
 where
-    C: ChildTyping + ExpectedChildTyping + AnnotationLowering + LocalScope,
+    C: BodyTyping,
 {
     fn type_against(
         &self,

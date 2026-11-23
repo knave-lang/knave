@@ -1,24 +1,20 @@
-use super::{
-    AnnotationLowering, ChildTyping, ExpectedChildTyping, ExpressionForm, LocalBinding, LocalScope,
-};
+use super::{AnnotationLowering, ChildTyping, ExpectedChildTyping, LocalBinding, LocalScope};
 use crate::core::{Block, BodyItem};
 use crate::diagnostic::Diagnostic;
-use crate::source::Span;
 use crate::types::expectation::Expectation;
 use crate::types::ty::Type;
-use crate::types::typed::{TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind};
+use crate::types::typed::{TypedBlock, TypedBodyItem};
 
-pub(in crate::types) struct BlockTyping<'e> {
+pub(in crate::types) struct Body<'e> {
     block: &'e Block,
-    span: Span,
 }
 
-impl<'e> BlockTyping<'e> {
-    pub(in crate::types) fn new(block: &'e Block, span: Span) -> Self {
-        Self { block, span }
+impl<'e> Body<'e> {
+    pub(in crate::types) fn new(block: &'e Block) -> Self {
+        Self { block }
     }
 
-    pub(in crate::types) fn type_block<C>(
+    pub(in crate::types) fn type_with<C>(
         &self,
         context: &mut C,
         tail: Option<Expectation>,
@@ -65,37 +61,18 @@ impl<'e> BlockTyping<'e> {
     }
 }
 
-impl<C> ExpressionForm<C> for BlockTyping<'_>
-where
-    C: ChildTyping + ExpectedChildTyping + AnnotationLowering + LocalScope,
-{
-    fn type_against(
-        &self,
-        context: &mut C,
-        _hint: Option<Expectation>,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let (block, ty) = self.type_block(context, None)?;
-        Ok(TypedExpr {
-            kind: TypedExprKind::Control(TypedControl::Block(block)),
-            ty,
-            span: self.span,
-        })
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::BlockTyping;
+    use super::Body;
     use crate::types::expectation::Expectation;
     use crate::types::forms::body_fixture::BodyFixture;
-    use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::ty::Type;
 
     #[test]
-    fn a_block_has_the_type_of_its_last_item() {
+    fn a_body_has_the_type_of_its_last_item() {
         let block = BodyFixture::block(vec![BodyFixture::truth(), BodyFixture::text()]);
-        let typed = BlockTyping::new(&block, FormFixtures::span())
-            .type_block(&mut BodyFixture::default(), None)
+        let typed = Body::new(&block)
+            .type_with(&mut BodyFixture::default(), None)
             .map(|(_, ty)| ty)
             .ok();
         assert_eq!(typed, Some(BodyFixture::text_type()));
@@ -106,16 +83,15 @@ mod tests {
         let block = BodyFixture::block(vec![BodyFixture::truth(), BodyFixture::truth()]);
         let mut fixture = BodyFixture::default();
         let expected = BodyFixture::text_type();
-        let _ = BlockTyping::new(&block, FormFixtures::span())
-            .type_block(&mut fixture, Some(Expectation::plain(&expected)));
+        let _ = Body::new(&block).type_with(&mut fixture, Some(Expectation::plain(&expected)));
         assert_eq!(fixture.fitted, [expected]);
     }
 
     #[test]
-    fn a_block_that_ends_in_a_let_is_unit() {
+    fn a_body_that_ends_in_a_let_is_unit() {
         let block = BodyFixture::block(vec![BodyFixture::truth(), BodyFixture::binding(None)]);
-        let typed = BlockTyping::new(&block, FormFixtures::span())
-            .type_block(&mut BodyFixture::default(), None)
+        let typed = Body::new(&block)
+            .type_with(&mut BodyFixture::default(), None)
             .map(|(_, ty)| ty)
             .ok();
         assert_eq!(typed, Some(Type::unit()));

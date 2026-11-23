@@ -2734,7 +2734,7 @@ impl TypeChecker {
             clauses: Vec::new(),
         };
         TypedExpr {
-            kind: TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template))),
+            kind: TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template), None)),
             ty: Type::Function(crate::types::ClosureKind::Fn, parameters, Box::new(result)),
             span,
         }
@@ -3061,7 +3061,8 @@ impl TypeChecker {
         let rust_types = &self.declarations.types().rust_types;
         self.template_borrows.register(name, &scheme, rust_types);
         let ty = self.instantiation().instantiate(&scheme, span);
-        Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
+        let leaf = TypedLeaf::Rust(template.clone(), Some(Rc::new(scheme)));
+        Ok((TypedExprKind::Leaf(leaf), ty))
     }
 }
 

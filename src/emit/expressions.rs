@@ -426,10 +426,10 @@ impl<'a> ExpressionEmitter<'a> {
                 Code::atom(self.locals.get(*binding).unwrap_or("_").to_string())
             }
             TypedLeaf::Global(binding) => self.global(*binding, &expr.ty, expr.span),
-            TypedLeaf::Rust(template) if !template.clauses.is_empty() => {
+            TypedLeaf::Rust(template, _) if !template.clauses.is_empty() => {
                 self.report_inline_clauses(expr.span)
             }
-            TypedLeaf::Rust(template) => self.rust_value(template, &expr.ty, Vec::new(), expr.span),
+            TypedLeaf::Rust(rust, _) => self.rust_value(rust, &expr.ty, Vec::new(), expr.span),
         }
     }
 
@@ -1675,7 +1675,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn is_inline_with_clauses(callee: &TypedExpr) -> bool {
-        matches!(&callee.kind, TypedExprKind::Leaf(TypedLeaf::Rust(template)) if !template.clauses.is_empty())
+        matches!(&callee.kind, TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) if !template.clauses.is_empty())
     }
 
     fn call_argument(

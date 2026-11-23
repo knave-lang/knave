@@ -62,7 +62,7 @@ impl TemplateBorrows {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
                 self.conversions.get(binding).cloned()
             }
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
+            TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => {
                 self.inline_conversions(callee, &template.template)
             }
             _ => None,
@@ -119,7 +119,7 @@ impl TemplateBorrows {
                 Some(template) => template.read(absent, read),
                 None => absent,
             },
-            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => self
+            TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => self
                 .inline
                 .read(template, |registered| registered.read(absent, read)),
             _ => absent,

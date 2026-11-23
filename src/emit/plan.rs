@@ -337,7 +337,7 @@ impl<'p> EmitPlan<'p> {
         };
         if matches!(
             definition.value.kind,
-            TypedExprKind::Leaf(TypedLeaf::Rust(_))
+            TypedExprKind::Leaf(TypedLeaf::Rust(..))
         ) || self.reached.contains(&binding)
         {
             return;

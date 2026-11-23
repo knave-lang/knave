@@ -391,7 +391,7 @@ mod tests {
 
         fn named_leaves(expr: &TypedExpr) -> Vec<String> {
             match &expr.kind {
-                TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
+                TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => {
                     vec![template.template.to_string()]
                 }
                 TypedExprKind::Call(callee, arguments) if Self::assigns(callee) => {

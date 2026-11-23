@@ -280,7 +280,7 @@ impl PassingFixture {
             clauses: Vec::new(),
         };
         Self::expression(
-            TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template))),
+            TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template), None)),
             Type::Primitive(PrimitiveType::Bool),
         )
     }

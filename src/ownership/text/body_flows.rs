@@ -112,7 +112,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         callee: &TypedExpr,
         arguments: &[TypedArgument],
     ) -> TextValue {
-        let fixed = Callee::fixes_closures(callee, self.context.program());
+        let fixed = Callee::new(self.context.program()).closure_use(callee);
         let values: Vec<TextValue> = arguments
             .iter()
             .map(|argument| {

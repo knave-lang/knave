@@ -1,8 +1,7 @@
 mod compile_time_roots;
 mod lint_hand_off;
 mod macro_references;
-mod project_modules;
-mod project_notes;
+mod notes_by_module;
 mod use_form_text;
 mod used_imports;
 

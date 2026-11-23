@@ -4,7 +4,6 @@ use crate::core::{
     BindingArena, BindingId, BindingKind, CoreModule, Expr, ExprKind, Leaf, ModuleId, Namespace,
 };
 use crate::interpret::Closure;
-use crate::modules::ModuleSources;
 use crate::reader::{Form, FormKind};
 use crate::scope::{BindingTable, Phase, Resolution};
 
@@ -23,25 +22,29 @@ impl<'t> MacroReferences<'t> {
         macros: impl Iterator<Item = (BindingId, &'m Closure)>,
         modules: &[CoreModule],
     ) -> FxHashSet<BindingId> {
-        let written = modules
-            .iter()
-            .filter(|module| ModuleSources::is_written(&module.path))
-            .map(|module| (module.id, module))
-            .collect();
+        let modules_by_id = modules.iter().map(|module| (module.id, module)).collect();
         let mut walk = NamedWalk {
             references: &self,
-            written,
+            modules_by_id: &modules_by_id,
             named: FxHashSet::default(),
             followed: FxHashSet::default(),
         };
-        for (binding, closure) in macros {
-            if let BindingKind::Macro(module) = self.bindings.get(binding).kind()
-                && walk.written.contains_key(&module)
-            {
-                walk.visit(closure.lambda.body.expressions().collect());
-            }
+        for (_, closure) in self.walked_macros(macros, &modules_by_id) {
+            walk.visit(closure.lambda.body.expressions().collect());
         }
         walk.named
+    }
+
+    fn walked_macros<'m>(
+        &self,
+        macros: impl Iterator<Item = (BindingId, &'m Closure)>,
+        modules_by_id: &FxHashMap<ModuleId, &CoreModule>,
+    ) -> impl Iterator<Item = (BindingId, &'m Closure)> {
+        macros.filter(move |(binding, _)| {
+            self.is_defined_in_this_session(*binding)
+                && matches!(self.bindings.get(*binding).kind(),
+                    BindingKind::Macro(module) if modules_by_id.contains_key(&module))
+        })
     }
 
     fn note_template(&self, form: &Form, named: &mut Vec<BindingId>) {
@@ -63,17 +66,18 @@ impl<'t> MacroReferences<'t> {
     }
 
     fn note(&self, binding: BindingId) -> Option<BindingId> {
-        self.bindings
-            .get(binding)
-            .kind()
-            .is_importable()
-            .then_some(binding)
+        let importable = self.bindings.get(binding).kind().is_importable();
+        (importable && self.is_defined_in_this_session(binding)).then_some(binding)
+    }
+
+    fn is_defined_in_this_session(&self, binding: BindingId) -> bool {
+        !self.bindings.is_saved(binding)
     }
 }
 
 struct NamedWalk<'w, 't, 'm> {
     references: &'w MacroReferences<'t>,
-    written: FxHashMap<ModuleId, &'m CoreModule>,
+    modules_by_id: &'w FxHashMap<ModuleId, &'m CoreModule>,
     named: FxHashSet<BindingId>,
     followed: FxHashSet<BindingId>,
 }
@@ -116,7 +120,7 @@ impl<'m> NamedWalk<'_, '_, 'm> {
         let BindingKind::Global(module) = self.references.bindings.get(binding).kind() else {
             return None;
         };
-        let defining = self.written.get(&module)?;
+        let defining = self.modules_by_id.get(&module)?;
         let body = defining
             .definitions()
             .find(|(defined, _)| *defined == binding)?;
@@ -126,9 +130,11 @@ impl<'m> NamedWalk<'_, '_, 'm> {
 
 #[cfg(test)]
 mod tests {
-    use crate::core::BindingId;
-    use crate::expand::Program;
+    use super::MacroReferences;
+    use crate::core::{BindingId, ModulePath};
     use crate::expand::expanded_module::ExpandedModule;
+    use crate::expand::{Expander, Program};
+    use crate::source::SourceMap;
 
     struct MacroReferencesFixture {
         program: Program,
@@ -138,6 +144,47 @@ mod tests {
         fn expand(text: &str) -> Self {
             let program = ExpandedModule::of(text);
             Self { program }
+        }
+
+        fn expand_on_saved_prelude(text: &str) -> Self {
+            let program = ExpandedModule::on_saved_prelude(text);
+            Self { program }
+        }
+
+        fn names_saved(&self, name: &str) -> bool {
+            let bindings = &self.program.bindings;
+            let saved: Vec<BindingId> = bindings
+                .ids()
+                .filter(|binding| {
+                    bindings.is_saved(*binding) && bindings.get(*binding).name() == name
+                })
+                .collect();
+            assert!(!saved.is_empty(), "the saved prelude binds `{name}`");
+            saved
+                .into_iter()
+                .any(|binding| self.program.compile_time_roots.contains(binding))
+        }
+
+        fn macros_walked_on_saved_prelude(text: &str) -> Vec<String> {
+            let mut sources = SourceMap::default();
+            let entry = sources.add(ExpandedModule::MODULE, text);
+            let mut expander = Expander::with_prelude(
+                &mut sources,
+                ExpandedModule::module_sources(),
+                ExpandedModule::saved_prelude(),
+            );
+            expander.load_source_module(ModulePath::new(ExpandedModule::MODULE), &[entry]);
+            let tables = &expander.tables;
+            let references = MacroReferences::new(&tables.table, &tables.bindings);
+            let modules_by_id = tables
+                .expanded
+                .iter()
+                .map(|(id, module)| (*id, module))
+                .collect();
+            references
+                .walked_macros(tables.macros.ready(), &modules_by_id)
+                .map(|(binding, _)| tables.bindings.get(binding).name().to_string())
+                .collect()
         }
 
         fn names(&self, name: &str) -> bool {
@@ -221,11 +268,35 @@ mod tests {
     }
 
     #[test]
-    fn a_prelude_macro_names_nothing() {
+    fn a_prelude_macro_names_its_helpers() {
         let fixture = MacroReferencesFixture::expand(
             "(use prelude/test run-tests)\n(defn main () (println 1))",
         );
-        assert!(!fixture.names_in("start-run", "prelude/test"));
+        assert!(fixture.names_in("start-run", "prelude/test"));
+    }
+
+    #[test]
+    fn on_a_saved_prelude_a_macro_of_the_program_names_its_helpers() {
+        let fixture = MacroReferencesFixture::expand_on_saved_prelude(
+            "(defn helper () 1)\n(defmacro pick (x) (template (helper)))\n(defn main () (println 1))",
+        );
+        assert!(fixture.names("helper"));
+    }
+
+    #[test]
+    fn on_a_saved_prelude_no_binding_of_the_saved_state_is_named() {
+        let fixture = MacroReferencesFixture::expand_on_saved_prelude(
+            "(defmacro measure (x) (template (len (unquote x))))\n(defn main () (println \"{}\" (measure \"ab\")))",
+        );
+        assert!(!fixture.names_saved("len"));
+    }
+
+    #[test]
+    fn on_a_saved_prelude_only_the_macros_of_the_program_are_walked() {
+        let walked = MacroReferencesFixture::macros_walked_on_saved_prelude(
+            "(defmacro pick (x) x)\n(defn main () (println \"{}\" (pick 1)))",
+        );
+        assert_eq!(walked, ["pick"]);
     }
 
     #[test]

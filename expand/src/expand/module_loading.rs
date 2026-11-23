@@ -175,10 +175,7 @@ impl Expander<'_> {
         let introductions = self.tables.scopes.introductions();
         let written_in_source = items[..Self::USE_HEAD_PARTS]
             .iter()
-            .all(|item| !introductions.carried_by_binder(item))
-            && self
-                .current_module
-                .is_some_and(|module| ModuleSources::is_written(self.modules.get(module).path()));
+            .all(|item| !introductions.carried_by_binder(item));
         Ok(written_in_source.then(|| {
             let use_form = UseFormText::new(self.sources, form.span(), items[0].span());
             WrittenUse {
@@ -495,7 +492,7 @@ mod tests {
     use crate::modules::ModuleSources;
 
     #[test]
-    fn a_written_module_records_its_imports_and_the_prelude_none() {
+    fn a_written_module_and_a_prelude_module_each_record_their_imports() {
         let program = ExpandedModule::of("(use code value-eq)\n(defn main () (println 1))");
         assert_eq!(program.entry_module().lint_facts.imports().len(), 1);
         assert!(
@@ -503,9 +500,7 @@ mod tests {
                 .modules
                 .iter()
                 .filter(|module| ModuleSources::is_embedded_prelude(&module.path))
-                .all(|module| module.lint_facts.written_uses().is_empty()
-                    && module.lint_facts.imports().is_empty()
-                    && module.lint_facts.notes().is_empty())
+                .any(|module| !module.lint_facts.imports().is_empty())
         );
     }
 }

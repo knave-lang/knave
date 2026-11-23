@@ -1,8 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use super::macro_references::MacroReferences;
-use super::project_modules::ProjectModules;
-use super::project_notes::ProjectNotes;
+use super::notes_by_module::NotesByModule;
 use super::used_imports::UsedImports;
 use crate::core::{BindingId, CoreModule};
 use crate::expand::module_notes::ModuleNotes;
@@ -38,9 +37,8 @@ where
         sources: &SourceMap,
     ) -> FxHashSet<BindingId> {
         let named = self.references.named_by(self.macros, modules);
-        let project = ProjectModules::of(modules);
-        ProjectNotes::of(notes, &project).hand_to(modules);
-        self.read_out.read_each(modules, &project, sources);
+        NotesByModule::of(notes).hand_to(modules);
+        self.read_out.read_each(modules, sources);
         named
     }
 }

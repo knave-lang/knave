@@ -99,6 +99,7 @@ pub use changes::InPlaceChanges;
 pub use gate::{EnforcedOwnership, OwnershipGate, WaivedOwnership};
 pub use loans::{LabeledSpans, LoanConflicts, LoanFacts};
 pub use mutation::ChangedValues;
+use regions::RegionRecord;
 pub use regions::{DefinitionLookup, FunctionFlows, LambdaFlows, ResultBorrows, StoredFlows};
 pub use tail_calls::TailCalls;
 pub use text::TextDecisions;
@@ -234,6 +235,7 @@ impl OwnershipChecker {
             .check(&LabeledSpans::of(&diagnostics))
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
+        program.ownership.regions = RegionRecord::of(program);
         OwnershipFindings {
             inferred_copies,
             refusals: diagnostics,

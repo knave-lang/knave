@@ -936,6 +936,7 @@ impl<'a> ItemEmitter<'a> {
         } = self
             .result_borrows
             .analyse_function(definition.binding, lambda);
+        borrows.confirm(&self.program.ownership.regions, definition.binding);
         let shared = stored.flows.with_values(reassigned_parameters);
         let inferred = self.function_lifetime(definition, &shared);
         let mut emitter = self

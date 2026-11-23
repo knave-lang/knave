@@ -1,0 +1,36 @@
+(trait ranked
+  (rank (fn ((ref self)) int)))
+
+(struct ledger (opened int) (balance int))
+
+(derive ledger copy clone)
+
+(struct coin (worth int))
+
+(derive coin copy clone)
+
+(impl ranked ledger
+  (rank (e) (field e balance)))
+
+(impl ranked coin
+  (rank (c) (field c worth)))
+
+(defn make-ledger (n)
+  (new ledger
+    (opened n)
+    (balance (* n 2))))
+
+(struct wallet (name string))
+
+(derive wallet clone)
+
+(impl ranked wallet
+  (rank (w) (len (field w name))))
+
+(defn adder (x) (fn (y) (+ (rank x) y)))
+
+(defn main ()
+  (local f (adder (make-ledger 3)))
+  (local g
+    (adder (new coin (worth (+ 1 (len (vec 1 2)))))))
+  (println (f 1) " " (g 1)))

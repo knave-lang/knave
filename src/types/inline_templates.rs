@@ -6,16 +6,21 @@ use rustc_hash::FxHashMap;
 use super::registered_template::RegisteredTemplate;
 use super::synthetic_template::SyntheticTemplate;
 use super::template_ties::TemplateTies;
+use super::ty::Scheme;
 use crate::core::RustTemplate;
 
 #[derive(Default)]
 pub struct InlineTemplates {
     written: FxHashMap<Rc<str>, RegisteredTemplate>,
+    schemes: FxHashMap<Rc<str>, Rc<Scheme>>,
     compiler: RefCell<FxHashMap<Rc<str>, RegisteredTemplate>>,
 }
 
 impl InlineTemplates {
-    pub fn register(&mut self, text: &Rc<str>, ties: Option<TemplateTies>) {
+    pub fn register(&mut self, text: &Rc<str>, (scheme, ties): (&Scheme, Option<TemplateTies>)) {
+        self.schemes
+            .entry(Rc::clone(text))
+            .or_insert_with(|| Rc::new(scheme.clone()));
         match self.written.get_mut(text) {
             Some(known) => known.widen(ties),
             None => {
@@ -23,6 +28,10 @@ impl InlineTemplates {
                 self.written.insert(Rc::clone(text), template);
             }
         }
+    }
+
+    pub fn scheme(&self, text: &str) -> Option<&Scheme> {
+        self.schemes.get(text).map(Rc::as_ref)
     }
 
     pub fn read<T>(
@@ -63,6 +72,7 @@ mod tests {
     use crate::source::{SourceId, Span};
     use crate::types::SyntheticTemplate;
     use crate::types::template_ties::TemplateTies;
+    use crate::types::ty::{Scheme, Type};
 
     struct InlineFixture;
 
@@ -79,6 +89,14 @@ mod tests {
             Self::template(text, TypeExprKind::Primitive(PrimitiveType::I64))
         }
 
+        fn scheme() -> Scheme {
+            Scheme {
+                lifetimes: Vec::new(),
+                params: Vec::new(),
+                body: Type::unit(),
+            }
+        }
+
         fn ties(templates: &InlineTemplates, template: &RustTemplate) -> Option<TemplateTies> {
             templates.read(template, |registered| {
                 registered.read(None, |_, ties| ties.cloned())
@@ -90,15 +108,33 @@ mod tests {
     fn a_template_read_before_its_second_type_keeps_the_ties_of_both() {
         let mut templates = InlineTemplates::default();
         let written = InlineFixture::written("{0}");
-        templates.register(&written.template, Some(TemplateTies::new(&[], &[0])));
+        templates.register(
+            &written.template,
+            (&InlineFixture::scheme(), Some(TemplateTies::new(&[], &[0]))),
+        );
         assert_eq!(
             InlineFixture::ties(&templates, &written),
             Some(TemplateTies::new(&[], &[0]))
         );
-        templates.register(&written.template, Some(TemplateTies::new(&[0], &[])));
+        templates.register(
+            &written.template,
+            (&InlineFixture::scheme(), Some(TemplateTies::new(&[0], &[]))),
+        );
         assert_eq!(
             InlineFixture::ties(&templates, &written),
             Some(TemplateTies::new(&[0], &[0]))
+        );
+    }
+
+    #[test]
+    fn a_template_text_keeps_the_scheme_it_was_first_registered_with() {
+        let mut templates = InlineTemplates::default();
+        let written = InlineFixture::written("{0}");
+        assert!(templates.scheme("{0}").is_none());
+        templates.register(&written.template, (&InlineFixture::scheme(), None));
+        assert_eq!(
+            templates.scheme("{0}").map(|scheme| &scheme.body),
+            Some(&Type::unit())
         );
     }
 
@@ -107,7 +143,7 @@ mod tests {
         let text = SyntheticTemplate::LOOK_UP.text();
         let mut templates = InlineTemplates::default();
         let written = InlineFixture::written(text);
-        templates.register(&written.template, None);
+        templates.register(&written.template, (&InlineFixture::scheme(), None));
         let compiler = InlineFixture::template(text, TypeExprKind::Hole);
         assert_eq!(InlineFixture::ties(&templates, &written), None);
         assert_eq!(

@@ -83,7 +83,7 @@ impl RustTemplates {
                 .filter(|definition| {
                     matches!(
                         definition.value.kind,
-                        TypedExprKind::Leaf(TypedLeaf::Rust(..))
+                        TypedExprKind::Leaf(TypedLeaf::Rust(_))
                     )
                 })
                 .map(|definition| definition.binding)
@@ -93,7 +93,7 @@ impl RustTemplates {
 
     fn is_template(&self, callee: &TypedExpr) -> bool {
         match callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Rust(..)) => true,
+            TypedExprKind::Leaf(TypedLeaf::Rust(_)) => true,
             TypedExprKind::Leaf(TypedLeaf::Global(function)) => self.bindings.contains(&function),
             _ => false,
         }

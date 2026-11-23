@@ -200,7 +200,7 @@ impl<'a> UsageCollector<'a> {
         let callee_modes = self.callee_modes(callee);
         if !matches!(
             callee.kind,
-            TypedExprKind::Leaf(TypedLeaf::Global(_)) | TypedExprKind::Leaf(TypedLeaf::Rust(..))
+            TypedExprKind::Leaf(TypedLeaf::Global(_)) | TypedExprKind::Leaf(TypedLeaf::Rust(_))
         ) {
             self.expr(callee, ParamMode::Ref);
         }

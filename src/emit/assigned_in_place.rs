@@ -38,7 +38,7 @@ impl AssignedInPlace {
 
     #[cfg(test)]
     pub fn is_assignment(callee: &TypedExpr) -> bool {
-        matches!(&callee.kind, TypedExprKind::Leaf(TypedLeaf::Rust(template, _))
+        matches!(&callee.kind, TypedExprKind::Leaf(TypedLeaf::Rust(template))
             if Self::BLOCK
                 .split(Self::OWNER_SLOT)
                 .all(|part| template.template.contains(part)))
@@ -139,7 +139,7 @@ mod tests {
         }
 
         fn assignment(&self, assigned: &TypedExpr) -> (String, &'static str) {
-            let TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) =
+            let TypedExprKind::Leaf(TypedLeaf::Rust(template)) =
                 &TestProgram::callee(assigned).kind
             else {
                 panic!("the value is assigned through a template");

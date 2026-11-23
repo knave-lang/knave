@@ -20,7 +20,7 @@ impl RustLeaf {
             clauses: Vec::new(),
         };
         TypedExpr {
-            kind: TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template), None)),
+            kind: TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template))),
             ty,
             span,
         }

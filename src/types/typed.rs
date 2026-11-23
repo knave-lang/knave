@@ -143,7 +143,7 @@ pub enum TypedLeaf {
     Literal(Literal),
     Local(BindingId),
     Global(BindingId),
-    Rust(Rc<RustTemplate>, Option<Rc<Scheme>>),
+    Rust(Rc<RustTemplate>),
 }
 
 #[derive(Clone, Debug)]

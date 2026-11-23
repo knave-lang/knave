@@ -27,7 +27,7 @@ impl<'t> IndexChecks<'t> {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => self.negative_literals(callee, arguments),
             TypedExprKind::Assoc(_, keys, _) => self.assoc_key_problems(&expr.ty, keys),
-            TypedExprKind::Leaf(TypedLeaf::Rust(template, _))
+            TypedExprKind::Leaf(TypedLeaf::Rust(template))
                 if !SyntheticTemplate::builds(template) =>
             {
                 self.signature_problems(expr, template)

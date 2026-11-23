@@ -174,7 +174,7 @@ impl ExpressionEmitter<'_> {
             TypedExprKind::Call(callee, arguments) => {
                 !matches!(
                     callee.kind,
-                    TypedExprKind::Leaf(TypedLeaf::Global(_) | TypedLeaf::Rust(..))
+                    TypedExprKind::Leaf(TypedLeaf::Global(_) | TypedLeaf::Rust(_))
                 ) || !arguments.iter().all(Self::passes_unchanged)
             }
             _ => false,

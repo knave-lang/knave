@@ -50,7 +50,7 @@ impl<'p, 'd> ConstantDefinitions<'p, 'd> {
             return None;
         };
         let definition = self.definition(binding)?;
-        let TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) = &definition.value.kind else {
+        let TypedExprKind::Leaf(TypedLeaf::Rust(template)) = &definition.value.kind else {
             return None;
         };
         Some(ClauseChoice::new(self.program).for_call(template, definition, &callee.ty))
@@ -62,7 +62,7 @@ impl<'p, 'd> ConstantDefinitions<'p, 'd> {
             TypedLeaf::Global(binding) => self
                 .definition(*binding)
                 .is_some_and(|definition| self.is_const_evaluable(&definition.value)),
-            TypedLeaf::Rust(template, _) => Self::is_operator_template(&template.template),
+            TypedLeaf::Rust(template) => Self::is_operator_template(&template.template),
             TypedLeaf::Local(_) => false,
         }
     }

@@ -20,8 +20,7 @@ impl RegionRecord {
                 continue;
             };
             let flows = analysis.analyse_function(definition.binding, lambda).flows;
-            let region = ResultRegion::new(flows.flows, flows.higher_ranked);
-            regions.record(definition.binding, region);
+            regions.record(definition.binding, ResultRegion::from(&flows));
         }
         regions
     }

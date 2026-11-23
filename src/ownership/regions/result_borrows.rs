@@ -11,8 +11,8 @@ use super::stored_arguments::Store;
 use crate::core::BindingId;
 use crate::ownership::TailCalls;
 use crate::types::{
-    Borrow, Regions, ResultRegion, Type, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem,
-    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedProgram,
+    Borrow, Type, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedProgram,
 };
 
 pub struct ResultBorrows<'a> {
@@ -274,15 +274,6 @@ pub struct LambdaFlows {
 }
 
 impl LambdaFlows {
-    pub fn confirm(&self, regions: &Regions, function: BindingId) {
-        debug_assert!(
-            regions.of(function).is_none_or(|recorded| {
-                *recorded == ResultRegion::new(self.flows.clone(), self.higher_ranked.clone())
-            }),
-            "the emitter and the ownership stage disagree on what a function's result borrows"
-        );
-    }
-
     fn parameters(&self, lambda: &TypedLambda) -> CalleeParameters {
         CalleeParameters::new(
             Self::marked(lambda, &self.flows),

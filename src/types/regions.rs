@@ -16,4 +16,11 @@ impl Regions {
     pub fn of(&self, function: BindingId) -> Option<&ResultRegion> {
         self.results.get(&function)
     }
+
+    pub fn assert_recorded(&self, function: BindingId, region: &ResultRegion) {
+        debug_assert!(
+            self.of(function).is_none_or(|recorded| recorded == region),
+            "the emitter and the ownership stage disagree on what a function's result borrows"
+        );
+    }
 }

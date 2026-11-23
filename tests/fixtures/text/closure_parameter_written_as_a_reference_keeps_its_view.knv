@@ -1,0 +1,8 @@
+(defstruct car
+  :make str)
+
+(defn main ()
+  (local build
+    (fn ((name (ref str)))
+      (->car :make name)))
+  (println (:make (build "Leaf"))))

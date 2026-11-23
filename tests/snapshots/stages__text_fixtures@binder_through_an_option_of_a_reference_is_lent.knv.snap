@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/binder_through_an_option_of_a_reference_is_lent.knv
+---
+enum token
+  name.0: owned
+defn first-name
+  local text: lent
+  result: owned

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_sole_declarer_read.knv
+---
+error[L0410]: no `has` bound can read `:m`: only `pt` declares it
+  --> check/field_bound_sole_declarer_read.knv:12:29
+   |
+12 | (defn get (x) (+ (:n x) (:m x)))
+   |                             ^ the bounds on `a` read `:n`
+   |
+   = help: read `:m` where the value's type is `pt`, and pass what it reads into this function
+   = note: run `knave doc L0410` for an explanation

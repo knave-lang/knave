@@ -60,6 +60,7 @@ impl Slot {
             SlotOwner::Local(binding) => format!("local {}", names.name(*binding)),
             SlotOwner::Field(_, name) => name.to_string(),
             SlotOwner::Variable(..)
+            | SlotOwner::TraitMethod(_)
             | SlotOwner::Value(_)
             | SlotOwner::Argument(_)
             | SlotOwner::Written(_) => String::new(),

@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/trait_method_shares_its_text_across_impls.knv
+---
+struct user
+  name: owned
+struct team
+  title: owned
+defn main
+  local named: owned
+method rename
+  text: a view, written owned
+  result: owned
+method rename
+  text: a view, written owned
+  result: owned
+needs owned text
+  text/trait_method_shares_its_text_across_impls.knv:14:37

@@ -1,0 +1,22 @@
+(defstruct user
+  :name string)
+
+(defstruct team
+  :title string)
+
+(deftrait renamed
+  (rename
+    (fn ((ref self) string) string)))
+
+(impl renamed user
+  (rename (u text) (str (:name u) text)))
+
+(impl renamed team (rename (t text) text))
+
+(defn main ()
+  (local named
+    (rename (->user :name (str "a" 1))
+            (str "b" 2)))
+  (println named
+           (rename (->team :title (str "t"))
+                   (str "c" 3))))

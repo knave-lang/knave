@@ -1,7 +1,9 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/text/trait_object_walks_the_value_it_boxes.knv
 ---
 struct dog
   name: a 'static view, written a view
+method name-of
+  result: owned

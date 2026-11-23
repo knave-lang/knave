@@ -12,6 +12,7 @@ pub enum SlotOwner {
     Field(BindingId, Rc<str>),
     Global(BindingId),
     ClosureResult(Span),
+    TraitMethod(BindingId),
     Variable(Span, GenericId),
     Value(Span),
     Argument(Span),

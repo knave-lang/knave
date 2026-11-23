@@ -7,11 +7,12 @@ use super::claim_rules::ClaimRules;
 use super::libraries::LibraryTable;
 use super::library_file_problem::LibraryFileProblem;
 use super::local_files::LocalFiles;
-use super::local_root::LocalRoot;
+use super::local_root::{LocalRoot, ReachedFile};
 use super::located_module::LocatedModule;
 use super::module_source::ModuleSource;
 use super::project_folder::ProjectFolder;
 use super::real_path::RealPath;
+use super::reserved_module_paths::ReservedModulePaths;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
 use crate::core::{BuiltinModule, ModulePath};
@@ -38,10 +39,10 @@ pub struct ModuleSources {
 }
 
 impl ModuleSources {
-    pub const KERNEL: &str = "kernel";
-    pub const CODE: &str = "code";
-    pub const PRELUDE_CODE: &str = "prelude/internal/code";
-    pub const PRELUDE: &str = "prelude";
+    pub const KERNEL: &str = ReservedModulePaths::KERNEL;
+    pub const CODE: &str = ReservedModulePaths::CODE;
+    pub const PRELUDE_CODE: &str = ReservedModulePaths::PRELUDE_CODE;
+    pub const PRELUDE: &str = ReservedModulePaths::PRELUDE;
     pub const TEST: &str = "prelude/test";
     pub const LIBRARY_EXAMPLES: &str = "prelude/library-examples";
     pub const TASK: &str = "prelude/task";
@@ -156,10 +157,7 @@ impl ModuleSources {
 
     pub fn locate(&self, path: &ModulePath) -> Option<LocatedModule> {
         let source = self.find(path)?;
-        let owner = self
-            .libraries
-            .owner_of(path)
-            .map(|_| Rc::from(LibraryTable::head(path)));
+        let owner = self.libraries.owner_of(path).map(|_| Rc::from(path.head()));
         Some(LocatedModule { source, owner })
     }
 
@@ -215,7 +213,7 @@ impl ModuleSources {
     }
 
     fn local_module(&self, written: &ModulePath) -> Option<PathBuf> {
-        let head = LibraryTable::head(written);
+        let head = written.head();
         let file = PathBuf::from(Language::file_name(head));
         self.local_roots().find_map(|local_root| {
             [&file, Path::new(head)]
@@ -241,7 +239,7 @@ impl ModuleSources {
     }
 
     fn program_claims(path: &ModulePath) -> bool {
-        Self::compiler_claims(path) || Self::is_reserved(path)
+        Self::compiler_claims(path) || ReservedModulePaths::is_reserved(path)
     }
 
     fn compiler_claims(path: &ModulePath) -> bool {
@@ -263,20 +261,7 @@ impl ModuleSources {
     }
 
     pub fn is_written(path: &ModulePath) -> bool {
-        !Self::is_prelude(path) && !Self::is_compiler_provided(path)
-    }
-
-    pub fn is_reserved_library(name: &str) -> bool {
-        [Self::PRELUDE, Self::KERNEL, Self::CODE].contains(&name)
-            || Self::is_reserved(&ModulePath::new(name))
-    }
-
-    pub fn is_reserved(path: &ModulePath) -> bool {
-        path.as_str() == Language::PROJECT_FILE_STEM
-    }
-
-    pub fn is_compiler_provided(path: &ModulePath) -> bool {
-        [Self::KERNEL, Self::CODE, Self::PRELUDE_CODE].contains(&path.as_str())
+        !Self::is_prelude(path) && !ReservedModulePaths::is_compiler_provided(path)
     }
 
     pub fn relative_name<'n>(&self, name: &'n str) -> &'n str {
@@ -338,7 +323,9 @@ impl ModuleSources {
     }
 
     pub fn library_file_problem(&self, path: &ModulePath) -> Option<LibraryFileProblem<'_>> {
-        let library = self.libraries.owner_of(path)?;
+        let Some(library) = self.libraries.owner_of(path) else {
+            return self.program_file_outside(path);
+        };
         let file = self.libraries.file(path)?;
         if !file.path.is_file() {
             return library
@@ -346,9 +333,17 @@ impl ModuleSources {
                 .map(LibraryFileProblem::MissingRootModule);
         }
         let resolved = fs::canonicalize(&file.path).ok()?;
-        let checkout = library.checkout()?;
+        let checkout = self.libraries.checkout_of(path)?;
         (!resolved.starts_with(checkout))
             .then_some(LibraryFileProblem::OutsideCheckout(file.display))
+    }
+
+    fn program_file_outside(&self, path: &ModulePath) -> Option<LibraryFileProblem<'_>> {
+        let checkout = self.libraries.checkout_of(path)?;
+        let reached = self.reached_files(path).next()?;
+        let resolved = fs::canonicalize(&reached.path).ok()?;
+        (!resolved.starts_with(checkout))
+            .then_some(LibraryFileProblem::OutsideCheckout(reached.shown))
     }
 
     fn library_file(&self, path: &ModulePath) -> Option<ModuleSource> {
@@ -362,9 +357,7 @@ impl ModuleSources {
     }
 
     fn user_file(&self, path: &ModulePath) -> Option<ModuleSource> {
-        let file_name = Language::file_name(path.as_str());
-        self.local_roots().find_map(|local_root| {
-            let reached = local_root.reached_file(Path::new(&file_name))?;
+        self.reached_files(path).find_map(|reached| {
             let text = Self::read_file(&reached.path).ok()?;
             Some(ModuleSource::Text {
                 name: reached.shown.display().to_string(),
@@ -372,6 +365,12 @@ impl ModuleSources {
                 file: fs::canonicalize(&reached.path).ok().map(RealPath::new),
             })
         })
+    }
+
+    fn reached_files(&self, path: &ModulePath) -> impl Iterator<Item = ReachedFile> + '_ {
+        let file_name = Language::file_name(path.as_str());
+        self.local_roots()
+            .filter_map(move |local_root| local_root.reached_file(Path::new(&file_name)))
     }
 }
 
@@ -396,9 +395,9 @@ mod tests {
     use super::{ModuleSources, PublicPrelude};
     use crate::core::ModulePath;
     use crate::language::Language;
-    use crate::modules::LibraryFolder;
     use crate::modules::ModuleSource;
     use crate::modules::libraries::{LibraryRoot, LibraryTable};
+    use crate::modules::{LibraryFolder, ProgramLibraries};
 
     struct TestedApp {
         directory: PathBuf,
@@ -432,7 +431,14 @@ mod tests {
                 Vec::new(),
             );
             let section = Self::LIBRARY_SECTION.to_string();
-            let table = LibraryTable::new(vec![Self::LIBRARY.to_string()], vec![library], section);
+            let table = LibraryTable::new(
+                ProgramLibraries {
+                    visible: vec![Self::LIBRARY.to_string()],
+                    checkout: None,
+                },
+                vec![library],
+                section,
+            );
             self.sources().with_libraries(table)
         }
 

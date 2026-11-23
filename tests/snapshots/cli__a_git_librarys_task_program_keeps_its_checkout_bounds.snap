@@ -1,0 +1,13 @@
+---
+source: tests/cli.rs
+expression: "sandbox.masked(&stderr).replace(&commit, \"<commit>\")"
+---
+error[L0254]: module `secret` resolves outside its library's checkout
+ --> <sandbox>/cache/knave/git/<commit>/tasks/peek.knv:1:6
+  |
+1 | (use secret)
+  |      ^^^^^^ this module's file links outside the checkout
+  |
+  = note: `<sandbox>/cache/knave/git/<commit>/src/secret.knv` is a symbolic link, and a library fetched from git may only read files inside its own checkout
+  = help: ask the library's authors to commit the module's file instead of a link
+  = note: run `knave doc L0254` for an explanation

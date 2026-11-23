@@ -1,9 +1,8 @@
 use std::rc::Rc;
 
 use super::embedded_prelude::EmbeddedPrelude;
-use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
-use super::library_task_resolver::LibraryTaskResolver;
+use super::lending_libraries::LendingLibraries;
 use super::library_task_run::LibraryTaskRun;
 use super::library_tasks::LibraryTasks;
 use super::library_walk::FetchingStore;
@@ -15,10 +14,10 @@ use super::standard_output::StandardOutput;
 use super::task_address::TaskAddress;
 use super::task_catalog::TaskCatalog;
 use super::task_invocation::TaskInvocation;
+use super::task_name_lookup::TaskNameLookup;
 use super::terminal::Terminal;
 use super::working_directory::WorkingDirectory;
 use crate::build::BuildProfile;
-use crate::diagnostic::SimilarName;
 use crate::language::Language;
 use crate::modules::SearchScope;
 use crate::project::Section;
@@ -53,11 +52,22 @@ impl TaskCommand {
     fn execute(&self, terminal: &mut Terminal) -> Result<ExitStatus, ExitStatus> {
         let project = Self::project(terminal)?;
         Self::expect_tasks(&project)?;
-        let Some(written) = &self.name else {
-            return Self::list(terminal, project);
-        };
-        let address = TaskAddress::parse(written)?;
-        self.run_address(terminal, project, address)
+        match self.name.as_deref().map(TaskAddress::parse).transpose()? {
+            Some(address) => self.run_address(terminal, project, address),
+            None => {
+                let lending = project.task_layout().lending().clone();
+                let own = OwnTasks::load(terminal, project)?;
+                Self::list(terminal, &own, &lending)
+            }
+        }
+    }
+
+    fn expect_tasks(project: &LocatedProject) -> Result<(), ExitStatus> {
+        let layout = project.task_layout();
+        if layout.has_tasks() || !layout.lending().lenders().is_empty() {
+            return Ok(());
+        }
+        Err(Self::report_no_tasks_directory())
     }
 
     fn run_address(
@@ -66,25 +76,31 @@ impl TaskCommand {
         project: LocatedProject,
         address: TaskAddress<'_>,
     ) -> Result<ExitStatus, ExitStatus> {
-        let libraries = project.task_layout().libraries().to_vec();
-        let resolver = LibraryTaskResolver::new(&libraries);
         match address {
             TaskAddress::Qualified { library, task } => {
-                let library = resolver.qualified(library, task)?;
+                let lending = project.task_layout().lending();
+                let library = TaskNameLookup::new(lending, Self::NAME).qualified(library, task)?;
                 LibraryTaskRun::new(&project, library, self.invocation()).run(terminal, task)
             }
             TaskAddress::Bare(task) => {
                 let own = OwnTasks::load(terminal, project)?;
-                if let Some(outcome) = own.run(terminal, task, self.invocation()) {
-                    return outcome;
-                }
-                if !resolver.has_exports() {
-                    return Err(Self::report_unknown(own.names(), task));
-                }
-                let library = resolver.bare(task, own.names())?;
-                LibraryTaskRun::new(own.project(), library, self.invocation()).run(terminal, task)
+                self.run_bare(terminal, &own, task)
             }
         }
+    }
+
+    fn run_bare(
+        &self,
+        terminal: &mut Terminal,
+        own: &OwnTasks,
+        task: &str,
+    ) -> Result<ExitStatus, ExitStatus> {
+        if own.defines(task) {
+            return own.run(terminal, task, self.invocation());
+        }
+        let lending = own.project().task_layout().lending();
+        let library = TaskNameLookup::new(lending, Self::NAME).bare(task, own.names())?;
+        LibraryTaskRun::new(own.project(), library, self.invocation()).run(terminal, task)
     }
 
     fn invocation(&self) -> TaskInvocation<'_> {
@@ -94,58 +110,24 @@ impl TaskCommand {
         }
     }
 
-    fn expect_tasks(project: &LocatedProject) -> Result<(), ExitStatus> {
-        let layout = project.task_layout();
-        let lent = layout
-            .libraries()
-            .iter()
-            .any(|library| !library.exported_tasks.is_empty());
-        if layout.has_tasks() || lent {
-            return Ok(());
-        }
-        Err(Self::report_no_tasks_directory())
-    }
-
-    fn list(terminal: &mut Terminal, project: LocatedProject) -> Result<ExitStatus, ExitStatus> {
-        let libraries = project.task_layout().libraries().to_vec();
-        let resolver = LibraryTaskResolver::new(&libraries);
-        let (mut listing, own_names) = Self::own_listing(terminal, project)?;
+    fn list(
+        terminal: &mut Terminal,
+        own: &OwnTasks,
+        lending: &LendingLibraries,
+    ) -> Result<ExitStatus, ExitStatus> {
+        let mut listing = own.listing(terminal)?;
         let mut failure = Ok(());
-        for library in resolver.lenders() {
-            let block = resolver.block_arguments(library, &own_names);
-            let lent = LibraryTasks::within(terminal, library, |terminal, tasks| {
-                let LibraryTasks {
-                    catalog, exports, ..
-                } = tasks;
-                exports.result()?;
-                catalog.listing(terminal, &block)
-            });
-            match lent {
+        for library in lending.lenders() {
+            let arguments = lending.listing_arguments(library, own.names());
+            match LibraryTasks::within(terminal, library, |terminal, tasks| {
+                tasks.listing(terminal, &arguments)
+            }) {
                 Ok(block) => Self::append_block(&mut listing, &block),
                 Err(status) => failure = Err(status),
             }
         }
         let written = StandardOutput::locked().write(listing);
         failure.map(|()| written)
-    }
-
-    fn own_listing(
-        terminal: &mut Terminal,
-        project: LocatedProject,
-    ) -> Result<(String, Vec<Rc<str>>), ExitStatus> {
-        if !project.task_layout().has_tasks() {
-            return Ok((String::new(), Vec::new()));
-        }
-        let tree = EntryTree::of_tasks(project);
-        let (catalog, exports) = TaskCatalog::load(&tree, terminal, None)?;
-        exports.result()?;
-        let listing = catalog.listing(terminal, "")?;
-        let names = catalog
-            .names(terminal)?
-            .iter()
-            .map(|name| Rc::from(name.as_str()))
-            .collect();
-        Ok((listing, names))
     }
 
     fn append_block(listing: &mut String, block: &str) {
@@ -159,18 +141,6 @@ impl TaskCommand {
         let working_directory = WorkingDirectory::path();
         LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())?
             .ok_or_else(Self::report_no_project)
-    }
-
-    fn report_unknown(names: &[Rc<str>], name: &str) -> ExitStatus {
-        let help = match SimilarName::closest(name, names) {
-            Some(closest) => format!("did you mean `{closest}`?"),
-            None if names.is_empty() => {
-                "no `deftask` under `tasks/` defines a task yet".to_string()
-            }
-            None => format!("run `{} {}` to list the tasks", Language::NAME, Self::NAME),
-        };
-        StandardError::write_line(format_args!("error: no task named `{name}`\nhelp: {help}"));
-        ExitStatus::UsageError
     }
 
     fn report_no_project() -> ExitStatus {

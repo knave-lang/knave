@@ -1,3 +1,5 @@
+use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
 use super::build_directory::BuildDirectory;
@@ -32,15 +34,21 @@ impl ProjectCrates {
         }
     }
 
-    pub fn locked_at(&self, lock_file: PathBuf) -> Self {
+    pub fn locked_at(&self, directory: &Path) -> Self {
         Self {
-            lock_file,
+            lock_file: directory.join(Self::LOCK_FILE),
             ..self.clone()
         }
     }
 
-    pub fn lock_file(&self) -> &Path {
-        &self.lock_file
+    pub fn copy_lock_into(&self, copy: &ProjectCrates) -> io::Result<()> {
+        if !self.lock_file.is_file() {
+            return Ok(());
+        }
+        if let Some(folder) = copy.lock_file.parent() {
+            fs::create_dir_all(folder)?;
+        }
+        fs::copy(&self.lock_file, &copy.lock_file).map(|_| ())
     }
 
     pub fn has_crates(&self) -> bool {

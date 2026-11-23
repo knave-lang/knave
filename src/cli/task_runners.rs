@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use super::exit_status::ExitStatus;
-use super::export_status::ExportStatus;
 use super::form_block::FormBlock;
 use super::task_catalog::{EnteredProgram, TaskCatalog};
 use super::task_name::TaskName;
@@ -39,16 +38,12 @@ impl<'c> TaskRunners<'c> {
         Ok(task.binary().to_path_buf())
     }
 
-    pub fn check(
-        &self,
-        terminal: &mut Terminal,
-        exports: ExportStatus,
-    ) -> Result<Diagnostics, ExitStatus> {
+    pub fn check(&self, terminal: &mut Terminal) -> Result<Diagnostics, ExitStatus> {
         let checked = self
             .program(terminal)
             .and_then(|entered| terminal.checking().check_keeping_warnings(&entered.program));
-        exports
-            .result()
+        self.catalog
+            .exports()
             .and(checked)
             .map(|checked| checked.warnings)
     }

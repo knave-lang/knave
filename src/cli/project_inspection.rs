@@ -49,10 +49,10 @@ impl ProjectInspection {
         } else {
             inspect_entry(terminal, program.file(), print_warnings)
         };
-        let libraries = program
+        let lending = program
             .project()
-            .filter(|_| checks_tasks)
-            .map(|project| project.task_layout().libraries().to_vec())
+            .filter(|_| defaults_to_project_entry)
+            .map(|project| project.task_layout().lending().clone())
             .unwrap_or_default();
         let tree = program
             .into_project()
@@ -63,7 +63,7 @@ impl ProjectInspection {
             Some(tree) => Self::check_tasks(terminal, &tree, print_warnings),
             None => Ok(()),
         };
-        let lent = LibraryTasks::check_lenders(terminal, &libraries);
+        let lent = LibraryTasks::check_lenders(terminal, &lending);
         entry.and(tasks).and(lent)
     }
 
@@ -79,8 +79,8 @@ impl ProjectInspection {
         tree: &EntryTree,
         print_warnings: &WarningPrinter,
     ) -> Result<(), ExitStatus> {
-        let (catalog, exports) = TaskCatalog::load(tree, terminal, None)?;
-        let warnings = TaskRunners::new(&catalog).check(terminal, exports)?;
+        let catalog = TaskCatalog::load(tree, terminal, "")?;
+        let warnings = TaskRunners::new(&catalog).check(terminal)?;
         print_warnings(&terminal.source_report(), &warnings).passed()
     }
 }

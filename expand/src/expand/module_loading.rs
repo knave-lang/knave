@@ -21,6 +21,7 @@ use crate::core::{
 use crate::diagnostic::Diagnostic;
 use crate::diagnostic::SimilarName;
 use crate::interpret::Warnings;
+use crate::modules::ReservedModulePaths;
 use crate::modules::{
     LibraryFileProblem, LocatedModule, ModuleScopes, ModuleSource, ModuleSources,
 };
@@ -59,7 +60,7 @@ impl Expander<'_> {
         {
             return Ok(prelude.install(self));
         }
-        if ModuleSources::is_reserved(path) {
+        if ReservedModulePaths::is_reserved(path) {
             return Err(ExpandProblems::reserved_module(path, span));
         }
         match self.module_sources.locate(path) {
@@ -424,7 +425,7 @@ impl Expander<'_> {
     }
 
     fn missing_export_remedy(&self, path: &ModulePath, name: &str) -> MissingExportRemedy {
-        if ModuleSources::is_compiler_provided(path) {
+        if ReservedModulePaths::is_compiler_provided(path) {
             return MissingExportRemedy::NoHelp;
         }
         if !ModuleSources::is_embedded_prelude(path) {
@@ -440,7 +441,7 @@ impl Expander<'_> {
         self.modules
             .records()
             .filter(|record| ModuleSources::is_internal(record.path()))
-            .filter(|record| !ModuleSources::is_compiler_provided(record.path()))
+            .filter(|record| !ReservedModulePaths::is_compiler_provided(record.path()))
             .any(|record| {
                 record
                     .exports()

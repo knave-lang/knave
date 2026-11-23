@@ -12,7 +12,9 @@ use crate::interpret::{
     DefinitionQueries, ExpansionCallbacks, GlobalValues, Host, ModuleNotes, ModuleQueries,
     NameComparison, NotesTooLarge, SourceQueries, Value, Warnings,
 };
-use crate::modules::{ModuleOrigin, ModuleRecord, ModuleSources, ProjectFolder};
+use crate::modules::{
+    ModuleOrigin, ModuleRecord, ModuleSources, ProjectFolder, ReservedModulePaths,
+};
 use crate::reader::{Form, LiteralForms, Symbol};
 use crate::scope::{LargestCandidates, Phase, Resolution, ScopeSet, VisibleNames};
 use crate::source::Span;
@@ -127,7 +129,7 @@ impl ModuleQueries for Expander<'_> {
 
     fn module_symbol(&self, path: &Symbol, span: Span) -> Result<Symbol, Diagnostic> {
         let record = self.read_module_by_path(path, span)?;
-        if ModuleSources::is_compiler_provided(record.path()) {
+        if ReservedModulePaths::is_compiler_provided(record.path()) {
             return Err(ExpandProblems::unknown_module(record.path(), span));
         }
         Ok(record.symbol())

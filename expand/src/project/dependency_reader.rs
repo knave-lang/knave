@@ -7,7 +7,7 @@ use super::problems::ProjectProblems;
 use super::reader::SectionTable;
 use super::{CrateDependency, LibraryDependency, LibrarySource};
 use crate::diagnostic::Diagnostics;
-use crate::modules::ModuleSources;
+use crate::modules::ReservedModulePaths;
 use crate::reader::{Form, FormKind};
 use crate::source::Span;
 
@@ -128,7 +128,7 @@ impl<'p> DependencyReader<'p> {
     }
 
     fn check_library_name(&mut self, parts: &EntryParts<'_>) {
-        if ModuleSources::is_reserved_library(parts.name) {
+        if ReservedModulePaths::is_reserved_library(parts.name) {
             return self.problems.push(ProjectProblems::reserved_library_name(
                 parts.name,
                 parts.name_span,

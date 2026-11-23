@@ -10,12 +10,13 @@ use super::checkout_bounds::{CheckoutBounds, RepositoryAddress};
 use super::direct_library::DirectLibrary;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
+use super::lending_libraries::LendingLibraries;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
 use crate::build::StoreError;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
-use crate::modules::{LibraryFolder, LibraryRoot, LibraryTable};
+use crate::modules::{LibraryFolder, LibraryRoot, LibraryTable, ProgramLibraries};
 use crate::project::{
     CrateDependency, CrateSet, DependencySection, LibraryDependency, LibrarySource, Project,
     ProjectProblems, Section,
@@ -41,7 +42,12 @@ pub struct WalkedLibraries {
     pub crates: Vec<CrateDependency>,
     pub dev_crates: Vec<CrateDependency>,
     pub crate_library: Option<String>,
-    pub direct_libraries: Vec<DirectLibrary>,
+    pub direct_libraries: LendingLibraries,
+}
+
+pub struct WalkStart<'s> {
+    pub root: &'s Path,
+    pub checkout: Option<CheckoutBounds>,
 }
 
 #[derive(Clone, Copy)]
@@ -71,9 +77,10 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
 
     pub fn walk(
         terminal: &'t mut Terminal,
-        root: &Path,
+        start: WalkStart<'_>,
         store: S,
     ) -> Result<WalkedLibraries, ExitStatus> {
+        let root = start.root;
         let project = terminal
             .sources()
             .projects()
@@ -88,11 +95,21 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             direct: Vec::new(),
         };
         walk.add_crates(root, &project)?;
-        walk.visit_all(root, &project, Listing::PROGRAM)?;
+        let listing = Listing {
+            checkout: start.checkout.as_ref(),
+            ..Listing::PROGRAM
+        };
+        walk.visit_all(root, &project, listing)?;
         let dev_crates = walk.dev_crates(root, &project)?;
         Ok(WalkedLibraries {
             table: LibraryTable::new(
-                Self::names(&project),
+                ProgramLibraries {
+                    visible: Self::names(&project),
+                    checkout: start
+                        .checkout
+                        .as_ref()
+                        .map(|bounds| bounds.root().to_path_buf()),
+                },
                 walk.roots,
                 EmbeddedPrelude::project_vocabulary()
                     .section_name(Section::Dependency(DependencySection::Libraries))
@@ -102,7 +119,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             dev_crates,
             crates: walk.crates.into_crates(),
             crate_library: walk.crate_library,
-            direct_libraries: walk.direct,
+            direct_libraries: LendingLibraries::new(walk.direct),
         })
     }
 
@@ -173,12 +190,12 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         if listing.entry.is_some() {
             return;
         }
-        self.direct.push(DirectLibrary {
-            name: library.name.clone(),
-            root: library_root.to_path_buf(),
-            exported_tasks: self.seen.exported_tasks_at(library_root),
-            fetched: matches!(library.source, LibrarySource::Git { .. }),
-        });
+        let exported_tasks = self.seen.exported_tasks_at(library_root);
+        self.direct.push(DirectLibrary::of(
+            library,
+            library_root.to_path_buf(),
+            exported_tasks,
+        ));
     }
 
     fn library_directory(
@@ -286,8 +303,10 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
     }
 
     fn own_checkout(library_root: &Path, library: &LibraryDependency) -> Option<CheckoutBounds> {
-        let fetched = matches!(library.source, LibrarySource::Git { .. });
-        fetched.then(|| CheckoutBounds::of(library_root))
+        library
+            .source
+            .is_fetched()
+            .then(|| CheckoutBounds::of(library_root))
     }
 
     fn record(

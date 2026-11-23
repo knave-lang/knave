@@ -1,13 +1,14 @@
 mod file_placement;
 mod project_root;
+mod project_site;
 mod task_layout;
 
 use std::path::{Path, PathBuf};
 
 use super::compiler_check::CompilerCheck;
-use super::direct_library::DirectLibrary;
 use super::exit_status::ExitStatus;
-use super::library_walk::{LibraryStore, LibraryWalk};
+use super::lending_libraries::LendingLibraries;
+use super::library_walk::{LibraryStore, LibraryWalk, WalkStart};
 use super::lint_levels::LintLevels;
 use super::program_file::ProgramFile;
 use super::project_crates::ProjectCrates;
@@ -18,6 +19,7 @@ use crate::modules::LibraryTable;
 use crate::project::{Project, ProjectProblems};
 use file_placement::FilePlacement;
 pub use project_root::ProjectRoot;
+pub use project_site::ProjectSite;
 pub use task_layout::{ProjectFacts, TaskLayout};
 
 pub struct LocatedProject {
@@ -26,7 +28,7 @@ pub struct LocatedProject {
     libraries: LibraryTable,
     crates: ProjectCrates,
     crate_library: Option<String>,
-    direct_libraries: Vec<DirectLibrary>,
+    lending: LendingLibraries,
 }
 
 impl LocatedProject {
@@ -39,17 +41,24 @@ impl LocatedProject {
             return Ok(None);
         };
         CompilerCheck::new(terminal).refuse_before_loading(&root)?;
-        let located = Self::enter_unchecked(directory, terminal, store);
+        let located = Self::enter_unchecked(ProjectSite::Around(directory), terminal, store);
         CompilerCheck::new(terminal).report(&root)?;
         located
     }
 
     pub fn enter_unchecked(
-        directory: &Path,
+        site: ProjectSite<'_>,
         terminal: &mut Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
-        let located = Self::search_from(directory, terminal, store)?;
+        let located = match site {
+            ProjectSite::Around(directory) => Self::search_from(directory, terminal, store)?,
+            ProjectSite::Library { root, checkout } => Some(Self::walked_from(
+                WalkStart { root, checkout },
+                terminal,
+                store,
+            )?),
+        };
         if let Some(entered) = &located {
             let levels = LintLevels::of(&entered.project.lints);
             terminal.configure(|settings| settings.leveling_lints_by(levels));
@@ -66,22 +75,35 @@ impl LocatedProject {
             return Ok(None);
         };
         let root = root.shown()?;
+        let start = WalkStart {
+            root: &root,
+            checkout: None,
+        };
+        Self::walked_from(start, terminal, store).map(Some)
+    }
+
+    fn walked_from(
+        start: WalkStart<'_>,
+        terminal: &Terminal,
+        store: impl LibraryStore,
+    ) -> Result<Self, ExitStatus> {
+        let root = start.root.to_path_buf();
         let mut scratch = terminal.scratch();
-        let walked = LibraryWalk::walk(&mut scratch, &root, store)?;
+        let walked = LibraryWalk::walk(&mut scratch, start, store)?;
         let crates = ProjectCrates::new(
             root.clone(),
             walked.project.name.clone(),
             walked.crates,
             walked.dev_crates,
         );
-        Ok(Some(Self {
+        Ok(Self {
             root,
             project: walked.project,
             libraries: walked.table,
             crates,
             crate_library: walked.crate_library,
-            direct_libraries: walked.direct_libraries,
-        }))
+            lending: walked.direct_libraries,
+        })
     }
 
     pub fn lend_libraries(project: Option<&Self>, file: ProgramFile) -> ProgramFile {
@@ -104,7 +126,7 @@ impl LocatedProject {
         let facts = ProjectFacts {
             project: &self.project,
             root: &self.root,
-            libraries: &self.direct_libraries,
+            lending: &self.lending,
         };
         TaskLayout::of(facts, &self.placement())
     }

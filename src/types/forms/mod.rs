@@ -8,7 +8,7 @@ mod variant_construction;
 
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
-    ChildTyping, ChildTypingAgainst, MacroOrigins, Obligations, PlaceReads, TypeFitting, Unknowns,
+    ChildTyping, ExpectedChildTyping, MacroOrigins, Obligations, PlaceReads, TypeFitting, Unknowns,
     VariantSites,
 };
 pub(super) use conditional::Conditional;

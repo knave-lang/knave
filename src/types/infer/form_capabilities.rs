@@ -6,10 +6,9 @@ use crate::source::Span;
 use crate::types::checker::TypeChecker;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    ChildTyping, ChildTypingAgainst, MacroOrigins, Obligations, PlaceReads, TypeFitting, Unknowns,
+    ChildTyping, ExpectedChildTyping, MacroOrigins, Obligations, PlaceReads, TypeFitting, Unknowns,
     VariantSites,
 };
-use crate::types::problems::MismatchContext;
 use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
 use crate::types::variant_site::VariantSite;
@@ -20,13 +19,13 @@ impl ChildTyping for TypeChecker {
     }
 }
 
-impl ChildTypingAgainst for TypeChecker {
+impl ExpectedChildTyping for TypeChecker {
     fn type_child_against(
         &mut self,
         child: &Expr,
-        expected: &Type,
+        expectation: Expectation,
     ) -> Result<TypedExpr, Diagnostic> {
-        self.infer_against(child, expected, MismatchContext::Plain)
+        self.infer_against(child, expectation.expected, expectation.context)
     }
 }
 

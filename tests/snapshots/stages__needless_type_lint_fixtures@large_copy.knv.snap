@@ -1,8 +1,20 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/lint/needless_type/large_copy.knv
 ---
+warning[L0811]: `crate` does not need its `derive` form
+ --> lint/needless_type/large_copy.knv:7:1
+  |
+7 | (derive crate clone copy)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives every trait this form lists
+  |
+help: remove the form
+  |
+7 - (derive crate clone copy)
+  |
+  = note: run `knave doc L0811` for an explanation
+
 warning[L0809]: `volume` does not need its `type` declaration
  --> lint/needless_type/large_copy.knv:9:1
   |

@@ -1,4 +1,5 @@
 mod file_placement;
+mod module_files;
 mod project_root;
 mod task_layout;
 
@@ -16,6 +17,7 @@ use crate::language::Language;
 use crate::modules::LibraryTable;
 use crate::project::{Project, ProjectProblems};
 use file_placement::FilePlacement;
+use module_files::ModuleFiles;
 pub use project_root::ProjectRoot;
 pub use task_layout::TaskLayout;
 
@@ -101,9 +103,8 @@ impl LocatedProject {
         TaskLayout::of(&self.project, &self.placement(), &self.root)
     }
 
-    pub fn is_entry(&self, file: &ProgramFile) -> bool {
-        let entry = self.root.join(self.project.modules.entry.path());
-        ProgramFile::canonical(&entry) == ProgramFile::canonical(file.path())
+    pub fn module_files(&self) -> ModuleFiles<'_> {
+        ModuleFiles::new(&self.root, &self.project.modules)
     }
 
     pub fn placement(&self) -> FilePlacement<'_> {

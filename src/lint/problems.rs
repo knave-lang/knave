@@ -36,11 +36,28 @@ impl LintProblems {
         )
     }
 
+    pub fn needless_derive(target: &str, span: Span) -> Diagnostic {
+        Diagnostic::warning(
+            DiagnosticCode::NEEDLESS_DERIVE,
+            format!("`{target}` does not need its `derive` form"),
+            Label::new(span, "inference gives every trait this form lists"),
+        )
+        .with_suggestion("remove the form", Suggestion::new(span, ""))
+    }
+
     pub fn outside_rules(name: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::COMPILE_TIME_ERROR,
             format!("`{name}` is not a definition of the lint rules"),
             Label::new(span, "a lint rule reached it here"),
+        )
+    }
+
+    pub fn missing_export(module: &str, name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::COMPILE_TIME_ERROR,
+            format!("`{module}` exports no `{name}`"),
+            Label::new(span, "the lint rules load it here"),
         )
     }
 

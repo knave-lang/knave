@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/lint/needless_derive_full.knv
+---
+warning[L0811]: `point` does not need its `derive` form
+ --> lint/needless_derive_full.knv:5:1
+  |
+5 | (derive point clone copy partial-eq)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives every trait this form lists
+  |
+help: remove the form
+  |
+5 - (derive point clone copy partial-eq)
+  |
+  = note: run `knave doc L0811` for an explanation

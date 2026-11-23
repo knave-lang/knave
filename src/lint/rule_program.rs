@@ -6,6 +6,7 @@ use rustc_hash::FxHashMap;
 use super::problems::LintProblems;
 use super::read_back::ReadBack;
 use super::rule_entries::RuleEntries;
+use super::rule_export::RuleExport;
 use super::rule_failure::RuleFailure;
 use super::rule_global::RuleGlobal;
 use crate::core::{BindingArena, BindingId, BindingKind, Expr, ModulePath};
@@ -29,26 +30,49 @@ impl RuleProgram {
     const LOADER: &str = "lint-rules";
 
     pub fn expand_on(prelude: PreludeState) -> Result<Self, RuleFailure> {
-        let (mut sources, loader) = Self::loader_sources();
-        let expander = Expander::with_prelude(&mut sources, Self::module_sources(), prelude);
-        Self::finish(
-            expander.expand(ModulePath::new(Self::LOADER), loader),
-            sources,
-        )
+        Self::expand_loading(&[], |sources, modules| {
+            Expander::with_prelude(sources, modules, prelude)
+        })
+        .map(|(rules, _)| rules)
     }
 
     pub fn expand_from_sources() -> Result<Self, RuleFailure> {
-        let (mut sources, loader) = Self::loader_sources();
-        let expander = Expander::new(&mut sources, Self::module_sources());
-        Self::finish(
-            expander.expand(ModulePath::new(Self::LOADER), loader),
-            sources,
-        )
+        Self::expand_loading(&[], |sources, modules| Expander::new(sources, modules))
+            .map(|(rules, _)| rules)
     }
 
-    fn loader_sources() -> (SourceMap, SourceId) {
+    pub(super) fn expand_with_export(
+        loaded: &str,
+        export: RuleExport,
+        expander: impl for<'s> FnOnce(&'s mut SourceMap, ModuleSources) -> Expander<'s>,
+    ) -> Result<(Self, BindingId), RuleFailure> {
+        let (rules, loader) = Self::expand_loading(&[loaded], expander)?;
+        match Self::export_named(&rules.program, export.module, export.name) {
+            Some(entry) => Ok((rules, entry)),
+            None => {
+                let missing = LintProblems::missing_export(
+                    export.module,
+                    export.name,
+                    Span::new(loader, 0..0),
+                );
+                Err(rules.failure(missing))
+            }
+        }
+    }
+
+    fn expand_loading(
+        modules: &[&str],
+        expander: impl for<'s> FnOnce(&'s mut SourceMap, ModuleSources) -> Expander<'s>,
+    ) -> Result<(Self, SourceId), RuleFailure> {
+        let (mut sources, loader) = Self::loader_sources(modules);
+        let expanded = expander(&mut sources, Self::module_sources())
+            .expand(ModulePath::new(Self::LOADER), loader);
+        Self::finish(expanded, sources).map(|rules| (rules, loader))
+    }
+
+    fn loader_sources(modules: &[&str]) -> (SourceMap, SourceId) {
         let mut sources = SourceMap::default();
-        let uses = format!(
+        let mut uses = format!(
             "(use {} {} {} {} {})",
             ModuleSources::LINT,
             Self::CHECK,
@@ -56,6 +80,9 @@ impl RuleProgram {
             Self::KEPT,
             Self::RULES
         );
+        for module in modules {
+            uses.push_str(&format!("\n(use {module})"));
+        }
         let loader = sources.add(Self::LOADER, uses);
         (sources, loader)
     }
@@ -82,10 +109,10 @@ impl RuleProgram {
             .map(|(binding, value)| (binding, Rc::clone(value)))
             .collect();
         let entries = RuleEntries {
-            check: Self::export_named(&program, Self::CHECK),
-            check_module: Self::export_named(&program, Self::CHECK_MODULE),
-            kept: Self::export_named(&program, Self::KEPT),
-            names: Self::export_named(&program, Self::RULES),
+            check: Self::rule_entry(&program, Self::CHECK),
+            check_module: Self::rule_entry(&program, Self::CHECK_MODULE),
+            kept: Self::rule_entry(&program, Self::KEPT),
+            names: Self::rule_entry(&program, Self::RULES),
         };
         Self {
             sources,
@@ -95,13 +122,17 @@ impl RuleProgram {
         }
     }
 
-    fn export_named(program: &Program, name: &str) -> BindingId {
+    fn rule_entry(program: &Program, name: &str) -> BindingId {
+        Self::export_named(program, ModuleSources::LINT, name)
+            .expect("the lint module exports its entries")
+    }
+
+    fn export_named(program: &Program, module: &str, name: &str) -> Option<BindingId> {
         program
             .modules
             .iter()
-            .filter(|module| module.path.as_str() == ModuleSources::LINT)
-            .find_map(|module| module.exports().binding_named(name, &program.bindings))
-            .expect("the lint module exports its entries")
+            .filter(|candidate| candidate.path.as_str() == module)
+            .find_map(|candidate| candidate.exports().binding_named(name, &program.bindings))
     }
 
     pub fn entries(&self) -> RuleEntries {
@@ -135,9 +166,13 @@ mod tests {
 
     use super::RuleProgram;
     use crate::core::BindingArena;
+    use crate::expand::Expander;
     use crate::lint::bound_names::BoundNames;
+    use crate::lint::example_question::ExampleQuestion;
     use crate::lint::expanded_source::ExpandedSource;
+    use crate::lint::rule_export::RuleExport;
     use crate::lint::rule_host::{ProgramFacts, RuleHost};
+    use crate::modules::ModuleSources;
     use crate::reader::{Form, Symbol};
 
     struct ScopesFixture {
@@ -184,6 +219,24 @@ mod tests {
                 .rule_names(self.source.span_of("(def one 1)"))
                 .expect("the rule names evaluate")
         }
+    }
+
+    #[test]
+    fn the_example_question_is_found_through_its_module_exports() {
+        assert!(ExampleQuestion::expand_from_sources().is_ok());
+    }
+
+    #[test]
+    fn a_missing_export_is_a_rule_failure() {
+        let missing = RuleExport {
+            module: ModuleSources::EXAMPLES,
+            name: "no-such-question",
+        };
+        let expanded =
+            RuleProgram::expand_with_export(ModuleSources::TEST, missing, |sources, modules| {
+                Expander::new(sources, modules)
+            });
+        assert!(expanded.is_err());
     }
 
     #[test]

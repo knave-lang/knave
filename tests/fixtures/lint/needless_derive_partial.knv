@@ -1,0 +1,8 @@
+(defstruct point
+  :x int
+  :y int)
+
+(derive point clone debug)
+
+(defn main ()
+  (println (:x (->point :x 1 :y 2))))

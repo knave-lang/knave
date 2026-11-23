@@ -19,6 +19,13 @@ impl<'w> DeclarationEdits<'w> {
         })
     }
 
+    pub fn without_derives(&self, removed: &[BindingId]) -> Vec<CoreModule> {
+        self.edited(|item| match &item.kind {
+            ItemKind::Derive(target, _, _) if removed.contains(target) => None,
+            _ => Some(item.clone()),
+        })
+    }
+
     pub fn passing_by_value(
         &self,
         rewrites: &FxHashMap<BindingId, ByValueSignature>,

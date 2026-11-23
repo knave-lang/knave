@@ -1,77 +1,34 @@
-use std::path::PathBuf;
-
-use super::declaration_key::DeclarationKey;
 use super::declared_signature::DeclaredSignature;
 use super::function_declaration::FunctionDeclaration;
-use super::library_declarations::LibraryDeclarations;
-use crate::core::{BindingId, CoreModule, ExprKind, Item, ItemKind, ModulePath};
+use super::written_program::WrittenProgram;
+use crate::core::{BindingId, CoreModule, ExprKind, Item, ItemKind};
 use crate::expand::Program;
 
 pub struct DeclaredFunctions<'p> {
     program: &'p Program,
+    written: WrittenProgram<'p>,
 }
 
 impl<'p> DeclaredFunctions<'p> {
     pub fn new(program: &'p Program) -> Self {
-        Self { program }
+        Self {
+            program,
+            written: WrittenProgram::new(program),
+        }
     }
 
     pub fn candidates(&self) -> Vec<FunctionDeclaration> {
         self.program
             .project_modules()
-            .flat_map(|module| self.module_declarations(module))
+            .flat_map(|module| self.declared_in(module))
             .collect()
     }
 
-    pub fn library_declarations(&self, removable: &[BindingId]) -> Vec<LibraryDeclarations> {
-        self.library_modules()
-            .map(|module| LibraryDeclarations {
-                module: module.path.clone(),
-                names: self
-                    .module_declarations(module)
-                    .into_iter()
-                    .filter(|declaration| removable.contains(&declaration.function))
-                    .map(|declaration| self.name(declaration.function))
-                    .collect(),
-            })
-            .filter(|library| !library.names.is_empty())
-            .collect()
-    }
-
-    pub fn named_in(&self, path: &ModulePath, names: &[String]) -> Vec<FunctionDeclaration> {
-        self.program
-            .modules
-            .iter()
-            .filter(|module| &module.path == path)
-            .flat_map(|module| self.module_declarations(module))
-            .filter(|declaration| names.contains(&self.name(declaration.function)))
-            .collect()
-    }
-
-    pub fn key(&self, declaration: &FunctionDeclaration, file: Option<PathBuf>) -> DeclarationKey {
-        let function = self.name(declaration.function);
-        match file {
-            Some(file) => DeclarationKey::InFile(file, function),
-            None => DeclarationKey::InModule(declaration.module.clone(), function),
-        }
-    }
-
-    pub fn name(&self, function: BindingId) -> String {
-        self.program.bindings.get(function).name().to_string()
-    }
-
-    fn library_modules(&self) -> impl Iterator<Item = &'p CoreModule> {
-        let entry = self.program.entry.module;
-        self.program
-            .project_modules()
-            .filter(move |module| module.id != entry)
-    }
-
-    fn module_declarations(&self, module: &CoreModule) -> Vec<FunctionDeclaration> {
+    pub fn declared_in(&self, module: &CoreModule) -> Vec<FunctionDeclaration> {
         module
             .items
             .iter()
-            .filter(|item| self.is_written(item) && Self::is_type_form(module, item))
+            .filter(|item| self.written.is_written(item) && Self::is_type_form(module, item))
             .filter_map(|item| Self::written_declaration(module, item))
             .collect()
     }
@@ -99,13 +56,6 @@ impl<'p> DeclaredFunctions<'p> {
                 }
                 _ => None,
             })
-    }
-
-    fn is_written(&self, item: &Item) -> bool {
-        self.program
-            .call_origins
-            .introducing_macro(item.span)
-            .is_none()
     }
 
     fn is_type_form(module: &CoreModule, item: &Item) -> bool {

@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/lint/needless_type/with_needless_derive.knv
+---
+warning[L0809]: `total` does not need its `type` declaration
+ --> lint/needless_type/with_needless_derive.knv:7:1
+  |
+7 | (type total (fn ((ref point)) int))
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives this type
+  |
+help: remove the declaration
+  |
+7 - (type total (fn ((ref point)) int))
+  |
+  = note: run `knave doc L0809` for an explanation

@@ -7,7 +7,8 @@ use knave::diagnostic::{DiagnosticCode, DiagnosticRenderer, Diagnostics};
 use knave::expand::{Expander, Program};
 use knave::language::Language;
 use knave::lint::{
-    LintDefaults, LintedProgram, Linter, NeedlessTypeLint, ProgramPosition, ProgramRun, RuleProgram,
+    ExampleQuestion, ExampleRuns, LintDefaults, LintedProgram, Linter, NeedlessDeriveRule,
+    ProgramPosition, ProgramRun, ProjectLibrary, RuleFailure, RuleProgram, TrialLevels, TrialLints,
 };
 use knave::modules::ModuleSources;
 use knave::project::LintLevel;
@@ -53,27 +54,36 @@ impl LintFixture {
         };
         let mut warnings = std::mem::take(&mut typed.warnings);
         warnings.extend(self.lint_warnings(&program));
-        warnings.extend(self.needless_types(&mut program, typed));
+        warnings.extend(self.trial_warnings(&mut program, &typed));
         warnings
     }
 
-    fn needless_types(&mut self, program: &mut Program, typed: TypedProgram) -> Diagnostics {
-        let level = LintDefaults::level_of(
-            &DiagnosticCode::NEEDLESS_TYPE,
-            self.written_needless_type_level(),
-        );
-        let mut runs = FixtureRuns {
+    fn trial_warnings(&mut self, program: &mut Program, typed: &TypedProgram) -> Diagnostics {
+        let levels = TrialLevels {
+            needless_type: LintDefaults::level_of(
+                &DiagnosticCode::NEEDLESS_TYPE,
+                self.written_needless_type_level(),
+            ),
+            needless_derive: LintDefaults::level_of(&DiagnosticCode::NEEDLESS_DERIVE, None),
+        };
+        let derive = NeedlessDeriveRule::new(ProjectLibrary::Unpublished);
+        TrialLints::new(&mut self.runs(), derive).warnings(
+            levels,
+            &mut [LintedProgram {
+                program,
+                declared: typed,
+                examples: ExampleRuns::NoModule,
+                holds_unlinted_example: false,
+            }],
+        )
+    }
+
+    fn runs(&mut self) -> FixtureRuns<'_> {
+        FixtureRuns {
             sources: &mut self.sources,
             path: &self.path,
             entry: self.entry,
-        };
-        NeedlessTypeLint::new(&mut runs).warnings(
-            level,
-            &mut [LintedProgram {
-                program,
-                declared: &typed,
-            }],
-        )
+        }
     }
 
     fn written_needless_type_level(&self) -> Option<LintLevel> {
@@ -150,5 +160,13 @@ impl ProgramRun for FixtureRuns<'_> {
 
     fn source_path(&self, source: SourceId) -> Option<PathBuf> {
         fs::canonicalize(self.sources.file(source).name()).ok()
+    }
+
+    fn example_question(&mut self) -> Result<ExampleQuestion, RuleFailure> {
+        ExampleQuestion::expand_from_sources()
+    }
+
+    fn sources(&self) -> &SourceMap {
+        self.sources
     }
 }

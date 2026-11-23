@@ -5,7 +5,8 @@ use super::spanned_forms::SpannedForms;
 use std::rc::Rc;
 
 use crate::core::{
-    BindingId, BindingKind, DefinitionForm, Import, ImportedName, KernelForm, Provenance,
+    BindingId, BindingKind, CoreModule, DefinitionForm, Import, ImportedName, KernelForm,
+    Provenance,
 };
 use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
@@ -47,16 +48,10 @@ impl<'p> ModuleTable<'p> {
             .map(|definition| self.definition(definition, span))
             .collect();
         let imports = recorded.iter().map(|import| self.import(import)).collect();
-        let notes = module
-            .lint_facts
-            .notes()
-            .iter()
-            .map(|(key, notes)| Self::notes(key, notes, span))
-            .collect();
         let parts = vec![
             SpannedForms::list(definitions, span),
             SpannedForms::list(imports, span),
-            SpannedForms::list(notes, span),
+            Self::notes_of(module, span),
         ];
         let table = ListNesting::form_list(parts, span).map_err(|deep| deep.at(span))?;
         Ok(Some(RuleTarget::for_module(
@@ -64,6 +59,21 @@ impl<'p> ModuleTable<'p> {
             module.path.as_str().into(),
             span,
         )))
+    }
+
+    pub fn of_notes(module: &CoreModule) -> Option<Form> {
+        let span = module.items.first()?.span;
+        Some(Self::notes_of(module, span))
+    }
+
+    fn notes_of(module: &CoreModule, span: Span) -> Form {
+        let notes = module
+            .lint_facts
+            .notes()
+            .iter()
+            .map(|(key, notes)| Self::notes(key, notes, span))
+            .collect();
+        SpannedForms::list(notes, span)
     }
 
     fn notes(key: &str, notes: &[Form], span: Span) -> Form {

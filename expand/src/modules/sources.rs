@@ -48,6 +48,7 @@ impl ModuleSources {
     pub const PROJECT_SHAPES: &str = "prelude/project-file";
     pub const DOCUMENTATION: &str = "prelude/documentation";
     pub const DOCSTRINGS: &str = "prelude/internal/docstrings";
+    pub const EXAMPLES: &str = "prelude/internal/examples";
     pub const LINT: &str = "prelude/lint";
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
@@ -110,8 +111,12 @@ impl ModuleSources {
     ];
     // A 28th entry in `PRELUDE_FILES` stops LLVM from unrolling its scan, which costs every
     // command thousands of instructions, so the tool modules live in their own list.
-    const TOOL_FILES: [(&str, &str); 2] = [
+    const TOOL_FILES: [(&str, &str); 3] = [
         (Self::LINT, include_str!("../../prelude/lint.knv")),
+        (
+            Self::EXAMPLES,
+            include_str!("../../prelude/internal/examples.knv"),
+        ),
         (
             "prelude/internal/links",
             include_str!("../../prelude/internal/links.knv"),

@@ -1,0 +1,13 @@
+(defstruct point
+  :x int
+  :y int)
+
+(derive point clone partial-eq)
+
+(def kind
+  (rust "\"moved\""
+    (where (a) (fn ((ref a)) (ref str)))
+    (copy "\"copied\"")))
+
+(defn main ()
+  (println (kind (->point :x 1 :y 2))))

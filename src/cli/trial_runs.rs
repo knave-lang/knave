@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use super::embedded_prelude::EmbeddedPrelude;
 use super::entry_span::EntrySpan;
 use super::module_alone::ModuleAlone;
 use super::program_file::ProgramFile;
@@ -8,8 +9,8 @@ use super::trial_stages::TrialStages;
 use crate::core::ModulePath;
 use crate::diagnostic::Diagnostics;
 use crate::expand::Program;
-use crate::lint::{ProgramPosition, ProgramRun};
-use crate::source::SourceId;
+use crate::lint::{ExampleQuestion, ProgramPosition, ProgramRun, RuleFailure};
+use crate::source::{SourceId, SourceMap};
 use crate::types::TypedProgram;
 
 pub struct TrialRuns<'t> {
@@ -40,5 +41,13 @@ impl ProgramRun for TrialRuns<'_> {
 
     fn source_path(&self, source: SourceId) -> Option<PathBuf> {
         ProgramFile::canonical(Path::new(self.terminal.source_file(source).name()))
+    }
+
+    fn example_question(&mut self) -> Result<ExampleQuestion, RuleFailure> {
+        ExampleQuestion::expand_on(EmbeddedPrelude::state())
+    }
+
+    fn sources(&self) -> &SourceMap {
+        self.terminal.source_report().sources()
     }
 }

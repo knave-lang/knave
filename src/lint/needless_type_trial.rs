@@ -1,5 +1,4 @@
 use std::borrow::Borrow;
-use std::mem;
 
 use rustc_hash::FxHashMap;
 
@@ -11,7 +10,8 @@ use super::function_declaration::FunctionDeclaration;
 use super::program_run::ProgramRun;
 use super::removal_trial::{RemovalTrial, TrialVerdict};
 use super::trial_face::TrialFace;
-use crate::core::{BindingId, CoreModule, ItemKind};
+use super::trial_program::TrialProgram;
+use crate::core::{BindingId, CoreModule};
 use crate::diagnostic::Diagnostics;
 use crate::expand::Program;
 use crate::types::TypedProgram;
@@ -21,16 +21,19 @@ pub type ByValueRewrites = FxHashMap<BindingId, ByValueSignature>;
 pub struct NeedlessTypeTrial<'r, Run: ProgramRun> {
     run: &'r mut Run,
     program: TrialProgram<'r>,
+    declarations: Vec<FunctionDeclaration>,
     declared: TrialFace<&'r TypedProgram>,
 }
 
 impl<'r, Run: ProgramRun> NeedlessTypeTrial<'r, Run> {
     pub fn new(run: &'r mut Run, program: &'r mut Program, declared: &'r TypedProgram) -> Self {
+        let declarations = DeclaredFunctions::new(program).candidates();
         let program = TrialProgram::new(program);
-        let declared = TrialFace::new(declared, &program.definitions);
+        let declared = TrialFace::new(declared, program.definitions());
         Self {
             run,
             program,
+            declarations,
             declared,
         }
     }
@@ -38,13 +41,12 @@ impl<'r, Run: ProgramRun> NeedlessTypeTrial<'r, Run> {
     fn face_of(&mut self, modules: Vec<CoreModule>) -> Result<TrialFace, Diagnostics> {
         self.program
             .checked_with(modules, &mut *self.run)
-            .map(|typed| TrialFace::new(typed, &self.program.definitions))
+            .map(|typed| TrialFace::new(typed, self.program.definitions()))
     }
 
     fn rewrites_for(&self, inferred: &TypedProgram, removed: &[BindingId]) -> ByValueRewrites {
         let signatures = ByValueSignatures::new(self.declared.typed(), inferred);
-        self.program
-            .declarations
+        self.declarations
             .iter()
             .filter(|declaration| removed.contains(&declaration.function))
             .filter_map(|declaration| {
@@ -60,11 +62,11 @@ impl<'r, Run: ProgramRun> NeedlessTypeTrial<'r, Run> {
         rewrites: ByValueRewrites,
         removed: &[BindingId],
     ) -> TrialVerdict<ByValueRewrites> {
-        let modules = DeclarationEdits::new(&self.program.written).passing_by_value(&rewrites);
+        let modules = DeclarationEdits::new(self.program.written()).passing_by_value(&rewrites);
         let Ok(mut expected) = self.face_of(modules) else {
             return TrialVerdict::Rejected(Vec::new());
         };
-        let comparison = FaceComparison::new(&*self.run, &self.program.definitions);
+        let comparison = FaceComparison::new(&*self.run, self.program.definitions());
         comparison
             .verdict(&mut expected, stripped, removed)
             .keeping(rewrites)
@@ -75,7 +77,7 @@ impl<Run: ProgramRun> RemovalTrial for NeedlessTypeTrial<'_, Run> {
     type Kept = ByValueRewrites;
 
     fn verdict(&mut self, removed: &[BindingId]) -> TrialVerdict<ByValueRewrites> {
-        let modules = DeclarationEdits::new(&self.program.written).without(removed);
+        let modules = DeclarationEdits::new(self.program.written()).without(removed);
         let mut stripped = match self.face_of(modules) {
             Ok(stripped) => stripped,
             Err(errors) => return TrialVerdict::Rejected(self.program.holding(&errors, removed)),
@@ -84,66 +86,10 @@ impl<Run: ProgramRun> RemovalTrial for NeedlessTypeTrial<'_, Run> {
         if !rewrites.is_empty() {
             return self.by_value_verdict(&mut stripped, rewrites, removed);
         }
-        let comparison = FaceComparison::new(&*self.run, &self.program.definitions);
+        let comparison = FaceComparison::new(&*self.run, self.program.definitions());
         comparison
             .verdict(&mut self.declared, &mut stripped, removed)
             .keeping(rewrites)
-    }
-}
-
-struct TrialProgram<'p> {
-    program: &'p mut Program,
-    written: Vec<CoreModule>,
-    definitions: Vec<BindingId>,
-    declarations: Vec<FunctionDeclaration>,
-}
-
-impl<'p> TrialProgram<'p> {
-    fn new(program: &'p mut Program) -> Self {
-        let written = program.modules.clone();
-        let definitions = program
-            .project_modules()
-            .flat_map(CoreModule::definitions)
-            .map(|(binding, _)| binding)
-            .collect();
-        let declarations = DeclaredFunctions::new(program).candidates();
-        Self {
-            program,
-            written,
-            definitions,
-            declarations,
-        }
-    }
-
-    fn checked_with(
-        &mut self,
-        modules: Vec<CoreModule>,
-        run: &mut impl ProgramRun,
-    ) -> Result<TypedProgram, Diagnostics> {
-        let written = mem::replace(&mut self.program.modules, modules);
-        let typed = run.check(self.program);
-        self.program.modules = written;
-        typed
-    }
-
-    fn holding(&self, errors: &Diagnostics, removed: &[BindingId]) -> Vec<BindingId> {
-        self.written
-            .iter()
-            .flat_map(|module| &module.items)
-            .filter_map(|item| match &item.kind {
-                ItemKind::Def(function, _) if removed.contains(function) => {
-                    Some((*function, item.span))
-                }
-                _ => None,
-            })
-            .filter(|(_, span)| {
-                errors
-                    .into_iter()
-                    .flat_map(|error| error.labels())
-                    .any(|label| span.contains(label.span()))
-            })
-            .map(|(function, _)| function)
-            .collect()
     }
 }
 

@@ -6,7 +6,7 @@
 
 (type title-len
   (where ((a (has :title (ref str))))
-    (fn ((ref a)) usize)))
+    (fn ((ref a)) int)))
 
 (defn title-len (x) (len (:title x)))
 

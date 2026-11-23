@@ -6,7 +6,7 @@
 
 (type measure
   (where ((a (has :title string)))
-    (fn ((ref a)) usize)))
+    (fn ((ref a)) int)))
 
 (defn measure (x) (len (:title x)))
 

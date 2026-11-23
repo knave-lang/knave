@@ -1,0 +1,20 @@
+(defstruct cat
+  :age int
+  :tag string)
+
+(defstruct dog
+  :age int
+  :tag string)
+
+(type older
+  (where ((a (has :age int)))
+    (fn ((ref (vec a))) int)))
+
+(defn older (xs)
+  (count (filter (iter xs)
+           (fn (x) (> (:age x) 1)))))
+
+(defn main ()
+  (println (older (ref (vec (->cat 1 (str "t"))
+                            (->cat 2 (str "u"))))))
+  (println (older (ref (vec (->dog 3 (str "v")))))))

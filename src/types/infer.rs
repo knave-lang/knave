@@ -2770,9 +2770,8 @@ impl TypeChecker {
             other => Err(
                 FieldBound::new(&self.unifier, &self.declarations).unbound_read(
                     &self.display().show(&other),
-                    &other,
-                    &label.name,
-                    value.span,
+                    value,
+                    label,
                 ),
             ),
         }

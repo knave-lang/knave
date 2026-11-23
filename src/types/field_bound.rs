@@ -4,7 +4,9 @@ use super::bounded_owner_problems::BoundedOwnerProblems;
 use super::declarations::Declarations;
 use super::problems::TypeProblems;
 use super::ty::{GenericId, Type};
+use super::typed::TypedExpr;
 use super::unifier::Unifier;
+use crate::core::FieldLabel;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
@@ -34,13 +36,14 @@ impl<'c> FieldBound<'c> {
     pub(super) fn unbound_read(
         &self,
         shown: &str,
-        owner: &Type,
-        field: &str,
-        span: Span,
+        value: &TypedExpr,
+        label: &FieldLabel,
     ) -> Diagnostic {
-        match self.bound_fields(owner) {
-            Some(fields) => BoundedOwnerProblems::new(shown, &fields).unbound_read(field, span),
-            None => TypeProblems::no_fields(shown, span),
+        match self.bound_fields(&value.ty) {
+            Some(fields) => {
+                BoundedOwnerProblems::new(shown, &fields).unbound_read(label, value.span)
+            }
+            None => TypeProblems::no_fields(shown, value.span),
         }
     }
 

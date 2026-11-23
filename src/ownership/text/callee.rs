@@ -1,6 +1,7 @@
 use super::call_target::CallTarget;
 use super::callee_scheme::CalleeScheme;
 use super::closure_slots::ClosureUse;
+use super::inline_declaration::InlineDeclaration;
 use super::inline_rust::InlineRust;
 use super::map_queries::MapQueries;
 use super::template_call::TemplateCall;
@@ -19,10 +20,15 @@ impl Callee {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
                 program.definition(*binding).map(Self::defined)
             }
-            TypedExprKind::Leaf(TypedLeaf::Rust(_)) => Some(Box::new(InlineRust::new(
-                CalleeScheme::new(&callee.ty, &[]),
-                Self::map_queries(callee, program),
-            ))),
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
+                Some(match InlineDeclaration::of(&template.type_expr) {
+                    Some(declared) => Box::new(TemplateCall::new(CalleeScheme::written(declared))),
+                    None => Box::new(InlineRust::new(
+                        CalleeScheme::new(&callee.ty, &[]),
+                        Self::map_queries(callee, program),
+                    )),
+                })
+            }
             _ => None,
         }
     }

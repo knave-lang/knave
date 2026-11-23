@@ -48,7 +48,7 @@ impl<'a> ResultBorrows<'a> {
         ParameterJoins::of_function(self, lambda, &TailCalls::of(Some(function), lambda))
     }
 
-    pub fn definition_stores(&self, definition: BindingId) -> Rc<DefinitionStores> {
+    fn definition_stores(&self, definition: BindingId) -> Rc<DefinitionStores> {
         if let Some(stores) = self.stores_by_definition.borrow().get(&definition) {
             return Rc::clone(stores);
         }

@@ -49,6 +49,9 @@ The project owner ruled on the details:
 - An untracked owned file counts as uncommitted. A file that git ignores gets no check. Outside a git work tree there is no check.
 - On a refusal, `knave upgrade` changes no file, `project.knv` included, names each file with uncommitted changes, and exits 1.
 - The saved copies of old texts go, with the prepush check that kept them complete.
+- Git failures: `knave upgrade` runs one `git status` from the project root, with `LC_ALL=C`. When `git` cannot start, it warns that it could not check for uncommitted changes, and goes on. When git exits nonzero and its error says `not a git repository`, there is no check, as outside a work tree. On every other nonzero exit, it refuses: it prints git's error, changes no file, `project.knv` included, and exits 1.
+- Unreadable files: an owned whole file is compared as bytes, so a file that is not UTF-8 differs and is rewritten. A file that cannot be read is reported with its name, as a failed write is, and the command exits nonzero. A `.gitattributes` that is not UTF-8 is reported the same way and stays byte for byte.
+- Line endings: an appended linguist line takes the line ending of the file's first line, so a CRLF file stays CRLF.
 
 ## Rejected options and why
 

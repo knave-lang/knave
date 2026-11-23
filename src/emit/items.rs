@@ -19,7 +19,6 @@ use super::mutable_locals::MutableLocals;
 use super::opaque_borrows::OpaqueBorrows;
 use super::open_literals::OpenLiterals;
 use super::plan::{EmitPlan, ItemInfo, ItemKind};
-use super::result_borrows::{FunctionFlows, LambdaFlows, ResultBorrows, StoredFlows};
 use super::reused_locals::ReusedLocals;
 use super::runtime::RuntimeModule;
 use super::signature_borrows::SignatureBorrows;
@@ -29,6 +28,7 @@ use super::unlent_parameters::UnlentParameters;
 use super::untied_borrows::{ShownMethod, UntiedBorrows};
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
+use crate::ownership::{FunctionFlows, LambdaFlows, ResultBorrows, StoredFlows};
 use crate::source::Span;
 use crate::types::{
     Bound, GenericId, GenericParam, Lifetime, ReceiverKind, Scheme, Type, TypedAssociatedType,

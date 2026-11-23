@@ -20,19 +20,19 @@
 
 (def definition-name
   (fn (owner)
-    (owner (fn (name noun spell code) name))))
+    (owner (fn (name _noun _spell _code) name))))
 
 (def definition-noun
   (fn (owner)
-    (owner (fn (name noun spell code) noun))))
+    (owner (fn (_name noun _spell _code) noun))))
 
 (def definition-spelling
   (fn (owner)
-    (owner (fn (name noun spell code) spell))))
+    (owner (fn (_name _noun spell _code) spell))))
 
 (def definition-code
   (fn (owner)
-    (owner (fn (name noun spell code) code))))
+    (owner (fn (_name _noun _spell code) code))))
 
 (def call-signature
   (fn (name names defaults) (list name names defaults)))

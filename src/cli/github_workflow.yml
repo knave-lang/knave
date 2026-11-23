@@ -1,3 +1,4 @@
+# `knave upgrade` rewrites this file. Put the project's own steps in another workflow.
 name: Knave
 
 on:

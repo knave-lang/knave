@@ -9020,6 +9020,21 @@ fn new_writes_a_workflow_that_holds_no_version() {
 }
 
 #[test]
+fn new_writes_a_workflow_that_says_knave_upgrade_rewrites_it() {
+    let sandbox = Sandbox::new("new_workflow_owned");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let workflow = sandbox.contents(&format!("demo-app/{WORKFLOW_FILE}"));
+    assert!(
+        workflow.starts_with(
+            "# `knave upgrade` rewrites this file. Put the project's own steps in another workflow.\n"
+        ),
+        "{workflow}"
+    );
+}
+
+#[test]
 fn new_writes_a_workflow_that_reads_the_version_from_the_project_file() {
     let sandbox = Sandbox::new("new_workflow_reads_version");
     sandbox

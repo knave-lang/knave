@@ -1,0 +1,10 @@
+(defstruct user
+  :name str)
+
+(defn main ()
+  (local a (->user :name "ana"))
+  (local b
+    (->user :name (as-str (str "u" 1))))
+  (local read (:name a))
+  (local beside (if true (:name b) "x"))
+  (println read beside))

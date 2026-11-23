@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/read_of_a_mixed_field_is_lent_mixed.knv
+---
+struct user
+  name: mixed, written a view
+defn main
+  local read: lent mixed, written a view
+  local beside: a view

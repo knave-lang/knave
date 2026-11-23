@@ -47,6 +47,10 @@ impl Transfer {
     pub fn carry(self, text: ReachingText) -> ReachingText {
         match self {
             Self::Move => text,
+            Self::Refer if text.holds(ReachingText::OWNED) && text.holds(ReachingText::STATIC) => {
+                let referent = ReachingText::OWNED.with(ReachingText::STATIC);
+                text.without(referent).with(ReachingText::LENT_MIXED)
+            }
             Self::Refer => Self::replace(text, ReachingText::OWNED, ReachingText::LENT),
             Self::Reborrow => Self::replace(
                 text,
@@ -60,7 +64,9 @@ impl Transfer {
             ),
             Self::View => Self::replace(
                 text,
-                ReachingText::OWNED.with(ReachingText::LENT),
+                ReachingText::OWNED
+                    .with(ReachingText::LENT)
+                    .with(ReachingText::LENT_MIXED),
                 ReachingText::BORROWED,
             ),
         }
@@ -93,6 +99,16 @@ mod tests {
         assert_eq!(
             Transfer::Refer.carry(ReachingText::OWNED),
             ReachingText::LENT
+        );
+    }
+
+    #[test]
+    fn a_reference_to_mixed_text_is_lent_mixed() {
+        let mixed = ReachingText::OWNED.with(ReachingText::STATIC);
+        assert_eq!(Transfer::Refer.carry(mixed), ReachingText::LENT_MIXED);
+        assert_eq!(
+            Transfer::View.carry(ReachingText::LENT_MIXED),
+            ReachingText::BORROWED
         );
     }
 

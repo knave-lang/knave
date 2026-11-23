@@ -55,6 +55,8 @@ impl Representation {
     pub fn of_local(text: ReachingText) -> Self {
         if text.is_only(ReachingText::LENT) {
             Self::Lent
+        } else if text.is_only(ReachingText::LENT_MIXED) {
+            Self::LentMixed
         } else {
             Self::of_held(text)
         }
@@ -64,7 +66,7 @@ impl Representation {
         match (
             variable.holds(ReachingText::OWNED),
             variable.holds(ReachingText::LENT),
-            variable.holds(ReachingText::STATIC),
+            variable.holds(ReachingText::STATIC.with(ReachingText::LENT_MIXED)),
         ) {
             (false, _, _) => Self::View,
             (true, false, true) => Self::LentMixed,
@@ -79,9 +81,11 @@ impl Representation {
     pub fn refuses(self, arriving: ReachingText) -> bool {
         match self {
             Self::Owned | Self::Mixed => arriving.is_short_lived(),
-            Self::Lent => {
-                arriving.holds(ReachingText::STATIC.with(ReachingText::SHORT_LIVED_VIEWS))
-            }
+            Self::Lent => arriving.holds(
+                ReachingText::STATIC
+                    .with(ReachingText::SHORT_LIVED_VIEWS)
+                    .with(ReachingText::LENT_MIXED),
+            ),
             Self::LentMixed => arriving.holds(ReachingText::SHORT_LIVED_VIEWS),
             Self::View | Self::StaticView | Self::Mutable | Self::Generic => false,
         }
@@ -111,6 +115,18 @@ mod tests {
     const STATIC: ReachingText = ReachingText::STATIC;
     const BORROWED: ReachingText = ReachingText::BORROWED;
     const LENT: ReachingText = ReachingText::LENT;
+
+    #[test]
+    fn a_local_given_only_a_lent_mixed_value_is_lent_mixed() {
+        assert_eq!(
+            Representation::of_local(ReachingText::LENT_MIXED),
+            Representation::LentMixed
+        );
+        assert_eq!(
+            Representation::of_local(ReachingText::LENT_MIXED.with(STATIC)),
+            Representation::View
+        );
+    }
 
     #[test]
     fn a_field_with_nothing_stored_is_owned() {

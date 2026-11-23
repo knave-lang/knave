@@ -254,8 +254,7 @@ impl ModuleSources {
     }
 
     pub fn is_embedded_prelude(path: &ModulePath) -> bool {
-        let is_named = |(module, _): &(&str, &str)| *module == path.as_str();
-        Self::PRELUDE_FILES.iter().any(is_named) || Self::TOOL_FILES.iter().any(is_named)
+        EmbeddedModules::contains(path)
     }
 
     pub fn is_written(path: &ModulePath) -> bool {
@@ -379,14 +378,26 @@ impl ModuleSources {
     }
 }
 
-pub struct PublicPrelude;
+pub struct EmbeddedModules;
 
-impl PublicPrelude {
-    pub fn paths() -> Vec<String> {
+impl EmbeddedModules {
+    pub fn paths() -> impl Iterator<Item = &'static str> {
         ModuleSources::PRELUDE_FILES
             .iter()
             .chain(&ModuleSources::TOOL_FILES)
             .map(|(module, _)| *module)
+    }
+
+    pub fn contains(path: &ModulePath) -> bool {
+        Self::paths().any(|module| module == path.as_str())
+    }
+}
+
+pub struct PublicPrelude;
+
+impl PublicPrelude {
+    pub fn paths() -> Vec<String> {
+        EmbeddedModules::paths()
             .filter(|module| !module.starts_with(ModuleSources::INTERNAL_DIRECTORY))
             .map(String::from)
             .collect()
@@ -397,7 +408,7 @@ impl PublicPrelude {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{ModuleSources, PublicPrelude};
+    use super::{EmbeddedModules, ModuleSources, PublicPrelude};
     use crate::core::ModulePath;
     use crate::language::Language;
     use crate::modules::ModuleSource;
@@ -469,6 +480,14 @@ mod tests {
             Some(ModuleSource::Text { .. })
         ));
         assert!(PublicPrelude::paths().contains(&ModuleSources::LINT.to_string()));
+    }
+
+    #[test]
+    fn only_a_module_the_compiler_embeds_is_embedded() {
+        let embedded = |path: &str| EmbeddedModules::contains(&ModulePath::new(path));
+        assert!(embedded("prelude/internal/links"));
+        assert!(!embedded("prelude/tests/text"));
+        assert!(!embedded("geometry"));
     }
 
     #[test]

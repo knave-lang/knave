@@ -42,6 +42,8 @@ pub use real_path::RealPath;
 pub use registry::{ModuleRecord, ModuleRegistry};
 pub use reserved_module_paths::ReservedModulePaths;
 pub use search_scope::{ProjectTree, SearchScope};
-pub use sources::{HiddenSourceModule, LocalModuleClash, ModuleSources, PublicPrelude};
+pub use sources::{
+    EmbeddedModules, HiddenSourceModule, LocalModuleClash, ModuleSources, PublicPrelude,
+};
 pub use unlisted_library::UnlistedLibrary;
 pub use unnamed_part_target::UnnamedPartTarget;

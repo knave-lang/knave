@@ -1,5 +1,6 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::linted_modules::LintedModules;
 use crate::core::{BindingId, CoreModule, Item, ItemKind, ModuleId, References};
 use crate::diagnostic::Diagnostic;
 use crate::expand::Program;
@@ -23,9 +24,13 @@ struct ReferenceGraph {
 }
 
 impl DefinitionReach {
-    pub fn of(program: &Program, kept: &mut KeptTest<'_>) -> Result<Self, Diagnostic> {
-        let candidates = Self::unkept_candidates(program, kept)?;
-        let graph = ReferenceGraph::of(program);
+    pub fn of(
+        program: &Program,
+        linted: &LintedModules<'_>,
+        kept: &mut KeptTest<'_>,
+    ) -> Result<Self, Diagnostic> {
+        let candidates = Self::unkept_candidates(program, linted, kept)?;
+        let graph = ReferenceGraph::of(program, linted);
         let roots =
             graph.reads.keys().copied().filter(|binding| {
                 !candidates.contains_key(binding) || graph.read_elsewhere(*binding)
@@ -51,10 +56,11 @@ impl DefinitionReach {
 
     fn unkept_candidates(
         program: &Program,
+        linted: &LintedModules<'_>,
         kept: &mut KeptTest<'_>,
     ) -> Result<FxHashMap<BindingId, ModuleId>, Diagnostic> {
         let mut unkept = FxHashMap::default();
-        for module in program.project_modules() {
+        for module in linted.iter() {
             for item in &module.items {
                 if let Some(binding) = Self::candidate(program, module, item) {
                     let span = program.bindings.get(binding).span().unwrap_or(item.span);
@@ -84,13 +90,13 @@ impl DefinitionReach {
 }
 
 impl ReferenceGraph {
-    fn of(program: &Program) -> Self {
+    fn of(program: &Program, linted: &LintedModules<'_>) -> Self {
         let mut graph = Self {
             reads: FxHashMap::default(),
             readers: FxHashMap::default(),
             homes: FxHashMap::default(),
         };
-        for module in program.project_modules() {
+        for module in linted.iter() {
             for (binding, value) in module.definitions() {
                 let reads = References::of(value, &program.bindings).into_globals();
                 for read in &reads {
@@ -139,6 +145,7 @@ mod tests {
     use crate::diagnostic::{Diagnostic, Label};
     use crate::expand::Program;
     use crate::lint::expanded_source::ExpandedSource;
+    use crate::lint::linted_modules::LintedModules;
 
     struct ReachFixture;
 
@@ -156,7 +163,10 @@ mod tests {
         }
 
         fn reach(program: &Program) -> DefinitionReach {
-            DefinitionReach::of(program, &mut |_, _| Ok(false)).expect("no candidate is kept")
+            DefinitionReach::of(program, &LintedModules::of_project(program), &mut |_, _| {
+                Ok(false)
+            })
+            .expect("no candidate is kept")
         }
     }
 
@@ -184,9 +194,11 @@ mod tests {
             "(defn helper () 1)\n(defn keeper () (helper))\n(defn main () (println 1))",
         );
         let program = source.program();
-        let reach = DefinitionReach::of(program, &mut |binding, _| {
-            Ok(program.bindings.get(binding).name() == "keeper")
-        })
+        let reach = DefinitionReach::of(
+            program,
+            &LintedModules::of_project(program),
+            &mut |binding, _| Ok(program.bindings.get(binding).name() == "keeper"),
+        )
         .expect("the kept test answers");
         assert!(reach.unreached_in(program.entry.module).is_empty());
     }
@@ -194,12 +206,16 @@ mod tests {
     #[test]
     fn a_failing_kept_test_fails_the_reach() {
         let source = ExpandedSource::expand("(defn helper () 1)\n(defn main () (println 1))");
-        let reach = DefinitionReach::of(source.program(), &mut |_, span| {
-            Err(Diagnostic::note(
-                "the kept test failed",
-                Label::new(span, "here"),
-            ))
-        });
+        let reach = DefinitionReach::of(
+            source.program(),
+            &LintedModules::of_project(source.program()),
+            &mut |_, span| {
+                Err(Diagnostic::note(
+                    "the kept test failed",
+                    Label::new(span, "here"),
+                ))
+            },
+        );
         assert!(reach.is_err());
     }
 

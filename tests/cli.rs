@@ -11982,6 +11982,21 @@ fn check_and_lint_check_each_lending_librarys_tasks() {
 }
 
 #[test]
+fn check_of_a_task_file_skips_lenders() {
+    LendingLibraries::both("library_task_check_of_a_file")
+        .with_file(
+            "other/project.knv",
+            "(defproject other (exported-tasks chek))\n",
+        )
+        .with_file(
+            "app/tasks/own.knv",
+            "(deftask deploy () (println \"deploying\"))\n",
+        )
+        .compiler_in("app", &["check", "tasks/own.knv"])
+        .assert_exit_code(0);
+}
+
+#[test]
 fn check_applies_no_lending_librarys_lint_levels() {
     LendingLibraries::lint_only("library_task_check_levels")
         .with_file("app/src/main.knv", "(defn main () (println \"app\"))\n")

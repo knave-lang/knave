@@ -5,6 +5,7 @@ use super::need::Need;
 use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
 use super::refusal::RefusalCause;
+use super::refusal_sites::RefusalSites;
 use super::representation::Representation;
 use super::slot::Slot;
 use super::slot_classes::SlotClasses;
@@ -19,9 +20,18 @@ use crate::core::BindingId;
 use crate::source::{SourceId, Span};
 use crate::types::GenericId;
 
-#[derive(Default)]
 pub struct FlowFixture {
     graph: FlowGraph,
+    origin: FlowOrigin,
+}
+
+impl Default for FlowFixture {
+    fn default() -> Self {
+        Self {
+            graph: FlowGraph::default(),
+            origin: FlowOrigin::Written,
+        }
+    }
 }
 
 impl FlowFixture {
@@ -44,8 +54,7 @@ impl FlowFixture {
 
     pub fn text(mut self, kind: ReachingText, (into, at): (SlotOwner, usize)) -> Self {
         let value = TextValue::from(Source::Text(kind), Self::span(at));
-        self.graph
-            .receive(&Slot::from(into), &value, FlowOrigin::Written);
+        self.graph.receive(&Slot::from(into), &value, self.origin);
         self
     }
 
@@ -57,28 +66,12 @@ impl FlowFixture {
     ) -> Self {
         let source = self.node(&from);
         let value = TextValue::from(Source::Slot(source), Self::span(at)).transferred(transfer);
-        self.graph
-            .receive(&Slot::from(into), &value, FlowOrigin::Written);
+        self.graph.receive(&Slot::from(into), &value, self.origin);
         self
     }
 
-    pub fn generated_text(mut self, kind: ReachingText, (into, at): (SlotOwner, usize)) -> Self {
-        let value = TextValue::from(Source::Text(kind), Self::span(at));
-        self.graph
-            .receive(&Slot::from(into), &value, FlowOrigin::Generated);
-        self
-    }
-
-    pub fn generated_flow(
-        mut self,
-        (from, into): (SlotOwner, SlotOwner),
-        transfer: Transfer,
-        at: usize,
-    ) -> Self {
-        let source = self.node(&from);
-        let value = TextValue::from(Source::Slot(source), Self::span(at)).transferred(transfer);
-        self.graph
-            .receive(&Slot::from(into), &value, FlowOrigin::Generated);
+    pub fn in_generated_code(mut self) -> Self {
+        self.origin = FlowOrigin::Generated;
         self
     }
 
@@ -113,8 +106,9 @@ impl FlowFixture {
         let calls = CallResults::of(&self.graph, &classes);
         let facts = TextFacts::spread(&classes, &calls);
         let table = TextDecisionTable::decide(&self.graph, &classes, &facts);
-        TextRefusals::new(&classes, &facts, &table)
-            .found()
+        let found = TextRefusals::new(&classes, &facts, &table).found();
+        RefusalSites::new(&classes, &facts)
+            .placed(found)
             .into_iter()
             .filter(|refusal| wanted(refusal.cause))
             .map(|refusal| refusal.flow.span.range().start)

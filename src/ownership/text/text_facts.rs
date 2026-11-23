@@ -35,6 +35,10 @@ impl<'c, 'g> TextFacts<'c, 'g> {
         self.reaching.get(&class).copied().unwrap_or_default()
     }
 
+    pub fn brings_short_lived_text(&self, flow: &Flow) -> bool {
+        self.arriving(flow).is_short_lived()
+    }
+
     pub fn arriving(&self, flow: &Flow) -> ReachingText {
         if let Transfer::Through(parameter) = flow.transfer
             && !self.passes_through(parameter, flow.target)

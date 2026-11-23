@@ -1,5 +1,7 @@
+mod annotation_lowering;
 mod child_typing;
 mod expected_child_typing;
+mod local_scope;
 mod macro_origins;
 mod obligations;
 mod operand_typing;
@@ -9,8 +11,10 @@ mod type_text_records;
 mod unknowns;
 mod variant_sites;
 
+pub(in crate::types) use annotation_lowering::AnnotationLowering;
 pub(in crate::types) use child_typing::ChildTyping;
 pub(in crate::types) use expected_child_typing::ExpectedChildTyping;
+pub(in crate::types) use local_scope::LocalScope;
 pub(in crate::types) use macro_origins::MacroOrigins;
 pub(in crate::types) use obligations::Obligations;
 pub(in crate::types) use operand_typing::OperandTyping;

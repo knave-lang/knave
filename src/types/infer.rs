@@ -6,7 +6,7 @@ mod short_pattern;
 mod variant_target;
 
 use super::forms::{
-    Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, TypeTextRequest,
+    BlockTyping, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, TypeTextRequest,
     VariantConstruction,
 };
 use super::result_span::ResultSpan;
@@ -31,7 +31,7 @@ use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
 use super::ty::{Bound, Type};
 use super::typed::{
-    Borrow, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder, TypedBlock,
+    Borrow, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder,
     TypedBodyItem, TypedControl, TypedConversion, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
     TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
 };
@@ -40,10 +40,10 @@ use super::{BoxedPayload, PayloadPosition, variant_names::VariantNames};
 use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
 use super::{synthetic_template::SyntheticTemplate, templates::TemplateName};
 use crate::core::{
-    Arm, Binder, BindingId, BindingKind, Block, BodyItem, BorrowTrait, Control, EqualityTrait,
-    Expr, ExprKind, FieldLabel, HashTrait, KeyedPath, Lambda, Leaf, Literal, MapOperation,
-    OrderTrait, Pattern, PatternArguments, PatternKind, PrimitiveType, Push, ReferenceKind,
-    RustTemplate, StructExpr, TypeExpr, TypeExprKind, VariantInfo,
+    Arm, Binder, BindingId, BindingKind, BorrowTrait, Control, EqualityTrait, Expr, ExprKind,
+    FieldLabel, HashTrait, KeyedPath, Lambda, Leaf, Literal, MapOperation, OrderTrait, Pattern,
+    PatternArguments, PatternKind, PrimitiveType, Push, ReferenceKind, RustTemplate, StructExpr,
+    TypeExpr, TypeExprKind, VariantInfo,
 };
 use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName};
 use crate::reader::NumberValue;
@@ -187,12 +187,7 @@ impl TypeChecker {
 
     fn infer_control(&mut self, control: &Control, span: Span) -> Result<TypedExpr, Diagnostic> {
         match control {
-            Control::Block(block) => {
-                let inferred = self
-                    .infer_block(block)
-                    .map(|(block, ty)| (TypedExprKind::Control(TypedControl::Block(block)), ty));
-                Self::typed(inferred, span)
-            }
+            Control::Block(block) => BlockTyping::new(block, span).type_against(self, None),
             Control::If(test, then, otherwise) => {
                 let operands = IfOperands {
                     test,
@@ -295,12 +290,8 @@ impl TypeChecker {
         expected: Option<&Type>,
     ) -> Result<(TypedArm, Type), Diagnostic> {
         let pattern = self.lower_pattern(&arm.pattern, pattern_type, None)?;
-        let (body, body_type) = match expected {
-            Some(expected) => {
-                self.infer_block_expecting(&arm.body, expected, MismatchContext::Plain)?
-            }
-            None => self.infer_block(&arm.body)?,
-        };
+        let tail = expected.map(Expectation::plain);
+        let (body, body_type) = BlockTyping::new(&arm.body, arm.span).type_block(self, tail)?;
         Ok((
             TypedArm {
                 pattern,
@@ -1088,7 +1079,8 @@ impl TypeChecker {
             .as_ref()
             .map_or(MismatchContext::Plain, |expected| expected.context.clone());
         let inferred = InferredSpan::around(self, span, |checker| {
-            checker.infer_block_expecting(&lambda.body, &result, context.clone())
+            let tail = Expectation::new(&result, context.clone());
+            BlockTyping::new(&lambda.body, span).type_block(checker, Some(tail))
         });
         self.recur_target = previous;
         self.checking_function_body = enclosing_body;
@@ -1141,83 +1133,6 @@ impl TypeChecker {
             span: param.span,
             annotated: param.annotation.is_some() || written_by_signature,
         })
-    }
-
-    fn infer_block(&mut self, block: &Block) -> Result<(TypedBlock, Type), Diagnostic> {
-        self.infer_block_with(block, None)
-    }
-
-    fn infer_block_expecting(
-        &mut self,
-        block: &Block,
-        expected: &Type,
-        context: MismatchContext,
-    ) -> Result<(TypedBlock, Type), Diagnostic> {
-        self.infer_block_with(block, Some((expected, context)))
-    }
-
-    fn infer_block_with(
-        &mut self,
-        block: &Block,
-        expected: Option<(&Type, MismatchContext)>,
-    ) -> Result<(TypedBlock, Type), Diagnostic> {
-        let mut items = Vec::new();
-        let mut result = Type::unit();
-        let last = block.items.len().checked_sub(1);
-        for (position, item) in block.items.iter().enumerate() {
-            let (typed, item_type) = match (item, Some(position) == last, &expected) {
-                (BodyItem::Expr(expr), true, Some((expected, context))) => {
-                    let typed = self.infer_against(expr, expected, context.clone())?;
-                    let ty = typed.ty.clone();
-                    (TypedBodyItem::Expr(typed), ty)
-                }
-                _ => self.infer_body_item(item)?,
-            };
-            items.push(typed);
-            result = item_type;
-        }
-        Ok((TypedBlock { items }, result))
-    }
-
-    fn infer_body_item(&mut self, item: &BodyItem) -> Result<(TypedBodyItem, Type), Diagnostic> {
-        match item {
-            BodyItem::Expr(expr) => {
-                let typed = self.infer(expr)?;
-                let ty = typed.ty.clone();
-                Ok((TypedBodyItem::Expr(typed), ty))
-            }
-            BodyItem::Let(binder, value) => self.infer_let(binder, value),
-        }
-    }
-
-    fn infer_let(
-        &mut self,
-        binder: &Binder,
-        value: &Expr,
-    ) -> Result<(TypedBodyItem, Type), Diagnostic> {
-        let (value, ty) = match &binder.annotation {
-            Some(annotation) => {
-                let ty = self.written_types().lower_without_generics(annotation)?;
-                let context = MismatchContext::Annotation {
-                    annotation: annotation.span(),
-                };
-                (self.infer_against(value, &ty, context)?, ty)
-            }
-            None => {
-                let value = self.infer(value)?;
-                let ty = value.ty.clone();
-                (value, ty)
-            }
-        };
-        self.locals.insert(binder.binding, ty.clone());
-        let binder = TypedBinder {
-            binding: binder.binding,
-            ty,
-            span: binder.span,
-            annotated: binder.annotation.is_some(),
-            written_view: false,
-        };
-        Ok((TypedBodyItem::Let(binder, value), Type::unit()))
     }
 
     fn infer_call(

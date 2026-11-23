@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use super::announced_write::AnnouncedWrite;
 use super::exit_status::ExitStatus;
 use super::new_components::NewComponents;
 use super::project_component::ProjectComponent;
@@ -23,14 +24,12 @@ impl UpgradeCommand {
     fn upgrade(terminal: &mut Terminal) -> Result<(), ExitStatus> {
         let edit = ProjectFileEdit::of_root_file(terminal, Self::COMMAND)?;
         let components = NewComponents::every();
-        let mut changed = Self::record_version(&edit, terminal)?;
-        for component in components
-            .iter()
-            .filter(|component| component.shows(edit.root()))
-        {
-            changed |= Self::bring_component_current(edit.root(), component.as_ref())?;
+        let writes = Self::pending_writes(edit.root(), &components)?;
+        let recorded = Self::record_version(&edit, terminal)?;
+        for write in &writes {
+            write.apply()?;
         }
-        if !changed {
+        if !recorded && writes.is_empty() {
             Self::report_current();
         }
         Ok(())
@@ -51,18 +50,19 @@ impl UpgradeCommand {
         Ok(recorded)
     }
 
-    fn bring_component_current(
+    fn pending_writes(
         root: &Path,
-        component: &dyn ProjectComponent,
-    ) -> Result<bool, ExitStatus> {
-        let mut changed = false;
-        for file in component.owned_files() {
-            changed |= file.bring_current(root)?;
+        components: &[Box<dyn ProjectComponent>],
+    ) -> Result<Vec<AnnouncedWrite>, ExitStatus> {
+        let reads: Vec<Result<Option<AnnouncedWrite>, ExitStatus>> = components
+            .iter()
+            .filter(|component| component.shows(root))
+            .flat_map(|component| component.pending_writes(root))
+            .collect();
+        if let Some(status) = reads.iter().find_map(|read| read.as_ref().err()) {
+            return Err(*status);
         }
-        for line in component.owned_lines() {
-            changed |= line.bring_current(root)?;
-        }
-        Ok(changed)
+        Ok(reads.into_iter().flatten().flatten().collect())
     }
 
     fn report_current() {

@@ -1,5 +1,6 @@
 mod add;
 mod agent_skill;
+mod announced_write;
 mod build;
 mod build_directory;
 mod build_options;

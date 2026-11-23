@@ -549,6 +549,17 @@ exit 101
             })
     }
 
+    fn files_with_bytes(&self, directory: &str) -> Vec<(String, Vec<u8>)> {
+        self.project_files(directory)
+            .into_iter()
+            .map(|file| {
+                let bytes = fs::read(self.directory.join(directory).join(&file))
+                    .expect("the sandbox file is readable");
+                (file, bytes)
+            })
+            .collect()
+    }
+
     fn files_with_contents(&self, directory: &str) -> Vec<(String, String)> {
         self.project_files(directory)
             .into_iter()
@@ -9419,6 +9430,28 @@ fn upgrade_reports_a_gitattributes_that_is_not_utf8() {
         "{stderr}"
     );
     assert_eq!(fs::read(&gitattributes).expect("the file stays"), NOT_UTF8);
+}
+
+#[test]
+fn upgrade_reads_every_knave_file_before_it_writes_one() {
+    let sandbox = Sandbox::with_committed_project("upgrade_reads_before_writes").with_file(
+        "demo-app/project.knv",
+        &format!("(defproject demo-app :knave \"{EARLIER_VERSION}\")\n"),
+    );
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let changed = format!("{}{OUTDATED_LINE}", sandbox.contents(&workflow));
+    let sandbox = sandbox.with_file(&workflow, &changed);
+    fs::write(sandbox.directory.join(GITATTRIBUTES_FILE), NOT_UTF8)
+        .expect("the sandbox accepts files");
+    sandbox.git(
+        "demo-app",
+        &["commit", "--quiet", "--all", "--message", "Old"],
+    );
+    let before = sandbox.files_with_bytes("demo-app");
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    let stderr = upgrade.assert_exit_code(2).stderr();
+    assert!(stderr.contains("`.gitattributes`"), "{stderr}");
+    assert_eq!(sandbox.files_with_bytes("demo-app"), before);
 }
 
 #[test]

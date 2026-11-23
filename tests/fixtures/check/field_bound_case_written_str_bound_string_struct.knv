@@ -6,7 +6,7 @@
 
 (type name-len
   (where ((a (has :name str)))
-    (fn ((ref a)) usize)))
+    (fn ((ref a)) int)))
 
 (defn name-len (x) (len (:name x)))
 

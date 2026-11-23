@@ -1,0 +1,30 @@
+---
+source: tests/cli.rs
+expression: "errors.join(\"---\\n\")"
+---
+error: libraries `lint` and `other` export a task named `check`
+help: run `knave task lint/check` or `knave task other/check`
+---
+error: no library named `lnt`
+help: did you mean `lint`?
+---
+error: library `hints` exports no tasks
+help: run `knave task` to list the tasks
+---
+error: library `lint` exports no task named `release`
+help: run `knave task` to list the tasks
+---
+error: no task named `release`
+help: run `knave task` to list the tasks
+---
+error: no task named `wher`
+help: did you mean `where`?
+---
+error: `lint/` is not a task name
+help: name a task as `<task>` or `<library>/<task>`
+---
+error: `/check` is not a task name
+help: name a task as `<task>` or `<library>/<task>`
+---
+error: `lint/check/again` is not a task name
+help: name a task as `<task>` or `<library>/<task>`

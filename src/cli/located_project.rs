@@ -5,6 +5,7 @@ mod task_layout;
 use std::path::{Path, PathBuf};
 
 use super::compiler_check::CompilerCheck;
+use super::direct_library::DirectLibrary;
 use super::exit_status::ExitStatus;
 use super::library_walk::{LibraryStore, LibraryWalk};
 use super::lint_levels::LintLevels;
@@ -17,7 +18,7 @@ use crate::modules::LibraryTable;
 use crate::project::{Project, ProjectProblems};
 use file_placement::FilePlacement;
 pub use project_root::ProjectRoot;
-pub use task_layout::TaskLayout;
+pub use task_layout::{ProjectFacts, TaskLayout};
 
 pub struct LocatedProject {
     root: PathBuf,
@@ -25,6 +26,7 @@ pub struct LocatedProject {
     libraries: LibraryTable,
     crates: ProjectCrates,
     crate_library: Option<String>,
+    direct_libraries: Vec<DirectLibrary>,
 }
 
 impl LocatedProject {
@@ -78,6 +80,7 @@ impl LocatedProject {
             libraries: walked.table,
             crates,
             crate_library: walked.crate_library,
+            direct_libraries: walked.direct_libraries,
         }))
     }
 
@@ -97,8 +100,13 @@ impl LocatedProject {
         self.placement().file_within(entry)
     }
 
-    pub fn task_layout(&self) -> TaskLayout {
-        TaskLayout::of(&self.project, &self.placement(), &self.root)
+    pub fn task_layout(&self) -> TaskLayout<'_> {
+        let facts = ProjectFacts {
+            project: &self.project,
+            root: &self.root,
+            libraries: &self.direct_libraries,
+        };
+        TaskLayout::of(facts, &self.placement())
     }
 
     pub fn is_entry(&self, file: &ProgramFile) -> bool {

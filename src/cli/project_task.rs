@@ -5,20 +5,9 @@ use super::build_routes::BuildRoutes;
 use super::crate_name::CrateName;
 use super::located_project::LocatedProject;
 use super::rustc_route::RustcRoute;
+use super::task_name::TaskName;
+use super::task_target::TaskTarget;
 use crate::modules::SearchScope;
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TaskName(String);
-
-impl TaskName {
-    pub fn new(name: String) -> Self {
-        Self(name)
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
 
 pub struct ProjectTask<'p> {
     project: &'p LocatedProject,
@@ -48,23 +37,25 @@ impl<'p> ProjectTask<'p> {
             .join(name.as_str())
     }
 
-    pub fn name(&self) -> &TaskName {
-        &self.name
-    }
-
     pub fn build_directory(&self) -> PathBuf {
         Self::directory_of(self.project, &self.name)
-    }
-
-    pub fn binary(&self) -> &Path {
-        &self.binary
     }
 
     pub fn root(&self) -> &Path {
         self.project.root()
     }
+}
 
-    pub fn route(&self) -> Box<dyn BuildRoute + '_> {
+impl TaskTarget for ProjectTask<'_> {
+    fn name(&self) -> &TaskName {
+        &self.name
+    }
+
+    fn binary(&self) -> &Path {
+        &self.binary
+    }
+
+    fn route(&self) -> Box<dyn BuildRoute + '_> {
         let bin_stem = format!(
             "{}-{}-{}",
             self.project.name(),

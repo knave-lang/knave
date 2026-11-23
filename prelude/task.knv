@@ -759,8 +759,9 @@
 
 (def exported-task-check
   (macro (form)
-    (check-exported-task (nth form 2)
-                         (map-list (program-tasks) note-name))
+    (check-exported-task (nth form (number-sub (len form) 1))
+                         (map-list (program-tasks) note-name)
+                         (task-lender (rest form)))
     ""))
 
 (document (exported-task-check :exported-task name)
@@ -768,7 +769,10 @@
 
   `name` is a name of the project file's section of exported tasks, at its
   place there. A name that no task takes fails, with the closest task's name
-  as a suggestion.")
+  as a suggestion. A `:library` or `:git-library` pair before it names the
+  dependent's entry of the library whose tasks the program holds, and the
+  failure says that the library exports the name; for a `:git-library`, its
+  help pins another commit instead of an edit the dependent cannot make.")
 
 (def task-listing
   (macro (form)
@@ -867,23 +871,71 @@
   (fn (tree) (nth tree 2)))
 
 (def check-exported-task
-  (fn (name names)
+  (fn (name names lender)
     (if (one-of? (symbol-name name) (map-list names symbol-name))
       true
-      (missing-exported-task name (closest-name name names)))))
+      (missing-exported-task name
+                             (closest-name name names)
+                             lender))))
+
+(def task-lender
+  (fn (forms)
+    (if (empty? forms)
+      (list)
+      (if (value-eq (keyword-name (first forms)) "library")
+        (list "path" (string (nth forms 1)))
+        (if (value-eq (keyword-name (first forms)) "git-library")
+          (list "git" (string (nth forms 1)))
+          (task-lender (rest (rest forms))))))))
 
 (def missing-exported-task
+  (fn (name closest lender)
+    (if (empty? lender)
+      (missing-own-task name closest)
+      (missing-lent-task name closest lender))))
+
+(def missing-own-task
   (fn (name closest)
     (if (empty? closest)
       (fail (missing-exported-task-title name)
-        name
-        "define the task with `deftask` in a file under `tasks/`, or remove the name"
+        name missing-exported-task-help
         missing-exported-task-description)
       (fail (missing-exported-task-title name)
         name "a task with a similar name exists"
         (template (:code missing-exported-task
                          :label (unquote missing-exported-task-label)
                          :suggest (unquote (first closest))))))))
+
+(def missing-lent-task
+  (fn (name closest lender)
+    (local library (nth lender 1))
+    (local note
+      (string "library `" library "` exports this name"))
+    (if (value-eq (first lender) "git")
+      (fail (missing-exported-task-title name)
+        name
+        (string "pin a `:rev` of `" library
+                "` that defines the task")
+        (lent-task-description note))
+      (if (empty? closest)
+        (fail (missing-exported-task-title name)
+          name missing-exported-task-help
+          (lent-task-description note))
+        (fail (missing-exported-task-title name)
+          name "a task with a similar name exists"
+          (template (:code missing-exported-task
+                           :label (unquote missing-exported-task-label)
+                           :note (unquote note)
+                           :suggest (unquote (first closest)))))))))
+
+(def lent-task-description
+  (fn (note)
+    (template (:code missing-exported-task
+                     :label (unquote missing-exported-task-label)
+                     :note (unquote note)))))
+
+(def missing-exported-task-help
+  "define the task with `deftask` in a file under `tasks/`, or remove the name")
 
 (def missing-exported-task-title
   (fn (name)

@@ -2,8 +2,9 @@ use std::path::PathBuf;
 
 use super::exit_status::ExitStatus;
 use super::form_block::FormBlock;
-use super::project_task::{ProjectTask, TaskName};
 use super::task_catalog::{EnteredProgram, TaskCatalog};
+use super::task_name::TaskName;
+use super::task_target::TaskTarget;
 use super::terminal::Terminal;
 use crate::build::BuildProfile;
 use crate::diagnostic::Diagnostics;
@@ -21,7 +22,7 @@ impl<'c> TaskRunners<'c> {
     pub fn build(
         &self,
         terminal: &mut Terminal,
-        task: &ProjectTask<'_>,
+        task: &dyn TaskTarget,
         profile: BuildProfile,
     ) -> Result<PathBuf, ExitStatus> {
         let signatures = self

@@ -72,7 +72,7 @@ impl ProjectInspection {
         tree: &EntryTree,
         print_warnings: &WarningPrinter,
     ) -> Result<(), ExitStatus> {
-        let catalog = TaskCatalog::load(tree, terminal)?;
+        let catalog = TaskCatalog::load(tree, terminal, None)?;
         let warnings = TaskRunners::new(&catalog).check(terminal)?;
         print_warnings(&terminal.source_report(), &warnings).passed()
     }

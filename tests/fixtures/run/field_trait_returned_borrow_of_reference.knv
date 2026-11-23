@@ -1,0 +1,16 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(type first-title
+  (where ((a (has :title (ref string))))
+    (fn ((ref (slice a))) (ref string))))
+
+(defn first-title (xs)
+  (:title (unwrap (first xs))))
+
+(defn main ()
+  (println (first-title (vec (->book (str "dune")))))
+  (println (first-title (vec (->film (str "jaws"))))))

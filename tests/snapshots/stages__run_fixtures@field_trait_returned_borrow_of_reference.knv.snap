@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_returned_borrow_of_reference.knv
+---
+dune
+jaws

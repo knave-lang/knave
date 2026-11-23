@@ -2710,7 +2710,7 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn field_place(&mut self, value: &TypedExpr, label: &FieldLabel) -> Code {
         if FieldGetter::reads_generic_owner(&value.ty) {
-            let receiver = self.field_owner(value);
+            let receiver = self.expr_in(FieldGetter::receiver_of(value), TypeContext::Known);
             return FieldGetter::new(self.program, self.module).call(value, receiver, label);
         }
         let value = self.field_owner(value);

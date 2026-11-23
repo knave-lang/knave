@@ -38,10 +38,10 @@ use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
     Borrow, BorrowedIndex, ClauseChoice, ClosureKind, Collection, CopiedOut, FieldOrder,
-    ParameterRole, SchemeBindings, SyntheticTemplate, Type, TypedArgument, TypedArm, TypedBinder,
-    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
-    TypedMatch, TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr, VariantPayload,
-    ViewCoercion, WrittenBorrows,
+    ParameterRole, RecordedClosures, SchemeBindings, SyntheticTemplate, Type, TypedArgument,
+    TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
+    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram,
+    TypedStructExpr, VariantPayload, ViewCoercion, WrittenBorrows,
 };
 
 mod compound_assignment;
@@ -1487,15 +1487,13 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn result_parameters_of(&self, lambda: &TypedLambda, ty: &Type) -> FxHashSet<BindingId> {
-        match ty {
-            Type::Function(_, _, result) if self.program.function_type_returns_borrow(result) => {
-                self.program
-                    .ownership
-                    .regions
-                    .of(ParameterRole::FlowsToResult, lambda)
-            }
-            _ => FxHashSet::default(),
+        if !RecordedClosures::new(self.program).includes(ty) {
+            return FxHashSet::default();
         }
+        self.program
+            .ownership
+            .regions
+            .of(ParameterRole::FlowsToResult, lambda)
     }
 
     fn literal_context(&self, literal: &TypedExpr, context: TypeContext) -> TypeContext {

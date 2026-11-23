@@ -5,14 +5,13 @@ use super::result_borrows::ResultBorrows;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
 use crate::types::{
-    DefinitionTable, ParameterRole, Parameterized, ProgramReach, Regions, Type, TypedDefinition,
+    DefinitionTable, ParameterRole, ProgramReach, RecordedClosures, Regions, TypedDefinition,
     TypedExpr, TypedExprKind, TypedLambda, TypedProgram,
 };
 
 pub struct RegionRecord<'a> {
     program: &'a TypedProgram,
     analysis: ResultBorrows<'a>,
-    impl_methods: FxHashSet<BindingId>,
     regions: Regions,
 }
 
@@ -25,24 +24,12 @@ impl RegionRecord<'_> {
         let mut record = RegionRecord {
             program,
             analysis: ResultBorrows::new(program, definitions),
-            impl_methods: Self::impl_methods(program),
             regions: Regions::default(),
         };
         for definition in Self::covered(program, reach) {
             record.definition(definition);
         }
         record.regions
-    }
-
-    fn impl_methods(program: &TypedProgram) -> FxHashSet<BindingId> {
-        program
-            .declarations
-            .traits()
-            .impls()
-            .iter()
-            .flat_map(|implementation| &implementation.methods)
-            .map(|method| method.binding)
-            .collect()
     }
 
     fn covered<'p>(program: &'p TypedProgram, reach: &ProgramReach) -> Vec<&'p TypedDefinition> {
@@ -72,7 +59,7 @@ impl RegionRecord<'_> {
 
     fn borrowing_closures(&mut self, expr: &TypedExpr) {
         if let TypedExprKind::Fn(lambda) = &expr.kind
-            && self.returns_borrow(&expr.ty)
+            && RecordedClosures::new(self.program).includes(&expr.ty)
         {
             self.lambda(lambda, self.analysis.analyse(lambda));
         }
@@ -81,21 +68,15 @@ impl RegionRecord<'_> {
         }
     }
 
-    fn returns_borrow(&self, ty: &Type) -> bool {
-        matches!(ty, Type::Function(_, _, result) if self.program.function_type_returns_borrow(result))
-    }
-
     fn function(&mut self, function: BindingId, lambda: &TypedLambda) {
         let FunctionFlows {
             flows,
             reassigned_parameters,
         } = self.analysis.analyse_function(function, lambda);
         self.lambda(lambda, flows);
-        if self.reads_shared_arguments(function, lambda) {
-            let shared = self.analysis.analyse_shared_arguments(lambda).flows;
-            self.regions
-                .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
-        }
+        let shared = self.analysis.analyse_shared_arguments(lambda).flows;
+        self.regions
+            .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
         self.regions
             .record(ParameterRole::Reassigned, lambda, reassigned_parameters);
         let stored = self.analysis.definition_stores(function).flows.clone();
@@ -103,14 +84,6 @@ impl RegionRecord<'_> {
             .record(ParameterRole::StoredValue, lambda, stored.values);
         self.regions
             .record(ParameterRole::StoredTarget, lambda, stored.targets);
-    }
-
-    fn reads_shared_arguments(&self, function: BindingId, lambda: &TypedLambda) -> bool {
-        let modes = &self.program.ownership.parameter_modes;
-        self.impl_methods.contains(&function)
-            || lambda
-                .parameter_bindings()
-                .any(|parameter| modes.changes(parameter))
     }
 
     fn lambda(&mut self, lambda: &TypedLambda, flows: LambdaFlows) {

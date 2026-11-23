@@ -106,23 +106,15 @@ impl ProjectPrograms {
     ) -> LocatedProject {
         let tree = EntryTree::of_tasks(project);
         if tree.holds_tasks() {
-            match TaskCatalog::load(&tree, terminal) {
-                Ok(catalog) => Self::task_program(terminal, &catalog, loaded),
-                Err(status) => loaded.fail(status),
-            }
+            loaded.add(TaskCatalog::load(&tree, terminal).and_then(|catalog| {
+                let entered = TaskRunners::new(&catalog).program(terminal)?;
+                Ok(ProjectProgram {
+                    file: entered.file,
+                    program: entered.program,
+                })
+            }));
         }
         Self::project_of(tree)
-    }
-
-    fn task_program(terminal: &mut Terminal, catalog: &TaskCatalog, loaded: &mut LoadedPrograms) {
-        if let Err(status) = catalog.check_exports(terminal) {
-            loaded.fail(status);
-        }
-        let program = TaskRunners::new(catalog).program(terminal);
-        loaded.add(program.map(|entered| ProjectProgram {
-            file: entered.file,
-            program: entered.program,
-        }));
     }
 
     fn project_of(tree: EntryTree) -> LocatedProject {

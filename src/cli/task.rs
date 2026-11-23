@@ -58,7 +58,6 @@ impl TaskCommand {
             .iter()
             .map(|known| Rc::from(known.as_str()))
             .collect();
-        catalog.check_exports(terminal)?;
         Self::expect_task(&names, name)?;
         let task = ProjectTask::new(project, TaskName::new(name.clone()));
         let binary = TaskRunners::new(&catalog).build(terminal, &task, self.profile)?;
@@ -84,7 +83,7 @@ impl TaskCommand {
         let help = match SimilarName::closest(name, names) {
             Some(closest) => format!("did you mean `{closest}`?"),
             None if names.is_empty() => {
-                "no `deftask` in the tasks directory defines a task yet".to_string()
+                "no `deftask` under `tasks/` defines a task yet".to_string()
             }
             None => format!("run `{} {}` to list the tasks", Language::NAME, Self::NAME),
         };

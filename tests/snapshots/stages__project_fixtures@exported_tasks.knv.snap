@@ -20,7 +20,7 @@ Project {
     lints: LintTable {
         entries: [],
     },
-    exported_tasks: Some(
+    exported_tasks: Written(
         [
             ExportedTask {
                 name: "lint",

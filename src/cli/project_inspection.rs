@@ -43,14 +43,18 @@ impl ProjectInspection {
         let separated = Rc::new(SeparatedBatches::new(terminal.diagnostic_output()));
         let output = TaskCatalog::user_output(separated);
         terminal.configure(|settings| settings.rerouted_to(output));
-        let entry = match skips_entry {
-            true => Ok(()),
-            false => inspect_entry(terminal, program.file(), print_warnings),
+        let entry = if skips_entry {
+            Ok(())
+        } else {
+            inspect_entry(terminal, program.file(), print_warnings)
         };
-        let tasks = match program.into_project().filter(|_| checks_tasks) {
-            Some(project) => {
-                Self::check_tasks(terminal, EntryTree::of_tasks(project), print_warnings)
-            }
+        let tree = program
+            .into_project()
+            .filter(|_| checks_tasks)
+            .map(EntryTree::of_tasks)
+            .filter(EntryTree::holds_tasks);
+        let tasks = match tree {
+            Some(tree) => Self::check_tasks(terminal, &tree, print_warnings),
             None => Ok(()),
         };
         entry.and(tasks)
@@ -65,13 +69,10 @@ impl ProjectInspection {
 
     fn check_tasks(
         terminal: &mut Terminal,
-        tree: EntryTree,
+        tree: &EntryTree,
         print_warnings: &WarningPrinter,
     ) -> Result<(), ExitStatus> {
-        if !tree.holds_tasks() {
-            return Ok(());
-        }
-        let catalog = TaskCatalog::load(&tree, terminal)?;
+        let catalog = TaskCatalog::load(tree, terminal)?;
         let warnings = TaskRunners::new(&catalog).check(terminal)?;
         print_warnings(&terminal.source_report(), &warnings).passed()
     }

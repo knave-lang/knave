@@ -3,4 +3,4 @@ source: tests/cli.rs
 expression: task.assert_exit_code(2).stderr()
 ---
 error: no task named `greet`
-help: no `deftask` in the tasks directory defines a task yet
+help: no `deftask` under `tasks/` defines a task yet

@@ -19,15 +19,23 @@ impl ReadSettlements {
         let Some(copy_bound) = copy.first().map(|binding| Bound::plain(*binding)) else {
             return;
         };
-        for (id, param) in &mut program.generics {
-            if self.copied.contains(id) {
-                param.bounds.push(copy_bound.clone());
-            }
+        let generics = (program.generics.iter_mut()).filter(|(id, _)| self.copied.contains(id));
+        for (_, param) in generics {
+            Self::add_once(&mut param.bounds, &copy_bound);
         }
         let definitions = (program.modules.iter_mut()).flat_map(|module| &mut module.definitions);
         let params = definitions.flat_map(|definition| &mut definition.scheme.params);
         for param in params.filter(|param| self.copied.contains(&param.id)) {
-            param.bounds.push(copy_bound.clone());
+            Self::add_once(&mut param.bounds, &copy_bound);
+        }
+    }
+
+    fn add_once(bounds: &mut Vec<Bound>, copy_bound: &Bound) {
+        if !bounds
+            .iter()
+            .any(|bound| bound.binding == copy_bound.binding)
+        {
+            bounds.push(copy_bound.clone());
         }
     }
 }

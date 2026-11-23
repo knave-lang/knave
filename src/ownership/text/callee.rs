@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use super::call_target::CallTarget;
 use super::callee_scheme::CalleeScheme;
 use super::closure_slots::ClosureUse;
@@ -26,8 +24,9 @@ impl<'c, 't> Callee<'c, 't> {
     pub fn of(&self, callee: &'t TypedExpr) -> Option<Box<dyn CallTarget<'t> + 't>> {
         match &callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => self.global(*binding, callee),
-            TypedExprKind::Leaf(TypedLeaf::Rust(_, scheme)) => {
-                Some(self.inline(scheme.as_ref(), callee))
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
+                let scheme = self.program.types().inline_scheme(&template.template);
+                Some(self.inline(scheme, callee))
             }
             _ => None,
         }
@@ -69,7 +68,7 @@ impl<'c, 't> Callee<'c, 't> {
 
     fn inline(
         &self,
-        scheme: Option<&'t Rc<Scheme>>,
+        scheme: Option<&'t Scheme>,
         callee: &'t TypedExpr,
     ) -> Box<dyn CallTarget<'t> + 't> {
         match scheme {

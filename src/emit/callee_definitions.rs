@@ -28,7 +28,7 @@ impl<'p> CalleeDefinitions<'p> {
         'p: 'c,
     {
         match &callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => CalleeDefinition::Template {
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => CalleeDefinition::Template {
                 template,
                 binding: None,
             },
@@ -44,7 +44,7 @@ impl<'p> CalleeDefinitions<'p> {
             .map(|definition| &definition.value.kind)
         {
             Some(TypedExprKind::Fn(_)) => CalleeDefinition::Function,
-            Some(TypedExprKind::Leaf(TypedLeaf::Rust(template, _))) => CalleeDefinition::Template {
+            Some(TypedExprKind::Leaf(TypedLeaf::Rust(template))) => CalleeDefinition::Template {
                 template,
                 binding: Some(binding),
             },

@@ -246,7 +246,7 @@ impl<'a> ShrinkSelection<'a> {
             TypedExprKind::Leaf(TypedLeaf::Global(function)) => {
                 self.global_argument_use(*function, position, shrink)
             }
-            TypedExprKind::Leaf(TypedLeaf::Rust(..)) => {
+            TypedExprKind::Leaf(TypedLeaf::Rust(_)) => {
                 self.rust_argument_use(callee, position, shrink)
             }
             _ => ArgumentUse::Refused,

@@ -185,7 +185,7 @@ impl<'a> ClosureKinds<'a> {
             .filter_map(|definition| {
                 if !matches!(
                     definition.value.kind,
-                    TypedExprKind::Leaf(TypedLeaf::Rust(..))
+                    TypedExprKind::Leaf(TypedLeaf::Rust(_))
                 ) {
                     return None;
                 }
@@ -698,9 +698,9 @@ impl<'a> ClosureKinds<'a> {
     ) -> Option<ReferenceKind> {
         match argument.borrow {
             Borrow::Mutable | Borrow::Reborrow => Some(ReferenceKind::Mutable),
-            Borrow::None => {
-                callee.and_then(|callee| self.template_borrows.reference(callee, position))
-            }
+            Borrow::None => callee
+                .filter(|callee| self.template_borrows.borrows(callee, position))
+                .map(|_| ReferenceKind::Shared),
             _ => Some(ReferenceKind::Shared),
         }
     }

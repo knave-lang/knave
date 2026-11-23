@@ -1,6 +1,6 @@
 use super::enum_payloads::EnumPayloads;
 use crate::core::BindingId;
-use crate::types::{Collection, StructDefinition, Type, TypedProgram};
+use crate::types::{Collection, Scheme, StructDefinition, Type, TypedProgram};
 
 #[derive(Clone, Copy)]
 pub struct TextTypes<'p> {
@@ -23,6 +23,10 @@ impl<'p> TextTypes<'p> {
 
     pub fn payloads(&self) -> EnumPayloads<'p> {
         EnumPayloads::new(self.program)
+    }
+
+    pub fn inline_scheme(&self, text: &str) -> Option<&'p Scheme> {
+        self.program.template_borrows.inline_scheme(text)
     }
 
     pub fn collection_of(&self, ty: &Type) -> Option<Collection> {

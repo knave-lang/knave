@@ -33,7 +33,7 @@ impl<'p> PromotedConstants<'p> {
     fn promotes(&self, value: &TypedExpr) -> bool {
         match &value.kind {
             TypedExprKind::Call(callee, arguments) => self.promotes_operation(callee, arguments),
-            TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => {
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 ParsedTemplate::parse(&template.template)
                     .is_ok_and(|parsed| self.promotes_template(&parsed, &[]))
             }

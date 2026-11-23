@@ -10,7 +10,7 @@ use super::template_author::TemplateAuthor;
 use super::template_ties::TemplateTies;
 use super::ty::Scheme;
 use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
-use crate::core::{BindingId, Conversion, ParsedTemplate, Piece, ReferenceKind};
+use crate::core::{BindingId, Conversion, ParsedTemplate, Piece};
 
 pub type Conversions = Rc<[(usize, Conversion)]>;
 
@@ -53,7 +53,7 @@ impl TemplateBorrows {
                 }
                 self.declared.insert(binding, registered);
             }
-            TemplateName::Inline(text) => self.inline.register(text, ties),
+            TemplateName::Inline(text) => self.inline.register(text, (scheme, ties)),
         }
     }
 
@@ -62,7 +62,7 @@ impl TemplateBorrows {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
                 self.conversions.get(binding).cloned()
             }
-            TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => {
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 self.inline_conversions(callee, &template.template)
             }
             _ => None,
@@ -103,9 +103,8 @@ impl TemplateBorrows {
         self.read_template(callee, false, |parsed, _| parsed.receives(position))
     }
 
-    pub fn reference(&self, callee: &TypedExpr, position: usize) -> Option<ReferenceKind> {
-        self.borrows(callee, position)
-            .then_some(ReferenceKind::Shared)
+    pub fn inline_scheme(&self, text: &str) -> Option<&Scheme> {
+        self.inline.scheme(text)
     }
 
     pub fn read_template<T>(
@@ -119,7 +118,7 @@ impl TemplateBorrows {
                 Some(template) => template.read(absent, read),
                 None => absent,
             },
-            TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => self
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => self
                 .inline
                 .read(template, |registered| registered.read(absent, read)),
             _ => absent,

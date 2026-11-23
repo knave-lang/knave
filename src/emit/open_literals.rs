@@ -98,7 +98,7 @@ impl OpenLiteralSearch<'_> {
                 let shape = CallShape::new(positions.as_deref(), conversions);
                 self.arguments(shape, arguments, context);
             }
-            TypedExprKind::Leaf(TypedLeaf::Rust(template, _)) => {
+            TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 let positions = GenericPositions::of_template(&template.type_expr);
                 let shape = CallShape::new(positions.as_ref(), conversions);
                 self.arguments(shape, arguments, context);

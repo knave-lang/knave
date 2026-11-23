@@ -1006,7 +1006,7 @@ impl TypeChecker {
         };
         let scheme = self.schemes.get(&member.binding)?.clone();
         let value = TypedExpr {
-            kind: TypedExprKind::Leaf(TypedLeaf::Rust(template.clone(), None)),
+            kind: TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())),
             ty: scheme.body.clone(),
             span: member.value.span(),
         };

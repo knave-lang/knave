@@ -33,7 +33,7 @@ impl StoredDefinitions {
         definitions: &FxHashMap<BindingId, &TypedDefinition>,
     ) -> bool {
         match &definition.value.kind {
-            TypedExprKind::Fn(_) | TypedExprKind::Leaf(TypedLeaf::Rust(..)) => false,
+            TypedExprKind::Fn(_) | TypedExprKind::Leaf(TypedLeaf::Rust(_)) => false,
             TypedExprKind::Leaf(TypedLeaf::Global(named)) => definitions
                 .get(named)
                 .is_none_or(|named| Self::stores_value(named, definitions)),

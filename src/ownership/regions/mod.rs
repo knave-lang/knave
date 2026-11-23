@@ -2,6 +2,7 @@ mod callee_parameters;
 mod definition_index;
 mod definition_lookup;
 mod flows_region;
+mod local_borrow_calls;
 mod region_record;
 mod result_borrows;
 mod store_sites;

@@ -1,0 +1,19 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(defn even-walk (x n)
+  (if (= n 0)
+    (:age x)
+    (odd-walk x (- n 1))))
+
+(defn odd-walk (x n)
+  (if (= n 0)
+    (- 0 (:age x))
+    (even-walk x (- n 1))))
+
+(defn main ()
+  (println (even-walk (->cat 2) 3))
+  (println (odd-walk (->dog 5) 2)))

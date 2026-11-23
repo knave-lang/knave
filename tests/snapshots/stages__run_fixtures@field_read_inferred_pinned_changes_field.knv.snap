@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_inferred_pinned_changes_field.knv
+---
+2
+5

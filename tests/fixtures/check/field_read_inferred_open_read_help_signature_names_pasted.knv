@@ -1,0 +1,15 @@
+(defstruct book
+  :title string)
+
+(defstruct film
+  :title string)
+
+(defn get (x) (:title x))
+
+(type show
+  (where ((a (has :title s)) r s)
+    (fn ((ref a) r) string)))
+
+(defn show (x tag) (str (get x)))
+
+(defn main () (println 0))

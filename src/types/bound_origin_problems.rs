@@ -10,7 +10,10 @@ impl BoundOriginProblems {
         let labeled = origins.iter().fold(diagnostic, Self::with_origin_label);
         match origins.first() {
             Some(BoundOrigin::BorrowCopied(_)) => labeled.with_help(Self::clone_copied_help()),
-            Some(BoundOrigin::ImplBody(_) | BoundOrigin::Included(_)) | None => labeled,
+            Some(
+                BoundOrigin::ImplBody(_) | BoundOrigin::Included(_) | BoundOrigin::InferredRead(_),
+            )
+            | None => labeled,
         }
     }
 
@@ -22,6 +25,7 @@ impl BoundOriginProblems {
             BoundOrigin::ImplBody(needed) => {
                 diagnostic.with_label(Self::needed_by_impl_body(*needed))
             }
+            BoundOrigin::InferredRead(read) => diagnostic.with_label(Self::read_here(read.read())),
             BoundOrigin::Included(_) => diagnostic,
         }
     }
@@ -32,6 +36,10 @@ impl BoundOriginProblems {
 
     fn needed_by_impl_body(span: Span) -> Label {
         Label::new(span, "the body of the impl needs it here")
+    }
+
+    fn read_here(span: Span) -> Label {
+        Label::new(span, "this read of an unknown struct needs the field")
     }
 
     fn clone_copied_help() -> String {

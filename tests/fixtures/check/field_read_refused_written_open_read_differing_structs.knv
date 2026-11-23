@@ -1,0 +1,15 @@
+(defstruct (boxed t)
+  :title t)
+
+(defstruct film
+  :title int)
+
+(type show
+  (where ((b display) (a (has :title b)))
+    (fn ((ref a)) string)))
+
+(defn show (x) (str (:title x)))
+
+(defn main ()
+  (println (show (->boxed 3)))
+  (println (show (->film 4))))

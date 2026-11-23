@@ -1,3 +1,4 @@
+use super::inferred_read::InferredRead;
 use crate::core::BindingId;
 use crate::source::Span;
 
@@ -6,13 +7,14 @@ pub enum BoundOrigin {
     BorrowCopied(Span),
     ImplBody(Span),
     Included(BindingId),
+    InferredRead(InferredRead),
 }
 
 impl BoundOrigin {
     pub fn including_trait(&self) -> Option<BindingId> {
         match self {
             Self::Included(including) => Some(*including),
-            Self::BorrowCopied(_) | Self::ImplBody(_) => None,
+            Self::BorrowCopied(_) | Self::ImplBody(_) | Self::InferredRead(_) => None,
         }
     }
 }
@@ -41,6 +43,14 @@ impl BoundOrigins {
         self.0
             .iter()
             .any(|origin| matches!(origin, BoundOrigin::ImplBody(_)))
+    }
+
+    pub fn generalize(&mut self) {
+        for origin in &mut self.0 {
+            if let BoundOrigin::InferredRead(read) = *origin {
+                *origin = BoundOrigin::InferredRead(read.generalized());
+            }
+        }
     }
 
     pub fn as_slice(&self) -> &[BoundOrigin] {

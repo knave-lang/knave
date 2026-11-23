@@ -1,0 +1,16 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(defn age-of (x) (:age x))
+
+(type show
+  (where (a) (fn ((ref a)) int)))
+
+(defn show (x) (age-of x))
+
+(defn main ()
+  (println (show (->cat 1)))
+  (println (age-of (->dog 2))))

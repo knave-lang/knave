@@ -1,0 +1,14 @@
+(defstruct bag
+  :items (vec int))
+
+(defstruct sack
+  :items (vec int))
+
+(defn fill! (b) (push! (:items b) 9))
+
+(defn main ()
+  (local b (->bag (vec 1)))
+  (local s (->sack (vec 2)))
+  (fill! b)
+  (fill! s)
+  (println (len (:items b))))

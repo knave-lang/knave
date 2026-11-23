@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_open_read_help_signature_names_pasted.knv
+---
+error[L0440]: `s` might not implement `display`
+  --> check/field_read_inferred_open_read_help_signature_names_pasted.knv:13:30
+   |
+13 | (defn show (x tag) (str (get x)))
+   |                              ^ this needs `display`
+   |
+   = help: add the trait to the signature's `where`: `(s display)`
+   = note: run `knave doc L0440` for an explanation

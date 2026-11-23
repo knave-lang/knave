@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_unreached_pasted.knv
+---
+(derive cat clone copy partial-eq eq hash show)
+(derive dog clone copy partial-eq eq hash show)
+(type ->cat (fn (int) cat))
+(type ->dog (fn (int) dog))
+(type age-of (where ((a (has :age b)) b) (fn ((ref a)) b)))

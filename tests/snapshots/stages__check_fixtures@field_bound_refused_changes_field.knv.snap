@@ -9,5 +9,5 @@ error[L0427]: this function changes `:count` through a `has` bound
 12 |   (set! (:count x) (+ (:count x) 1)))
    |          ^^^^^^ this read goes through the `has` bound
    |
-   = help: name the struct in the signature to change its fields
+   = help: name the struct in the signature, or write one function for each struct to change its fields
    = note: run `knave doc L0427` for an explanation

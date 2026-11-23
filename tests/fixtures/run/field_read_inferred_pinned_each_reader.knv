@@ -1,0 +1,13 @@
+(defstruct cat
+  :n int)
+
+(defstruct dog
+  :n float)
+
+(defn plus-one (x) (+ (:n x) 1))
+
+(defn plus-half (x) (+ (:n x) 0.5))
+
+(defn main ()
+  (println (plus-half (->dog 4.5)))
+  (println (plus-one (->cat 3))))

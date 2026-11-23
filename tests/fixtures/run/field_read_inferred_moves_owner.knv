@@ -1,0 +1,15 @@
+(defstruct cat
+  :age int
+  :name string)
+
+(defstruct dog
+  :age int
+  :name string)
+
+(defn tap (x)
+  (println (:age x))
+  x)
+
+(defn main ()
+  (println (:name (tap (->cat 1 (str "c")))))
+  (println (:name (tap (->dog 2 (str "d"))))))

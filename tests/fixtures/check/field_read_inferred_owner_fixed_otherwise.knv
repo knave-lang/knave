@@ -1,0 +1,15 @@
+(defstruct a
+  :n string)
+
+(defstruct b
+  :n int)
+
+(type g (fn ((ref a)) int))
+
+(defn g (y) 5)
+
+(defn f (x)
+  (let (n (:n x)) (+ n (g x))))
+
+(defn main ()
+  (println (f (->a (str "abc")))))

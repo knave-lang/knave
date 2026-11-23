@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_differing_generic_struct_args.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_inferred_differing_generic_struct_args.knv:7:22
+  |
+7 | (defn show (x) (str (:title x)))
+  |                      ^^^^^^ this read of `:title` infers a `has` bound
+  |
+  = note: the structs that reach this function read `:title` as different types: `(boxed int)` as `(ref int)`, `(boxed string)` as `(ref string)`, `film` as `(ref string)`
+  = help: write one function for each struct, or declare the field with one type in every struct
+  = note: run `knave doc L0407` for an explanation

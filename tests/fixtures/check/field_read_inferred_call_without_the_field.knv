@@ -1,0 +1,14 @@
+(defstruct cat
+  :name str)
+
+(defstruct dog
+  :name str)
+
+(defstruct bird
+  :wings int)
+
+(defn hello (x)
+  (str "hello " (:name x)))
+
+(defn main ()
+  (println (hello (->bird 2))))

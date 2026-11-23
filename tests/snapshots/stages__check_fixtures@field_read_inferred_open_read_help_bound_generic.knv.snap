@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_open_read_help_bound_generic.knv
+---
+error[L0440]: `b` might not implement `(has :title s)`
+  --> check/field_read_inferred_open_read_help_bound_generic.knv:16:21
+   |
+ 9 | (defn get (x) (:title x))
+   |                ------ this read of an unknown struct needs the field
+...
+16 |   (do (:age x) (get y) 1))
+   |                     ^ this needs `(has :title s)`
+   |
+   = help: add the trait and its read to the signature's `where`: `(b (has :title s)) s`
+   = note: run `knave doc L0440` for an explanation

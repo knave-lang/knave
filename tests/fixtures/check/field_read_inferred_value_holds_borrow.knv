@@ -1,0 +1,14 @@
+(defstruct user
+  :name str)
+
+(defstruct cat
+  :owner user)
+
+(defstruct dog
+  :owner user)
+
+(defn owner-of (x) (:owner x))
+
+(defn main ()
+  (println (:name (owner-of (->cat (->user "a")))))
+  (println (:name (owner-of (->dog (->user "b"))))))

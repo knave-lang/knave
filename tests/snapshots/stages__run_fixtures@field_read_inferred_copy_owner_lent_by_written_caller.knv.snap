@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_inferred_copy_owner_lent_by_written_caller.knv
+---
+4

@@ -1,0 +1,11 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(type age-of
+  (where ((a (has :age b)) b)
+    (fn ((ref a)) b)))
+
+(defn age-of (x) (:age x))

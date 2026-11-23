@@ -1,0 +1,44 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_written_open_read_shapes.knv
+---
+error[L0427]: the read of `:name` in this `has` bound names a type variable
+  --> check/field_read_refused_written_open_read_shapes.knv:17:24
+   |
+17 | (defn name-of (x) (do (:name x) true))
+   |                        ^^^^^ this read goes through the `has` bound
+   |
+   = note: the structs that reach this function read `:name` as `(ref str)`
+   = help: write the read with no type variable
+   = note: run `knave doc L0427` for an explanation
+
+error[L0427]: the read of `:nick` in this `has` bound names a type variable
+  --> check/field_read_refused_written_open_read_shapes.knv:23:24
+   |
+23 | (defn nick-of (x) (do (:nick x) true))
+   |                        ^^^^^ this read goes through the `has` bound
+   |
+   = note: the structs that reach this function read `:nick` as `(option (ref str))`
+   = help: write the read with no type variable
+   = note: run `knave doc L0427` for an explanation
+
+error[L0427]: the read of `:tags` in this `has` bound names a type variable
+  --> check/field_read_refused_written_open_read_shapes.knv:29:24
+   |
+29 | (defn tags-of (x) (do (:tags x) true))
+   |                        ^^^^^ this read goes through the `has` bound
+   |
+   = note: the structs that reach this function read `:tags` as `(ref (vec (ref str)))`
+   = help: write the read with no type variable
+   = note: run `knave doc L0427` for an explanation
+
+error[L0427]: the read of `:words` in this `has` bound names a type variable
+  --> check/field_read_refused_written_open_read_shapes.knv:35:25
+   |
+35 | (defn words-of (x) (do (:words x) true))
+   |                         ^^^^^^ this read goes through the `has` bound
+   |
+   = note: the structs that reach this function read `:words` as `(ref (vec (ref str)))`
+   = help: write the read with no type variable
+   = note: run `knave doc L0427` for an explanation

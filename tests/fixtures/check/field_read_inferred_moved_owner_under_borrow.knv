@@ -1,0 +1,19 @@
+(defstruct cat
+  :age int
+  :name string)
+
+(defstruct dog
+  :age int
+  :name string)
+
+(defn tap (x) (do (println (:age x)) x))
+
+(type g
+  (where ((a (has :age int)))
+    (fn ((ref a)) int)))
+
+(defn g (x) (:age (tap x)))
+
+(defn main ()
+  (println (g (->cat 1 (str "c"))))
+  (println (:name (tap (->dog 2 (str "d"))))))

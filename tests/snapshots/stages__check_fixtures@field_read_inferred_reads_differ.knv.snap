@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_reads_differ.knv
+---
+error[L0407]: type annotations needed
+ --> check/field_read_inferred_reads_differ.knv:8:16
+  |
+8 |   (str "age " (:age x)))
+  |                ^^^^ this read of `:age` infers a `has` bound
+  |
+  = note: the structs that reach this function read `:age` as different types: `cat` as `int`, `drone` as `u8`
+  = help: write one function for each struct, or declare the field with one type in every struct
+  = note: run `knave doc L0407` for an explanation

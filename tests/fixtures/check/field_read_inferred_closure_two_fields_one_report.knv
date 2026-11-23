@@ -1,0 +1,11 @@
+(defstruct cat
+  :age int
+  :legs int)
+
+(defstruct dog
+  :age int
+  :legs int)
+
+(defn main ()
+  (let (total (fn (x) (+ (:age x) (:legs x))))
+    (println 1)))

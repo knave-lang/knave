@@ -9,5 +9,5 @@ error[L0427]: the Rust trait `HasName`, its method `name` or the module `field_t
 21 |   (str "hello " (:name x)))
    |                  ^^^^^ this read goes through the `has` bound
    |
-   = help: rename what the program names that way, or name the struct
+   = help: rename what the program names that way, or name the struct in the signature, or write one function for each struct
    = note: run `knave doc L0427` for an explanation

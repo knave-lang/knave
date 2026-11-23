@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_inferred_owner_fixed_later.knv
+---
+6

@@ -1,7 +1,10 @@
-use rustc_hash::FxHashSet;
+use std::rc::Rc;
+
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::check_round::RoundGrowth;
 use super::impl_bound_seeds::ImplBoundSeeds;
+use super::settled_read::SettledRead;
 use super::typed::CheckWork;
 use crate::source::Span;
 
@@ -10,6 +13,8 @@ pub(super) struct RoundFacts {
     vector_bases: FxHashSet<Span>,
     seeds: ImplBoundSeeds,
     checking: CheckWork,
+    shared_fields: FxHashSet<Rc<str>>,
+    settled_reads: Rc<FxHashMap<Span, SettledRead>>,
 }
 
 impl RoundFacts {
@@ -19,6 +24,14 @@ impl RoundFacts {
 
     pub(super) fn seeds(&self) -> &ImplBoundSeeds {
         &self.seeds
+    }
+
+    pub(super) fn shared_fields(&self) -> &FxHashSet<Rc<str>> {
+        &self.shared_fields
+    }
+
+    pub(super) fn settled_reads(&self) -> &Rc<FxHashMap<Span, SettledRead>> {
+        &self.settled_reads
     }
 
     pub(super) fn checking(&self) -> CheckWork {
@@ -36,6 +49,8 @@ impl RoundFacts {
                 self.seeds = seeds;
             }
             RoundGrowth::VectorBases(found) => self.vector_bases.extend(found),
+            RoundGrowth::SharedFields(fields) => self.shared_fields.extend(fields),
+            RoundGrowth::SettledReads(reads) => self.settled_reads = Rc::new(reads),
         }
     }
 }

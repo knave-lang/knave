@@ -2490,7 +2490,7 @@ fn lint_of_a_starter_test_file_prints_nothing() {
 fn lint_of_a_named_file_keeps_a_declaration_another_program_needs() {
     let sandbox = WholeProject::lint_gaps("lint_gaps_named_files").with_file(
         "tests/plain-test.knv",
-        "(use moves ->applied describe)\n\n(deftest plain\n  (assert (= (describe (ref (->applied :move (str \"a\") :after (str \"b\")))) \"a then b\")))\n",
+        "(use moves ->applied)\n\n(deftest plain\n  (assert (= (:after (->applied :move (str \"a\") :after (str \"b\"))) \"b\")))\n",
     );
     for file in ["tests/plain-test.knv", "src/main.knv", "src/moves.knv"] {
         let lint = sandbox.compiler(&["lint", file]);
@@ -2738,7 +2738,7 @@ fn lint_keys_a_declaration_by_its_file_in_every_program() {
         )
         .with_file(
             "examples/z.knv",
-            "(use a/b ->applied describe)\n\n(defstruct attempt :move string :after string)\n\n(defn main ()\n  (println (describe (ref (->applied :move (str \"a\") :after (str \"b\"))))))\n",
+            "(use a/b ->applied)\n\n(defstruct attempt :move string :after string)\n\n(defn main ()\n  (println (:move (->applied :move (str \"a\") :after (str \"b\")))))\n",
         );
     let lint = sandbox.compiler(&["lint"]).stderr();
     assert!(!lint.contains("L0809"), "{lint}");
@@ -2766,7 +2766,7 @@ impl WholeProject {
             )
             .with_file(
                 "tests/moves-test.knv",
-                "(use moves ->applied describe)\n\n(defstruct attempt :move string :after string)\n\n(deftest describes-a-move\n  (let (unused 1)\n    (assert (= (describe (ref (->applied :move (str \"a\") :after (str \"b\")))) \"a then b\"))))\n",
+                "(use moves ->applied)\n\n(defstruct attempt :move string :after string)\n\n(deftest builds-a-move\n  (let (unused 1)\n    (assert (= (:move (->applied :move (str \"a\") :after (str \"b\"))) \"a\"))))\n",
             )
             .with_file(
                 "tasks/hello.knv",

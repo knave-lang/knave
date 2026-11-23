@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_read_inferred_chained_three_reads.knv
+---
+1
+2
+5
+6

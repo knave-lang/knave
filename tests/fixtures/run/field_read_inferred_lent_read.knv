@@ -1,0 +1,12 @@
+(defstruct user
+  :name str)
+
+(defstruct animal
+  :name str)
+
+(defn trimmed-len (x)
+  (len (trim (:name x))))
+
+(defn main ()
+  (println (trimmed-len (->user " ana ")))
+  (println (trimmed-len (->animal "rex"))))

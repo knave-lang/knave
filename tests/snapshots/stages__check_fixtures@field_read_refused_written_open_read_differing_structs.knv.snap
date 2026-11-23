@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_refused_written_open_read_differing_structs.knv
+---
+error[L0427]: the structs that reach this `has` bound read `:title` as different types
+  --> check/field_read_refused_written_open_read_differing_structs.knv:11:22
+   |
+11 | (defn show (x) (str (:title x)))
+   |                      ^^^^^^ this read goes through the `has` bound
+   |
+   = note: the structs that reach this function read `:title` as different types: `(boxed int)` as `(ref int)`, `film` as `int`
+   = help: write one function for each struct, or declare the field with one type in every struct
+   = note: run `knave doc L0427` for an explanation

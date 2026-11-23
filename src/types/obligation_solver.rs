@@ -123,7 +123,7 @@ impl<'a> ObligationSolver<'a> {
         } = obligation;
         if let (Some(argument), Some(expected)) = (argument, &bound.argument)
             && self.unifier.unify(expected, &argument, site.span).is_err()
-            && !FieldReadSelection::reads_open_field(
+            && !FieldReadSelection::waits_for_open_read(
                 &self.sources.declarations.traits().table,
                 &bound,
             )

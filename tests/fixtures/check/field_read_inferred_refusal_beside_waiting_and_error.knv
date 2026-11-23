@@ -1,0 +1,27 @@
+(defstruct (boxed a)
+  :n int
+  :v a)
+
+(defstruct film
+  :n int)
+
+(defstruct book
+  :title string)
+
+(defstruct novel
+  :title int)
+
+(defn n-of (b) (:n b))
+
+(defn wrap (v) (n-of (->boxed 1 v)))
+
+(defn title (x) (:title x))
+
+(defn bad () (+ 1 "s"))
+
+(defn main ()
+  (println (wrap 5))
+  (println (wrap "s"))
+  (println (n-of (->film 3)))
+  (println (title (->book (str "b"))))
+  (println (title (->novel 1))))

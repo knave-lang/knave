@@ -35,7 +35,7 @@ impl<'p> ReaderShape<'p> {
         } else if !self.passes_owner(reader, plan) {
             Some(WrittenRefusal::Use(UseRefusal::MovesOwner))
         } else if self.escapes(reader, plan) {
-            Some(WrittenRefusal::Use(UseRefusal::BorrowLeaves))
+            Some(WrittenRefusal::Use(UseRefusal::leaving(plan.kind)))
         } else if !names.are_free(reader)
             || (self.copies_owner(plan) && names.copy_takes_getter(reader))
         {
@@ -59,7 +59,9 @@ impl<'p> ReaderShape<'p> {
     }
 
     fn passes_owner(&self, reader: &FieldReader, plan: &FieldTraitPlan) -> bool {
-        self.copies_owner(plan) || !self.uses_owner_by_value(reader)
+        reader.inferred_at.is_inferred()
+            || self.copies_owner(plan)
+            || !self.uses_owner_by_value(reader)
     }
 
     fn uses_owner_by_value(&self, reader: &FieldReader) -> bool {
@@ -67,7 +69,7 @@ impl<'p> ReaderShape<'p> {
         definition.is_some_and(|definition| OwnerUses::new(reader).take_owner_by_value(definition))
     }
 
-    fn changes_a_field(&self, reader: &FieldReader) -> bool {
+    pub(super) fn changes_a_field(&self, reader: &FieldReader) -> bool {
         let definition = self.definition(reader);
         definition.is_some_and(|definition| FieldChanges::new(reader).within(&definition.value))
     }

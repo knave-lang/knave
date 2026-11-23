@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_closure_two_fields_one_report.knv
+---
+error[L0407]: type annotations needed
+  --> check/field_read_inferred_closure_two_fields_one_report.knv:10:27
+   |
+10 |   (let (total (fn (x) (+ (:age x) (:legs x))))
+   |                           ^^^^ cannot tell which struct's `age` this is
+   |
+   = help: name the struct in a signature, as in `(fn ((ref point)) _)`
+   = note: run `knave doc L0407` for an explanation

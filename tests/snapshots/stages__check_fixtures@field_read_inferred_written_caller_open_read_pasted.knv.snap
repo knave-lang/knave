@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_read_inferred_written_caller_open_read_pasted.knv
+---
+error[L0440]: `r` might not implement `display`
+  --> check/field_read_inferred_written_caller_open_read_pasted.knv:13:33
+   |
+13 | (defn show (x) (println (age-of x)))
+   |                                 ^ this needs `display`
+   |
+   = help: add the trait to the signature's `where`: `(r display)`
+   = note: run `knave doc L0440` for an explanation

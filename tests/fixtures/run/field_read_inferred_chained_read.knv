@@ -1,0 +1,15 @@
+(defstruct pet
+  :name str)
+
+(defstruct user
+  :name str
+  :pet pet)
+
+(defstruct house
+  :pet pet)
+
+(defn f (x) (str (:name (:pet x))))
+
+(defn main ()
+  (println (f (->user "a" (->pet "p"))))
+  (println (f (->house (->pet "q")))))

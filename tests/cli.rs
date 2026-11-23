@@ -9286,7 +9286,7 @@ fn upgrade_appends_the_linguist_line_on_a_line_of_its_own() {
     let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
     assert_eq!(
         upgrade.assert_exit_code(0).stderr(),
-        "rewrote the `*.knv` line of `.gitattributes`\n"
+        "added the `*.knv` line to `.gitattributes`\n"
     );
     assert_eq!(
         sandbox.contents(GITATTRIBUTES_FILE),
@@ -9300,9 +9300,11 @@ fn upgrade_replaces_an_outdated_linguist_line_in_place() {
         GITATTRIBUTES_FILE,
         "*.png binary\n*.knv linguist-language=Lisp\n*.txt text\n",
     );
-    sandbox
-        .compiler_in("demo-app", &["upgrade"])
-        .assert_exit_code(0);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert_eq!(
+        upgrade.assert_exit_code(0).stderr(),
+        "rewrote the `*.knv` line of `.gitattributes`\n"
+    );
     assert_eq!(
         sandbox.contents(GITATTRIBUTES_FILE),
         format!("*.png binary\n{LINGUIST_LINE}*.txt text\n")

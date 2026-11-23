@@ -1,4 +1,4 @@
-use super::result_borrows::ResultBorrows;
+use super::region_rules::RegionRules;
 use super::stored_arguments::{Store, StoredArguments};
 use crate::types::{TypedArgument, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf};
 
@@ -7,13 +7,13 @@ pub(super) struct StoreSite<'e> {
     pub value: &'e TypedExpr,
 }
 
-pub(super) struct StoreSites<'r, 'a, 'e> {
-    rules: &'r ResultBorrows<'a>,
+pub(super) struct StoreSites<'r, 'e> {
+    rules: &'r dyn RegionRules,
     sites: Vec<StoreSite<'e>>,
 }
 
-impl<'r, 'a, 'e> StoreSites<'r, 'a, 'e> {
-    pub(super) fn of(rules: &'r ResultBorrows<'a>, lambda: &'e TypedLambda) -> Vec<StoreSite<'e>> {
+impl<'r, 'e> StoreSites<'r, 'e> {
+    pub(super) fn of(rules: &'r dyn RegionRules, lambda: &'e TypedLambda) -> Vec<StoreSite<'e>> {
         let mut found = Self {
             rules,
             sites: Vec::new(),
@@ -42,13 +42,7 @@ impl<'r, 'a, 'e> StoreSites<'r, 'a, 'e> {
     fn stores_of(&self, callee: &TypedExpr) -> Vec<Store> {
         let mut stores = StoredArguments::of(&callee.ty).stores(self.rules.program());
         if let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = callee.kind {
-            stores.extend(
-                self.rules
-                    .definition_stores(binding)
-                    .positions
-                    .iter()
-                    .cloned(),
-            );
+            stores.extend(self.rules.stores_of(binding).positions.iter().cloned());
         }
         stores
     }

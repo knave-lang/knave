@@ -520,6 +520,14 @@ impl TypeChecker {
         self.passing_tables().copy_rules()
     }
 
+    pub(super) fn open_read(&self) -> super::open_read::OpenRead<'_> {
+        super::open_read::OpenRead::new(self.copy_rules())
+    }
+
+    pub(super) fn field_bound(&self) -> super::field_bound::FieldBound<'_> {
+        super::field_bound::FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
+    }
+
     pub(super) fn variant_payloads(&self) -> VariantPayloads<'_> {
         VariantPayloads::new(self.declarations.types())
     }

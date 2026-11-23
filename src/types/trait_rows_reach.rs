@@ -1,4 +1,4 @@
-pub(super) use super::implementor::Implementor;
+use super::implementor::Implementor;
 use super::indexed_implementors::IndexedImplementors;
 use super::ty::{Bound, Scheme, Type};
 use crate::core::BindingId;

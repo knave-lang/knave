@@ -1,11 +1,8 @@
-use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::announced_write::AnnouncedWrite;
-use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::new_file::NewFile;
-use super::unreadable_file::UnreadableFile;
 use super::versioned_text::VersionedText;
 
 pub struct OwnedFile {
@@ -35,18 +32,14 @@ impl OwnedFile {
 
     pub fn pending_write(&self, root: &Path) -> Result<Option<AnnouncedWrite>, ExitStatus> {
         let file = self.new_file(root);
-        if !file.path().exists() {
-            let announcement = format!("wrote `{}`", self.path.display());
-            return Ok(Some(AnnouncedWrite::new(file, announcement)));
+        match file.written_bytes()? {
+            None => Ok(Some(AnnouncedWrite::creation(file, &self.path))),
+            Some(written) if Self::with_unix_line_endings(&written) == file.text() => Ok(None),
+            Some(_) => {
+                let announcement = format!("rewrote `{}`", self.path.display());
+                Ok(Some(AnnouncedWrite::new(file, announcement)))
+            }
         }
-        let written = fs::read(file.path()).map_err(|error| {
-            UnreadableFile::new(file.path(), &error).report_to(&StandardErrorMessages)
-        })?;
-        if Self::with_unix_line_endings(&written) == file.text() {
-            return Ok(None);
-        }
-        let announcement = format!("rewrote `{}`", self.path.display());
-        Ok(Some(AnnouncedWrite::new(file, announcement)))
     }
 
     fn with_unix_line_endings(written: &[u8]) -> String {

@@ -1,24 +1,20 @@
 use std::rc::Rc;
 
-use rustc_hash::FxHashMap;
-
-use crate::core::{BindingId, ModuleId, RustTemplate};
+use crate::core::{BindingId, RustTemplate};
 use crate::types::{
-    ClauseChoice, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    ClauseChoice, DefinitionTable, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
+    TypedProgram,
 };
 
 pub struct ConstantDefinitions<'p, 'd> {
     program: &'p TypedProgram,
-    definitions: &'d FxHashMap<BindingId, (&'p TypedDefinition, ModuleId)>,
+    definitions: &'d DefinitionTable<'p>,
 }
 
 impl<'p, 'd> ConstantDefinitions<'p, 'd> {
     const MACRO_CALLS: [&'static str; 3] = ["!(", "![", "!{"];
 
-    pub fn new(
-        program: &'p TypedProgram,
-        definitions: &'d FxHashMap<BindingId, (&'p TypedDefinition, ModuleId)>,
-    ) -> Self {
+    pub fn new(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> Self {
         Self {
             program,
             definitions,
@@ -68,9 +64,7 @@ impl<'p, 'd> ConstantDefinitions<'p, 'd> {
     }
 
     fn definition(&self, binding: BindingId) -> Option<&'p TypedDefinition> {
-        self.definitions
-            .get(&binding)
-            .map(|(definition, _)| *definition)
+        self.definitions.definition(binding)
     }
 
     fn is_operator_template(text: &str) -> bool {

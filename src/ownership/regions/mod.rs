@@ -1,7 +1,6 @@
 mod body_flows;
 mod callee_parameters;
 mod callee_visit;
-mod definition_index;
 mod definition_lookup;
 mod flows_region;
 mod lambda_flows;

@@ -28,12 +28,12 @@ use super::unlent_parameters::UnlentParameters;
 use super::untied_borrows::{ShownMethod, UntiedBorrows};
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
-use crate::ownership::{FunctionFlows, LambdaFlows, ResultBorrows, StoredFlows};
+use crate::ownership::{FunctionFlows, LambdaFlows, ResultBorrows};
 use crate::source::Span;
 use crate::types::{
-    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, ResultRegion, Scheme, Type,
-    TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr, TypedExprKind,
-    TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
+    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, ResultRegion, Scheme, StoredFlows,
+    Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr,
+    TypedExprKind, TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
 };
 
 struct ImplementedTrait<'l> {

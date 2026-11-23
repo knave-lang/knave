@@ -4,10 +4,9 @@ use super::body_flows::BodyFlows;
 use super::lambda_flows::FunctionFlows;
 use super::region_rules::RegionRules;
 use super::store_sites::StoreSite;
-use super::stored_flows::StoredFlows;
 use crate::core::BindingId;
 use crate::ownership::TailCalls;
-use crate::types::{TypedArgument, TypedBinder, TypedExpr, TypedLambda};
+use crate::types::{StoredFlows, TypedArgument, TypedBinder, TypedExpr, TypedLambda};
 
 pub(super) struct ParameterJoins<'r> {
     rules: &'r dyn RegionRules,

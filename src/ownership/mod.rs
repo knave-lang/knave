@@ -100,7 +100,7 @@ pub use gate::{EnforcedOwnership, OwnershipGate, TextReportOwnership, WaivedOwne
 pub use loans::{LabeledSpans, LoanConflicts, LoanFacts};
 pub use mutation::ChangedValues;
 use regions::RegionRecord;
-pub use regions::{DefinitionLookup, FunctionFlows, LambdaFlows, ResultBorrows, StoredFlows};
+pub use regions::{DefinitionLookup, FunctionFlows, LambdaFlows, ResultBorrows};
 pub use tail_calls::TailCalls;
 pub use text::TextDecisions;
 pub use update_order::StructUpdateOrder;

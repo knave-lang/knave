@@ -17,6 +17,7 @@ mod flow;
 #[cfg(test)]
 mod flow_fixture;
 mod flow_graph;
+mod function_slots;
 mod function_value;
 mod global_reads;
 mod inline_flows;
@@ -62,6 +63,7 @@ mod transfer;
 mod try_flows;
 mod type_path;
 mod user_function;
+mod value_parts;
 mod walk_context;
 mod written_bindings;
 

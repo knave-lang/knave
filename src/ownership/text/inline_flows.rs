@@ -4,6 +4,7 @@ use super::slot_owner::SlotOwner;
 use super::source::Source;
 use super::text_position::TextPositions;
 use super::text_value::TextValue;
+use super::value_parts::ValueParts;
 use super::walk_context::WalkContext;
 use crate::types::{GenericId, TypedExpr};
 
@@ -29,7 +30,7 @@ impl<'c, 'w, 'p> InlineFlows<'c, 'w, 'p> {
             .map(|(_, argument)| argument);
         for argument in shared {
             self.context
-                .receive(&Slot::from(owner.clone()), &Self::top_of(argument));
+                .receive(&Slot::from(owner.clone()), &ValueParts::of(argument).top());
             for (_, nested) in argument.nested() {
                 self.context.unite(variable, *nested);
             }
@@ -48,14 +49,5 @@ impl<'c, 'w, 'p> InlineFlows<'c, 'w, 'p> {
                 }
             },
         )
-    }
-
-    fn top_of(argument: &TextValue) -> TextValue {
-        argument
-            .sources()
-            .iter()
-            .fold(TextValue::default(), |value, (source, transfer, span)| {
-                value.merged(TextValue::from(*source, *span).transferred(*transfer))
-            })
     }
 }

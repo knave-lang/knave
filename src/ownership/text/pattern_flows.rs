@@ -1,13 +1,12 @@
 use super::slot::Slot;
 use super::slot_owner::SlotOwner;
-use super::source::Source;
 use super::text_position::TextPositions;
 use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
+use super::value_parts::ValueParts;
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
-use crate::source::Span;
 use crate::types::{Type, TypedPattern, TypedPatternKind};
 
 pub struct PatternFlows<'c, 'w, 'p> {
@@ -51,26 +50,12 @@ impl<'c, 'w, 'p> PatternFlows<'c, 'w, 'p> {
     ) -> TextValue {
         let payloads = self.context.program().types().payloads();
         if let Some(argument) = payloads.argument(variant, field) {
-            return Self::part_of(value, argument, part.span);
+            return ValueParts::of(value).part(argument, part.span);
         }
         match payloads.field(variant, field) {
             Some((owner, ty)) => self.field(&owner, ty, part),
             None => TextValue::default(),
         }
-    }
-
-    fn part_of(value: &TextValue, part: usize, span: Span) -> TextValue {
-        value
-            .nested()
-            .iter()
-            .filter_map(|(path, node)| Some((path.below(part)?, *node)))
-            .fold(TextValue::default(), |read, (path, node)| {
-                if path.is_top() {
-                    read.merged(TextValue::from(Source::Slot(node), span))
-                } else {
-                    read.nesting(path, node)
-                }
-            })
     }
 
     fn fields(&mut self, structure: BindingId, parts: &[TypedPattern]) {
@@ -96,25 +81,5 @@ impl<'c, 'w, 'p> PatternFlows<'c, 'w, 'p> {
             transfer: Transfer::Move,
         };
         self.context.read(&Slot::from(owner.clone()), read)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{PatternFlows, TextValue};
-    use crate::ownership::text::node_id::NodeId;
-    use crate::ownership::text::type_path::TypePath;
-    use crate::source::{SourceId, Span};
-
-    #[test]
-    fn a_part_of_a_value_reads_that_part_s_text() {
-        let path = TypePath::default().child(1);
-        let value = TextValue::default()
-            .nesting(path.child(0), NodeId(4))
-            .nesting(path, NodeId(5))
-            .nesting(TypePath::default().child(0), NodeId(6));
-        let part = PatternFlows::part_of(&value, 1, Span::new(SourceId::new(0), 0..1));
-        assert_eq!(part.place(), Some(NodeId(5)));
-        assert_eq!(part.nested(), &[(TypePath::default().child(0), NodeId(4))]);
     }
 }

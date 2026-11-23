@@ -3,6 +3,7 @@ use super::slot::Slot;
 use super::slot_owner::SlotOwner;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
+use super::value_parts::ValueParts;
 use super::walk_context::WalkContext;
 use crate::types::TypedExpr;
 
@@ -25,11 +26,14 @@ impl<'c, 'w, 'p> CallResultReads<'c, 'w, 'p> {
             return read;
         }
         let per_call = Slot::from(SlotOwner::CallResult(self.call.span));
-        self.context.receive(&per_call, &Self::top(&read));
+        self.context
+            .receive(&per_call, &ValueParts::of(&read).top());
         for (index, value) in values.iter().enumerate() {
             let parameter = target.parameter(index).and_then(|slot| slot.parameter());
             if let Some(parameter) = parameter {
-                let through = Self::top(value).transferred(Transfer::Through(parameter));
+                let through = ValueParts::of(value)
+                    .top()
+                    .transferred(Transfer::Through(parameter));
                 self.context.receive(&per_call, &through);
             }
         }
@@ -38,14 +42,5 @@ impl<'c, 'w, 'p> CallResultReads<'c, 'w, 'p> {
             TextValue::from(super::source::Source::Slot(node), self.call.span),
             |value, (path, nested)| value.nesting(path.clone(), *nested),
         )
-    }
-
-    fn top(value: &TextValue) -> TextValue {
-        value
-            .sources()
-            .iter()
-            .fold(TextValue::default(), |top, (source, transfer, span)| {
-                top.merged(TextValue::from(*source, *span).transferred(*transfer))
-            })
     }
 }

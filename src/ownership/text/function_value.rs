@@ -1,7 +1,7 @@
 use super::call_target::CallTarget;
 use super::callee_scheme::CalleeScheme;
+use super::function_slots::FunctionSlots;
 use super::slot::Slot;
-use super::type_path::TypePath;
 
 pub struct FunctionValue<'t> {
     scheme: CalleeScheme<'t>,
@@ -20,10 +20,10 @@ impl<'t> CallTarget<'t> for FunctionValue<'t> {
     }
 
     fn parameter(&self, index: usize) -> Option<Slot> {
-        Some(self.value.nested(&TypePath::default().child(index)))
+        Some(self.value.nested(&FunctionSlots::parameter_path(index)))
     }
 
     fn result(&self) -> Option<Slot> {
-        Some(self.value.nested(&TypePath::default().result()))
+        Some(self.value.nested(&FunctionSlots::result_path()))
     }
 }

@@ -20,6 +20,7 @@ use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
+use super::value_parts::ValueParts;
 use super::walk_context::WalkContext;
 use crate::types::{Borrow, GenericId, Type, TypedExpr, TypedExprKind};
 
@@ -116,14 +117,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
             return;
         }
         let elements = TextPositions::elements(ty);
-        let top =
-            value
-                .sources()
-                .iter()
-                .fold(TextValue::default(), |top, (source, transfer, span)| {
-                    top.merged(TextValue::from(*source, *span).transferred(*transfer))
-                });
-        let mut shared = top;
+        let mut shared = ValueParts::of(value).top();
         for (path, node) in value.nested() {
             if elements.contains(path) {
                 let element = TextValue::from(Source::Slot(*node), self.call.span);

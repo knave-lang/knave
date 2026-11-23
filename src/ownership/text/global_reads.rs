@@ -1,10 +1,9 @@
+use super::function_slots::FunctionSlots;
 use super::slot::Slot;
 use super::slot_owner::SlotOwner;
-use super::text_position::TextPositions;
 use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
-use super::type_path::TypePath;
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
 use crate::types::{Type, TypedExpr, TypedExprKind, TypedLambda};
@@ -40,29 +39,13 @@ impl<'c, 'w, 'p> GlobalReads<'c, 'w, 'p> {
         let Type::Function(_, parameters, result) = &self.expr.ty else {
             return TextValue::default();
         };
-        let owners = lambda
+        let parameters = lambda
             .params
             .iter()
             .zip(parameters)
-            .enumerate()
-            .map(|(part, (parameter, ty))| {
-                let owner = SlotOwner::Parameter(parameter.binding);
-                (TypePath::default().child(part), owner, ty)
-            })
-            .chain([(
-                TypePath::default().result(),
-                SlotOwner::Result(binding),
-                result.as_ref(),
-            )]);
-        let mut value = TextValue::default();
-        for (base, owner, ty) in owners.collect::<Vec<_>>() {
-            for position in TextPositions::of(ty) {
-                let node = self
-                    .context
-                    .node(Slot::new(owner.clone(), position.path.clone()));
-                value = value.nesting(base.joined(&position.path), node);
-            }
-        }
-        value
+            .map(|(parameter, ty)| (SlotOwner::Parameter(parameter.binding), ty))
+            .collect();
+        let result = (SlotOwner::Result(binding), result.as_ref());
+        FunctionSlots::new(parameters, result).value(self.context)
     }
 }

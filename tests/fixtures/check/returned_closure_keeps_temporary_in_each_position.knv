@@ -20,4 +20,7 @@
     (if (< i 1)
       (recur (sizer (vec 6)) (+ i 1))
       (println (size))))
+  (match (some 2)
+    ((some n) (let (inner (sizer (vec n))) (println (inner))))
+    (none (println 0)))
   (println (((later)))))

@@ -14,6 +14,9 @@ pub struct OwnedFile {
 }
 
 impl OwnedFile {
+    const CRLF: &str = "\r\n";
+    const LF: &str = "\n";
+
     pub fn new(path: PathBuf, text: VersionedText) -> Self {
         Self { path, text }
     }
@@ -39,10 +42,14 @@ impl OwnedFile {
         let written = fs::read(file.path()).map_err(|error| {
             UnreadableFile::new(file.path(), &error).report_to(&StandardErrorMessages)
         })?;
-        if written == file.text().as_bytes() {
+        if Self::with_unix_line_endings(&written) == file.text() {
             return Ok(None);
         }
         let announcement = format!("rewrote `{}`", self.path.display());
         Ok(Some(AnnouncedWrite::new(file, announcement)))
+    }
+
+    fn with_unix_line_endings(written: &[u8]) -> String {
+        String::from_utf8_lossy(written).replace(Self::CRLF, Self::LF)
     }
 }

@@ -108,9 +108,7 @@ mod tests {
     use std::rc::Rc;
 
     use super::Association;
-    use crate::core::{
-        BindingId, Expr, ExprKind, KeyedPath, Leaf, Literal, ParsedTemplate, PrimitiveType,
-    };
+    use crate::core::{BindingId, Expr, ExprKind, KeyedPath, Leaf, Literal, PrimitiveType};
     use crate::diagnostic::Diagnostic;
     use crate::source::Span;
     use crate::types::collection::Collection;
@@ -140,7 +138,7 @@ mod tests {
 
         fn of(base: Type) -> Self {
             let mut rust_types = RustTypeTable::default();
-            rust_types.add(Self::MAP, Self::map_rust_type());
+            rust_types.add(Self::MAP, RustType::hash_map());
             Self {
                 base,
                 rust_types,
@@ -148,18 +146,6 @@ mod tests {
                 fitted: Vec::new(),
                 required_keys: 0,
                 moved: false,
-            }
-        }
-
-        fn map_rust_type() -> RustType {
-            let template = ParsedTemplate::parse(RustType::HASH_MAP_TEMPLATE)
-                .unwrap_or_else(|_| panic!("the map template parses"));
-            RustType {
-                template: Rc::new(template),
-                clauses: Vec::new(),
-                params: Vec::new(),
-                unsized_parameters: Vec::new(),
-                format: Default::default(),
             }
         }
 

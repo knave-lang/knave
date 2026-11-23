@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
-use super::lending_libraries::LendingLibraries;
 use super::library_task_run::LibraryTaskRun;
 use super::library_tasks::LibraryTasks;
 use super::library_walk::FetchingStore;
@@ -55,9 +54,8 @@ impl TaskCommand {
         match self.name.as_deref().map(TaskAddress::parse).transpose()? {
             Some(address) => self.run_address(terminal, project, address),
             None => {
-                let lending = project.task_layout().lending().clone();
                 let own = OwnTasks::load(terminal, project)?;
-                Self::list(terminal, &own, &lending)
+                Self::list(terminal, &own)
             }
         }
     }
@@ -110,11 +108,8 @@ impl TaskCommand {
         }
     }
 
-    fn list(
-        terminal: &mut Terminal,
-        own: &OwnTasks,
-        lending: &LendingLibraries,
-    ) -> Result<ExitStatus, ExitStatus> {
+    fn list(terminal: &mut Terminal, own: &OwnTasks) -> Result<ExitStatus, ExitStatus> {
+        let lending = own.project().task_layout().lending();
         let mut listing = own.listing(terminal)?;
         let mut failure = Ok(());
         for library in lending.lenders() {

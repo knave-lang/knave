@@ -8,7 +8,7 @@ use super::lending_libraries::LendingLibraries;
 use super::library_task::{LibraryTask, LibraryTaskSite};
 use super::library_walk::FetchingStore;
 use super::lint_levels::LintLevels;
-use super::located_project::LocatedProject;
+use super::located_project::{LibraryEntrance, LocatedProject};
 use super::task_catalog::TaskCatalog;
 use super::task_invocation::TaskInvocation;
 use super::task_name::TaskName;
@@ -87,8 +87,7 @@ impl LibraryTasks {
 
     fn load(terminal: &mut Terminal, library: &DirectLibrary) -> Result<Self, ExitStatus> {
         let project =
-            LocatedProject::enter_unchecked(library.site(), terminal, FetchingStore::default())?
-                .expect("a listed library has a project file");
+            LibraryEntrance::enter(library.walk_start(), terminal, FetchingStore::default())?;
         terminal.configure(|settings| settings.leveling_lints_by(LintLevels::default()));
         let tree = EntryTree::of_tasks(project);
         let catalog = TaskCatalog::load(&tree, terminal, &library.arguments().export_check())?;

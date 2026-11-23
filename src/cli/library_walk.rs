@@ -13,6 +13,7 @@ use super::exit_status::ExitStatus;
 use super::lending_libraries::LendingLibraries;
 use super::program_file::ProgramFile;
 use super::terminal::Terminal;
+use super::walk_start::WalkStart;
 use crate::build::StoreError;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
@@ -43,11 +44,6 @@ pub struct WalkedLibraries {
     pub dev_crates: Vec<CrateDependency>,
     pub crate_library: Option<String>,
     pub direct_libraries: LendingLibraries,
-}
-
-pub struct WalkStart<'s> {
-    pub root: &'s Path,
-    pub checkout: Option<CheckoutBounds>,
 }
 
 #[derive(Clone, Copy)]
@@ -271,7 +267,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
         }
         let project = self.terminal.sources().projects().load(&project_file)?;
         self.seen.add(library_root, library, &project);
-        let own_checkout = Self::own_checkout(library_root, library);
+        let own_checkout = CheckoutBounds::of_library(library, library_root);
         let visited = VisitedLibrary {
             root: library_root,
             library,
@@ -300,13 +296,6 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             library.name_span,
             &project_file.display().to_string(),
         )))
-    }
-
-    fn own_checkout(library_root: &Path, library: &LibraryDependency) -> Option<CheckoutBounds> {
-        library
-            .source
-            .is_fetched()
-            .then(|| CheckoutBounds::of(library_root))
     }
 
     fn record(

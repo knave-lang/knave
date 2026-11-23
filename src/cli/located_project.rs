@@ -1,6 +1,6 @@
 mod file_placement;
+mod library_entrance;
 mod project_root;
-mod project_site;
 mod task_layout;
 
 use std::path::{Path, PathBuf};
@@ -8,18 +8,19 @@ use std::path::{Path, PathBuf};
 use super::compiler_check::CompilerCheck;
 use super::exit_status::ExitStatus;
 use super::lending_libraries::LendingLibraries;
-use super::library_walk::{LibraryStore, LibraryWalk, WalkStart};
+use super::library_walk::{LibraryStore, LibraryWalk};
 use super::lint_levels::LintLevels;
 use super::program_file::ProgramFile;
 use super::project_crates::ProjectCrates;
 use super::terminal::Terminal;
+use super::walk_start::WalkStart;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::LibraryTable;
 use crate::project::{Project, ProjectProblems};
 use file_placement::FilePlacement;
+pub use library_entrance::LibraryEntrance;
 pub use project_root::ProjectRoot;
-pub use project_site::ProjectSite;
 pub use task_layout::{ProjectFacts, TaskLayout};
 
 pub struct LocatedProject {
@@ -41,24 +42,17 @@ impl LocatedProject {
             return Ok(None);
         };
         CompilerCheck::new(terminal).refuse_before_loading(&root)?;
-        let located = Self::enter_unchecked(ProjectSite::Around(directory), terminal, store);
+        let located = Self::enter_unchecked(directory, terminal, store);
         CompilerCheck::new(terminal).report(&root)?;
         located
     }
 
     pub fn enter_unchecked(
-        site: ProjectSite<'_>,
+        directory: &Path,
         terminal: &mut Terminal,
         store: impl LibraryStore,
     ) -> Result<Option<Self>, ExitStatus> {
-        let located = match site {
-            ProjectSite::Around(directory) => Self::search_from(directory, terminal, store)?,
-            ProjectSite::Library { root, checkout } => Some(Self::walked_from(
-                WalkStart { root, checkout },
-                terminal,
-                store,
-            )?),
-        };
+        let located = Self::search_from(directory, terminal, store)?;
         if let Some(entered) = &located {
             let levels = LintLevels::of(&entered.project.lints);
             terminal.configure(|settings| settings.leveling_lints_by(levels));

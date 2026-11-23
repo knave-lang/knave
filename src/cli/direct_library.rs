@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::checkout_bounds::CheckoutBounds;
-use super::located_project::ProjectSite;
+use super::walk_start::WalkStart;
 
 use super::lender_arguments::LenderArguments;
 use crate::project::LibraryDependency;
@@ -11,16 +11,16 @@ pub struct DirectLibrary {
     name: String,
     root: PathBuf,
     exported_tasks: Vec<String>,
-    fetched: bool,
+    checkout: Option<CheckoutBounds>,
 }
 
 impl DirectLibrary {
     pub fn of(library: &LibraryDependency, root: PathBuf, exported_tasks: Vec<String>) -> Self {
         Self {
             name: library.name.clone(),
+            checkout: CheckoutBounds::of_library(library, &root),
             root,
             exported_tasks,
-            fetched: library.source.is_fetched(),
         }
     }
 
@@ -28,10 +28,10 @@ impl DirectLibrary {
         &self.name
     }
 
-    pub fn site(&self) -> ProjectSite<'_> {
-        ProjectSite::Library {
+    pub fn walk_start(&self) -> WalkStart<'_> {
+        WalkStart {
             root: &self.root,
-            checkout: self.fetched.then(|| CheckoutBounds::of(&self.root)),
+            checkout: self.checkout.clone(),
         }
     }
 
@@ -48,7 +48,7 @@ impl DirectLibrary {
     }
 
     pub fn arguments(&self) -> LenderArguments<'_> {
-        if self.fetched {
+        if self.checkout.is_some() {
             LenderArguments::fetched(&self.name, &self.exported_tasks)
         } else {
             LenderArguments::local(&self.name, &self.exported_tasks)

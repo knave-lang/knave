@@ -1,13 +1,14 @@
 use std::path::{Component, Path, PathBuf};
 
 use super::program_file::ProgramFile;
+use crate::project::LibraryDependency;
 
 pub enum RepositoryAddress<'u> {
     Remote(&'u str),
     Local(PathBuf),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CheckoutBounds {
     root: PathBuf,
 }
@@ -40,6 +41,10 @@ impl<'u> RepositoryAddress<'u> {
 }
 
 impl CheckoutBounds {
+    pub fn of_library(library: &LibraryDependency, root: &Path) -> Option<Self> {
+        library.source.is_fetched().then(|| Self::of(root))
+    }
+
     pub fn of(checkout: &Path) -> Self {
         Self {
             root: Self::resolved(checkout),

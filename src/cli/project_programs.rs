@@ -105,7 +105,6 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> LocatedProject {
-        let lending = project.task_layout().lending().clone();
         let tree = EntryTree::of_tasks(project);
         if tree.holds_tasks() {
             match TaskCatalog::load(&tree, terminal, "") {
@@ -113,10 +112,12 @@ impl ProjectPrograms {
                 Err(status) => loaded.fail(status),
             }
         }
-        if let Err(status) = LibraryTasks::check_lenders(terminal, &lending) {
+        let project = Self::project_of(tree);
+        if let Err(status) = LibraryTasks::check_lenders(terminal, project.task_layout().lending())
+        {
             loaded.fail(status);
         }
-        Self::project_of(tree)
+        project
     }
 
     fn task_program(terminal: &mut Terminal, catalog: &TaskCatalog, loaded: &mut LoadedPrograms) {

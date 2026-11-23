@@ -12,7 +12,7 @@ use rustc_hash::FxHashMap;
 use super::embedded_prelude::EmbeddedPrelude;
 use super::exit_status::ExitStatus;
 use super::library_walk::CacheOnlyStore;
-use super::located_project::{LocatedProject, ProjectRoot, ProjectSite};
+use super::located_project::{LocatedProject, ProjectRoot};
 use super::program_file::ProgramFile;
 use super::skipped_directory::SkippedDirectory;
 use super::standard_error::StandardError;
@@ -374,14 +374,10 @@ impl NearbyProjects {
 
     fn load(root: &Path, warning: &Rc<ProjectLoadWarning>) -> Option<LocatedProject> {
         let mut loading = Terminal::new(TerminalSettings::reporting_to(warning.clone()));
-        LocatedProject::enter_unchecked(
-            ProjectSite::Around(root),
-            &mut loading,
-            CacheOnlyStore::default(),
-        )
-        .unwrap_or_else(|_| {
-            warning.warn_once();
-            None
-        })
+        LocatedProject::enter_unchecked(root, &mut loading, CacheOnlyStore::default())
+            .unwrap_or_else(|_| {
+                warning.warn_once();
+                None
+            })
     }
 }

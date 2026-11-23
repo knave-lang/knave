@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::shapes::{ShapeCatalog, ShapeStatement};
 use crate::core::{DefinitionForm, KernelForm, ModulePath};
+use crate::modules::ReservedModulePaths;
 use crate::modules::{LocatedModule, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader};
 use crate::source::SourceMap;
@@ -91,7 +92,7 @@ impl ShapeReader {
             visited: FxHashSet::default(),
             catalog: ShapeCatalog::default(),
         };
-        walk.add_module(None, &ModulePath::new(ModuleSources::PRELUDE));
+        walk.add_module(None, &ModulePath::new(ReservedModulePaths::PRELUDE));
         lookup
             .shape_modules
             .iter()

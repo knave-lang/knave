@@ -56,7 +56,7 @@ impl Expander<'_> {
         }
         if let Some(prelude) = self
             .saved_prelude
-            .take_if(|_| path.as_str() == ModuleSources::PRELUDE)
+            .take_if(|_| path.as_str() == ReservedModulePaths::PRELUDE)
         {
             return Ok(prelude.install(self));
         }
@@ -330,9 +330,9 @@ impl Expander<'_> {
 
     fn import_base(&mut self, module: ModuleId, path: &ModulePath, span: Span) {
         let base_name = if ModuleSources::is_prelude(path) {
-            ModuleSources::KERNEL
+            ReservedModulePaths::KERNEL
         } else {
-            ModuleSources::PRELUDE
+            ReservedModulePaths::PRELUDE
         };
         match self.load_module(&ModulePath::new(base_name), span) {
             Ok(base) => self.import_everything(module, base),

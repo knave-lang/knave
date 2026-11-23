@@ -7,6 +7,7 @@ use crate::core::{
     ModuleId, ModulePath, Namespace,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
+use crate::modules::ReservedModulePaths;
 use crate::modules::{ModuleRecord, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::ScopeKind;
@@ -218,7 +219,7 @@ impl ExpansionSession<'_> {
     fn prelude(&self) -> Option<ModuleId> {
         self.expander
             .modules
-            .find(&ModulePath::new(ModuleSources::PRELUDE))
+            .find(&ModulePath::new(ReservedModulePaths::PRELUDE))
     }
 
     fn read_one(&self, source: SourceId) -> Result<Form, Diagnostics> {

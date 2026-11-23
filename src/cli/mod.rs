@@ -179,6 +179,7 @@ mod upgrade;
 mod user_label_output;
 mod value_marker;
 mod versioned_text;
+mod walk_start;
 mod whole_characters;
 mod working_directory;
 mod written_printer;

@@ -49,21 +49,19 @@ impl ProjectInspection {
         } else {
             inspect_entry(terminal, program.file(), print_warnings)
         };
-        let lending = program
-            .project()
-            .filter(|_| defaults_to_project_entry)
-            .map(|project| project.task_layout().lending().clone())
-            .unwrap_or_default();
-        let tree = program
-            .into_project()
-            .filter(|_| checks_tasks)
-            .map(EntryTree::of_tasks)
-            .filter(EntryTree::holds_tasks);
-        let tasks = match tree {
-            Some(tree) => Self::check_tasks(terminal, &tree, print_warnings),
+        let Some(project) = program.into_project().filter(|_| checks_tasks) else {
+            return entry;
+        };
+        let tree = EntryTree::of_tasks(project);
+        let tasks = if tree.holds_tasks() {
+            Self::check_tasks(terminal, &tree, print_warnings)
+        } else {
+            Ok(())
+        };
+        let lent = match tree.project().filter(|_| defaults_to_project_entry) {
+            Some(project) => LibraryTasks::check_lenders(terminal, project.task_layout().lending()),
             None => Ok(()),
         };
-        let lent = LibraryTasks::check_lenders(terminal, &lending);
         entry.and(tasks).and(lent)
     }
 

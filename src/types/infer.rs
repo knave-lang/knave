@@ -5,8 +5,11 @@ mod shared_variables;
 mod short_pattern;
 mod variant_target;
 
-use super::forms::{Borrowing, Conditional, Dereference, ExpressionForm, IfOperands};
+use super::forms::{
+    Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, VariantConstruction,
+};
 use super::result_span::ResultSpan;
+use super::variant_site::VariantSite;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
@@ -27,9 +30,9 @@ use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
 use super::ty::{Bound, Type};
 use super::typed::{
-    Borrow, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder,
-    TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
+    Borrow, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder, TypedBlock,
+    TypedBodyItem, TypedControl, TypedConversion, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
+    TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
 };
 use super::unifier::LiteralKind;
 use super::{BoxedPayload, PayloadPosition, variant_names::VariantNames};
@@ -47,12 +50,6 @@ use crate::source::Span;
 use shared_variables::SharedVariables;
 use short_pattern::ShortPattern;
 use variant_target::VariantTarget;
-
-struct VariantSite {
-    info: VariantInfo,
-    type_arguments: Vec<Type>,
-    payload: Vec<Type>,
-}
 
 enum MapIterator {
     Keys,
@@ -146,7 +143,9 @@ impl TypeChecker {
     fn infer_composite(&mut self, kind: &ExprKind, span: Span) -> Result<TypedExpr, Diagnostic> {
         match kind {
             ExprKind::Struct(structure) => self.infer_struct(structure, span),
-            ExprKind::Variant(binding, arguments) => self.infer_variant(*binding, arguments, span),
+            ExprKind::Variant(binding, arguments) => {
+                VariantConstruction::new(*binding, arguments, span).type_against(self, None)
+            }
             ExprKind::LabeledVariant(binding, fields) => {
                 self.infer_labeled_variant(*binding, fields, None, span)
             }
@@ -219,45 +218,6 @@ impl TypeChecker {
         }
     }
 
-    fn infer_variant(
-        &mut self,
-        binding: BindingId,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        self.infer_variant_expecting(binding, arguments, None, span)
-    }
-
-    fn infer_variant_expecting(
-        &mut self,
-        binding: BindingId,
-        arguments: &[Expr],
-        expected: Option<&Type>,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let site = self.variant_site(binding, expected);
-        if arguments.len() != site.info.arity {
-            return Err(TypeProblems::wrong_argument_count(
-                site.info.arity,
-                arguments.len(),
-                span,
-            ));
-        }
-        let mut typed = Vec::new();
-        for (argument, expected) in arguments.iter().zip(&site.payload) {
-            let value = self.infer_against(argument, expected, MismatchContext::Plain)?;
-            typed.push(value);
-        }
-        if let Some(value) = self.result_ok_try(site.info, &typed) {
-            return Ok(value);
-        }
-        Ok(TypedExpr {
-            kind: TypedExprKind::Variant(binding, typed, FieldOrder::Declared),
-            ty: Type::Named(site.info.owner, site.type_arguments),
-            span,
-        })
-    }
-
     fn variant_site(&mut self, binding: BindingId, expected: Option<&Type>) -> VariantSite {
         let info = self.variant_info(binding);
         let type_arguments = match expected.map(|expected| self.unifier.shallow(expected)) {
@@ -276,27 +236,6 @@ impl TypeChecker {
             type_arguments,
             payload,
         }
-    }
-
-    fn result_ok_try(&self, info: VariantInfo, typed: &[TypedExpr]) -> Option<TypedExpr> {
-        let shape = self.declarations.types().enums.variant_shape(info);
-        if !shape.is_result_ok() {
-            return None;
-        }
-        let [
-            TypedExpr {
-                kind:
-                    TypedExprKind::Try {
-                        value,
-                        conversion: TryErrorConversion::Identity,
-                    },
-                ..
-            },
-        ] = typed
-        else {
-            return None;
-        };
-        Some((**value).clone())
     }
 
     fn infer_match(
@@ -1082,7 +1021,8 @@ impl TypeChecker {
                 checker.infer_match_expecting(value, arms, Some(expected), expr.span())
             }
             (ExprKind::Variant(binding, arguments), _) => {
-                checker.infer_variant_expecting(*binding, arguments, Some(expected), expr.span())
+                VariantConstruction::new(*binding, arguments, expr.span())
+                    .type_against(checker, Some(Expectation::plain(expected)))
             }
             (ExprKind::LabeledVariant(binding, fields), _) => {
                 checker.infer_labeled_variant(*binding, fields, Some(expected), expr.span())

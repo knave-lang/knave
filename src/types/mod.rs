@@ -253,6 +253,7 @@ mod variable_linking;
 mod variant_names;
 mod variant_payloads;
 mod variant_shape;
+mod variant_site;
 mod view_coercion;
 mod viewed_arguments;
 mod walk;

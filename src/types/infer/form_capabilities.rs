@@ -1,19 +1,32 @@
 use std::rc::Rc;
 
-use crate::core::Expr;
+use crate::core::{BindingId, Expr, VariantInfo};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::checker::TypeChecker;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    ChildTyping, MacroOrigins, Obligations, PlaceReads, TypeFitting, Unknowns,
+    ChildTyping, ChildTypingAgainst, MacroOrigins, Obligations, PlaceReads, TypeFitting, Unknowns,
+    VariantSites,
 };
+use crate::types::problems::MismatchContext;
 use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
+use crate::types::variant_site::VariantSite;
 
 impl ChildTyping for TypeChecker {
     fn type_child(&mut self, child: &Expr) -> Result<TypedExpr, Diagnostic> {
         self.infer(child)
+    }
+}
+
+impl ChildTypingAgainst for TypeChecker {
+    fn type_child_against(
+        &mut self,
+        child: &Expr,
+        expected: &Type,
+    ) -> Result<TypedExpr, Diagnostic> {
+        self.infer_against(child, expected, MismatchContext::Plain)
     }
 }
 
@@ -61,5 +74,19 @@ impl Unknowns for TypeChecker {
 impl Obligations for TypeChecker {
     fn require_copy(&mut self, value: &Type) {
         TypeChecker::require_copy(self, value);
+    }
+}
+
+impl VariantSites for TypeChecker {
+    fn variant_site(&mut self, binding: BindingId, expected: Option<&Type>) -> VariantSite {
+        TypeChecker::variant_site(self, binding, expected)
+    }
+
+    fn is_result_ok(&self, info: VariantInfo) -> bool {
+        self.declarations
+            .types()
+            .enums
+            .variant_shape(info)
+            .is_result_ok()
     }
 }

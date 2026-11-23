@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/assoc_map_key_mismatch.knv
+---
+error[L0401]: mismatched types
+ --> check/assoc_map_key_mismatch.knv:2:42
+  |
+2 |   (local changed (assoc (hash-map "a" 1) 2 3))
+  |                                          ^ expected `(ref str)`, found an integer
+  |
+  = note: run `knave doc L0401` for an explanation

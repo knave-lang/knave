@@ -1,0 +1,3 @@
+(defn main ()
+  (local changed (assoc (hash-map "a" 1) 2 3))
+  (println (len changed)))

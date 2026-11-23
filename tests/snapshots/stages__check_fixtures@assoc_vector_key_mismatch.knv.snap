@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/assoc_vector_key_mismatch.knv
+---
+error[L0401]: mismatched types
+ --> check/assoc_vector_key_mismatch.knv:2:35
+  |
+2 |   (local changed (assoc (vec 1 2) "a" 3))
+  |                                   ^^^ expected `int`, found `(ref str)`
+  |
+  = note: run `knave doc L0401` for an explanation

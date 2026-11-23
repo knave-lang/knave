@@ -1,13 +1,12 @@
-use super::definition_index::DefinitionIndex;
 use super::result_borrows::ResultBorrows;
 use crate::modules::ModuleSources;
-use crate::types::{Regions, ResultRegion, TypedExprKind, TypedProgram};
+use crate::types::{DefinitionTable, Regions, ResultRegion, TypedExprKind, TypedProgram};
 
 pub struct RegionRecord;
 
 impl RegionRecord {
     pub fn of(program: &TypedProgram) -> Regions {
-        let index = DefinitionIndex::of(program);
+        let index = DefinitionTable::of(program);
         let analysis = ResultBorrows::new(program, &index);
         let mut regions = Regions::default();
         let user_definitions = program

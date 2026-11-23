@@ -16,7 +16,8 @@ use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
 use crate::types::{
-    GenericParam, Type, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    DefinitionTable, GenericParam, Type, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
+    TypedProgram,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,7 +39,7 @@ pub struct ItemInfo {
 pub struct EmitPlan<'p> {
     program: &'p TypedProgram,
     entry: EntryPoint,
-    definitions: FxHashMap<BindingId, (&'p TypedDefinition, ModuleId)>,
+    definitions: DefinitionTable<'p>,
     type_modules: FxHashMap<BindingId, ModuleId>,
     reached: Vec<BindingId>,
     visibilities: ItemVisibilities,
@@ -59,7 +60,7 @@ impl<'p> EmitPlan<'p> {
         let mut plan = Self {
             program,
             entry: EntryPoint::new(main),
-            definitions: Self::index_definitions(program),
+            definitions: DefinitionTable::of(program),
             type_modules: program
                 .modules
                 .iter()
@@ -129,9 +130,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     pub fn definition(&self, binding: BindingId) -> Option<&'p TypedDefinition> {
-        self.definitions
-            .get(&binding)
-            .map(|(definition, _)| *definition)
+        self.definitions.definition(binding)
     }
 
     pub fn items_of(&self, module: ModuleId) -> Vec<BindingId> {
@@ -278,21 +277,6 @@ impl<'p> EmitPlan<'p> {
             .map(|definition| definition.binding)
     }
 
-    fn index_definitions(
-        program: &TypedProgram,
-    ) -> FxHashMap<BindingId, (&TypedDefinition, ModuleId)> {
-        program
-            .modules
-            .iter()
-            .flat_map(|module| {
-                module
-                    .definitions
-                    .iter()
-                    .map(move |definition| (definition.binding, (definition, module.id)))
-            })
-            .collect()
-    }
-
     fn reach_trait_defaults(&mut self) {
         let traits = &self.program.declarations.traits();
         let defaults: Vec<BindingId> = traits
@@ -332,7 +316,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn visit_definition(&mut self, binding: BindingId) {
-        let Some((definition, module)) = self.definitions.get(&binding).copied() else {
+        let Some((definition, module)) = self.definitions.entry(binding) else {
             return;
         };
         if matches!(
@@ -459,7 +443,7 @@ impl<'p> EmitPlan<'p> {
     }
 
     fn reference(&mut self, binding: BindingId, from: ModuleId) {
-        if let Some((_, owner)) = self.definitions.get(&binding).copied() {
+        if let Some((_, owner)) = self.definitions.entry(binding) {
             self.visibilities.note_use(binding, owner, from);
         }
         self.visit_definition(binding);
@@ -548,8 +532,8 @@ impl<'p> EmitPlan<'p> {
 
     fn item_info(&self, binding: BindingId) -> ItemInfo {
         let name = self.program.bindings.get(binding).name();
-        let (module, kind) = match self.definitions.get(&binding) {
-            Some((definition, module)) => (*module, self.definition_kind(definition)),
+        let (module, kind) = match self.definitions.entry(binding) {
+            Some((definition, module)) => (module, self.definition_kind(definition)),
             None => (self.type_modules[&binding], self.named_type_kind(binding)),
         };
         let rust_name = match (

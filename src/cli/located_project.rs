@@ -1,3 +1,4 @@
+mod entry_layout;
 mod file_placement;
 mod library_entrance;
 mod project_root;
@@ -18,6 +19,8 @@ use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
 use crate::modules::LibraryTable;
 use crate::project::{Project, ProjectProblems};
+use entry_layout::EntryFacts;
+pub use entry_layout::EntryLayout;
 use file_placement::FilePlacement;
 pub use library_entrance::LibraryEntrance;
 pub use project_root::ProjectRoot;
@@ -111,23 +114,21 @@ impl LocatedProject {
         &self.project.name
     }
 
-    pub fn entry(&self) -> ProgramFile {
-        let entry = self.root.join(self.project.modules.entry.path());
-        self.placement().file_within(entry)
+    pub fn entry_layout(&self) -> EntryLayout<'_> {
+        let facts = EntryFacts {
+            root: &self.root,
+            modules: &self.project.modules,
+            has_tasks: self.task_layout().has_tasks(),
+        };
+        EntryLayout::of(facts, self.placement())
     }
 
     pub fn task_layout(&self) -> TaskLayout<'_> {
         let facts = ProjectFacts {
             project: &self.project,
-            root: &self.root,
             lending: &self.lending,
         };
         TaskLayout::of(facts, &self.placement())
-    }
-
-    pub fn is_entry(&self, file: &ProgramFile) -> bool {
-        let entry = self.root.join(self.project.modules.entry.path());
-        ProgramFile::canonical(&entry) == ProgramFile::canonical(file.path())
     }
 
     pub fn placement(&self) -> FilePlacement<'_> {

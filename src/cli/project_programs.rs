@@ -16,7 +16,6 @@ use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
 use super::test_entries::TestEntries;
 use super::test_runner_program::TestRunnerProgram;
-use crate::source::SourceId;
 
 pub struct ProjectPrograms {
     scope: Scope,
@@ -69,8 +68,9 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
-        if !project.task_layout().checks_tasks_alone() {
-            loaded.add(Self::entry(terminal, project.entry()));
+        let entries = project.entry_layout();
+        if !entries.skips_entry() {
+            loaded.add(Self::entry(terminal, entries.entry()));
         }
         let project = Self::tests(terminal, project, loaded);
         let project = Self::tasks(terminal, project, loaded);
@@ -145,7 +145,7 @@ impl ProjectPrograms {
         project: &LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
-        let mut tried = Self::held_files(terminal, 0);
+        let mut tried = terminal.source_report().canonical_files_from(0);
         let paths = match SourceFiles::under(project.root().to_path_buf(), project).paths() {
             Ok(paths) => paths,
             Err(status) => {
@@ -157,19 +157,10 @@ impl ProjectPrograms {
             if ProgramFile::canonical(&path).is_some_and(|canonical| tried.insert(canonical)) {
                 let first_source = terminal.source_report().sources().next_id().index();
                 loaded.add(Self::entry(terminal, project.placement().file_within(path)));
-                tried.extend(Self::held_files(terminal, first_source));
+                tried.extend(terminal.source_report().canonical_files_from(first_source));
             }
         }
         tried
-    }
-
-    fn held_files(terminal: &Terminal, first_source: usize) -> FxHashSet<PathBuf> {
-        let sources = terminal.source_report().sources();
-        (first_source..sources.next_id().index())
-            .filter_map(|index| {
-                ProgramFile::canonical(Path::new(sources.file(SourceId::new(index)).name()))
-            })
-            .collect()
     }
 
     fn without_current_folder(path: PathBuf) -> PathBuf {

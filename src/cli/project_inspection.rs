@@ -5,6 +5,7 @@ use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
 use super::library_tasks::LibraryTasks;
 use super::located_program::LocatedProgram;
+use super::located_project::LocatedProject;
 use super::program_file::ProgramFile;
 use super::separated_batches::SeparatedBatches;
 use super::source_report::SourceReport;
@@ -28,11 +29,7 @@ impl ProjectInspection {
         self,
         terminal: &mut Terminal,
         print_warnings: &WarningPrinter,
-        inspect_entry: impl FnOnce(
-            &mut Terminal,
-            &ProgramFile,
-            &WarningPrinter,
-        ) -> Result<(), ExitStatus>,
+        inspect_entry: impl Fn(&mut Terminal, &ProgramFile, &WarningPrinter) -> Result<(), ExitStatus>,
     ) -> Result<(), ExitStatus> {
         let defaults_to_project_entry = self.entry.defaults_to_project_entry();
         let program = self.entry.locate(terminal)?;
@@ -49,20 +46,52 @@ impl ProjectInspection {
         } else {
             inspect_entry(terminal, program.file(), print_warnings)
         };
-        let Some(project) = program.into_project().filter(|_| checks_tasks) else {
-            return entry;
-        };
-        let tree = EntryTree::of_tasks(project);
-        let tasks = if tree.holds_tasks() {
-            Self::check_tasks(terminal, &tree, print_warnings)
-        } else {
-            Ok(())
-        };
-        let lent = match tree.project().filter(|_| defaults_to_project_entry) {
-            Some(project) => LibraryTasks::check_lenders(terminal, project.task_layout().lending()),
+        let inspected_project = program.project().filter(|_| defaults_to_project_entry);
+        let library = match Self::unchecked_library_root(terminal, inspected_project) {
+            Some(library_root) => inspect_entry(terminal, &library_root, print_warnings),
             None => Ok(()),
         };
-        entry.and(tasks).and(lent)
+        let Some(project) = program.into_project().filter(|_| checks_tasks) else {
+            return entry.and(library);
+        };
+        let tree = EntryTree::of_tasks(project);
+        let tasks = Self::inspect_tasks(terminal, &tree, print_warnings);
+        let lent = Self::check_lenders(
+            terminal,
+            tree.project().filter(|_| defaults_to_project_entry),
+        );
+        entry.and(library).and(tasks).and(lent)
+    }
+
+    fn unchecked_library_root(
+        terminal: &Terminal,
+        project: Option<&LocatedProject>,
+    ) -> Option<ProgramFile> {
+        let entries = project?.entry_layout();
+        let checked = terminal.source_report().canonical_files_from(0);
+        entries.library_root_outside(&checked)
+    }
+
+    fn inspect_tasks(
+        terminal: &mut Terminal,
+        tree: &EntryTree,
+        print_warnings: &WarningPrinter,
+    ) -> Result<(), ExitStatus> {
+        if tree.holds_tasks() {
+            Self::check_tasks(terminal, tree, print_warnings)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn check_lenders(
+        terminal: &mut Terminal,
+        project: Option<&LocatedProject>,
+    ) -> Result<(), ExitStatus> {
+        match project {
+            Some(project) => LibraryTasks::check_lenders(terminal, project.task_layout().lending()),
+            None => Ok(()),
+        }
     }
 
     fn names_a_task_file(program: &LocatedProgram) -> bool {

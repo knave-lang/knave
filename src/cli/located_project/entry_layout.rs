@@ -1,4 +1,6 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+use rustc_hash::FxHashSet;
 
 use super::file_placement::FilePlacement;
 use crate::cli::program_file::ProgramFile;
@@ -38,11 +40,28 @@ impl<'p> EntryLayout<'p> {
     }
 
     pub fn skips_entry(&self) -> bool {
-        self.leaves_out_entry() && self.has_tasks
+        self.leaves_out_entry() && self.starts_elsewhere()
+    }
+
+    pub fn library_root_outside(&self, loaded: &FxHashSet<PathBuf>) -> Option<ProgramFile> {
+        self.library_root().filter(|library_root| {
+            ProgramFile::canonical(library_root.path()).is_some_and(|path| !loaded.contains(&path))
+        })
     }
 
     fn leaves_out_entry(&self) -> bool {
         let entry = &self.modules.entry;
         !entry.is_written() && !self.root.join(entry.path()).exists()
+    }
+
+    fn starts_elsewhere(&self) -> bool {
+        self.has_tasks || self.library_root().is_some()
+    }
+
+    fn library_root(&self) -> Option<ProgramFile> {
+        let library_root = self.root.join(&self.modules.library_root);
+        library_root
+            .is_file()
+            .then(|| self.placement.file_within(library_root))
     }
 }

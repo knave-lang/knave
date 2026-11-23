@@ -1,0 +1,5 @@
+---
+source: tests/cli.rs
+expression: build.assert_exit_code(2).stderr()
+---
+error: cannot read `src/main.knv`: No such file or directory (os error 2)

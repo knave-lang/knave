@@ -2,12 +2,15 @@ use super::body_flows::BodyFlows;
 use super::enum_payloads::EnumPayloads;
 use super::flow_graph::FlowGraph;
 use super::need::Need;
+use super::reaching_text::ReachingText;
 use super::representation::Representation;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
+use super::source::Source;
 use super::text_position::{TextPosition, TextPositions};
 use super::text_program::TextProgram;
+use super::text_value::TextValue;
 use super::trait_method_slots::TraitMethodSlots;
 
 use super::walk_context::WalkContext;
@@ -127,13 +130,15 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         let top = TextPositions::of(&receiver.ty)
             .into_iter()
             .find(|position| position.path.is_top());
-        let need = match top.map(|position| position.written) {
-            Some(Representation::Owned) => Need::Owned,
-            Some(Representation::View) => Need::View,
-            Some(Representation::Lent) => Need::Lent,
+        let (need, given) = match top.map(|position| position.written) {
+            Some(Representation::Owned) => (Need::Owned, ReachingText::OWNED),
+            Some(Representation::View) => (Need::View, ReachingText::BORROWED),
+            Some(Representation::Lent) => (Need::Lent, ReachingText::LENT),
             _ => return,
         };
         let slot = Slot::from(SlotOwner::Parameter(receiver.binding));
+        let given = TextValue::from(Source::Text(given), receiver.span);
+        self.graph.receive(&slot, &given);
         self.graph.require(slot, need);
     }
 

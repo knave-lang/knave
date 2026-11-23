@@ -1193,7 +1193,7 @@ impl TypeChecker {
         let signature = written_by_signature.then_some(&ty);
         Ok(TypedBinder {
             binding: param.binding,
-            written_view: TypedBinder::writes_a_view(param.annotation.as_ref(), signature),
+            written_view: TypedBinder::written_view(param.annotation.as_ref(), signature),
             ty,
             span: param.span,
             annotated: param.annotation.is_some() || written_by_signature,

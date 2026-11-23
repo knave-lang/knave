@@ -1,6 +1,6 @@
 use super::function_slots::FunctionSlots;
-use super::need::Need;
 use super::node_id::NodeId;
+use super::parameter_pins::ParameterPins;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
@@ -85,8 +85,8 @@ impl<'l> ClosureSlots<'l> {
         (parameter, position): (Slot, &TextPosition),
     ) -> NodeId {
         if self.closure_use == ClosureUse::Free {
-            if position.path.is_top() && binder.written_view {
-                context.require(parameter.clone(), Need::View);
+            if position.path.is_top() {
+                ParameterPins::new(context).pin_written(parameter.owner().clone(), binder);
             }
             return context.node(parameter);
         }

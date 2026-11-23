@@ -5,7 +5,7 @@ use super::callee::Callee;
 use super::closure_slots::{ClosureSlots, ClosureUse};
 use super::construction_flows::ConstructionFlows;
 use super::global_reads::GlobalReads;
-use super::need::Need;
+use super::parameter_pins::ParameterPins;
 use super::pattern_flows::PatternFlows;
 use super::place_writes::PlaceWrites;
 use super::reaching_text::ReachingText;
@@ -66,9 +66,8 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             self.owners.add_parameter(parameter.binding);
             let owner = SlotOwner::Parameter(parameter.binding);
             self.listing.list(&owner, &parameter.ty);
-            if parameter.written_view && !self.context.program().names().is_generated(self.function)
-            {
-                self.context.require(Slot::from(owner), Need::View);
+            if !self.context.program().names().is_generated(self.function) {
+                ParameterPins::new(&mut self.context).pin_written(owner, parameter);
             }
         }
         let value = self.block(&lambda.body);

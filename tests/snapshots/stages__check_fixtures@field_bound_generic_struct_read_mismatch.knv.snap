@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_generic_struct_read_mismatch.knv
+---
+error[L0404]: `(boxed int)` reads `:v` as `(ref int)`, but the `has` bound reads it as `int`
+  --> check/field_bound_generic_struct_read_mismatch.knv:15:18
+   |
+15 |   (println (v-of (->boxed 2))))
+   |                  ^^^^^^^^^^^ this `(boxed int)` reads `:v` as `(ref int)`
+   |
+   = help: pass a struct whose `:v` reads as `int`
+   = note: run `knave doc L0404` for an explanation

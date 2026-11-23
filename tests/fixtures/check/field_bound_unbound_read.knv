@@ -1,0 +1,17 @@
+(defstruct cat
+  :age int
+  :tag string)
+
+(defstruct dog
+  :age int
+  :tag string)
+
+(type tag-len
+  (where ((a (has :tag string)))
+    (fn ((ref a)) int)))
+
+(defn tag-len (x)
+  (+ (len (:tag x)) (:age x)))
+
+(defn main ()
+  (println (tag-len (->cat 1 (str "t")))))

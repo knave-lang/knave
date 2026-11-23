@@ -18,6 +18,7 @@ mod flow;
 #[cfg(test)]
 mod flow_fixture;
 mod flow_graph;
+mod flow_origin;
 mod function_slots;
 mod function_value;
 mod global_reads;

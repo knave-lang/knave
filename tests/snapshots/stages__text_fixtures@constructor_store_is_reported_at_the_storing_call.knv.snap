@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/constructor_store_is_reported_at_the_storing_call.knv
+---
+struct car
+  make: owned, written a view
+defn build-with
+  constructor[0]: a view
+  make: a view
+defn main
+  local model: owned
+  name: a view
+needs owned text
+  text/constructor_store_is_reported_at_the_storing_call.knv:8:50
+  text/constructor_store_is_reported_at_the_storing_call.knv:13:49

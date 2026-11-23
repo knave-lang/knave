@@ -1,0 +1,15 @@
+(defstruct car
+  :make str)
+
+(type build-with
+  (fn ((fn ((ref str)) car) (ref str))
+    car))
+
+(defn build-with (constructor make) (constructor make))
+
+(defn main ()
+  (local model (str "Leaf"))
+  (println (:make (build-with ->car (as-str model)))
+           (:make (build-with (fn (name) (->car name))
+                              "fig"))
+           (:make (->car "Ana"))))

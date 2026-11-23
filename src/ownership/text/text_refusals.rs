@@ -44,7 +44,34 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
             .into_iter()
             .map(|(_, refusal)| refusal)
             .filter(|refusal| !self.repeats_a_report(refusal.flow, &reported))
+            .flat_map(|refusal| self.at_written_sites(refusal))
             .collect()
+    }
+
+    fn at_written_sites(&self, refusal: Refusal<'g>) -> Vec<Refusal<'g>> {
+        let Source::Slot(source) = refusal.flow.source else {
+            return vec![refusal];
+        };
+        if !refusal.flow.origin.is_generated() {
+            return vec![refusal];
+        }
+        let class = self.classes.class(source);
+        let written: Vec<Refusal<'g>> = self
+            .classes
+            .flows()
+            .iter()
+            .filter(|flow| !flow.origin.is_generated() && self.classes.class(flow.target) == class)
+            .filter(|flow| self.facts.arriving(flow).is_short_lived())
+            .map(|flow| Refusal {
+                flow,
+                cause: refusal.cause,
+            })
+            .collect();
+        if written.is_empty() {
+            vec![refusal]
+        } else {
+            written
+        }
     }
 
     fn reported_classes(&self, candidates: &[(usize, Refusal<'_>)]) -> FxHashSet<NodeId> {
@@ -181,6 +208,30 @@ mod tests {
     use crate::ownership::text::representation::Representation;
     use crate::ownership::text::slot_owner::SlotOwner;
     use crate::ownership::text::transfer::Transfer;
+
+    #[test]
+    fn a_store_in_generated_code_is_reported_where_written_code_hands_it_text() {
+        let flows = FlowFixture::default()
+            .text(ReachingText::BORROWED, (FlowFixture::PARAMETER, 4))
+            .generated_flow(
+                (FlowFixture::PARAMETER, FlowFixture::field()),
+                Transfer::Move,
+                9,
+            );
+        assert_eq!(flows.refused_at(), vec![4]);
+    }
+
+    #[test]
+    fn a_store_in_generated_code_no_written_flow_reaches_stays_where_it_is() {
+        let flows = FlowFixture::default()
+            .generated_text(ReachingText::BORROWED, (FlowFixture::LOCAL, 2))
+            .generated_flow(
+                (FlowFixture::LOCAL, FlowFixture::field()),
+                Transfer::Move,
+                9,
+            );
+        assert_eq!(flows.refused_at(), vec![9]);
+    }
 
     #[test]
     fn owned_keys_refuse_a_static_query_and_mixed_keys_take_it() {

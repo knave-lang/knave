@@ -1,6 +1,7 @@
 use super::body_flows::BodyFlows;
 use super::enum_payloads::EnumPayloads;
 use super::flow_graph::FlowGraph;
+use super::flow_origin::FlowOrigin;
 use super::need::Need;
 use super::reaching_text::ReachingText;
 use super::representation::Representation;
@@ -104,7 +105,7 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         let names = self.program.names();
         self.listing
             .open(Some(format!("def {}", names.name(binding))));
-        let context = WalkContext::new(self.program, &mut self.graph);
+        let context = WalkContext::new(self.program, &mut self.graph, FlowOrigin::Written);
         BodyFlows::new(context, &mut self.listing, binding).walk_value(value);
     }
 
@@ -115,7 +116,13 @@ impl<'w, 'p> TextWalk<'w, 'p> {
             None => (!names.is_generated(binding)).then(|| format!("defn {}", names.name(binding))),
         };
         self.listing.open(heading);
-        let context = WalkContext::new(self.program, &mut self.graph);
+        let written_method = self.program.written().trait_method(binding).is_some();
+        let origin = if names.is_generated(binding) && !written_method {
+            FlowOrigin::Generated
+        } else {
+            FlowOrigin::Written
+        };
+        let context = WalkContext::new(self.program, &mut self.graph, origin);
         BodyFlows::new(context, &mut self.listing, binding).walk(lambda);
         self.share_trait_method(binding, lambda);
         if self.program.written().has_receiver(binding) {
@@ -138,7 +145,7 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         };
         let slot = Slot::from(SlotOwner::Parameter(receiver.binding));
         let given = TextValue::from(Source::Text(given), receiver.span);
-        self.graph.receive(&slot, &given);
+        self.graph.receive(&slot, &given, FlowOrigin::Written);
         self.graph.require(slot, need);
     }
 
@@ -148,7 +155,7 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         if let (Some(declared), Some(definition)) = (declared, definition)
             && let Type::Function(_, _, result) = &definition.value.ty
         {
-            let mut context = WalkContext::new(self.program, &mut self.graph);
+            let mut context = WalkContext::new(self.program, &mut self.graph, FlowOrigin::Written);
             TraitMethodSlots::new(&mut context, declared).share(binding, (lambda, result));
         }
     }

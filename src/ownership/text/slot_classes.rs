@@ -100,10 +100,19 @@ impl<'g> SlotClasses<'g> {
             _ if members.iter().any(|slot| slot.parameter().is_some()) => {
                 ClassRole::Parameter { tied }
             }
-            _ if members.iter().all(|slot| slot.is_local()) => ClassRole::Local,
-            _ if Self::holds_only_parameter_elements(&members) => ClassRole::ParameterElement,
-            _ if members.iter().any(|slot| slot.owner().is_decided()) => ClassRole::Held,
-            _ => ClassRole::Passing,
+            _ => Self::unpinned_role(&members),
+        }
+    }
+
+    fn unpinned_role(members: &[&Slot]) -> ClassRole {
+        if members.iter().all(|slot| slot.is_local()) {
+            ClassRole::Local
+        } else if Self::holds_only_parameter_elements(members) {
+            ClassRole::ParameterElement
+        } else if members.iter().any(|slot| slot.owner().is_decided()) {
+            ClassRole::Held
+        } else {
+            ClassRole::Passing
         }
     }
 

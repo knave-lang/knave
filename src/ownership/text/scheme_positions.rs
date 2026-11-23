@@ -62,23 +62,22 @@ impl SchemePositions {
             (_, Type::Ref(_, inner) | Type::Mut(_, inner)) => self.visit(declared, inner, place),
             (Type::Primitive(primitive), _) => self.visit_written(*primitive, place),
             (Type::Named(_, declared_parts), Type::Named(_, parts)) => {
-                for (part, (declared, instantiated)) in declared_parts.iter().zip(parts).enumerate()
-                {
-                    self.visit(declared, instantiated, place.child(part));
-                }
+                self.visit_parts((declared_parts, parts), &place)
             }
             (
                 Type::Function(_, declared_parameters, declared_result),
                 Type::Function(_, parameters, result),
             ) => {
-                for (part, (declared, instantiated)) in
-                    declared_parameters.iter().zip(parameters).enumerate()
-                {
-                    self.visit(declared, instantiated, place.child(part));
-                }
+                self.visit_parts((declared_parameters, parameters), &place);
                 self.visit(declared_result, result, place.result());
             }
             _ => {}
+        }
+    }
+
+    fn visit_parts(&mut self, (declared, instantiated): (&[Type], &[Type]), place: &Place) {
+        for (part, (declared, instantiated)) in declared.iter().zip(instantiated).enumerate() {
+            self.visit(declared, instantiated, place.child(part));
         }
     }
 

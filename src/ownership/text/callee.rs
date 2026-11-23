@@ -10,6 +10,7 @@ use super::slot_owner::SlotOwner;
 use super::template_call::TemplateCall;
 use super::text_program::TextProgram;
 use super::user_function::UserFunction;
+use crate::core::{BindingId, RustTemplate};
 use crate::types::{Type, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf};
 
 pub struct Callee;
@@ -21,28 +22,42 @@ impl Callee {
     ) -> Option<Box<dyn CallTarget<'t> + 't>> {
         match &callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
-                match (
-                    program.definition(*binding),
-                    program.written().trait_method(*binding),
-                ) {
-                    (_, Some(declared)) => Some(Box::new(FunctionValue::new(
-                        CalleeScheme::new(&callee.ty, &[]),
-                        Slot::from(SlotOwner::TraitMethod(declared)),
-                    ))),
-                    (Some(definition), None) => Some(Self::defined(definition)),
-                    (None, None) => None,
-                }
+                Self::global(*binding, (callee, program))
             }
             TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
-                Some(match InlineDeclaration::of(&template.type_expr) {
-                    Some(declared) => Box::new(TemplateCall::new(CalleeScheme::written(declared))),
-                    None => Box::new(InlineRust::new(
-                        CalleeScheme::new(&callee.ty, &[]),
-                        Self::map_queries(callee, program),
-                    )),
-                })
+                Some(Self::inline(template, (callee, program)))
             }
             _ => None,
+        }
+    }
+
+    fn global<'t>(
+        binding: BindingId,
+        (callee, program): (&'t TypedExpr, &TextProgram<'t>),
+    ) -> Option<Box<dyn CallTarget<'t> + 't>> {
+        match (
+            program.definition(binding),
+            program.written().trait_method(binding),
+        ) {
+            (_, Some(declared)) => Some(Box::new(FunctionValue::new(
+                CalleeScheme::new(&callee.ty, &[]),
+                Slot::from(SlotOwner::TraitMethod(declared)),
+            ))),
+            (Some(definition), None) => Some(Self::defined(definition)),
+            (None, None) => None,
+        }
+    }
+
+    fn inline<'t>(
+        template: &RustTemplate,
+        (callee, program): (&'t TypedExpr, &TextProgram<'t>),
+    ) -> Box<dyn CallTarget<'t> + 't> {
+        match InlineDeclaration::of(&template.type_expr) {
+            Some(declared) => Box::new(TemplateCall::new(CalleeScheme::written(declared))),
+            None => Box::new(InlineRust::new(
+                CalleeScheme::new(&callee.ty, &[]),
+                Self::map_queries(callee, program),
+            )),
         }
     }
 

@@ -1,5 +1,6 @@
 use super::bound_names::BoundNames;
 use super::definition_reach::DefinitionReach;
+use super::example_question::ExampleQuestion;
 use super::linted_module::LintedModule;
 use super::module_table::ModuleTable;
 use super::problems::LintProblems;
@@ -9,7 +10,7 @@ use super::rule_host::{ProgramFacts, RuleHost};
 use super::rule_program::RuleProgram;
 use super::rule_target::RuleTarget;
 use super::spanned_forms::SpannedForms;
-use crate::core::BindingId;
+use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Diagnostics};
 use crate::expand::Program;
 use crate::interpret::{StepBudget, Warnings};
@@ -28,6 +29,29 @@ impl<'p> Linter<'p> {
             sources,
             step_limit: StepBudget::DEFAULT_LIMIT,
         }
+    }
+
+    pub fn holds_example(
+        &self,
+        question: &mut ExampleQuestion,
+        asked: &[ModuleId],
+    ) -> Result<bool, Diagnostic> {
+        let entry = question.entry();
+        let rules = question.rules();
+        let names = rules.read_back(&self.program.bindings).into_names();
+        let rules = &*rules;
+        let mut host = RuleHost::new(rules, self.facts(&names));
+        for notes in self
+            .program
+            .project_modules()
+            .filter(|module| asked.contains(&module.id))
+            .filter_map(ModuleTable::of_notes)
+        {
+            if host.holds_example(entry, notes, self.step_limit)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     #[cfg(test)]
@@ -151,8 +175,10 @@ impl<'p> Linter<'p> {
 #[cfg(test)]
 mod tests {
     use super::Linter;
+    use crate::core::ModuleId;
     use crate::diagnostic::Diagnostic;
     use crate::interpret::StepBudget;
+    use crate::lint::example_question::ExampleQuestion;
     use crate::lint::expanded_source::ExpandedSource;
     use crate::lint::rule_host::RuleHost;
     use crate::lint::rule_program::RuleProgram;
@@ -185,6 +211,18 @@ mod tests {
             linter.is_kept(&mut host, helper, span)
         }
 
+        fn holds_example(text: &str, step_limit: u64) -> Result<bool, Diagnostic> {
+            let source = ExpandedSource::expand(text);
+            let mut question =
+                ExampleQuestion::expand_from_sources().expect("the example question expands");
+            let program = source.program();
+            let modules: Vec<ModuleId> =
+                program.project_modules().map(|module| module.id).collect();
+            Linter::new(program, source.sources())
+                .with_step_limit(step_limit)
+                .holds_example(&mut question, &modules)
+        }
+
         fn short_definition_and_long_chain() -> ExpandedSource {
             let locals: String = (1..=Self::CHAIN_LENGTH)
                 .map(|index| format!(" (local v{index} (+ v{} 1))", index - 1))
@@ -195,6 +233,36 @@ mod tests {
                 Self::CHAIN_LENGTH
             ))
         }
+    }
+
+    const DOUBLED: &str = "(export twice)\n(defn twice (x)\n  \"Doubles a number.\n\n  (twice 2)\n  => 4\"\n  (* 2 x))";
+
+    const ODD_NOTE: &str = "(use code add-module-note)\n(defmacro odd () (add-module-note (quote module-docstrings) (quote (1 2))) (quote (do)))\n(odd)\n(defn main () (println 1))";
+
+    const UNEXAMPLED: &str = "(export twice)\n(defn twice (x)\n  \"Doubles a number.\"\n  (* 2 x))";
+
+    #[test]
+    fn a_docstring_with_an_example_holds_one() {
+        let answer = LinterFixture::holds_example(DOUBLED, StepBudget::DEFAULT_LIMIT);
+        assert!(matches!(answer, Ok(true)), "{answer:?}");
+    }
+
+    #[test]
+    fn a_docstring_of_prose_holds_no_example() {
+        let answer = LinterFixture::holds_example(UNEXAMPLED, StepBudget::DEFAULT_LIMIT);
+        assert!(matches!(answer, Ok(false)), "{answer:?}");
+    }
+
+    #[test]
+    fn a_question_that_cannot_read_a_note_fails() {
+        let answer = LinterFixture::holds_example(ODD_NOTE, StepBudget::DEFAULT_LIMIT);
+        assert!(answer.is_err(), "{answer:?}");
+    }
+
+    #[test]
+    fn a_question_past_its_budget_fails() {
+        let answer = LinterFixture::holds_example(UNEXAMPLED, LinterFixture::TINY_STEP_LIMIT);
+        assert!(answer.is_err(), "{answer:?}");
     }
 
     #[test]

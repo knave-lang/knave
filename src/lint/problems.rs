@@ -44,6 +44,14 @@ impl LintProblems {
         )
     }
 
+    pub fn missing_export(module: &str, name: &str, span: Span) -> Diagnostic {
+        Diagnostic::error(
+            DiagnosticCode::COMPILE_TIME_ERROR,
+            format!("`{module}` exports no `{name}`"),
+            Label::new(span, "the lint rules load it here"),
+        )
+    }
+
     pub fn malformed_rule_names(entry: &str, span: Span) -> Diagnostic {
         Diagnostic::error(
             DiagnosticCode::COMPILE_TIME_ERROR,

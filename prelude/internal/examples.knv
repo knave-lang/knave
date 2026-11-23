@@ -5,14 +5,17 @@
           string-trim-end string-trim-start symbol-name
           value-eq)
 
+(use prelude/macros document)
+
 (use prelude/internal/docstrings arrow-line? closes-fence?
                                  example-arrow
                                  opening-fence)
 
-(use prelude/internal/macros module-docstrings-key)
+(use prelude/internal/macros docstring-notes-of
+                             module-docstrings-key)
 
 (export built-steps counted-module-docstring docstring-steps
-        noted-text)
+        noted-text notes-hold-example?)
 
 (def built-steps
   (fn (steps checked unchecked unreadable)
@@ -139,6 +142,48 @@
     (if (state-found? block)
       (state-steps block)
       (list))))
+
+(document (notes-hold-example? notes)
+  "Answers whether a docstring among a module's `notes` holds an example
+  that `knave test` runs. `notes` lists each key with the notes under it.
+
+  `knave lint` asks it about each module that no linted test program holds,
+  in a program where `needless-derive` has a form to try.")
+
+(def notes-hold-example?
+  (fn (notes)
+    (local notes-of
+      (fn (key) (noted-in notes key)))
+    (any-holds-example? (concat (texts-of (docstring-notes-of notes-of))
+                                (counted-module-docstring notes-of)))))
+
+(def texts-of
+  (fn (notes)
+    (if (empty? notes)
+      notes
+      (prepend (noted-text (first notes))
+               (texts-of (rest notes))))))
+
+(def noted-in
+  (fn (notes key)
+    (if (empty? notes)
+      notes
+      (if (value-eq (symbol-name (first (first notes)))
+                    (symbol-name key))
+        (rest (first notes))
+        (recur (rest notes) key)))))
+
+(def any-holds-example?
+  (fn (texts)
+    (if (empty? texts)
+      false
+      (if (text-holds-example? (first texts))
+        true
+        (recur (rest texts))))))
+
+(def text-holds-example?
+  (fn (text)
+    (bool-not (empty? (docstring-steps (quote text-holds-example?) text)))))
 
 (def block-forms
   (fn (context text state)

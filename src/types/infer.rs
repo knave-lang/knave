@@ -6,8 +6,8 @@ mod short_pattern;
 mod variant_target;
 
 use super::forms::{
-    BlockTyping, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, TypeTextRequest,
-    VariantConstruction,
+    Body, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, Sequence,
+    TypeTextRequest, VariantConstruction,
 };
 use super::result_span::ResultSpan;
 use super::variant_site::VariantSite;
@@ -187,7 +187,7 @@ impl TypeChecker {
 
     fn infer_control(&mut self, control: &Control, span: Span) -> Result<TypedExpr, Diagnostic> {
         match control {
-            Control::Block(block) => BlockTyping::new(block, span).type_against(self, None),
+            Control::Block(block) => Sequence::new(block, span).type_against(self, None),
             Control::If(test, then, otherwise) => {
                 let operands = IfOperands {
                     test,
@@ -291,7 +291,7 @@ impl TypeChecker {
     ) -> Result<(TypedArm, Type), Diagnostic> {
         let pattern = self.lower_pattern(&arm.pattern, pattern_type, None)?;
         let tail = expected.map(Expectation::plain);
-        let (body, body_type) = BlockTyping::new(&arm.body, arm.span).type_block(self, tail)?;
+        let (body, body_type) = Body::new(&arm.body).type_with(self, tail)?;
         Ok((
             TypedArm {
                 pattern,
@@ -1080,7 +1080,7 @@ impl TypeChecker {
             .map_or(MismatchContext::Plain, |expected| expected.context.clone());
         let inferred = InferredSpan::around(self, span, |checker| {
             let tail = Expectation::new(&result, context.clone());
-            BlockTyping::new(&lambda.body, span).type_block(checker, Some(tail))
+            Body::new(&lambda.body).type_with(checker, Some(tail))
         });
         self.recur_target = previous;
         self.checking_function_body = enclosing_body;

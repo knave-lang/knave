@@ -1,4 +1,4 @@
-mod block_typing;
+mod body;
 #[cfg(test)]
 mod body_fixture;
 mod borrowing;
@@ -10,10 +10,11 @@ mod expression_form;
 mod form_fixtures;
 mod if_operands;
 mod local_binding;
+mod sequence;
 mod type_text_request;
 mod variant_construction;
 
-pub(super) use block_typing::BlockTyping;
+pub(super) use body::Body;
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
     AnnotationLowering, ChildTyping, ExpectedChildTyping, LocalScope, MacroOrigins, Obligations,
@@ -24,5 +25,6 @@ pub(super) use dereference::Dereference;
 pub(super) use expression_form::ExpressionForm;
 pub(super) use if_operands::IfOperands;
 pub(super) use local_binding::LocalBinding;
+pub(super) use sequence::Sequence;
 pub(super) use type_text_request::TypeTextRequest;
 pub(super) use variant_construction::VariantConstruction;

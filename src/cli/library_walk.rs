@@ -13,7 +13,7 @@ use super::terminal::Terminal;
 use crate::build::StoreError;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::language::Language;
-use crate::modules::{LibraryRoot, LibraryTable};
+use crate::modules::{LibraryFolder, LibraryRoot, LibraryTable};
 use crate::project::{
     CrateDependency, CrateSet, DependencySection, LibraryDependency, LibrarySource, Project,
     ProjectProblems, Section,
@@ -296,7 +296,7 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
             self.keep_inside_checkout(bounds, visited.root, visited.library, visited.project)?;
         }
         self.add_crates(visited.root, visited.project)?;
-        let root = self.library_root(visited.library, visited.root, visited.project)?;
+        let root = Self::library_root(visited.library, visited.root, visited.project);
         let root = match visited.checkout {
             Some(bounds) => root.within_checkout(bounds.root().to_path_buf()),
             None => root,
@@ -382,21 +382,23 @@ impl<'t, S: LibraryStore> LibraryWalk<'t, S> {
     }
 
     fn library_root(
-        &self,
         library: &LibraryDependency,
         library_root: &Path,
         project: &Project,
-    ) -> Result<LibraryRoot, ExitStatus> {
+    ) -> LibraryRoot {
         let root_file = library_root.join(&project.library_root);
         let source_root = ProgramFile::directory_of(&root_file);
-        Ok(LibraryRoot::new(
+        let folder = LibraryFolder {
+            project_file: library_root.join(Language::project_file_name()),
+            source_root: source_root.clone(),
+            display_root: source_root,
+        };
+        LibraryRoot::new(
             library.name.clone(),
-            source_root.clone(),
-            source_root,
+            folder,
             ProgramFile::file_stem(&root_file),
             Self::names(project),
         )
-        .described_in(library_root.join(Language::project_file_name())))
     }
 
     fn report(&self, problem: Diagnostic) -> ExitStatus {

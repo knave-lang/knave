@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::claim_rules::ClaimRules;
+use super::library_folder::LibraryFolder;
 use super::library_naming::LibraryNaming;
 use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
@@ -15,13 +16,11 @@ use crate::language::Language;
 #[derive(Clone)]
 pub struct LibraryRoot {
     name: String,
-    source_root: PathBuf,
-    display_root: PathBuf,
+    folder: LibraryFolder,
     root_module: String,
     visible: Vec<String>,
     lister: Option<String>,
     checkout: Option<PathBuf>,
-    project_file: PathBuf,
 }
 
 #[derive(Clone, Default)]
@@ -39,27 +38,17 @@ pub struct LibraryFile {
 impl LibraryRoot {
     pub fn new(
         name: String,
-        source_root: PathBuf,
-        display_root: PathBuf,
+        folder: LibraryFolder,
         root_module: String,
         visible: Vec<String>,
     ) -> Self {
         Self {
             name,
-            source_root,
-            display_root,
+            folder,
             root_module,
             visible,
             lister: None,
             checkout: None,
-            project_file: PathBuf::new(),
-        }
-    }
-
-    pub fn described_in(self, project_file: PathBuf) -> Self {
-        Self {
-            project_file,
-            ..self
         }
     }
 
@@ -91,11 +80,15 @@ impl LibraryRoot {
         path: &ModulePath,
         root_file: PathBuf,
     ) -> Option<MissingRootModule<'_>> {
-        (path.as_str() == self.name).then(|| MissingRootModule {
+        self.names_root_module(path).then(|| MissingRootModule {
             library: &self.name,
             root_file,
-            project_file: self.project_file.clone(),
+            project_file: &self.folder.project_file,
         })
+    }
+
+    fn names_root_module(&self, path: &ModulePath) -> bool {
+        path.as_str() == self.name
     }
 
     fn module_path_under(&self, inner_module: &str) -> ModulePath {
@@ -109,8 +102,8 @@ impl LibraryRoot {
     fn file(&self, inner_module: &str) -> LibraryFile {
         let file_name = format!("{inner_module}.{}", Language::EXTENSION);
         LibraryFile {
-            path: self.source_root.join(&file_name),
-            display: self.display_root.join(&file_name),
+            path: self.folder.source_root.join(&file_name),
+            display: self.folder.display_root.join(&file_name),
         }
     }
 }
@@ -187,8 +180,8 @@ impl LibraryTable {
                 .map(|other| VisibleLibrary {
                     library: other,
                     root: LocalRoot::primary(
-                        &other.source_root,
-                        &other.display_root,
+                        &other.folder.source_root,
+                        &other.folder.display_root,
                         &Self::UNSCOPED,
                     ),
                     visible: self.sees(owner, &other.name),
@@ -199,8 +192,8 @@ impl LibraryTable {
         match library {
             Some(library) => {
                 let root = LocalRoot::primary(
-                    &library.source_root,
-                    &library.display_root,
+                    &library.folder.source_root,
+                    &library.folder.display_root,
                     &Self::UNSCOPED,
                 );
                 LocalFiles::new(vec![root], other_libraries, move |path| {
@@ -233,11 +226,14 @@ impl LibraryTable {
 
     pub fn file(&self, path: &ModulePath) -> Option<LibraryFile> {
         let library = self.owner_of(path)?;
+        if library.names_root_module(path) {
+            return Some(library.file(&library.root_module));
+        }
         let inner = path
             .as_str()
             .strip_prefix(library.name.as_str())?
-            .strip_prefix(ModulePath::SEPARATOR);
-        Some(library.file(inner.unwrap_or(&library.root_module)))
+            .strip_prefix(ModulePath::SEPARATOR)?;
+        Some(library.file(inner))
     }
 
     pub fn owner_of(&self, path: &ModulePath) -> Option<&LibraryRoot> {

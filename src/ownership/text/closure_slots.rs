@@ -1,3 +1,4 @@
+use super::need::Need;
 use super::node_id::NodeId;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
@@ -9,7 +10,7 @@ use super::transfer::Transfer;
 use super::type_path::TypePath;
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
-use crate::types::{Type, TypedExpr, TypedLambda};
+use crate::types::{Type, TypedBinder, TypedExpr, TypedLambda};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ClosureUse {
@@ -60,11 +61,11 @@ impl<'l> ClosureSlots<'l> {
                 let base = TypePath::default().child(part);
                 TextPositions::of(&parameter.ty)
                     .into_iter()
-                    .map(move |position| (base.joined(&position.path), parameter.binding, position))
+                    .map(move |position| (base.joined(&position.path), parameter, position))
             });
         let mut value = TextValue::default();
-        for (path, binding, position) in parameters.collect::<Vec<_>>() {
-            let node = self.parameter_node(context, (&path, binding), &position);
+        for (path, parameter, position) in parameters.collect::<Vec<_>>() {
+            let node = self.parameter_node(context, (&path, parameter), &position);
             value = value.nesting(path, node);
         }
         for position in TextPositions::of(self.result_type()) {
@@ -77,11 +78,14 @@ impl<'l> ClosureSlots<'l> {
     fn parameter_node(
         &self,
         context: &mut WalkContext<'_, '_>,
-        (path, binding): (&TypePath, BindingId),
+        (path, binder): (&TypePath, &TypedBinder),
         position: &TextPosition,
     ) -> NodeId {
-        let parameter = Slot::new(self.parameter(binding), position.path.clone());
+        let parameter = Slot::new(self.parameter(binder.binding), position.path.clone());
         if self.closure_use == ClosureUse::Free {
+            if position.path.is_top() && binder.written_view {
+                context.require(parameter.clone(), Need::View);
+            }
             return context.node(parameter);
         }
         let given = Slot::new(SlotOwner::Value(self.closure.span), path.clone());

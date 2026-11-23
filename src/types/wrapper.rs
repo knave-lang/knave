@@ -46,6 +46,7 @@ impl<'a> FunctionValueWrapper<'a> {
                 ty: expected.clone(),
                 span,
                 annotated: false,
+                written_view: false,
             });
             arguments.push(TypedArgument {
                 value: local,

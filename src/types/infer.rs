@@ -713,12 +713,7 @@ impl TypeChecker {
     ) -> TypedPatternKind {
         let ty = Self::binding_mode_type(matched, mode);
         self.locals.insert(binding, ty.clone());
-        TypedPatternKind::Bind(TypedBinder {
-            binding,
-            ty,
-            span,
-            annotated: false,
-        })
+        TypedPatternKind::Bind(TypedBinder::new(binding, ty, span))
     }
 
     fn named_variant_pattern(
@@ -1200,6 +1195,7 @@ impl TypeChecker {
             ty,
             span: param.span,
             annotated: param.annotation.is_some() || written_by_signature,
+            written_view: TypedBinder::writes_a_view(param.annotation.as_ref()),
         })
     }
 
@@ -1275,6 +1271,7 @@ impl TypeChecker {
             ty,
             span: binder.span,
             annotated: binder.annotation.is_some(),
+            written_view: false,
         };
         Ok((TypedBodyItem::Let(binder, value), Type::unit()))
     }

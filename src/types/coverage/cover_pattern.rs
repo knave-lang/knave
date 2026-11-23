@@ -241,6 +241,7 @@ mod tests {
                 ty: Self::string_type(),
                 span: Span::new(SourceId::new(0), 0..0),
                 annotated: false,
+                written_view: false,
             })
         }
     }

@@ -5,6 +5,7 @@ use super::callee::Callee;
 use super::closure_slots::{ClosureSlots, ClosureUse};
 use super::construction_flows::ConstructionFlows;
 use super::global_reads::GlobalReads;
+use super::need::Need;
 use super::pattern_flows::PatternFlows;
 use super::place_writes::PlaceWrites;
 use super::reaching_text::ReachingText;
@@ -50,8 +51,11 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
     pub fn walk(mut self, lambda: &TypedLambda) {
         for parameter in &lambda.params {
             self.owners.add_parameter(parameter.binding);
-            self.listing
-                .list(&SlotOwner::Parameter(parameter.binding), &parameter.ty);
+            let owner = SlotOwner::Parameter(parameter.binding);
+            self.listing.list(&owner, &parameter.ty);
+            if parameter.written_view {
+                self.context.require(Slot::from(owner), Need::View);
+            }
         }
         let value = self.block(&lambda.body);
         if let Some(result) = self.result_type().filter(TextPositions::holds_text) {

@@ -239,17 +239,7 @@ pub struct TypedBinder {
     pub ty: Type,
     pub span: Span,
     pub annotated: bool,
-}
-
-impl TypedBinder {
-    pub fn with_type(&self, ty: Type) -> Self {
-        Self {
-            binding: self.binding,
-            ty,
-            span: self.span,
-            annotated: self.annotated,
-        }
-    }
+    pub written_view: bool,
 }
 
 #[derive(Clone, Debug)]

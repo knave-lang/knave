@@ -1,6 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use super::lambda_flows::{FunctionFlows, LambdaFlows};
+use super::region_rules::RegionRules;
 use super::result_borrows::ResultBorrows;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
@@ -79,7 +80,7 @@ impl RegionRecord<'_> {
             .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
         self.regions
             .record(ParameterRole::Reassigned, lambda, reassigned_parameters);
-        let stored = self.analysis.definition_stores(function).flows.clone();
+        let stored = self.analysis.stores_of(function).flows.clone();
         self.regions
             .record(ParameterRole::StoredValue, lambda, stored.values);
         self.regions

@@ -1,9 +1,10 @@
 use super::callee_definitions::CalleeDefinitions;
 use super::plan::EmitPlan;
 use super::short_form::ShortForm;
+use crate::ownership::OwnershipChecker;
 use crate::source::{SourceId, Span};
 use crate::types::{
-    ReachSearch, TypedArgument, TypedBodyItem, TypedExpr, TypedExprKind, TypedProgram, TypedSource,
+    TypedArgument, TypedBodyItem, TypedExpr, TypedExprKind, TypedProgram, TypedSource,
 };
 
 pub struct TestProgram {
@@ -14,7 +15,7 @@ pub struct TestProgram {
 impl TestProgram {
     pub fn new(source: &'static str) -> Self {
         let mut program = TypedSource::expand(source).typed();
-        program.ownership.reach = ReachSearch::of(&program);
+        OwnershipChecker::record_regions(&mut program);
         Self { source, program }
     }
 

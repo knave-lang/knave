@@ -5,8 +5,8 @@ use super::result_borrows::ResultBorrows;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
 use crate::types::{
-    DefinitionTable, ParameterRole, Regions, Type, TypedDefinition, TypedExpr, TypedExprKind,
-    TypedLambda, TypedProgram,
+    DefinitionTable, ParameterRole, ProgramReach, Regions, Type, TypedDefinition, TypedExpr,
+    TypedExprKind, TypedLambda, TypedProgram,
 };
 
 pub struct RegionRecord<'a> {
@@ -17,15 +17,18 @@ pub struct RegionRecord<'a> {
 }
 
 impl RegionRecord<'_> {
-    pub fn of(program: &TypedProgram) -> Regions {
-        let definitions = DefinitionTable::of(program);
+    pub fn of(
+        program: &TypedProgram,
+        definitions: &DefinitionTable<'_>,
+        reach: &ProgramReach,
+    ) -> Regions {
         let mut record = RegionRecord {
             program,
-            analysis: ResultBorrows::new(program, &definitions),
+            analysis: ResultBorrows::new(program, definitions),
             impl_methods: Self::impl_methods(program),
             regions: Regions::default(),
         };
-        for definition in Self::covered(program) {
+        for definition in Self::covered(program, reach) {
             record.definition(definition);
         }
         record.regions
@@ -42,9 +45,8 @@ impl RegionRecord<'_> {
             .collect()
     }
 
-    fn covered(program: &TypedProgram) -> Vec<&TypedDefinition> {
-        let reached: FxHashSet<BindingId> =
-            program.ownership.reach.reached.iter().copied().collect();
+    fn covered<'p>(program: &'p TypedProgram, reach: &ProgramReach) -> Vec<&'p TypedDefinition> {
+        let reached: FxHashSet<BindingId> = reach.reached.iter().copied().collect();
         let reached = &reached;
         program
             .modules

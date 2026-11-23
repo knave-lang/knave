@@ -14,7 +14,7 @@ impl TaskLayout {
     pub fn of(project: &Project, placement: &FilePlacement<'_>, root: &Path) -> Self {
         let entry = &project.modules.entry;
         Self {
-            exports_tasks: project.exported_tasks.is_some(),
+            exports_tasks: project.exported_tasks.is_written(),
             tasks_folder: placement.tasks_directory().is_dir(),
             entry_left_out: !entry.is_written() && !root.join(entry.path()).exists(),
         }

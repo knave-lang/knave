@@ -1,4 +1,4 @@
-use super::ExportedTask;
+use super::exported_task::ExportedTask;
 use super::exported_task_problems::ExportedTaskProblems;
 use super::problems::ProjectProblems;
 use crate::diagnostic::Diagnostics;

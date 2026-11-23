@@ -11560,7 +11560,10 @@ fn task_with_a_missing_export_fails_before_it_runs() {
     .compiler(&["task", "lint"]);
     let task = task.assert_exit_code(1);
     assert_eq!(
-        (task.stdout().is_empty(), task.stderr().contains("error[L0367]")),
+        (
+            task.stdout().is_empty(),
+            task.stderr().contains("error[L0367]")
+        ),
         (true, true)
     );
 }

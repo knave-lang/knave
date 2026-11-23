@@ -32,7 +32,7 @@ struct TaskLookup {
 pub struct TaskCatalog {
     request: EvaluationRequest,
     names_lookup: TaskLookupCall,
-    exported_tasks: Option<Rc<ExportedTaskNames>>,
+    exports: Result<(), ExitStatus>,
 }
 
 pub struct EnteredProgram {
@@ -62,7 +62,8 @@ impl TaskCatalog {
 
     pub fn load(tree: &EntryTree, terminal: &mut Terminal) -> Result<Self, ExitStatus> {
         let modules = Self::tree_arguments(&tree.module_paths()?);
-        Ok(Self {
+        let exported_tasks = Self::exported_task_names(tree)?;
+        let mut catalog = Self {
             request: EvaluationRequest {
                 module: tree.load(terminal)?,
                 evaluated: Vec::new(),
@@ -71,8 +72,30 @@ impl TaskCatalog {
                 "(task-names {})",
                 modules.join(Self::SEPARATOR)
             )),
-            exported_tasks: Self::exported_task_names(tree)?.map(Rc::new),
-        })
+            exports: Ok(()),
+        };
+        if let Some(names) = exported_tasks {
+            catalog.exports = catalog.checked_exports(terminal, &names);
+        }
+        Ok(catalog)
+    }
+
+    fn checked_exports(
+        &self,
+        terminal: &mut Terminal,
+        names: &ExportedTaskNames,
+    ) -> Result<(), ExitStatus> {
+        let arguments = terminal
+            .expansion()
+            .sessions()
+            .within_evaluation(&self.request, |mut session| names.arguments(&mut session))?;
+        arguments
+            .into_iter()
+            .map(|argument| {
+                let call = TaskLookupCall::with_arguments(Self::EXPORT_CHECK.to_string(), argument);
+                self.expanded(terminal, &call).map(|_| ())
+            })
+            .fold(Ok(()), Result::and)
     }
 
     fn exported_task_names(tree: &EntryTree) -> Result<Option<ExportedTaskNames>, ExitStatus> {
@@ -111,25 +134,9 @@ impl TaskCatalog {
             .collect())
     }
 
-    pub fn check_exports(&self, terminal: &mut Terminal) -> Result<(), ExitStatus> {
-        let Some(names) = &self.exported_tasks else {
-            return Ok(());
-        };
-        (0..names.count())
-            .map(|index| {
-                let call = TaskLookupCall::checking_export(
-                    Self::EXPORT_CHECK.to_string(),
-                    Rc::clone(names),
-                    index,
-                );
-                self.expanded(terminal, &call).map(|_| ())
-            })
-            .fold(Ok(()), Result::and)
-    }
-
     pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
         self.names(terminal)?;
-        self.check_exports(terminal)?;
+        self.exports?;
         let listing = TaskLookupCall::new(Self::LISTING.to_string());
         let lookup = self.expanded(terminal, &listing)?;
         terminal.source_report().print(&lookup.warnings).passed()?;
@@ -154,7 +161,7 @@ impl TaskCatalog {
             text: block,
             ranges,
         } = FormBlock::of(&lookups);
-        let entered = self.entered_program(terminal, &block)?;
+        let entered = self.entered_runner(terminal, &block)?;
         let typed = terminal.checking().check(&entered.program)?;
         let texts = Self::texts_by_span(&typed);
         names
@@ -170,6 +177,15 @@ impl TaskCatalog {
     }
 
     pub fn entered_program(
+        &self,
+        terminal: &mut Terminal,
+        entry: &str,
+    ) -> Result<EnteredProgram, ExitStatus> {
+        let entered = self.entered_runner(terminal, entry);
+        self.exports.and(entered)
+    }
+
+    fn entered_runner(
         &self,
         terminal: &mut Terminal,
         entry: &str,

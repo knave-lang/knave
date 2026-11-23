@@ -143,7 +143,7 @@ impl<'v> ProjectReader<'v> {
             }
             Section::ExportedTasks => {
                 ExportedTaskReader::new(self.vocabulary.section_name(section), &mut self.problems)
-                    .read(entries, sections.exported_tasks.get_or_insert_default())
+                    .read(entries, sections.exported_tasks.written())
             }
         }
     }
@@ -270,5 +270,5 @@ pub struct SectionTable {
     pub dependencies: Vec<super::CrateDependency>,
     pub dev_dependencies: Vec<super::CrateDependency>,
     pub lints: super::LintTable,
-    pub exported_tasks: Option<Vec<super::ExportedTask>>,
+    pub exported_tasks: super::ExportedTasks,
 }

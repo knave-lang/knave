@@ -2,6 +2,7 @@ use super::slot::Slot;
 use super::slot_owner::SlotOwner;
 use super::source::Source;
 use super::text_value::TextValue;
+use super::value_parts::ValueParts;
 use super::walk_context::WalkContext;
 use crate::source::Span;
 use crate::types::Type;
@@ -37,13 +38,13 @@ impl<'c, 'w, 'p> TryFlows<'c, 'w, 'p> {
         };
         let payloads = self.context.program().types().payloads();
         if let Some(case) = payloads.converted_case(*target, error) {
-            let error = self.part(tried, Self::ERROR);
+            let error = ValueParts::of(tried).part(Self::ERROR, self.span);
             self.context.receive(&Slot::from(case), &error);
         }
     }
 
     pub fn payload(&self, tried: &TextValue) -> TextValue {
-        self.part(tried, Self::PAYLOAD)
+        ValueParts::of(tried).part(Self::PAYLOAD, self.span)
     }
 
     fn error_of(result: &Type) -> Option<&Type> {
@@ -52,19 +53,5 @@ impl<'c, 'w, 'p> TryFlows<'c, 'w, 'p> {
             Type::Named(_, arguments) if arguments.len() == 2 => Some(&arguments[Self::ERROR]),
             _ => None,
         }
-    }
-
-    fn part(&self, tried: &TextValue, part: usize) -> TextValue {
-        tried
-            .nested()
-            .iter()
-            .filter_map(|(path, node)| Some((path.below(part)?, *node)))
-            .fold(TextValue::default(), |value, (path, node)| {
-                if path.is_top() {
-                    value.merged(TextValue::from(Source::Slot(node), self.span))
-                } else {
-                    value.nesting(path, node)
-                }
-            })
     }
 }

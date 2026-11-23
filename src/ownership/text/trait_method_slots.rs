@@ -1,7 +1,6 @@
+use super::function_slots::FunctionSlots;
 use super::slot::Slot;
 use super::slot_owner::SlotOwner;
-use super::text_position::TextPositions;
-use super::type_path::TypePath;
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
 use crate::types::{Type, TypedLambda};
@@ -16,29 +15,22 @@ impl<'c, 'w, 'p> TraitMethodSlots<'c, 'w, 'p> {
         Self { context, declared }
     }
 
-    pub fn share(mut self, body: BindingId, (lambda, result): (&TypedLambda, &Type)) {
-        let skipped = usize::from(self.context.program().written().has_receiver(body));
-        for (part, parameter) in lambda.params.iter().enumerate().skip(skipped) {
-            let owner = SlotOwner::Parameter(parameter.binding);
-            self.unite(&owner, &parameter.ty, &TypePath::default().child(part));
-        }
-        self.unite(
-            &SlotOwner::Result(body),
-            result,
-            &TypePath::default().result(),
-        );
-    }
-
-    fn unite(&mut self, owner: &SlotOwner, ty: &Type, base: &TypePath) {
-        for position in TextPositions::of(ty) {
-            let own = self
+    pub fn share(self, body: BindingId, (lambda, result): (&TypedLambda, &Type)) {
+        let receiver = self.context.program().written().has_receiver(body);
+        let parameters = lambda
+            .params
+            .iter()
+            .map(|parameter| (SlotOwner::Parameter(parameter.binding), &parameter.ty))
+            .collect();
+        let slots = FunctionSlots::new(parameters, (SlotOwner::Result(body), result));
+        for (path, own, _) in slots.positions() {
+            if receiver && path.below(0).is_some() {
+                continue;
+            }
+            let own = self.context.node(own);
+            let shared = self
                 .context
-                .node(Slot::new(owner.clone(), position.path.clone()));
-            let shared = Slot::new(
-                SlotOwner::TraitMethod(self.declared),
-                base.joined(&position.path),
-            );
-            let shared = self.context.node(shared);
+                .node(Slot::new(SlotOwner::TraitMethod(self.declared), path));
             self.context.unite(own, shared);
         }
     }

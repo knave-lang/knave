@@ -1,10 +1,11 @@
+use super::function_slots::FunctionSlots;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
 use super::source::Source;
-use super::text_position::{TextPosition, TextPositions};
+use super::text_position::TextPosition;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
@@ -56,32 +57,33 @@ impl<'l> ClosureSlots<'l> {
             .lambda
             .params
             .iter()
-            .enumerate()
-            .flat_map(|(part, parameter)| {
-                let base = TypePath::default().child(part);
-                TextPositions::of(&parameter.ty)
-                    .into_iter()
-                    .map(move |position| (base.joined(&position.path), parameter, position))
-            });
+            .map(|parameter| (self.parameter(parameter.binding), &parameter.ty))
+            .collect();
+        let slots = FunctionSlots::new(parameters, (result, self.result_type()));
         let mut value = TextValue::default();
-        for (path, parameter, position) in parameters.collect::<Vec<_>>() {
-            let node = self.parameter_node(context, (&path, parameter), &position);
+        for (path, slot, position) in slots.positions() {
+            let node = match self.binder_of(&slot) {
+                Some(binder) => self.parameter_node(context, (&path, binder), (slot, &position)),
+                None => context.node(slot),
+            };
             value = value.nesting(path, node);
         }
-        for position in TextPositions::of(self.result_type()) {
-            let node = context.node(Slot::new(result.clone(), position.path.clone()));
-            value = value.nesting(TypePath::default().result().joined(&position.path), node);
-        }
         value
+    }
+
+    fn binder_of(&self, slot: &Slot) -> Option<&'l TypedBinder> {
+        self.lambda
+            .params
+            .iter()
+            .find(|binder| self.parameter(binder.binding) == *slot.owner())
     }
 
     fn parameter_node(
         &self,
         context: &mut WalkContext<'_, '_>,
         (path, binder): (&TypePath, &TypedBinder),
-        position: &TextPosition,
+        (parameter, position): (Slot, &TextPosition),
     ) -> NodeId {
-        let parameter = Slot::new(self.parameter(binder.binding), position.path.clone());
         if self.closure_use == ClosureUse::Free {
             if position.path.is_top() && binder.written_view {
                 context.require(parameter.clone(), Need::View);

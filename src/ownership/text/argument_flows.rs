@@ -58,7 +58,7 @@ impl<'c, 'w, 'p> ArgumentFlows<'c, 'w, 'p> {
         let values = self.values;
         let value = &values[index];
         if matches!(ty, Type::Mut(..)) || self.passes_mutably(index) {
-            self.pour(parameter, value);
+            self.share_place(parameter, value);
             return;
         }
         let elements = TextPositions::elements(ty);
@@ -72,6 +72,16 @@ impl<'c, 'w, 'p> ArgumentFlows<'c, 'w, 'p> {
             }
         }
         self.pour(parameter, &shared);
+    }
+
+    fn share_place(&mut self, parameter: &Slot, value: &TextValue) {
+        self.pour(parameter, value);
+        let parameter = self.context.node(parameter.clone());
+        for (source, _, _) in value.sources() {
+            if let Source::Slot(place) = source {
+                self.context.unite(parameter, *place);
+            }
+        }
     }
 
     fn passes_mutably(&self, index: usize) -> bool {

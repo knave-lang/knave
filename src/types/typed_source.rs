@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::{DefinitionGraph, InferredCopies, LiteralDefaults, TypeChecker, TypedProgram};
+use super::{
+    DefinitionGraph, DroppedInlineSchemes, InferredCopies, LiteralDefaults, TypeChecker,
+    TypedProgram,
+};
 use crate::core::{BindingId, ModulePath};
 use crate::expand::{Expander, PreludeState, Program};
 use crate::language::Language;
@@ -75,7 +78,7 @@ impl TypedSource {
     }
 
     pub fn check(&self, graph: &DefinitionGraph) -> TypedProgram {
-        TypeChecker::check(
+        TypeChecker::check::<DroppedInlineSchemes>(
             &self.program,
             graph,
             &FxHashSet::default(),

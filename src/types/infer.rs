@@ -3100,7 +3100,9 @@ mod tests {
     impl PlaceTypeFixture {
         fn new() -> Self {
             Self {
-                checker: TypeChecker::new(BindingArena::default()),
+                checker: TypeChecker::new::<crate::types::DroppedInlineSchemes>(
+                    BindingArena::default(),
+                ),
                 span: Span::new(SourceId::new(0), 0..0),
             }
         }

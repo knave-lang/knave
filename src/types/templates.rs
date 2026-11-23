@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::inline_schemes::SchemeRecording;
 use super::inline_templates::InlineTemplates;
 use super::pipelines::Pipelines;
 use super::registered_template::RegisteredTemplate;
@@ -33,6 +34,15 @@ pub struct TemplateBorrows {
     declared: FxHashMap<BindingId, RegisteredTemplate>,
     conversions: FxHashMap<BindingId, Conversions>,
     inline: InlineTemplates,
+}
+
+impl From<SchemeRecording> for TemplateBorrows {
+    fn from(recording: SchemeRecording) -> Self {
+        Self {
+            inline: InlineTemplates::from(recording),
+            ..Self::default()
+        }
+    }
 }
 
 impl TemplateBorrows {

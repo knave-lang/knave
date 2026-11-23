@@ -1,0 +1,11 @@
+(defstruct item
+  :name string)
+
+(defn take-name ((name string)) name)
+
+(defn copy-of ((name (ref string)))
+  (take-name (clone name)))
+
+(defn main ()
+  (local made (str "a" 1))
+  (prn (->item :name (copy-of (ref made)))))

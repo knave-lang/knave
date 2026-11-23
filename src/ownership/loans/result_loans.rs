@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use rustc_hash::FxHashSet;
 
-use super::control_flow_graph::ControlFlowGraph;
 use super::loan_id::LoanId;
 use super::loan_table::LoanTable;
+use super::point_graph::PointGraph;
 use super::point_id::PointId;
 
 pub struct ResultLoans {
@@ -12,7 +12,7 @@ pub struct ResultLoans {
 }
 
 impl ResultLoans {
-    pub fn of(graph: &ControlFlowGraph, loans: &LoanTable, returned: &BTreeSet<LoanId>) -> Self {
+    pub fn of(graph: &PointGraph, loans: &LoanTable, returned: &BTreeSet<LoanId>) -> Self {
         Self {
             reached: returned
                 .iter()
@@ -66,13 +66,13 @@ mod tests {
 
     #[test]
     fn a_returned_loan_is_live_at_every_point_reachable_from_it() {
-        let mut graph = ControlFlowGraph::new();
+        let mut graph = ControlFlowGraph::default();
         let mut loans = LoanTable::default();
         let branch = graph.join(&[PointId::ENTRY]);
         let other = graph.join(&[PointId::ENTRY]);
         let loan = ResultFixture::lent_local(&mut loans, branch);
         let exit = graph.join(&[branch, other]);
-        let result = ResultLoans::of(&graph, &loans, &BTreeSet::from([loan]));
+        let result = ResultLoans::of(&graph.finished(), &loans, &BTreeSet::from([loan]));
         assert_eq!(result.live_at(exit).collect::<Vec<_>>(), [loan]);
         assert_eq!(result.live_at(other).count(), 0);
         assert_eq!(result.live_at(PointId::ENTRY).count(), 0);

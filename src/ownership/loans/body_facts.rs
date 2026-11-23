@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 
 use super::access_facts::AccessFacts;
 use super::closure::Closure;
-use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
 use super::lent_place::LentPlace;
 use super::live_loan::LiveLoan;
@@ -11,8 +10,9 @@ use super::loan_conflict::LoanConflict;
 use super::loan_holder::LoanHolder;
 use super::loan_id::LoanId;
 use super::loan_table::LoanTable;
+use super::point_facts::PointFacts;
+use super::point_graph::PointGraph;
 use super::point_id::PointId;
-use super::program_point::PointFacts;
 use super::result_loans::ResultLoans;
 use super::value_regions::ValueRegions;
 
@@ -22,7 +22,7 @@ struct Liveness {
 }
 
 pub struct BodyFacts<'w> {
-    graph: ControlFlowGraph,
+    graph: PointGraph,
     loans: LoanTable,
     regions: ValueRegions,
     returned: Holdings,
@@ -30,7 +30,7 @@ pub struct BodyFacts<'w> {
 }
 
 impl<'w> BodyFacts<'w> {
-    pub fn new(graph: ControlFlowGraph, loans: LoanTable, regions: ValueRegions) -> Self {
+    pub fn new(graph: PointGraph, loans: LoanTable, regions: ValueRegions) -> Self {
         Self {
             graph,
             loans,

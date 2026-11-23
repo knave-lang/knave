@@ -39,14 +39,15 @@ impl<'l> Lender<'l> {
     }
 
     fn access(&mut self, access: PlaceAccess) {
-        self.graph.point_mut(self.point).access(access);
+        self.graph.access(self.point, access);
     }
 
     pub fn receive(&mut self, passed: &Holdings, span: Span) {
-        let point = self.graph.point_mut(self.point);
-        point.receive(passed.loans().map(|(_, loan)| loan));
+        let point = self.point;
+        self.graph
+            .receive(point, passed.loans().map(|(_, loan)| loan));
         for value in passed.values() {
-            point.using(value.binding(), span);
+            self.graph.using(point, value.binding(), span);
         }
     }
 }

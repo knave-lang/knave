@@ -1,32 +1,39 @@
-use std::collections::VecDeque;
-
-use rustc_hash::FxHashSet;
-
+use super::indexed_points::IndexedPoints;
+use super::loan_id::LoanId;
+use super::place_access::PlaceAccess;
+use super::point_graph::PointGraph;
 use super::point_id::PointId;
-use super::program_point::{PointFacts, ProgramPoint};
+use super::point_lists::PointLists;
+use super::value_use::ValueUse;
 use crate::core::BindingId;
 use crate::source::Span;
 
 pub struct ControlFlowGraph {
-    points: Vec<ProgramPoint>,
+    points: usize,
+    defined: PointLists<BindingId>,
+    used: PointLists<ValueUse>,
+    received: PointLists<LoanId>,
+    accesses: PointLists<PlaceAccess>,
+    successors: PointLists<PointId>,
 }
 
 impl Default for ControlFlowGraph {
     fn default() -> Self {
-        Self::new()
+        Self {
+            points: 1,
+            defined: PointLists::default(),
+            used: PointLists::default(),
+            received: PointLists::default(),
+            accesses: PointLists::default(),
+            successors: PointLists::default(),
+        }
     }
 }
 
 impl ControlFlowGraph {
-    pub fn new() -> Self {
-        Self {
-            points: vec![ProgramPoint::default()],
-        }
-    }
-
     pub fn join(&mut self, before: &[PointId]) -> PointId {
-        let after = PointId::new(self.points.len());
-        self.points.push(ProgramPoint::default());
+        let after = PointId::new(self.points);
+        self.points += 1;
         for point in before {
             self.link(*point, after);
         }
@@ -34,82 +41,38 @@ impl ControlFlowGraph {
     }
 
     pub fn link(&mut self, before: PointId, after: PointId) {
-        self.points[before.index()].precede(after);
+        self.successors.push(before, after);
     }
 
-    pub fn point_mut(&mut self, point: PointId) -> &mut ProgramPoint {
-        &mut self.points[point.index()]
+    pub fn define(&mut self, point: PointId, binding: BindingId) {
+        self.defined.push(point, binding);
     }
 
-    pub fn points(&self) -> impl DoubleEndedIterator<Item = (PointId, PointFacts<'_>)> + '_ {
-        self.points
-            .iter()
-            .enumerate()
-            .map(|(index, point)| (PointId::new(index), point.facts()))
+    pub fn using(&mut self, point: PointId, binding: BindingId, span: Span) {
+        self.used.push(point, ValueUse { binding, span });
     }
 
-    pub fn first_use_after(&self, start: PointId, binding: BindingId) -> Option<Span> {
-        let mut reached = FxHashSet::default();
-        let mut pending: VecDeque<PointId> = self.facts(start).successors().collect();
-        while let Some(point) = pending.pop_front() {
-            if !reached.insert(point) {
-                continue;
-            }
-            let facts = self.facts(point);
-            if let Some(span) = facts.use_of(binding) {
-                return Some(span);
-            }
-            pending.extend(facts.successors());
+    pub fn receive(&mut self, point: PointId, loans: impl IntoIterator<Item = LoanId>) {
+        for loan in loans {
+            self.received.push(point, loan);
         }
-        None
     }
 
-    fn facts(&self, point: PointId) -> PointFacts<'_> {
-        self.points[point.index()].facts()
+    pub fn access(&mut self, point: PointId, access: PlaceAccess) {
+        self.accesses.push(point, access);
     }
 
-    pub fn reachable_from(&self, start: PointId) -> FxHashSet<PointId> {
-        let mut reached = FxHashSet::default();
-        let mut pending = vec![start];
-        while let Some(point) = pending.pop() {
-            if reached.insert(point) {
-                pending.extend(self.points[point.index()].facts().successors());
-            }
-        }
-        reached
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::ControlFlowGraph;
-    use crate::ownership::loans::point_id::PointId;
-
-    #[test]
-    fn a_join_follows_each_point_before_it() {
-        let mut graph = ControlFlowGraph::new();
-        let left = graph.join(&[PointId::ENTRY]);
-        let right = graph.join(&[PointId::ENTRY]);
-        let joined = graph.join(&[left, right]);
-        let successors: Vec<Vec<PointId>> = graph
-            .points()
-            .map(|(_, facts)| facts.successors().collect())
-            .collect();
-        assert_eq!(
-            successors,
-            [vec![left, right], vec![joined], vec![joined], vec![]]
-        );
-    }
-
-    #[test]
-    fn reaches_every_point_after_a_start_around_a_loop_but_none_before_it() {
-        let mut graph = ControlFlowGraph::new();
-        let head = graph.join(&[PointId::ENTRY]);
-        let body = graph.join(&[head]);
-        graph.link(body, head);
-        let after = graph.join(&[head]);
-        let reached = graph.reachable_from(body);
-        assert!(reached.contains(&head) && reached.contains(&after));
-        assert!(!reached.contains(&PointId::ENTRY));
+    pub fn finished(self) -> PointGraph {
+        let points = self.points;
+        PointGraph::new(
+            points,
+            IndexedPoints {
+                defined: self.defined.indexed(points),
+                used: self.used.indexed(points),
+                received: self.received.indexed(points),
+                accesses: self.accesses.indexed(points),
+                successors: self.successors.indexed(points),
+            },
+        )
     }
 }

@@ -1,10 +1,16 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, ModuleId};
+use crate::modules::ModuleSources;
 use crate::types::{
     DefinitionEntry, DefinitionTable, GenericParam, ProgramReach, Type, TypedExpr, TypedExprKind,
     TypedLeaf, TypedProgram,
 };
+
+pub struct Reaches {
+    pub main: ProgramReach,
+    pub user_definitions: ProgramReach,
+}
 
 pub struct ReachSearch<'p, 'd> {
     program: &'p TypedProgram,
@@ -14,7 +20,22 @@ pub struct ReachSearch<'p, 'd> {
 }
 
 impl<'p, 'd> ReachSearch<'p, 'd> {
-    pub fn of(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> ProgramReach {
+    pub fn of_main_and_user_definitions(
+        program: &'p TypedProgram,
+        definitions: &'d DefinitionTable<'p>,
+    ) -> Reaches {
+        let mut search = Self::from_main(program, definitions);
+        let main = search.reach.clone();
+        for root in Self::user_definitions(program) {
+            search.visit_definition(root);
+        }
+        Reaches {
+            main,
+            user_definitions: search.reach,
+        }
+    }
+
+    fn from_main(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> Self {
         let mut search = Self {
             program,
             definitions,
@@ -30,7 +51,17 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
         }
         search.reach_implementations();
         search.reach_trait_defaults();
-        search.reach
+        search
+    }
+
+    fn user_definitions(program: &TypedProgram) -> Vec<BindingId> {
+        program
+            .modules
+            .iter()
+            .filter(|module| !ModuleSources::is_prelude(&module.path))
+            .flat_map(|module| &module.definitions)
+            .map(|definition| definition.binding)
+            .collect()
     }
 
     fn find_main(program: &TypedProgram) -> Option<BindingId> {
@@ -245,9 +276,9 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
 
 #[cfg(test)]
 mod tests {
-    use super::ReachSearch;
+    use super::{ReachSearch, Reaches};
     use crate::core::BindingId;
-    use crate::types::{DefinitionTable, ProgramReach, TypedProgram, TypedSource};
+    use crate::types::{DefinitionTable, TypedProgram, TypedSource};
 
     struct ReachFixture {
         program: TypedProgram,
@@ -258,15 +289,25 @@ mod tests {
             (defn helper () 1)
             (defn main () (println (+ (helper) (sum (vec 1 2)))))";
 
+        const PRELUDE_CALL_OUTSIDE_MAIN: &str = "
+            (defn total () (sum (vec 1 2)))
+            (defn main () (println 1))";
+
         fn new() -> Self {
+            Self::of(Self::ENTRY_CALLING_ITS_OWN_AND_A_PRELUDE_FUNCTION)
+        }
+
+        fn of(source: &str) -> Self {
             Self {
-                program: TypedSource::expand(Self::ENTRY_CALLING_ITS_OWN_AND_A_PRELUDE_FUNCTION)
-                    .typed(),
+                program: TypedSource::expand(source).typed(),
             }
         }
 
-        fn reach(&self) -> ProgramReach {
-            ReachSearch::of(&self.program, &DefinitionTable::of(&self.program))
+        fn reaches(&self) -> Reaches {
+            ReachSearch::of_main_and_user_definitions(
+                &self.program,
+                &DefinitionTable::of(&self.program),
+            )
         }
 
         fn definition(&self, name: &str) -> BindingId {
@@ -283,7 +324,7 @@ mod tests {
     #[test]
     fn a_definition_used_only_from_its_own_module_is_reached_but_not_shared() {
         let fixture = ReachFixture::new();
-        let reach = fixture.reach();
+        let reach = fixture.reaches().main;
         let helper = fixture.definition("helper");
         assert!(reach.reached.contains(&helper));
         assert!(!reach.used_from_other_modules.contains(&helper));
@@ -292,11 +333,20 @@ mod tests {
     #[test]
     fn a_prelude_definition_the_entry_calls_is_used_from_another_module() {
         let fixture = ReachFixture::new();
-        let reach = fixture.reach();
+        let reach = fixture.reaches().main;
         assert!(
             reach
                 .used_from_other_modules
                 .contains(&fixture.definition("sum"))
         );
+    }
+
+    #[test]
+    fn a_prelude_definition_called_outside_main_is_reached_only_from_every_user_definition() {
+        let fixture = ReachFixture::of(ReachFixture::PRELUDE_CALL_OUTSIDE_MAIN);
+        let sum = fixture.definition("sum");
+        let reaches = fixture.reaches();
+        assert!(!reaches.main.reached.contains(&sum));
+        assert!(reaches.user_definitions.reached.contains(&sum));
     }
 }

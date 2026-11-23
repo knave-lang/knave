@@ -160,9 +160,9 @@ impl OwnershipChecker {
         program: &TypedProgram,
         definitions: &DefinitionTable<'_>,
     ) -> (ProgramReach, Regions) {
-        let reach = ReachSearch::of(program, definitions);
-        let regions = RegionRecord::of(program, definitions, &reach);
-        (reach, regions)
+        let reaches = ReachSearch::of_main_and_user_definitions(program, definitions);
+        let regions = RegionRecord::of(program, definitions, &reaches.user_definitions);
+        (reaches.main, regions)
     }
 
     fn keep_regions(program: &mut TypedProgram, reach: ProgramReach, regions: Regions) {

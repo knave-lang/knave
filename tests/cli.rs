@@ -28,6 +28,7 @@ const EVERY_NEW_FILE: [&str; 8] = [
     "tests/greeting.knv",
 ];
 const WORKFLOW_FILE: &str = ".github/workflows/knave.yml";
+const GITATTRIBUTES_FILE: &str = "demo-app/.gitattributes";
 const LINGUIST_LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false\n";
 const VERSION_STEP: &str = "name: Read the Knave version";
 const GITHUB_BASH: [&str; 5] = ["--noprofile", "--norc", "-eo", "pipefail", "-c"];
@@ -8818,7 +8819,7 @@ fn new_writes_a_gitattributes_that_highlights_knave_as_clojure() {
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
-    assert_eq!(sandbox.contents("demo-app/.gitattributes"), LINGUIST_LINE);
+    assert_eq!(sandbox.contents(GITATTRIBUTES_FILE), LINGUIST_LINE);
 }
 
 #[test]
@@ -8869,7 +8870,7 @@ fn new_skips_the_github_workflow() {
             "tests/greeting.knv",
         ]
     );
-    assert!(!sandbox.directory.join("demo-app/.gitattributes").exists());
+    assert!(!sandbox.directory.join(GITATTRIBUTES_FILE).exists());
 }
 
 #[test]
@@ -9261,6 +9262,47 @@ fn upgrade_rewrites_a_committed_workflow_with_an_added_step() {
         format!("rewrote `{WORKFLOW_FILE}`\n")
     );
     assert_eq!(sandbox.contents(&workflow), current);
+}
+
+#[test]
+fn upgrade_appends_the_linguist_line_on_a_line_of_its_own() {
+    let sandbox = Sandbox::with_committed_project("upgrade_linguist_appended")
+        .with_file(GITATTRIBUTES_FILE, "*.png binary");
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert_eq!(
+        upgrade.assert_exit_code(0).stderr(),
+        "rewrote the `*.knv` line of `.gitattributes`\n"
+    );
+    assert_eq!(
+        sandbox.contents(GITATTRIBUTES_FILE),
+        format!("*.png binary\n{LINGUIST_LINE}")
+    );
+}
+
+#[test]
+fn upgrade_replaces_an_outdated_linguist_line_in_place() {
+    let sandbox = Sandbox::with_committed_project("upgrade_linguist_replaced").with_file(
+        GITATTRIBUTES_FILE,
+        "*.png binary\n*.knv linguist-language=Lisp\n*.txt text\n",
+    );
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    assert_eq!(
+        sandbox.contents(GITATTRIBUTES_FILE),
+        format!("*.png binary\n{LINGUIST_LINE}*.txt text\n")
+    );
+}
+
+#[test]
+fn upgrade_leaves_a_current_linguist_line_alone() {
+    let written = format!("*.png binary\r\n{LINGUIST_LINE}*.txt text");
+    let sandbox = Sandbox::with_committed_project("upgrade_linguist_current")
+        .with_file(GITATTRIBUTES_FILE, &written);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    let stderr = upgrade.assert_exit_code(0).stderr();
+    assert!(!stderr.contains(".gitattributes"), "{stderr}");
+    assert_eq!(sandbox.contents(GITATTRIBUTES_FILE), written);
 }
 
 #[test]

@@ -343,6 +343,21 @@ mod tests {
     }
 
     #[test]
+    fn only_the_prelude_is_linted_over_the_prelude() {
+        let source = ExpandedSource::expand("(defn main ())");
+        let mut rules = RuleProgram::expand_from_sources().expect("the lint rules expand");
+        let warnings =
+            LinterFixture::lint_prelude(&source, &mut rules, LinterFixture::TINY_STEP_LIMIT);
+        let spans: Vec<_> = warnings
+            .in_source_order()
+            .into_iter()
+            .map(|warning| warning.primary().span())
+            .collect();
+        assert!(!spans.is_empty());
+        assert!(spans.iter().all(|span| !source.is_in_entry(*span)));
+    }
+
+    #[test]
     fn the_prelude_lints_clean() {
         let programs = LinterFixture::prelude_programs();
         let linted = LinterFixture::linted_paths(&programs);

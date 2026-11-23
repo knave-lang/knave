@@ -55,6 +55,10 @@ impl ExpandedSource {
         Span::new(self.entry, start..start + text.len())
     }
 
+    pub fn is_in_entry(&self, span: Span) -> bool {
+        span.source() == self.entry
+    }
+
     pub fn supply(&mut self) -> &mut ScopeSupply {
         &mut self.program.scopes
     }

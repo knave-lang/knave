@@ -28,12 +28,13 @@ where
         context: &mut C,
         _hint: Option<Expectation>,
     ) -> Result<TypedExpr, Diagnostic> {
-        let (block, ty) = self.body.type_with(context, None)?;
-        Ok(TypedExpr {
-            kind: TypedExprKind::Control(TypedControl::Block(block)),
-            ty,
-            span: self.span,
-        })
+        self.body
+            .type_with(context, None)
+            .map(|(block, ty)| TypedExpr {
+                kind: TypedExprKind::Control(TypedControl::Block(block)),
+                ty,
+                span: self.span,
+            })
     }
 }
 
@@ -44,6 +45,8 @@ mod tests {
     use crate::types::forms::body_fixture::BodyFixture;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::typed::{TypedControl, TypedExprKind};
+
+    const NESTED_DO_FORM_STACK_BUDGET: usize = 4 * 1024;
 
     #[test]
     fn a_do_form_is_a_block_at_its_span() {
@@ -56,5 +59,16 @@ mod tests {
             Some(expr) if matches!(expr.kind, TypedExprKind::Control(TypedControl::Block(_)))
                 && expr.span == FormFixtures::span()
         ));
+    }
+
+    #[test]
+    fn a_nested_do_form_stays_within_its_stack_budget() {
+        let block = BodyFixture::nested_do_forms(2);
+        let mut fixture = BodyFixture::default();
+        let _ = Sequence::new(&block, FormFixtures::span()).type_against(&mut fixture, None);
+        let [outer, inner, ..] = fixture.stack_marks[..] else {
+            panic!("each nested do form types its child")
+        };
+        assert!(outer - inner <= NESTED_DO_FORM_STACK_BUDGET);
     }
 }

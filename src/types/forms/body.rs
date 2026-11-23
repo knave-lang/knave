@@ -4,7 +4,7 @@ use crate::core::{Block, BodyItem, Expr};
 use crate::diagnostic::Diagnostic;
 use crate::types::expectation::Expectation;
 use crate::types::ty::Type;
-use crate::types::typed::{TypedBlock, TypedBodyItem};
+use crate::types::typed::{TypedBlock, TypedBodyItem, TypedExpr};
 
 pub(in crate::types) struct Body<'e> {
     block: &'e Block,
@@ -48,11 +48,12 @@ impl<'e> Body<'e> {
         C: BodyTyping,
     {
         match item {
-            BodyItem::Let(binder, value) => {
-                let typed = LocalBinding::new(binder, value).bind(context)?;
-                Ok((typed, Type::unit()))
+            BodyItem::Let(binder, value) => LocalBinding::new(binder, value)
+                .bind(context)
+                .map(|typed| (typed, Type::unit())),
+            BodyItem::Expr(expr) => {
+                Self::type_expression(context, expr, fitted).map(Self::expression_item)
             }
-            BodyItem::Expr(expr) => Self::type_expression(context, expr, fitted),
         }
     }
 
@@ -60,16 +61,19 @@ impl<'e> Body<'e> {
         context: &mut C,
         expr: &Expr,
         fitted: Option<Expectation>,
-    ) -> Result<(TypedBodyItem, Type), Diagnostic>
+    ) -> Result<TypedExpr, Diagnostic>
     where
         C: BodyTyping,
     {
-        let typed = match fitted {
-            Some(expectation) => context.type_child_against(expr, expectation)?,
-            None => context.type_child(expr)?,
-        };
+        match fitted {
+            Some(expectation) => context.type_child_against(expr, expectation),
+            None => context.type_child(expr),
+        }
+    }
+
+    fn expression_item(typed: TypedExpr) -> (TypedBodyItem, Type) {
         let ty = typed.ty.clone();
-        Ok((TypedBodyItem::Expr(typed), ty))
+        (TypedBodyItem::Expr(typed), ty)
     }
 }
 

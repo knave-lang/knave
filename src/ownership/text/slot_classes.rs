@@ -6,6 +6,7 @@ use super::flow_graph::FlowGraph;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::slot::Slot;
+use super::slot_owner::SlotOwner;
 use super::source::Source;
 use super::stored_parameters::StoredParameters;
 use crate::core::BindingId;
@@ -99,9 +100,21 @@ impl<'g> SlotClasses<'g> {
                 ClassRole::Parameter { tied }
             }
             _ if members.iter().all(|slot| slot.is_local()) => ClassRole::Local,
+            _ if Self::holds_only_parameter_elements(&members) => ClassRole::ParameterElement,
             _ if members.iter().any(|slot| slot.owner().is_decided()) => ClassRole::Held,
             _ => ClassRole::Passing,
         }
+    }
+
+    fn holds_only_parameter_elements(members: &[&Slot]) -> bool {
+        let decided: Vec<&&Slot> = members
+            .iter()
+            .filter(|slot| slot.owner().is_decided())
+            .collect();
+        !decided.is_empty()
+            && decided.iter().all(|slot| {
+                matches!(slot.owner(), SlotOwner::Parameter(_)) && slot.parameter().is_none()
+            })
     }
 
     fn is_stored(&self, slot: &Slot) -> bool {

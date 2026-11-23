@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/collection_parameter_element_takes_its_callers_text.knv
+---
+defn count-views
+  names[0]: a view
+defn count-owned
+  names[0]: owned
+defn main
+  local views[0]: a 'static view, written a view
+  local owned[0]: owned

@@ -1,0 +1,10 @@
+(defn count-views (names) (len names))
+
+(defn count-owned ((names (ref (vec string))))
+  (len names))
+
+(defn main ()
+  (local views (vec "a" "b"))
+  (local owned (vec (str "c" 1)))
+  (println (count-views (ref views))
+           (count-owned (ref owned))))

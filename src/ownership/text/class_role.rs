@@ -10,6 +10,7 @@ pub enum ClassRole {
     Stored,
     Parameter { tied: Option<NodeId> },
     Local,
+    ParameterElement,
     Held,
     Passing,
 }
@@ -36,11 +37,16 @@ impl ClassRole {
                 Representation::of_tied_parameter(reaching_at(variable))
             }),
             Self::Local => Representation::of_local(reaching),
-            Self::Held | Self::Passing => Representation::of_held(reaching),
+            Self::ParameterElement | Self::Held | Self::Passing => {
+                Representation::of_held(reaching)
+            }
         }
     }
 
     pub fn hands_on_its_decision(self) -> bool {
-        matches!(self, Self::KeepsView | Self::Local | Self::Held)
+        matches!(
+            self,
+            Self::KeepsView | Self::Local | Self::ParameterElement | Self::Held
+        )
     }
 }

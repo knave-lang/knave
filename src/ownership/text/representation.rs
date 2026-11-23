@@ -13,6 +13,7 @@ pub enum Representation {
     Lent,
     LentMixed,
     Mutable,
+    Generic,
 }
 
 impl Representation {
@@ -82,7 +83,7 @@ impl Representation {
                 arriving.holds(ReachingText::STATIC.with(ReachingText::SHORT_LIVED_VIEWS))
             }
             Self::LentMixed => arriving.holds(ReachingText::SHORT_LIVED_VIEWS),
-            Self::View | Self::StaticView | Self::Mutable => false,
+            Self::View | Self::StaticView | Self::Mutable | Self::Generic => false,
         }
     }
 }
@@ -97,6 +98,7 @@ impl fmt::Display for Representation {
             Self::Lent => "lent",
             Self::LentMixed => "lent mixed",
             Self::Mutable => "mutable",
+            Self::Generic => "generic over AsRef<str>",
         })
     }
 }

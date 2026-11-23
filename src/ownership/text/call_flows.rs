@@ -13,12 +13,13 @@ use super::short_lived_text::ShortLivedText;
 use super::slot::Slot;
 use super::slot_owner::SlotOwner;
 use super::source::Source;
+use super::text_position::TextPositions;
 use super::text_read::TextRead;
 use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
 use super::walk_context::WalkContext;
-use crate::types::{GenericId, Type, TypedExpr};
+use crate::types::{Borrow, GenericId, Type, TypedExpr, TypedExprKind};
 
 pub struct CallFlows<'c, 'w, 'p> {
     context: &'c mut WalkContext<'w, 'p>,
@@ -95,11 +96,47 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         if let Some(whole) = instantiation.whole_generic() {
             self.whole_generic_argument(target, whole, value);
         } else if let Some(parameter) = target.parameter(index) {
-            self.pour(&parameter, value);
+            self.hand_to_parameter(&parameter, (instantiation.instantiated(), index));
         }
         for position in instantiation.positions() {
             self.argument_position(target, &position, value);
         }
+    }
+
+    fn hand_to_parameter(&mut self, parameter: &Slot, (ty, index): (&Type, usize)) {
+        let values = self.values;
+        let value = &values[index];
+        if matches!(ty, Type::Mut(..)) || self.passes_mutably(index) {
+            self.pour(parameter, value);
+            return;
+        }
+        let elements = TextPositions::elements(ty);
+        let top =
+            value
+                .sources()
+                .iter()
+                .fold(TextValue::default(), |top, (source, transfer, span)| {
+                    top.merged(TextValue::from(*source, *span).transferred(*transfer))
+                });
+        let mut shared = top;
+        for (path, node) in value.nested() {
+            if elements.contains(path) {
+                let element = TextValue::from(Source::Slot(*node), self.call.span);
+                self.pour(&parameter.nested(path), &element);
+            } else {
+                shared = shared.nesting(path.clone(), *node);
+            }
+        }
+        self.pour(parameter, &shared);
+    }
+
+    fn passes_mutably(&self, index: usize) -> bool {
+        let TypedExprKind::Call(_, arguments) = &self.call.kind else {
+            return false;
+        };
+        arguments.get(index).is_some_and(|argument| {
+            matches!(argument.borrow, Borrow::Mutable) || matches!(argument.value.ty, Type::Mut(..))
+        })
     }
 
     fn whole_generic_argument(

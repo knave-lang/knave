@@ -27,7 +27,7 @@ impl RegionRecord<'_> {
         let mut record = RegionRecord {
             program,
             analysis: ResultBorrows::new(program, definitions),
-            held: ResultHeldParameters::new(program),
+            held: ResultHeldParameters::new(program, definitions),
             regions: Regions::default(),
         };
         for definition in Self::covered(program, reach) {

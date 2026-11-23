@@ -1,0 +1,8 @@
+(defn counter (items)
+  (let (n (len items)) (fn () n)))
+
+(defn wrapc (items) (counter items))
+
+(defn main ()
+  (let (count (wrapc (vec 1 2)))
+    (println (count))))

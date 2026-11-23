@@ -1,0 +1,9 @@
+(defstruct item
+  :name string)
+
+(defn take-name ((name string)) name)
+
+(defn main ()
+  (local made (str "a" 1))
+  (local r (as-str made))
+  (prn (->item :name (take-name (str r)))))

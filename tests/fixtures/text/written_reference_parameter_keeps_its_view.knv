@@ -1,0 +1,8 @@
+(defn swap-in! ((m (mut (ref str))))
+  (set! m "z"))
+
+(defn main ()
+  (local s (str "a"))
+  (local r (as-str s))
+  (swap-in! (mut r))
+  (println r))

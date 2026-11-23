@@ -234,6 +234,7 @@ mod type_variables;
 mod typed;
 mod typed_argument;
 mod typed_associated_type;
+mod typed_binder;
 mod typed_impl_method;
 mod typed_module_builder;
 #[cfg(test)]

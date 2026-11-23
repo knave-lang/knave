@@ -112,6 +112,7 @@ impl GeneralizationFixture {
                 ty: ty.clone(),
                 span: Self::span(),
                 annotated: false,
+                written_view: false,
             })
             .collect();
         let lambda = TypedLambda {

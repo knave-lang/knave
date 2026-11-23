@@ -58,6 +58,7 @@ mod tests {
                 ty: Type::bool(),
                 span: Self::span(at),
                 annotated: false,
+                written_view: false,
             };
             TypedBodyItem::Let(binder, Self::literal(at))
         }

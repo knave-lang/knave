@@ -22,11 +22,9 @@ use super::checker::{TypeChecker, VariantArmReference};
 use super::collection::{Collection, CollectionKind};
 use super::enums::VariantPayload;
 use super::expectation::Expectation;
-use super::field_bound::FieldBound;
 use super::field_owner_problems::FieldOwnerProblems;
 use super::field_read_expr::FieldReadExpr;
 use super::inferred_span::InferredSpan;
-use super::open_read::OpenRead;
 use super::parameter_call_request::ParameterCallRequest;
 use super::pending::DecidedBorrows;
 use super::positional_read::PositionalRead;
@@ -2602,12 +2600,11 @@ impl TypeChecker {
             Type::Ref(_, inner) | Type::Mut(_, inner) if self.names_struct(&inner) => Err(
                 TypeProblems::borrowed_update_base(&self.display().show(&inner), base.span),
             ),
-            other => {
-                Err(
-                    FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
-                        .unbound_update(&self.display().show(&other), &other, base.span),
-                )
-            }
+            other => Err(self.field_bound().unbound_update(
+                &self.display().show(&other),
+                &other,
+                base.span,
+            )),
         }
     }
 
@@ -2728,13 +2725,11 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         let value = self.infer(value)?;
-        let bound_read = FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
-            .read(&value.ty, &label.name);
-        if let Some(ty) = bound_read {
+        if let Some(ty) = self.field_bound().read(&value.ty, &label.name) {
             return Ok(FieldReadExpr::new(value, label).typed(ty, span));
         }
         let (owner, arguments) = self.field_owner(&value, label)?;
-        let reads = OpenRead::new(self.copy_rules());
+        let reads = self.open_read();
         let declared = (self.declarations.types().structs.get(owner))
             .and_then(|definition| reads.instantiated(definition, &label.name, &arguments));
         let Some(read) = declared else {
@@ -2767,10 +2762,9 @@ impl TypeChecker {
                 None => self.unique_owner(&owner, label),
             },
             other => {
-                Err(
-                    FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
-                        .unbound_read(&self.display().show(&other), value, label),
-                )
+                Err(self
+                    .field_bound()
+                    .unbound_read(&self.display().show(&other), value, label))
             }
         }
     }

@@ -7,6 +7,7 @@ use super::local_files::LocalFiles;
 use super::local_root::LocalRoot;
 use super::missing_root_module::MissingRootModule;
 use super::other_libraries::OtherLibraries;
+use super::program_libraries::ProgramLibraries;
 use super::search_scope::SearchScope;
 use super::unlisted_library::UnlistedLibrary;
 use super::visible_library::VisibleLibrary;
@@ -25,7 +26,7 @@ pub struct LibraryRoot {
 
 #[derive(Clone, Default)]
 pub struct LibraryTable {
-    program_visible: Vec<String>,
+    program: ProgramLibraries,
     libraries: Vec<LibraryRoot>,
     library_section: String,
 }
@@ -71,7 +72,7 @@ impl LibraryRoot {
         self.lister.as_deref()
     }
 
-    pub fn checkout(&self) -> Option<&std::path::Path> {
+    fn checkout(&self) -> Option<&std::path::Path> {
         self.checkout.as_deref()
     }
 
@@ -126,12 +127,12 @@ impl LibraryTable {
     const UNSCOPED: SearchScope = SearchScope::Program;
 
     pub fn new(
-        program_visible: Vec<String>,
+        program: ProgramLibraries,
         libraries: Vec<LibraryRoot>,
         library_section: String,
     ) -> Self {
         Self {
-            program_visible,
+            program,
             libraries,
             library_section,
         }
@@ -214,13 +215,13 @@ impl LibraryTable {
     }
 
     fn sees_library(&self, owner: Option<&str>, written: &ModulePath) -> bool {
-        self.sees(owner, Self::head(written))
+        self.sees(owner, written.head())
     }
 
     fn sees(&self, owner: Option<&str>, library: &str) -> bool {
         let visible = self
             .named(owner)
-            .map_or(&self.program_visible, |named| &named.visible);
+            .map_or(&self.program.visible, |named| &named.visible);
         visible.iter().any(|name| name == library)
     }
 
@@ -236,16 +237,16 @@ impl LibraryTable {
         Some(library.file(inner))
     }
 
+    pub fn checkout_of(&self, path: &ModulePath) -> Option<&Path> {
+        match self.owner_of(path) {
+            Some(library) => library.checkout(),
+            None => self.program.checkout.as_deref(),
+        }
+    }
+
     pub fn owner_of(&self, path: &ModulePath) -> Option<&LibraryRoot> {
         self.libraries
             .iter()
-            .find(|library| library.name == Self::head(path))
-    }
-
-    pub fn head(path: &ModulePath) -> &str {
-        path.as_str()
-            .split(ModulePath::SEPARATOR)
-            .next()
-            .unwrap_or_default()
+            .find(|library| library.name == path.head())
     }
 }

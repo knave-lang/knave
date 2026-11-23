@@ -3,12 +3,10 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::diagnostic_output::DiagnosticOutput;
-use super::direct_library::DirectLibrary;
 use super::distinct_output::DistinctOutput;
 use super::entry_tree::EntryTree;
 use super::evaluation_request::EvaluationRequest;
 use super::exit_status::ExitStatus;
-use super::export_status::ExportStatus;
 use super::exported_task_names::ExportedTaskNames;
 use super::form_block::FormBlock;
 use super::program_file::ProgramFile;
@@ -34,6 +32,7 @@ struct TaskLookup {
 pub struct TaskCatalog {
     request: EvaluationRequest,
     names_lookup: TaskLookupCall,
+    exports: Result<(), ExitStatus>,
 }
 
 pub struct EnteredProgram {
@@ -45,8 +44,6 @@ pub struct EnteredProgram {
 impl TaskCatalog {
     pub const LOOKUP_SOURCE: &'static str = "<task lookup>";
     pub const RUNNER_SOURCE: &'static str = "<task runner>";
-    const LIBRARY: &'static str = ":library";
-    const GIT_LIBRARY: &'static str = ":git-library";
     const SEPARATOR: &'static str = " ";
     const HIDDEN_FOLDER: &'static str = ":hidden-folder";
     const PROJECT_FILE: &'static str = ":project-file";
@@ -64,11 +61,11 @@ impl TaskCatalog {
     pub fn load(
         tree: &EntryTree,
         terminal: &mut Terminal,
-        lender: Option<&DirectLibrary>,
-    ) -> Result<(Self, ExportStatus), ExitStatus> {
+        export_arguments: &str,
+    ) -> Result<Self, ExitStatus> {
         let modules = Self::tree_arguments(&tree.module_paths()?);
         let exported_tasks = Self::exported_task_names(tree)?;
-        let catalog = Self {
+        let mut catalog = Self {
             request: EvaluationRequest {
                 module: tree.load(terminal)?,
                 evaluated: Vec::new(),
@@ -77,24 +74,13 @@ impl TaskCatalog {
                 "(task-names {})",
                 modules.join(Self::SEPARATOR)
             )),
+            exports: Ok(()),
         };
-        let exports = match exported_tasks {
-            Some(names) => catalog.checked_exports(terminal, &names, &Self::export_check(lender)),
-            None => Ok(()),
-        };
-        Ok((catalog, ExportStatus::new(exports)))
-    }
-
-    fn export_check(lender: Option<&DirectLibrary>) -> String {
-        let lender = lender.map(|library| {
-            let key = if library.fetched {
-                Self::GIT_LIBRARY
-            } else {
-                Self::LIBRARY
-            };
-            format!(" {key} {}", StringLiteral::quoted(&library.name))
-        });
-        format!("(exported-task-check{})", lender.unwrap_or_default())
+        if let Some(names) = exported_tasks {
+            let check = format!("(exported-task-check{export_arguments})");
+            catalog.exports = catalog.checked_exports(terminal, &names, &check);
+        }
+        Ok(catalog)
     }
 
     fn checked_exports(
@@ -150,6 +136,10 @@ impl TaskCatalog {
             .lines()
             .map(|name| TaskName::new(name.to_string()))
             .collect())
+    }
+
+    pub fn exports(&self) -> Result<(), ExitStatus> {
+        self.exports
     }
 
     pub fn listing(&self, terminal: &mut Terminal, block: &str) -> Result<String, ExitStatus> {

@@ -27,6 +27,10 @@ impl ModulePath {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn head(&self) -> &str {
+        self.0.split(Self::SEPARATOR).next().unwrap_or_default()
+    }
 }
 
 impl fmt::Display for ModulePath {

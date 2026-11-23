@@ -1,20 +1,20 @@
 use std::path::Path;
 
 use super::file_placement::FilePlacement;
-use crate::cli::direct_library::DirectLibrary;
+use crate::cli::lending_libraries::LendingLibraries;
 use crate::project::Project;
 
 pub struct TaskLayout<'p> {
     exports_tasks: bool,
     tasks_folder: bool,
     entry_left_out: bool,
-    libraries: &'p [DirectLibrary],
+    lending: &'p LendingLibraries,
 }
 
 pub struct ProjectFacts<'p> {
     pub project: &'p Project,
     pub root: &'p Path,
-    pub libraries: &'p [DirectLibrary],
+    pub lending: &'p LendingLibraries,
 }
 
 impl<'p> TaskLayout<'p> {
@@ -24,12 +24,12 @@ impl<'p> TaskLayout<'p> {
             exports_tasks: facts.project.exported_tasks.is_written(),
             tasks_folder: placement.tasks_directory().is_dir(),
             entry_left_out: !entry.is_written() && !facts.root.join(entry.path()).exists(),
-            libraries: facts.libraries,
+            lending: facts.lending,
         }
     }
 
-    pub fn libraries(&self) -> &'p [DirectLibrary] {
-        self.libraries
+    pub fn lending(&self) -> &'p LendingLibraries {
+        self.lending
     }
 
     pub fn exports_tasks(&self) -> bool {

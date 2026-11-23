@@ -2,13 +2,11 @@ use std::rc::Rc;
 
 use super::entry_tree::EntryTree;
 use super::exit_status::ExitStatus;
-use super::finished_program::FinishedProgram;
 use super::located_project::LocatedProject;
 use super::project_task::ProjectTask;
 use super::task_catalog::TaskCatalog;
 use super::task_invocation::TaskInvocation;
 use super::task_name::TaskName;
-use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
 
 pub struct OwnTasks {
@@ -28,13 +26,13 @@ impl OwnTasks {
                 names: Vec::new(),
             });
         }
-        let (catalog, exports) = TaskCatalog::load(&tree, terminal, None)?;
+        let catalog = TaskCatalog::load(&tree, terminal, "")?;
         let names = catalog
             .names(terminal)?
             .iter()
             .map(|name| Rc::from(name.as_str()))
             .collect();
-        exports.result()?;
+        catalog.exports()?;
         Ok(Self {
             tree,
             catalog: Some(catalog),
@@ -52,20 +50,28 @@ impl OwnTasks {
             .expect("the task tree belongs to a project")
     }
 
+    pub fn defines(&self, task: &str) -> bool {
+        self.names.iter().any(|name| name.as_ref() == task)
+    }
+
+    pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
+        match &self.catalog {
+            Some(catalog) => catalog.listing(terminal, ""),
+            None => Ok(String::new()),
+        }
+    }
+
     pub fn run(
         &self,
         terminal: &mut Terminal,
         task: &str,
         invocation: TaskInvocation<'_>,
-    ) -> Option<Result<ExitStatus, ExitStatus>> {
-        let catalog = self.catalog.as_ref()?;
-        if !self.names.iter().any(|name| name.as_ref() == task) {
-            return None;
-        }
-        let task = ProjectTask::new(self.project(), TaskName::new(task.to_string()));
-        let built = TaskRunners::new(catalog).build(terminal, &task, invocation.profile);
-        Some(built.map(|binary| {
-            FinishedProgram::run_in(&binary, invocation.arguments, task.root()).status()
-        }))
+    ) -> Result<ExitStatus, ExitStatus> {
+        let catalog = self
+            .catalog
+            .as_ref()
+            .expect("a project that defines a task has a task catalog");
+        let target = ProjectTask::new(self.project(), TaskName::new(task.to_string()));
+        invocation.run(terminal, catalog, &target)
     }
 }

@@ -83,6 +83,10 @@ pub enum LibrarySource {
 
 impl LibrarySource {
     pub const FULL_COMMIT_LENGTH: usize = 40;
+
+    pub fn is_fetched(&self) -> bool {
+        matches!(self, Self::Git { .. })
+    }
 }
 
 #[derive(Clone, Debug)]

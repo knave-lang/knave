@@ -7,7 +7,7 @@ use crate::diagnostic::{Counted, Diagnostic, DiagnosticCode, Label, MissingName,
 use crate::interpret::InterpretProblems;
 use crate::language::Language;
 use crate::modules::UnlistedLibrary;
-use crate::modules::{HiddenSourceModule, LibraryTable, LocalModuleClash};
+use crate::modules::{HiddenSourceModule, LocalModuleClash};
 use crate::reader::Form;
 use crate::source::Span;
 
@@ -458,7 +458,7 @@ impl ExpandProblems {
         local: &std::path::Path,
         span: Span,
     ) -> Diagnostic {
-        let library = LibraryTable::head(written);
+        let library = written.head();
         Diagnostic::warning(
             DiagnosticCode::LIBRARY_HIDES_LOCAL_MODULE,
             format!("library `{library}` hides `{}`", local.display()),

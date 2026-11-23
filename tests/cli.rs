@@ -12023,6 +12023,66 @@ fn a_linter_library_lints_a_dependent_that_has_no_tasks() {
 }
 
 #[test]
+fn a_git_librarys_task_program_keeps_its_checkout_bounds() {
+    let sandbox = Sandbox::new("library_task_linked_module")
+        .with_file("outside/secret.knv", "not = a module of the library\n")
+        .with_file(
+            "leaky-source/project.knv",
+            "(defproject leaky (exported-tasks peek))\n",
+        )
+        .with_file(
+            "leaky-source/tasks/peek.knv",
+            "(use secret)\n\n(deftask peek () (println \"peeking\"))\n",
+        );
+    fs::create_dir_all(sandbox.directory.join("leaky-source/src"))
+        .expect("the sandbox is writable");
+    std::os::unix::fs::symlink(
+        sandbox.directory.join("outside/secret.knv"),
+        sandbox.directory.join("leaky-source/src/secret.knv"),
+    )
+    .expect("the sandbox accepts symbolic links");
+    sandbox.git("leaky-source", &["init", "--quiet"]);
+    sandbox.git("leaky-source", &["add", "--all"]);
+    sandbox.git(
+        "leaky-source",
+        &["commit", "--quiet", "--message", "Add the library"],
+    );
+    let commit = sandbox.git("leaky-source", &["rev-parse", "HEAD"]);
+    sandbox.git(
+        ".",
+        &["clone", "--quiet", "--bare", "leaky-source", "leaky.git"],
+    );
+    let sandbox = sandbox
+        .with_file(
+            "app/project.knv",
+            &format!(
+                "(defproject app (libraries (leaky :git \"../leaky.git\" :rev \"{commit}\")))\n"
+            ),
+        )
+        .with_file("app/src/main.knv", "(defn main () (println \"app\"))\n");
+    let check = sandbox.compiler_in("app", &["check"]);
+    let stderr = check.assert_exit_code(1).stderr();
+    assert!(!stderr.contains("not = a module"), "{stderr}");
+    insta::assert_snapshot!(sandbox.masked(&stderr).replace(&commit, "<commit>"));
+}
+
+#[test]
+fn an_error_in_a_module_shared_with_a_librarys_task_prints_once() {
+    let check = LendingLibraries::lint_only("library_task_shared_error")
+        .with_file("lint/src/util.knv", "(export suffix)\n\n(def suffix (+ 1 \" done\"))\n")
+        .with_file(
+            "lint/tasks/check.knv",
+            "(use util suffix)\n\n(deftask check () (println suffix))\n\n(deftask where () (println \"here\"))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use lint/util suffix)\n\n(defn main () (println suffix))\n",
+        )
+        .compiler_in("app", &["check"]);
+    insta::assert_snapshot!(check.assert_exit_code(1).stderr());
+}
+
+#[test]
 fn a_project_without_tasks_or_lending_libraries_is_a_usage_error() {
     let task = Sandbox::new("task_no_tasks_no_lenders")
         .with_file("hints/project.knv", "(defproject hints)\n")

@@ -1,7 +1,6 @@
 use crate::core::ModulePath;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::language::Language;
-use crate::modules::LibraryTable;
 use crate::source::Span;
 
 pub struct TakenModuleProblems;
@@ -18,7 +17,7 @@ impl TakenModuleProblems {
     }
 
     pub fn file_takes_library_module(path: &ModulePath, span: Span) -> Diagnostic {
-        let library = LibraryTable::head(path);
+        let library = path.head();
         Diagnostic::error(
             DiagnosticCode::FILE_TAKES_LIBRARY_MODULE,
             format!("library `{library}` takes this file's module path `{path}`"),

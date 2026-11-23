@@ -3,7 +3,7 @@ source: tests/cli.rs
 expression: sandbox.masked(&stderr)
 ---
 error[L0367]: no task named `chek` to export
- --> <sandbox>/lint/project.knv:1:34
+ --> ../lint/project.knv:1:34
   |
 1 | (defproject lint (exported-tasks chek check))
   |                                  ^^^^ no `deftask` under `tasks/` defines this name

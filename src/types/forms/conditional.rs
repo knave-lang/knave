@@ -26,7 +26,7 @@ where
     fn type_against(
         &self,
         context: &mut C,
-        _expectation: Option<Expectation>,
+        _hint: Option<Expectation>,
     ) -> Result<TypedExpr, Diagnostic> {
         let test = context.type_child(self.operands.test)?;
         let expanded_from = context.macro_name(self.span);
@@ -100,13 +100,23 @@ mod tests {
         }
 
         fn type_if(&mut self, test: &Expr, then: &Expr, otherwise: &Expr) -> TypedExpr {
+            self.type_if_with_hint(test, then, otherwise, None)
+        }
+
+        fn type_if_with_hint(
+            &mut self,
+            test: &Expr,
+            then: &Expr,
+            otherwise: &Expr,
+            hint: Option<Expectation>,
+        ) -> TypedExpr {
             let operands = IfOperands {
                 test,
                 then,
                 otherwise,
             };
             Conditional::new(operands, Self::span(0))
-                .type_against(self, None)
+                .type_against(self, hint)
                 .unwrap_or_else(|_| panic!("the fixture fits every type"))
         }
 
@@ -239,5 +249,18 @@ mod tests {
             &ConditionalFixture::text(3),
         );
         assert_eq!(typed.ty, Type::bool());
+    }
+
+    #[test]
+    fn a_hint_adds_no_fit_because_the_caller_fits() {
+        let mut fixture = ConditionalFixture::new();
+        let hinted = ConditionalFixture::text_type();
+        fixture.type_if_with_hint(
+            &ConditionalFixture::boolean(1),
+            &ConditionalFixture::boolean(2),
+            &ConditionalFixture::boolean(3),
+            Some(Expectation::plain(&hinted)),
+        );
+        assert_eq!(fixture.fits.len(), 2);
     }
 }

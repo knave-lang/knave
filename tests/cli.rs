@@ -11764,6 +11764,27 @@ fn a_library_task_builds_beside_the_dependents_program() {
 }
 
 #[test]
+fn a_library_task_copies_the_librarys_lock_and_never_writes_it_back() {
+    let lock = "# a lock file\n";
+    let sandbox =
+        LendingLibraries::lint_only("library_task_lock").with_file("lint/Cargo.lock", lock);
+    sandbox
+        .compiler_in("app", &["task", "check"])
+        .assert_exit_code(0);
+    let copy = sandbox
+        .directory
+        .join("app/target/knave/app/library_tasks/lint/Cargo.lock");
+    let read = |path: &Path| fs::read_to_string(path).expect("the lock file reads");
+    assert_eq!(
+        [
+            read(&copy),
+            read(&sandbox.directory.join("lint/Cargo.lock"))
+        ],
+        [lock, lock]
+    );
+}
+
+#[test]
 fn a_qualified_task_runs_the_librarys_task() {
     let run = LendingLibraries::both("library_task_qualified")
         .compiler_in("app", &["task", "other/check"]);

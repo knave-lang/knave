@@ -1,0 +1,15 @@
+(defstruct (boxed t)
+  :v t)
+
+(defstruct plain
+  :v int)
+
+(type v-of
+  (where ((a (has :v int)))
+    (fn ((ref a)) int)))
+
+(defn v-of (x) (:v x))
+
+(defn main ()
+  (println (v-of (->plain 1)))
+  (println (v-of (->boxed 2))))

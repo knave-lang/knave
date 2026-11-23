@@ -4,6 +4,9 @@
 (defstruct (held t)
   :v t)
 
+(defstruct plain
+  :v (ref int))
+
 (type v-of
   (where ((a (has :v (ref int))))
     (fn ((ref a)) int)))
@@ -11,5 +14,7 @@
 (defn v-of (x) (deref (:v x)))
 
 (defn main ()
+  (local k 4)
   (println (v-of (->boxed 2)))
-  (println (v-of (->held 3))))
+  (println (v-of (->held 3)))
+  (println (v-of (->plain (ref k)))))

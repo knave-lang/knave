@@ -1,0 +1,12 @@
+---
+source: tests/cli.rs
+expression: task.assert_exit_code(1).stderr()
+---
+error[L0367]: no task named `release-everything` to export
+ --> project.knv:1:36
+  |
+1 | (defproject linter (exported-tasks release-everything))
+  |                                    ^^^^^^^^^^^^^^^^^^ no `deftask` under `tasks/` defines this name
+  |
+  = help: define the task with `deftask` in a file under `tasks/`, or remove the name
+  = note: run `knave doc L0367` for an explanation

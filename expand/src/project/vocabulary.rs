@@ -34,6 +34,7 @@ impl ProjectVocabulary {
                 &self.sections.dev_dependencies
             }
             Section::Lints => &self.sections.lints,
+            Section::ExportedTasks => &self.sections.exported_tasks,
         }
     }
 
@@ -76,6 +77,7 @@ mod tests {
                 dependencies: "crates".to_string(),
                 dev_dependencies: "test-crates".to_string(),
                 lints: "rules".to_string(),
+                exported_tasks: "offers".to_string(),
             };
             let levels = LevelWords::new(
                 LintLevel::ALL
@@ -95,7 +97,7 @@ mod tests {
             .iter()
             .map(|section| vocabulary.section_name(*section))
             .collect();
-        assert_eq!(names, ["books", "crates", "test-crates", "rules"]);
+        assert_eq!(names, ["books", "crates", "test-crates", "rules", "offers"]);
     }
 
     #[test]

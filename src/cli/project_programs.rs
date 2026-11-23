@@ -103,7 +103,7 @@ impl ProjectPrograms {
         loaded: &mut LoadedPrograms,
     ) -> LocatedProject {
         let tree = EntryTree::of_tasks(project);
-        if tree.path().is_dir() {
+        if tree.holds_tasks() {
             loaded.add(TaskCatalog::load(&tree, terminal).and_then(|catalog| {
                 let entered = TaskRunners::new(&catalog).program(terminal)?;
                 Ok(ProjectProgram {

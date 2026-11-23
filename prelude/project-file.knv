@@ -8,11 +8,12 @@
 
   A project file opens with [defproject], whose sections [libraries],
   [dependencies] and [dev-dependencies] list what the project uses, and whose
-  section [lints] sets the level of each lint. A call of any of these forms in
-  a program is an error.")
+  section [lints] sets the level of each lint, and whose section
+  [exported-tasks] names the tasks that the projects listing it can run. A
+  call of any of these forms in a program is an error.")
 
-(export defproject dependencies dev-dependencies libraries
-        lints)
+(export defproject dependencies dev-dependencies exported-tasks
+        libraries lints)
 
 (def outside-the-project-file
   (fn (form)
@@ -54,6 +55,9 @@
 (def lints
   (macro (form) (outside-the-project-file form)))
 
+(def exported-tasks
+  (macro (form) (outside-the-project-file form)))
+
 (header-shape (defproject name) :one-per-line)
 
 (project-role defproject project-head)
@@ -73,6 +77,10 @@
 (header-shape (lints) :one-per-line)
 
 (project-role lints lint-section)
+
+(header-shape (exported-tasks))
+
+(project-role exported-tasks task-export-section)
 
 (lint-level allow silent-level)
 
@@ -124,4 +132,14 @@
   ```
   (defproject browser
     (lints (unused-binding allow) (unreachable-arm deny)))
+  ```")
+
+(document (exported-tasks)
+  "Names the tasks of a project, by the names their `deftask` gives them, that
+  every project listing it under `libraries` can run with `knave task`. A task
+  the section leaves out runs only in its own project. A call in a program is
+  an error.
+
+  ```
+  (defproject linter (exported-tasks lint))
   ```")

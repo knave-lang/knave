@@ -1,13 +1,16 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/project/minimal.knv
 ---
 Project {
     name: "browser",
     version: "0.1.0",
-    entry: "src/main.knv",
-    library_root: "src/lib.knv",
+    modules: ProjectModules {
+        entry: "src/main.knv",
+        library_root: "src/lib.knv",
+        entry_written: false,
+    },
     edition: 2026,
     compiler_version: None,
     libraries: [],
@@ -16,4 +19,5 @@ Project {
     lints: LintTable {
         entries: [],
     },
+    exported_tasks: [],
 }

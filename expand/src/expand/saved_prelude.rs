@@ -68,11 +68,18 @@ mod tests {
             Section::Dependency(DependencySection::Dependencies),
             Section::Dependency(DependencySection::DevDependencies),
             Section::Lints,
+            Section::ExportedTasks,
         ];
         let names = sections.map(|section| vocabulary.section_name(section));
         assert_eq!(
             names,
-            ["libraries", "dependencies", "dev-dependencies", "lints"]
+            [
+                "libraries",
+                "dependencies",
+                "dev-dependencies",
+                "lints",
+                "exported-tasks"
+            ]
         );
     }
 }

@@ -51,6 +51,7 @@ mod expanded_page;
 mod expansion;
 mod explanation_lookup;
 mod explanation_page;
+mod exported_task_pairs;
 #[cfg(test)]
 mod fake_crates;
 #[cfg(test)]

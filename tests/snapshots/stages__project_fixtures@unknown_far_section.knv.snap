@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/project/unknown_far_section.knv
 ---
 error[L0707]: unknown section `zzz`
@@ -9,5 +9,5 @@ error[L0707]: unknown section `zzz`
 1 | (defproject b (zzz))
   |                ^^^ not a section of a project
   |
-  = help: the sections are `libraries`, `dependencies`, `dev-dependencies` and `lints`
+  = help: the sections are `libraries`, `dependencies`, `dev-dependencies`, `lints` and `exported-tasks`
   = note: run `knave doc L0707` for an explanation

@@ -1,5 +1,6 @@
 mod file_placement;
 mod project_root;
+mod task_layout;
 
 use std::path::{Path, PathBuf};
 
@@ -16,6 +17,7 @@ use crate::modules::LibraryTable;
 use crate::project::{Project, ProjectProblems};
 use file_placement::FilePlacement;
 pub use project_root::ProjectRoot;
+pub use task_layout::TaskLayout;
 
 pub struct LocatedProject {
     root: PathBuf,
@@ -91,13 +93,17 @@ impl LocatedProject {
     }
 
     pub fn entry(&self) -> ProgramFile {
-        let entry = self.root.join(&self.project.entry);
+        let entry = self.root.join(&self.project.modules.entry);
         self.placement().file_within(entry)
     }
 
-    pub fn is_entry(&self, file: &ProgramFile) -> bool {
-        let entry = ProgramFile::canonical(&self.root.join(&self.project.entry));
-        entry == ProgramFile::canonical(file.path())
+    pub fn task_layout(&self) -> TaskLayout {
+        let modules = &self.project.modules;
+        TaskLayout {
+            exports_tasks: !self.project.exported_tasks.is_empty(),
+            tasks_folder: self.placement().tasks_directory().is_dir(),
+            entry_left_out: !modules.entry_written && !self.root.join(&modules.entry).exists(),
+        }
     }
 
     pub fn placement(&self) -> FilePlacement<'_> {
@@ -109,7 +115,7 @@ impl LocatedProject {
     }
 
     pub fn source_root(&self) -> PathBuf {
-        ProgramFile::directory_of(&self.root.join(&self.project.entry))
+        ProgramFile::directory_of(&self.root.join(&self.project.modules.entry))
     }
 
     pub fn refuse_crates(&self, command: &str, terminal: &Terminal) -> Result<(), ExitStatus> {

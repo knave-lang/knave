@@ -1,0 +1,13 @@
+---
+source: tests/cli.rs
+expression: check.assert_exit_code(1).stderr()
+---
+error[L0350]: `exported-tasks` belongs only in `project.knv`
+ --> src/main.knv:3:1
+  |
+3 | (exported-tasks lint)
+  | ^^^^^^^^^^^^^^^^^^^^^ not a form of a program
+  |
+  = note: the compiler reads the project file as data, and never expands it
+  = help: move it into `project.knv` at the project root
+  = note: run `knave doc L0350` for an explanation

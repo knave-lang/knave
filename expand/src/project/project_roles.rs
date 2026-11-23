@@ -37,6 +37,7 @@ impl<'m> ProjectRoles<'m> {
             dependencies: book.taken("crate-section")?,
             dev_dependencies: book.taken("test-crate-section")?,
             lints: book.taken("lint-section")?,
+            exported_tasks: book.taken("task-export-section")?,
         })
     }
 
@@ -62,19 +63,21 @@ mod tests {
     struct RolesFixture;
 
     impl RolesFixture {
-        const MACROS: [&str; 6] = [
+        const MACROS: [&str; 7] = [
             "opening",
             "books",
             "crates",
             "test-crates",
             "rules",
+            "offers",
             "spare",
         ];
         const ROLES: &str = "(opening project-head)\n\
              (books library-section)\n\
              (crates crate-section)\n\
              (test-crates test-crate-section)\n\
-             (rules lint-section)\n";
+             (rules lint-section)\n\
+             (offers task-export-section)\n";
         const LEVELS: &str = "(hush silent-level) (note warning-level) (stop error-level)";
 
         fn notes(text: &str) -> Vec<Form> {

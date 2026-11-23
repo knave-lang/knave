@@ -102,7 +102,7 @@ impl NewCommand {
             "(export {function})\n\n(defn {function} () {})\n\n(defn main ()\n  (println ({function})))\n",
             Self::GREETING
         );
-        Ok(NewFile::new(root.join(&project.entry), text))
+        Ok(NewFile::new(root.join(&project.modules.entry), text))
     }
 
     fn starter_test(root: &Path, entry: &Path) -> NewFile {

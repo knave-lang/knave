@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use super::compiler_version_problems::CompilerVersionProblems;
 use super::dependency_reader::DependencyReader;
+use super::exported_task_reader::ExportedTaskReader;
 use super::fields::{FieldScanner, Fields, ScannedForms};
 use super::lint_reader::LintReader;
 use super::name::ProjectName;
@@ -9,7 +10,7 @@ use super::problems::ProjectProblems;
 use super::release_version::ReleaseVersion;
 use super::section::Section;
 use super::vocabulary::ProjectVocabulary;
-use super::{CompilerVersion, Project};
+use super::{CompilerVersion, Project, ProjectModules};
 use crate::diagnostic::Diagnostics;
 use crate::language::Language;
 use crate::reader::Form;
@@ -140,6 +141,10 @@ impl<'v> ProjectReader<'v> {
             Section::Dependency(kind) => {
                 DependencyReader::new(kind, &mut self.problems).read(entries, sections)
             }
+            Section::ExportedTasks => {
+                ExportedTaskReader::new(self.vocabulary.section_name(section), &mut self.problems)
+                    .read(entries, &mut sections.exported_tasks)
+            }
         }
     }
 
@@ -174,21 +179,20 @@ impl<'v> ProjectReader<'v> {
         let version = fields
             .string("version", &mut self.problems)
             .unwrap_or_else(|| Self::DEFAULT_VERSION.to_string());
-        let entry = self.module_file(fields, "entry", Self::DEFAULT_ENTRY);
-        let library_root = self.module_file(fields, "lib", Self::DEFAULT_LIBRARY_ROOT);
+        let modules = self.modules(fields);
         let edition = self.edition(fields);
         let compiler_version = self.compiler_version(fields);
         Some(Project {
             name: name?,
             version,
-            entry,
-            library_root,
+            modules,
             edition,
             compiler_version,
             libraries: sections.libraries,
             dependencies: sections.dependencies,
             dev_dependencies: sections.dev_dependencies,
             lints: sections.lints,
+            exported_tasks: sections.exported_tasks,
         })
     }
 
@@ -207,11 +211,24 @@ impl<'v> ProjectReader<'v> {
         Some(CompilerVersion::new(version, span))
     }
 
-    fn module_file(&mut self, fields: &Fields<'_>, key: &str, default_module: &str) -> PathBuf {
-        fields
-            .string(key, &mut self.problems)
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from(format!("{default_module}.{}", Language::EXTENSION)))
+    fn modules(&mut self, fields: &Fields<'_>) -> ProjectModules {
+        let written_entry = self.written_module_file(fields, "entry");
+        let entry_written = written_entry.is_some();
+        ProjectModules {
+            entry: written_entry.unwrap_or_else(|| Self::default_module_file(Self::DEFAULT_ENTRY)),
+            library_root: self
+                .written_module_file(fields, "lib")
+                .unwrap_or_else(|| Self::default_module_file(Self::DEFAULT_LIBRARY_ROOT)),
+            entry_written,
+        }
+    }
+
+    fn written_module_file(&mut self, fields: &Fields<'_>, key: &str) -> Option<PathBuf> {
+        fields.string(key, &mut self.problems).map(PathBuf::from)
+    }
+
+    fn default_module_file(default_module: &str) -> PathBuf {
+        PathBuf::from(format!("{default_module}.{}", Language::EXTENSION))
     }
 
     fn edition(&mut self, fields: &Fields<'_>) -> i128 {
@@ -252,4 +269,5 @@ pub struct SectionTable {
     pub dependencies: Vec<super::CrateDependency>,
     pub dev_dependencies: Vec<super::CrateDependency>,
     pub lints: super::LintTable,
+    pub exported_tasks: Vec<super::ExportedTask>,
 }

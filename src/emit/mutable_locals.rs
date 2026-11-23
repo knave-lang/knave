@@ -30,13 +30,8 @@ impl MutableLocals {
         found
     }
 
-    pub fn extend<B: std::borrow::Borrow<BindingId>>(
-        &mut self,
-        bindings: impl IntoIterator<Item = B>,
-    ) {
-        let bindings = bindings.into_iter();
-        self.bindings
-            .extend(bindings.map(|binding| *std::borrow::Borrow::borrow(&binding)));
+    pub fn extend(&mut self, bindings: impl IntoIterator<Item = BindingId>) {
+        self.bindings.extend(bindings);
     }
 
     pub fn contains(&self, binding: BindingId) -> bool {

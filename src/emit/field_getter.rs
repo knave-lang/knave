@@ -1,7 +1,9 @@
 use super::field_trait_path::FieldTraitPath;
 use super::fragment::{Code, Precedence};
 use crate::core::{FieldLabel, ModuleId, ReferenceKind};
-use crate::types::{Type, TypedExpr, TypedExprKind, TypedProgram, Unborrowed, WrittenBorrows};
+use crate::types::{
+    Type, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram, Unborrowed, WrittenBorrows,
+};
 
 pub(super) struct FieldGetter<'a> {
     program: &'a TypedProgram,
@@ -43,7 +45,8 @@ impl<'a> FieldGetter<'a> {
     }
 
     fn is_reference(receiver: &TypedExpr) -> bool {
-        matches!(receiver.ty, Type::Ref(..) | Type::Mut(..))
+        let local = matches!(receiver.kind, TypedExprKind::Leaf(TypedLeaf::Local(_)));
+        local && matches!(receiver.ty, Type::Ref(..) | Type::Mut(..))
     }
 
     fn borrowed(receiver: Code) -> Code {

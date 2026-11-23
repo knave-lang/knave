@@ -1,10 +1,8 @@
-use rustc_hash::FxHashMap;
-
 use super::copy::CopyRules;
 use super::field_read::FieldRead;
 use super::read_kind::ReadKind;
 use super::structs::StructDefinition;
-use super::ty::{GenericId, Type};
+use super::ty::Type;
 
 pub(super) struct OpenRead<'a> {
     copy: CopyRules<'a>,
@@ -38,12 +36,8 @@ impl<'a> OpenRead<'a> {
         arguments: &[Type],
     ) -> Option<FieldRead> {
         let declared = self.of(definition, field)?;
-        let replacements: FxHashMap<GenericId, Type> =
-            (definition.params.iter().map(|param| param.id))
-                .zip(arguments.iter().cloned())
-                .collect();
         Some(FieldRead {
-            read: declared.read.substitute(&replacements),
+            read: definition.instantiated(&declared.read, arguments),
             kind: declared.kind,
         })
     }

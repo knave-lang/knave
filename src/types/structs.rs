@@ -38,12 +38,12 @@ impl StructDefinition {
     }
 
     pub fn instantiated_field(&self, name: &str, arguments: &[Type]) -> Option<Type> {
-        let replacements = self.replacements(arguments);
-        self.field(name).map(|field_type| {
-            field_type
-                .without_written_lifetimes()
-                .substitute(&replacements)
-        })
+        let field_type = self.field(name)?.without_written_lifetimes();
+        Some(self.instantiated(&field_type, arguments))
+    }
+
+    pub fn instantiated(&self, declared: &Type, arguments: &[Type]) -> Type {
+        declared.substitute(&self.replacements(arguments))
     }
 
     pub fn holds_reference_in(&self, field: &str, arguments: &[Type]) -> bool {

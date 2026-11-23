@@ -30,6 +30,7 @@ mod map_queries;
 mod need;
 mod node_id;
 mod node_partition;
+mod parameter_pins;
 mod pattern_flows;
 mod place_writes;
 mod reaching_text;

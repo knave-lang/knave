@@ -14,14 +14,14 @@ impl TypedBinder {
         }
     }
 
-    pub fn writes_a_view(annotation: Option<&TypeExpr>, signature: Option<&Type>) -> bool {
+    pub fn written_view(annotation: Option<&TypeExpr>, signature: Option<&Type>) -> bool {
         annotation.map_or_else(
             || signature.is_some_and(Self::signature_writes_a_view),
             Self::annotation_writes_a_view,
         )
     }
 
-    fn annotation_writes_a_view(written: &TypeExpr) -> bool {
+    pub fn annotation_writes_a_view(written: &TypeExpr) -> bool {
         match written.kind() {
             TypeExprKind::Reference(ReferenceKind::Shared, ..) => true,
             TypeExprKind::Reference(ReferenceKind::Mutable, _, inner) => {
@@ -31,7 +31,7 @@ impl TypedBinder {
         }
     }
 
-    fn signature_writes_a_view(written: &Type) -> bool {
+    pub fn signature_writes_a_view(written: &Type) -> bool {
         match written {
             Type::Ref(_, inner) => matches!(
                 inner.as_ref(),

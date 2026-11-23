@@ -1,0 +1,4 @@
+(defn main ()
+  (local m (hash-map "k" (str "v" 1)))
+  (local v (vec (str "a") (str "b" 1)))
+  (println (len m) (len v)))

@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/map_literal_keeps_its_keys_apart_from_its_values.knv
+---
+defn main
+  local m[0]: a 'static view, written a view
+  local m[1]: owned
+  local v[0]: owned

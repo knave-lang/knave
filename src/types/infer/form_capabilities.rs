@@ -92,7 +92,7 @@ impl VariantSites for TypeChecker {
 
 impl OperandTyping for TypeChecker {
     fn type_operand(&mut self, operand: &Expr) -> Result<TypedExpr, Diagnostic> {
-        self.with_operand_mark(true, |checker| checker.infer(operand))
+        self.within_operand(|checker| checker.infer(operand))
     }
 }
 

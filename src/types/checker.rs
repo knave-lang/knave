@@ -834,13 +834,9 @@ impl TypeChecker {
         ObligationSolver::new(state, sources, pass)
     }
 
-    pub(super) fn with_operand_mark<T>(
-        &mut self,
-        inside_operand: bool,
-        work: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub(super) fn within_operand<T>(&mut self, work: impl FnOnce(&mut Self) -> T) -> T {
         let outer = self.unifier.inside_operand();
-        self.unifier.set_inside_operand(inside_operand);
+        self.unifier.set_inside_operand(true);
         let result = work(self);
         self.unifier.set_inside_operand(outer);
         result

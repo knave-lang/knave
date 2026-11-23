@@ -7,26 +7,32 @@ use crate::types::{
     TypedStructExpr,
 };
 
-pub(super) struct HeldBorrows<'a> {
+pub(super) struct ResultHeldParameters<'a> {
     program: &'a TypedProgram,
 }
 
 struct FunctionScope<'l> {
-    borrows: &'l HeldBorrows<'l>,
+    borrows: &'l ResultHeldParameters<'l>,
     locals: FxHashMap<BindingId, FxHashSet<BindingId>>,
     rebound: Vec<&'l [TypedBinder]>,
 }
 
-impl<'a> HeldBorrows<'a> {
+impl<'a> ResultHeldParameters<'a> {
     pub(super) fn new(program: &'a TypedProgram) -> Self {
         Self { program }
     }
 
-    pub(super) fn kept_parameters(&self, lambda: &TypedLambda) -> FxHashSet<BindingId> {
+    pub(super) fn of(&self, lambda: &TypedLambda) -> FxHashSet<BindingId> {
         let scope = FunctionScope::of(self, lambda);
+        let returned = ReturnedValues::new(self.program);
         let mut held = Vec::new();
-        for closure in ReturnedValues::new(self.program).closures(lambda) {
+        for closure in returned.closures(lambda) {
             Self::collect_held(closure, &mut held);
+        }
+        for value in returned.values(lambda) {
+            if matches!(value.ty, Type::Function(..)) {
+                held.extend(scope.borrowed_names(value));
+            }
         }
         let parameters: FxHashSet<BindingId> =
             lambda.params.iter().map(|param| param.binding).collect();
@@ -47,7 +53,7 @@ impl<'a> HeldBorrows<'a> {
     }
 
     fn sources(&self, mut pending: Vec<BindingId>, scope: &FunctionScope) -> FxHashSet<BindingId> {
-        let mut reached = FxHashSet::default();
+        let mut reached: FxHashSet<BindingId> = pending.iter().copied().collect();
         while let Some(binding) = pending.pop() {
             let Some(sources) = scope.locals.get(&binding) else {
                 continue;
@@ -67,7 +73,7 @@ impl<'a> HeldBorrows<'a> {
 }
 
 impl<'l> FunctionScope<'l> {
-    fn of(borrows: &'l HeldBorrows<'l>, lambda: &'l TypedLambda) -> Self {
+    fn of(borrows: &'l ResultHeldParameters<'l>, lambda: &'l TypedLambda) -> Self {
         let mut scope = Self {
             borrows,
             locals: FxHashMap::default(),
@@ -232,17 +238,20 @@ impl<'l> FunctionScope<'l> {
 
 #[cfg(test)]
 mod tests {
-    use super::HeldBorrows;
+    use super::ResultHeldParameters;
     use crate::core::BindingId;
     use crate::ownership::OwnershipChecker;
     use crate::types::{TypedExprKind, TypedLambda, TypedProgram, TypedSource};
 
-    struct KeptFixture {
+    struct HeldFixture {
         program: TypedProgram,
     }
 
-    impl KeptFixture {
+    impl HeldFixture {
         const COUNTERS: &str = "
+            (defn sizer (items) (fn () (len items)))
+            (defn wrap (items other) (println (len other)) (sizer items))
+            (defn counter (items) (let (n (len items)) (fn () n)))
             (defn looped! (items)
               (push! items 1)
               (loop (it (iter items))
@@ -302,13 +311,13 @@ mod tests {
             Self { program }
         }
 
-        fn kept_names(&self, function: &str) -> Vec<&str> {
+        fn held_names(&self, function: &str) -> Vec<&str> {
             let lambda = self.lambda(function);
-            let kept = HeldBorrows::new(&self.program).kept_parameters(lambda);
+            let held = ResultHeldParameters::new(&self.program).of(lambda);
             lambda
                 .params
                 .iter()
-                .filter(|param| kept.contains(&param.binding))
+                .filter(|param| held.contains(&param.binding))
                 .map(|param| self.name(param.binding))
                 .collect()
         }
@@ -332,9 +341,24 @@ mod tests {
     }
 
     #[test]
+    fn a_captured_parameter_is_held() {
+        assert_eq!(HeldFixture::new().held_names("sizer"), vec!["items"]);
+    }
+
+    #[test]
+    fn a_borrow_passed_to_a_returned_call_is_held() {
+        assert_eq!(HeldFixture::new().held_names("wrap"), vec!["items"]);
+    }
+
+    #[test]
+    fn a_parameter_read_into_a_copied_local_is_not_held() {
+        assert!(HeldFixture::new().held_names("counter").is_empty());
+    }
+
+    #[test]
     fn a_recur_argument_adds_to_the_loop_binder() {
         assert_eq!(
-            KeptFixture::new().kept_names("rebound!"),
+            HeldFixture::new().held_names("rebound!"),
             vec!["items", "other"]
         );
     }
@@ -342,53 +366,53 @@ mod tests {
     #[test]
     fn a_set_of_a_local_adds_to_its_sources() {
         assert_eq!(
-            KeptFixture::new().kept_names("reset!"),
+            HeldFixture::new().held_names("reset!"),
             vec!["items", "other"]
         );
     }
 
     #[test]
     fn a_borrow_of_a_changed_copy_keeps_it() {
-        assert_eq!(KeptFixture::new().kept_names("referred!"), vec!["x"]);
+        assert_eq!(HeldFixture::new().held_names("referred!"), vec!["x"]);
     }
 
     #[test]
     fn a_copied_read_of_a_changed_parameter_keeps_nothing() {
-        assert_eq!(KeptFixture::new().kept_names("taken!"), vec!["items"]);
+        assert_eq!(HeldFixture::new().held_names("taken!"), vec!["items"]);
     }
 
     #[test]
     fn a_local_read_by_a_call_gains_no_sources() {
-        assert_eq!(KeptFixture::new().kept_names("checked!"), vec!["name"]);
+        assert_eq!(HeldFixture::new().held_names("checked!"), vec!["name"]);
     }
 
     #[test]
     fn a_recur_inside_a_closure_leaves_the_loop_binder() {
-        assert_eq!(KeptFixture::new().kept_names("framed!"), vec!["other"]);
+        assert_eq!(HeldFixture::new().held_names("framed!"), vec!["other"]);
     }
 
     #[test]
     fn a_loop_binder_keeps_the_parameter_it_borrows() {
-        assert_eq!(KeptFixture::new().kept_names("looped!"), vec!["items"]);
+        assert_eq!(HeldFixture::new().held_names("looped!"), vec!["items"]);
     }
 
     #[test]
     fn a_held_local_keeps_only_the_parameter_it_borrows() {
-        assert_eq!(KeptFixture::new().kept_names("beside!"), vec!["items"]);
+        assert_eq!(HeldFixture::new().held_names("beside!"), vec!["items"]);
     }
 
     #[test]
     fn a_match_binder_keeps_the_parameter_its_scrutinee_borrows() {
-        assert_eq!(KeptFixture::new().kept_names("matched!"), vec!["items"]);
+        assert_eq!(HeldFixture::new().held_names("matched!"), vec!["items"]);
     }
 
     #[test]
     fn a_local_holding_an_iterator_inside_another_type_keeps_the_parameter_it_borrows() {
-        assert_eq!(KeptFixture::new().kept_names("wrapped!"), vec!["s"]);
+        assert_eq!(HeldFixture::new().held_names("wrapped!"), vec!["s"]);
     }
 
     #[test]
     fn a_local_closure_that_captures_nothing_keeps_no_parameter() {
-        assert!(KeptFixture::new().kept_names("adder!").is_empty());
+        assert!(HeldFixture::new().held_names("adder!").is_empty());
     }
 }

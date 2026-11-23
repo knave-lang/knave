@@ -1,0 +1,8 @@
+(defn sizer (items) (fn () (len items)))
+
+(defn wrap (items) (sizer items))
+
+(defn main ()
+  (let (items (vec 1 2)
+        size (wrap items))
+    (println (size))))

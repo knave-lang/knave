@@ -1,6 +1,8 @@
 use super::problems::EmitProblems;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
+use rustc_hash::FxHashSet;
+
 use crate::types::{
     CopyRules, ParameterCopy, ParameterRole, Type, TypedBinder, TypedLambda, TypedProgram,
 };
@@ -18,7 +20,7 @@ impl<'a> UnlentParameters<'a> {
             lambda,
             unlent: Vec::new(),
         };
-        parameters.unlent = parameters.changed_parameters();
+        parameters.unlent = parameters.unlent_parameters();
         parameters
     }
 
@@ -34,7 +36,9 @@ impl<'a> UnlentParameters<'a> {
         self.lambda
             .params
             .iter()
-            .find(|param| !self.lends(param.binding) && Self::infers_mut(param))
+            .find(|param| {
+                !self.lends(param.binding) && self.changes(param) && Self::infers_mut(param)
+            })
             .map(|param| param.binding)
     }
 
@@ -49,39 +53,63 @@ impl<'a> UnlentParameters<'a> {
         !param.annotated
     }
 
-    fn changed_parameters(&self) -> Vec<BindingId> {
-        let changed: Vec<&TypedBinder> = self
+    fn unlent_parameters(&self) -> Vec<BindingId> {
+        let candidates: Vec<&TypedBinder> = self
             .lambda
             .params
             .iter()
-            .filter(|param| {
-                self.program
-                    .ownership
-                    .parameter_modes
-                    .changes(param.binding)
-            })
-            .filter(|param| self.result_cannot_hold(param))
+            .filter(|param| self.may_leave_out(param))
             .collect();
-        if changed.is_empty() {
+        if candidates.is_empty() {
             return Vec::new();
         }
-        let regions = &self.program.ownership.regions;
-        let held = regions.of(ParameterRole::HeldByResult, self.lambda);
-        let flowing = regions.of(ParameterRole::FlowsThroughSharedArguments, self.lambda);
-        changed
+        let kept = self.kept_by_result();
+        candidates
             .into_iter()
             .map(|param| param.binding)
-            .filter(|binding| !held.contains(binding) && !flowing.contains(binding))
+            .filter(|binding| !kept.contains(binding))
             .collect()
     }
 
-    fn result_cannot_hold(&self, param: &TypedBinder) -> bool {
-        let returns_closure = self
-            .lambda
+    fn may_leave_out(&self, param: &TypedBinder) -> bool {
+        if self.changes(param) {
+            self.result_cannot_hold(param)
+        } else {
+            self.returns_closure() && self.is_borrowed(param)
+        }
+    }
+
+    fn kept_by_result(&self) -> FxHashSet<BindingId> {
+        let regions = &self.program.ownership.regions;
+        [
+            ParameterRole::HeldByResult,
+            ParameterRole::FlowsThroughSharedArguments,
+        ]
+        .into_iter()
+        .flat_map(|role| regions.of(role, self.lambda))
+        .collect()
+    }
+
+    fn changes(&self, param: &TypedBinder) -> bool {
+        self.program
+            .ownership
+            .parameter_modes
+            .changes(param.binding)
+    }
+
+    fn is_borrowed(&self, param: &TypedBinder) -> bool {
+        param.ty.is_reference() || self.program.type_holds_borrow(&param.ty)
+    }
+
+    fn returns_closure(&self) -> bool {
+        self.lambda
             .body
             .tail()
-            .is_some_and(|tail| matches!(tail.ty, Type::Function(..)));
-        returns_closure || self.copy_rules().is_copy(param.ty.referent())
+            .is_some_and(|tail| matches!(tail.ty, Type::Function(..)))
+    }
+
+    fn result_cannot_hold(&self, param: &TypedBinder) -> bool {
+        self.returns_closure() || self.copy_rules().is_copy(param.ty.referent())
     }
 
     fn copy_rules(&self) -> CopyRules<'_> {

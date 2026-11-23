@@ -1,0 +1,8 @@
+(defn pair (name items)
+  (let (count (len items))
+    (fn () (println name " " count))))
+
+(defn main ()
+  (let (name (str "ana")
+        greet (pair name (vec 4 5 6)))
+    (greet)))

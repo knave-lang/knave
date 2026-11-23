@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 
-use super::held_borrows::HeldBorrows;
 use super::lambda_flows::{FunctionFlows, LambdaFlows};
 use super::region_rules::RegionRules;
 use super::result_borrows::ResultBorrows;
+use super::result_held_parameters::ResultHeldParameters;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
 use crate::types::{
@@ -14,6 +14,7 @@ use crate::types::{
 pub struct RegionRecord<'a> {
     program: &'a TypedProgram,
     analysis: ResultBorrows<'a>,
+    held: ResultHeldParameters<'a>,
     regions: Regions,
 }
 
@@ -26,6 +27,7 @@ impl RegionRecord<'_> {
         let mut record = RegionRecord {
             program,
             analysis: ResultBorrows::new(program, definitions),
+            held: ResultHeldParameters::new(program),
             regions: Regions::default(),
         };
         for definition in Self::covered(program, reach) {
@@ -82,9 +84,8 @@ impl RegionRecord<'_> {
         let shared = self.analysis.analyse_shared_arguments(lambda);
         self.regions
             .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
-        let held = HeldBorrows::new(self.program).kept_parameters(lambda);
         self.regions
-            .record(ParameterRole::HeldByResult, lambda, held);
+            .record(ParameterRole::HeldByResult, lambda, self.held.of(lambda));
         self.regions
             .record(ParameterRole::Reassigned, lambda, reassigned_parameters);
         let stored = self.analysis.stores_of(function).flows.clone();

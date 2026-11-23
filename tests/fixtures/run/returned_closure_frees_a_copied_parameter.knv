@@ -1,0 +1,6 @@
+(defn counter (items)
+  (let (count (len items)) (fn () count)))
+
+(defn main ()
+  (let (count (counter (vec 1 2 3)))
+    (println (count))))

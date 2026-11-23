@@ -1,0 +1,5 @@
+(defn main ()
+  (local words
+    (vec (str "pear" 1) (str "fig" 2)))
+  (sort-by! words (fn (word) (len word)))
+  (println (len words)))

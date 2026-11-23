@@ -1254,12 +1254,7 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn unlent<'l>(&'l self, lambda: &'l TypedLambda) -> UnlentParameters<'l> {
-        UnlentParameters::of(self.program, lambda, || {
-            self.program
-                .ownership
-                .regions
-                .of(ParameterRole::FlowsThroughSharedArguments, lambda)
-        })
+        UnlentParameters::of(self.program, lambda)
     }
 
     fn capture_plan(

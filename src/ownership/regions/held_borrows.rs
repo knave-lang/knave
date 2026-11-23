@@ -7,7 +7,7 @@ use crate::types::{
     TypedStructExpr,
 };
 
-pub struct HeldBorrows<'a> {
+pub(super) struct HeldBorrows<'a> {
     program: &'a TypedProgram,
 }
 
@@ -18,11 +18,11 @@ struct FunctionScope<'l> {
 }
 
 impl<'a> HeldBorrows<'a> {
-    pub fn new(program: &'a TypedProgram) -> Self {
+    pub(super) fn new(program: &'a TypedProgram) -> Self {
         Self { program }
     }
 
-    pub fn kept_parameters(&self, lambda: &TypedLambda) -> FxHashSet<BindingId> {
+    pub(super) fn kept_parameters(&self, lambda: &TypedLambda) -> FxHashSet<BindingId> {
         let scope = FunctionScope::of(self, lambda);
         let mut held = Vec::new();
         for closure in ReturnedValues::new(self.program).closures(lambda) {

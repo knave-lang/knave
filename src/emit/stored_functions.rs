@@ -11,6 +11,9 @@ impl<'a> StoredFunctions<'a> {
     }
 
     pub fn stores(&self, binding: BindingId) -> bool {
-        self.program.stored_function_parameters.contains(&binding)
+        self.program
+            .ownership
+            .stored_function_parameters
+            .contains(&binding)
     }
 }

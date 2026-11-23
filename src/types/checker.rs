@@ -51,8 +51,8 @@ use super::missing_trait_explanation::MissingTraitExplanation;
 use super::obligation_pass::ObligationPass;
 use super::obligation_solver::ObligationSolver;
 use super::opaque_positions::OpaquePositions;
+use super::ownership_facts::OwnershipFacts;
 use super::parameter_call_search::CalledParameters;
-use super::parameter_modes::ParameterModes;
 use super::passing_facts::PassingFacts;
 use super::passing_tables::PassingTables;
 use super::peeling::ReferencePeeling;
@@ -1558,11 +1558,7 @@ impl TypeChecker {
             template_borrows: self.template_borrows,
             template_clauses: self.template_clauses,
             pending_mode_checks: self.deferred.mode_checks,
-            parameter_modes: ParameterModes::default(),
-            stored_function_parameters: FxHashSet::default(),
-            escaping_lambdas: FxHashSet::default(),
-            borrowing_lambdas: FxHashMap::default(),
-            mutable_function_bindings: FxHashSet::default(),
+            ownership: OwnershipFacts::default(),
             literal_generics: generics.literals,
             unnameable_types: self.unnameable_types,
             closure_types: self.closure_types,

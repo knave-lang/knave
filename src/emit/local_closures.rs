@@ -26,7 +26,7 @@ impl<'a> LocalClosures<'a> {
 
     pub fn of(program: &'a TypedProgram, value: &TypedExpr) -> Self {
         let mut found = Self::new(program);
-        if !program.borrowing_lambdas.is_empty() {
+        if !program.ownership.borrowing_lambdas.is_empty() {
             found.find_closures(value);
         }
         found
@@ -91,7 +91,12 @@ impl<'a> LocalClosures<'a> {
         let Some(lambda) = value.lambda_value() else {
             return;
         };
-        if let Some(borrowed) = self.program.borrowing_lambdas.get(&binder.binding) {
+        if let Some(borrowed) = self
+            .program
+            .ownership
+            .borrowing_lambdas
+            .get(&binder.binding)
+        {
             self.register_closure(binder.binding, lambda, borrowed);
         }
     }

@@ -27,7 +27,13 @@ impl<'p> BorrowingLambdas<'p> {
         let Some(lambda) = value.lambda_value() else {
             return;
         };
-        if binder.annotated || self.program.escaping_lambdas.contains(&binder.binding) {
+        if binder.annotated
+            || self
+                .program
+                .ownership
+                .escaping_lambdas
+                .contains(&binder.binding)
+        {
             return;
         }
         let borrowed = self.borrowed_parameters_of(lambda);
@@ -46,6 +52,7 @@ impl<'p> BorrowingLambdas<'p> {
     fn is_borrowed(&self, param: &TypedBinder) -> bool {
         let stored = self
             .program
+            .ownership
             .stored_function_parameters
             .contains(&param.binding);
         matches!(param.ty, Type::Function(..)) && !stored

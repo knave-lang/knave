@@ -40,7 +40,7 @@ impl<'p> StoredClosures<'p> {
             };
             (closures.diagnostics(), closures.stored_parameters())
         };
-        program.stored_function_parameters = stored;
+        program.ownership.stored_function_parameters = stored;
         diagnostics
     }
 

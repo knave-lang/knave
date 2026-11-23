@@ -1735,7 +1735,7 @@ mod tests {
                 function_parameters: ClosureKinds::function_parameters(program),
                 rust_parameter_kinds: ClosureKinds::rust_parameter_kinds(program),
                 written_parameter_kinds: ClosureKinds::written_parameter_kinds(program),
-                borrowing_lambdas: &program.borrowing_lambdas,
+                borrowing_lambdas: &program.ownership.borrowing_lambdas,
             })
         }
 

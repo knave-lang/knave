@@ -1,0 +1,11 @@
+(defstruct item
+  :name str)
+
+(defn keep ((n (ref str)))
+  (->item :name n))
+
+(defn pass-on ((n (ref str))) n)
+
+(defn main ()
+  (prn (keep "ana")
+       (->item :name (pass-on "bo"))))

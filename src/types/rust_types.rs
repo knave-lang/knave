@@ -19,9 +19,22 @@ impl RustType {
     pub const BOX_TEMPLATE: &'static str = "Box<{0}>";
     pub const ITERATOR_TEMPLATE: &'static str = "impl Iterator<Item = {0}>";
     const SORTED_MAP_TEMPLATE: &'static str = "std::collections::BTreeMap<{0}, {1}>";
-    pub const HASH_MAP_TEMPLATE: &'static str = "std::collections::HashMap<{0}, {1}>";
+    const HASH_MAP_TEMPLATE: &'static str = "std::collections::HashMap<{0}, {1}>";
     const MAP_TEMPLATES: [&'static str; 2] = [Self::SORTED_MAP_TEMPLATE, Self::HASH_MAP_TEMPLATE];
     const OPAQUE_PREFIX: &'static str = "impl ";
+
+    #[cfg(test)]
+    pub(in crate::types) fn hash_map() -> Self {
+        let template = ParsedTemplate::parse(Self::HASH_MAP_TEMPLATE)
+            .unwrap_or_else(|_| panic!("the hash map template parses"));
+        Self {
+            template: Rc::new(template),
+            clauses: Vec::new(),
+            params: Vec::new(),
+            unsized_parameters: Vec::new(),
+            format: PrintFormat::default(),
+        }
+    }
 
     pub fn spells_a_map(template: &ParsedTemplate) -> bool {
         Self::MAP_TEMPLATES

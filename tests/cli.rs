@@ -11542,6 +11542,30 @@ fn every_missing_exported_name_is_reported_beside_the_tasks_errors() {
 }
 
 #[test]
+fn lint_reports_a_missing_export() {
+    let lint = ExportingProject::of(
+        "lint_missing_export",
+        "(defproject linter (exported-tasks lnt))\n",
+    )
+    .compiler(&["lint"]);
+    assert!(lint.assert_exit_code(1).stderr().contains("error[L0367]"));
+}
+
+#[test]
+fn task_with_a_missing_export_fails_before_it_runs() {
+    let task = ExportingProject::of(
+        "task_missing_export",
+        "(defproject linter (exported-tasks lnt))\n",
+    )
+    .compiler(&["task", "lint"]);
+    let task = task.assert_exit_code(1);
+    assert_eq!(
+        (task.stdout().is_empty(), task.stderr().contains("error[L0367]")),
+        (true, true)
+    );
+}
+
+#[test]
 fn an_empty_exported_tasks_section_counts_as_tasks() {
     let sandbox = Sandbox::new("exported_tasks_empty").with_file(
         &Language::project_file_name(),

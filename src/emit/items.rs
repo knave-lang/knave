@@ -28,10 +28,9 @@ use super::unlent_parameters::UnlentParameters;
 use super::untied_borrows::{ShownMethod, UntiedBorrows};
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
-use crate::ownership::{FunctionFlows, LambdaFlows, ResultBorrows};
 use crate::source::Span;
 use crate::types::{
-    Bound, GenericId, GenericParam, Lifetime, ReceiverKind, ResultRegion, Scheme, StoredFlows,
+    Bound, GenericId, GenericParam, Lifetime, ParameterRole, ReceiverKind, Scheme, StoredFlows,
     Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr,
     TypedExprKind, TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
 };
@@ -54,7 +53,6 @@ pub struct ItemEmitter<'a> {
     program: &'a TypedProgram,
     plan: &'a EmitPlan<'a>,
     types: EmittedTypes<'a>,
-    result_borrows: ResultBorrows<'a>,
     trait_method_elisions: TraitMethodElisions,
     generic_callees: GenericCallees<'a>,
     structural_impls: StructuralImpls<'a>,
@@ -82,7 +80,6 @@ impl<'a> ItemEmitter<'a> {
             program,
             plan,
             types,
-            result_borrows: ResultBorrows::new(program, plan),
             trait_method_elisions: TraitMethodElisions::new(program),
             generic_callees: GenericCallees::new(plan),
             structural_impls: StructuralImpls::new(program, plan, types),
@@ -747,7 +744,7 @@ impl<'a> ItemEmitter<'a> {
         let Some(untied) = self.untied_borrows(method, implemented) else {
             return;
         };
-        if let Some(problem) = untied.check(method, &self.result_borrows) {
+        if let Some(problem) = untied.check(method) {
             self.problems.push(problem);
         }
     }
@@ -847,12 +844,7 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn method_elisions(&self) -> MethodElisions<'_, 'a> {
-        MethodElisions::new(
-            self.program,
-            self.plan,
-            &self.result_borrows,
-            &self.trait_method_elisions,
-        )
+        MethodElisions::new(self.program, self.plan, &self.trait_method_elisions)
     }
 
     fn method_parameter_scope(
@@ -873,7 +865,11 @@ impl<'a> ItemEmitter<'a> {
         lifetimes: &MethodLifetimes,
     ) -> FxHashSet<BindingId> {
         if !lifetimes.shares_lifetime() {
-            return self.result_borrows.analyse(lambda).flows;
+            return self
+                .program
+                .ownership
+                .regions
+                .of(ParameterRole::FlowsToResult, lambda.parameter_bindings());
         }
         lambda
             .params
@@ -884,15 +880,18 @@ impl<'a> ItemEmitter<'a> {
             .collect()
     }
 
-    fn sharing_parameters(borrows: &LambdaFlows, stored: &StoredFlows) -> FxHashSet<BindingId> {
-        let mut sharing = borrows.flows.clone();
+    fn sharing_parameters(
+        flows: &FxHashSet<BindingId>,
+        stored: &StoredFlows,
+    ) -> FxHashSet<BindingId> {
+        let mut sharing = flows.clone();
         sharing.extend(&stored.values);
         sharing.extend(&stored.targets);
         sharing
     }
 
-    fn store_targets(borrows: &LambdaFlows, stored: &StoredFlows) -> FxHashSet<BindingId> {
-        stored.targets.difference(&borrows.flows).copied().collect()
+    fn store_targets(flows: &FxHashSet<BindingId>, stored: &StoredFlows) -> FxHashSet<BindingId> {
+        stored.targets.difference(flows).copied().collect()
     }
 
     fn store_target_scope(
@@ -929,18 +928,10 @@ impl<'a> ItemEmitter<'a> {
             return Vec::new();
         };
         let used = self.used_written_lifetimes(&definition.value);
-        let stored = self.result_borrows.definition_stores(definition.binding);
-        let FunctionFlows {
-            flows: borrows,
-            reassigned_parameters,
-        } = self
-            .result_borrows
-            .analyse_function(definition.binding, lambda);
-        self.program
-            .ownership
-            .regions
-            .assert_recorded(definition.binding, &ResultRegion::from(&borrows));
-        let shared = stored.flows.with_values(reassigned_parameters);
+        let regions = &self.program.ownership.regions;
+        let parameters = lambda.parameter_bindings();
+        let stored = regions.stored(parameters.clone());
+        let shared = stored.with_values(regions.of(ParameterRole::Reassigned, parameters.clone()));
         let inferred = self.function_lifetime(definition, &shared);
         let mut emitter = self
             .expressions(info.module, &definition.value)
@@ -956,9 +947,10 @@ impl<'a> ItemEmitter<'a> {
             .copied()
             .filter(|binding| used.contains(binding))
             .collect();
-        let sharing = Self::sharing_parameters(&borrows, &shared);
-        let store_targets = Self::store_targets(&borrows, &shared);
-        let higher_ranked = borrows.higher_ranked;
+        let flows = regions.of(ParameterRole::FlowsToResult, parameters.clone());
+        let sharing = Self::sharing_parameters(&flows, &shared);
+        let store_targets = Self::store_targets(&flows, &shared);
+        let higher_ranked = regions.of(ParameterRole::HigherRanked, parameters);
         let capture_plan = self.capture_plan(lambda, &types, &definition.value.ty, &scope);
         let named_lending: Vec<BindingId> = match capture_plan {
             CapturePlan::Precise => self.lending_borrowed_parameters(lambda),
@@ -1264,7 +1256,10 @@ impl<'a> ItemEmitter<'a> {
 
     fn unlent<'l>(&'l self, lambda: &'l TypedLambda) -> UnlentParameters<'l> {
         UnlentParameters::of(self.program, lambda, || {
-            self.result_borrows.analyse_shared_arguments(lambda).flows
+            self.program.ownership.regions.of(
+                ParameterRole::FlowsThroughSharedArguments,
+                lambda.parameter_bindings(),
+            )
         })
     }
 
@@ -1370,7 +1365,11 @@ impl<'a> ItemEmitter<'a> {
         let TypedExprKind::Fn(lambda) = &value.kind else {
             return false;
         };
-        let flowing = self.result_borrows.analyse(lambda).flows;
+        let flowing = self
+            .program
+            .ownership
+            .regions
+            .of(ParameterRole::FlowsToResult, lambda.parameter_bindings());
         lambda.params.iter().any(|param| {
             flowing.contains(&param.binding)
                 && SignatureBorrows::new(self.program).hides_borrow_from_elision(&param.ty)

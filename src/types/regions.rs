@@ -1,26 +1,36 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::ResultRegion;
+use super::parameter_role::ParameterRole;
+use super::stored_flows::StoredFlows;
 use crate::core::BindingId;
 
 #[derive(Default)]
 pub struct Regions {
-    results: FxHashMap<BindingId, ResultRegion>,
+    parameters: FxHashMap<ParameterRole, FxHashSet<BindingId>>,
 }
 
 impl Regions {
-    pub fn record(&mut self, function: BindingId, region: ResultRegion) {
-        self.results.insert(function, region);
+    pub fn record(&mut self, role: ParameterRole, parameters: FxHashSet<BindingId>) {
+        self.parameters.entry(role).or_default().extend(parameters);
     }
 
-    pub fn of(&self, function: BindingId) -> Option<&ResultRegion> {
-        self.results.get(&function)
+    pub fn of(
+        &self,
+        role: ParameterRole,
+        parameters: impl Iterator<Item = BindingId>,
+    ) -> FxHashSet<BindingId> {
+        let Some(recorded) = self.parameters.get(&role) else {
+            return FxHashSet::default();
+        };
+        parameters
+            .filter(|binding| recorded.contains(binding))
+            .collect()
     }
 
-    pub fn assert_recorded(&self, function: BindingId, region: &ResultRegion) {
-        debug_assert!(
-            self.of(function).is_none_or(|recorded| recorded == region),
-            "the emitter and the ownership stage disagree on what a function's result borrows"
-        );
+    pub fn stored(&self, parameters: impl Iterator<Item = BindingId> + Clone) -> StoredFlows {
+        StoredFlows {
+            values: self.of(ParameterRole::StoredValue, parameters.clone()),
+            targets: self.of(ParameterRole::StoredTarget, parameters),
+        }
     }
 }

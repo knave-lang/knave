@@ -33,16 +33,15 @@ use crate::core::{
     PrimitiveType, ReferenceKind, RustTemplate, VariantInfo,
 };
 use crate::diagnostic::Diagnostic;
-use crate::ownership::ResultBorrows;
 use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
     Borrow, BorrowedIndex, ClauseChoice, ClosureKind, Collection, CopiedOut, FieldOrder,
-    SchemeBindings, SyntheticTemplate, Type, TypedArgument, TypedArm, TypedBinder, TypedBlock,
-    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
-    TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion,
-    WrittenBorrows,
+    ParameterRole, SchemeBindings, SyntheticTemplate, Type, TypedArgument, TypedArm, TypedBinder,
+    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
+    TypedMatch, TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr, VariantPayload,
+    ViewCoercion, WrittenBorrows,
 };
 
 mod compound_assignment;
@@ -1490,9 +1489,10 @@ impl<'a> ExpressionEmitter<'a> {
     fn result_parameters_of(&self, lambda: &TypedLambda, ty: &Type) -> FxHashSet<BindingId> {
         match ty {
             Type::Function(_, _, result) if self.program.function_type_returns_borrow(result) => {
-                ResultBorrows::new(self.program, self.plan)
-                    .analyse(lambda)
-                    .flows
+                self.program
+                    .ownership
+                    .regions
+                    .of(ParameterRole::FlowsToResult, lambda.parameter_bindings())
             }
             _ => FxHashSet::default(),
         }

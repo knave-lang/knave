@@ -5,6 +5,7 @@ use super::typed::{
     LetValue, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
     TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
+use crate::core::BindingId;
 
 impl TypedExpr {
     pub fn let_block_value(&self) -> Option<&TypedExpr> {
@@ -318,6 +319,10 @@ impl TypedLambda {
 
     pub fn binders(&self) -> impl Iterator<Item = &TypedBinder> {
         self.params.iter().chain(self.body.binders())
+    }
+
+    pub fn parameter_bindings(&self) -> impl Iterator<Item = BindingId> + Clone + '_ {
+        self.params.iter().map(|param| param.binding)
     }
 
     fn binders_mut(&mut self) -> Vec<&mut TypedBinder> {

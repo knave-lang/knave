@@ -3,8 +3,9 @@ use rustc_hash::FxHashSet;
 use super::problems::{EmitProblems, UntiedNames};
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
-use crate::ownership::ResultBorrows;
-use crate::types::{GenericId, Type, TypeDisplay, TypedBinder, TypedLambda, TypedProgram};
+use crate::types::{
+    GenericId, ParameterRole, Type, TypeDisplay, TypedBinder, TypedLambda, TypedProgram,
+};
 
 pub struct ShownMethod<'s> {
     pub binding: BindingId,
@@ -63,8 +64,8 @@ impl<'a> UntiedBorrows<'a> {
         }
     }
 
-    pub fn check(&self, method: &ShownMethod, borrows: &ResultBorrows) -> Option<Diagnostic> {
-        let flows = self.flows(method, borrows);
+    pub fn check(&self, method: &ShownMethod) -> Option<Diagnostic> {
+        let flows = self.flows(method);
         method
             .lambda
             .params
@@ -74,12 +75,16 @@ impl<'a> UntiedBorrows<'a> {
             .find_map(|(param, shown)| self.untied(method, param, shown))
     }
 
-    fn flows(&self, method: &ShownMethod, borrows: &ResultBorrows) -> FxHashSet<BindingId> {
-        if self.checks_only_tied_result(method) {
-            borrows.analyse_shared_arguments(method.lambda).flows
+    fn flows(&self, method: &ShownMethod) -> FxHashSet<BindingId> {
+        let role = if self.checks_only_tied_result(method) {
+            ParameterRole::FlowsThroughSharedArguments
         } else {
-            borrows.analyse(method.lambda).flows
-        }
+            ParameterRole::FlowsToResult
+        };
+        self.program
+            .ownership
+            .regions
+            .of(role, method.lambda.parameter_bindings())
     }
 
     fn untied(

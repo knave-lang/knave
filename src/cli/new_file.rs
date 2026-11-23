@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::exit_status::ExitStatus;
 use super::program_file::ProgramFile;
+use super::standard_error::StandardError;
 
 pub struct NewFile {
     path: PathBuf,
@@ -30,5 +31,11 @@ impl NewFile {
         fs::create_dir_all(ProgramFile::directory_of(&self.path))
             .and_then(|()| fs::write(&self.path, &self.text))
             .map_err(|error| ProgramFile::report_unwritable(&self.path, &error))
+    }
+
+    pub fn write_announced(&self, announcement: &str) -> Result<(), ExitStatus> {
+        self.write()?;
+        StandardError::write_line(format_args!("{announcement}"));
+        Ok(())
     }
 }

@@ -13,6 +13,17 @@ pub trait ProjectComponent {
         Vec::new()
     }
 
+    fn existing_files(&self, root: &Path) -> Vec<OwnedFile> {
+        self.owned_files()
+            .into_iter()
+            .filter(|file| file.exists_in(root))
+            .collect()
+    }
+
+    fn shows(&self, root: &Path) -> bool {
+        !self.existing_files(root).is_empty()
+    }
+
     fn files(&self, root: &Path) -> Vec<NewFile> {
         let files = self
             .owned_files()

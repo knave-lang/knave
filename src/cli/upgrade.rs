@@ -1,18 +1,11 @@
-use std::fs;
 use std::path::Path;
 
-use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::new_components::NewComponents;
-use super::new_file::NewFile;
-use super::owned_file::OwnedFile;
-use super::owned_line::OwnedLine;
-use super::program_file::ProgramFile;
 use super::project_component::ProjectComponent;
 use super::project_file_edit::ProjectFileEdit;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
-use super::unreadable_file::UnreadableFile;
 use crate::language::Language;
 
 pub struct UpgradeCommand;
@@ -29,9 +22,13 @@ impl UpgradeCommand {
 
     fn upgrade(terminal: &mut Terminal) -> Result<(), ExitStatus> {
         let edit = ProjectFileEdit::of_root_file(terminal, Self::COMMAND)?;
+        let components = NewComponents::every();
         let mut changed = Self::record_version(&edit, terminal)?;
-        for component in NewComponents::every() {
-            changed |= Self::refresh_component(edit.root(), component.as_ref())?;
+        for component in components
+            .iter()
+            .filter(|component| component.shows(edit.root()))
+        {
+            changed |= Self::bring_component_current(edit.root(), component.as_ref())?;
         }
         if !changed {
             Self::report_current();
@@ -54,73 +51,18 @@ impl UpgradeCommand {
         Ok(recorded)
     }
 
-    fn refresh_component(
+    fn bring_component_current(
         root: &Path,
         component: &dyn ProjectComponent,
     ) -> Result<bool, ExitStatus> {
-        if !Self::shows(root, component) {
-            return Ok(false);
-        }
         let mut changed = false;
         for file in component.owned_files() {
-            changed |= Self::refresh(root, &file)?;
+            changed |= file.bring_current(root)?;
         }
         for line in component.owned_lines() {
-            changed |= Self::refresh_line(root, &line)?;
+            changed |= line.bring_current(root)?;
         }
         Ok(changed)
-    }
-
-    fn shows(root: &Path, component: &dyn ProjectComponent) -> bool {
-        component
-            .owned_files()
-            .iter()
-            .any(|file| root.join(file.path()).exists())
-    }
-
-    fn refresh_line(root: &Path, line: &OwnedLine) -> Result<bool, ExitStatus> {
-        let path = root.join(line.path());
-        if !path.exists() {
-            return Self::write_missing(&line.new_file(root), line.path());
-        }
-        let written = fs::read_to_string(&path).map_err(|error| {
-            UnreadableFile::new(&path, &error).report_to(&StandardErrorMessages)
-        })?;
-        let Some(upgrade) = line.upgrade(&written) else {
-            return Ok(false);
-        };
-        fs::write(&path, upgrade.text())
-            .map_err(|error| ProgramFile::report_unwritable(&path, &error))?;
-        StandardError::write_line(format_args!("{}", upgrade.announcement()));
-        Ok(true)
-    }
-
-    fn refresh(root: &Path, file: &OwnedFile) -> Result<bool, ExitStatus> {
-        let path = root.join(file.path());
-        if !path.exists() {
-            return Self::write_missing(&file.new_file(root), file.path());
-        }
-        let written = fs::read(&path).map_err(|error| {
-            UnreadableFile::new(&path, &error).report_to(&StandardErrorMessages)
-        })?;
-        if written == file.current_text().as_bytes() {
-            Ok(false)
-        } else {
-            Self::rewrite(&path, file)
-        }
-    }
-
-    fn write_missing(file: &NewFile, shown: &Path) -> Result<bool, ExitStatus> {
-        file.write()?;
-        StandardError::write_line(format_args!("wrote `{}`", shown.display()));
-        Ok(true)
-    }
-
-    fn rewrite(path: &Path, file: &OwnedFile) -> Result<bool, ExitStatus> {
-        fs::write(path, file.current_text())
-            .map_err(|error| ProgramFile::report_unwritable(path, &error))?;
-        StandardError::write_line(format_args!("rewrote `{}`", file.path().display()));
-        Ok(true)
     }
 
     fn report_current() {

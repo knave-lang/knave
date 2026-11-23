@@ -9306,6 +9306,74 @@ fn upgrade_leaves_a_current_linguist_line_alone() {
 }
 
 #[test]
+fn upgrade_writes_a_missing_gitattributes_beside_the_workflow() {
+    let sandbox = Sandbox::with_committed_project("upgrade_missing_gitattributes")
+        .without_file(GITATTRIBUTES_FILE);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert_eq!(
+        upgrade.assert_exit_code(0).stderr(),
+        "wrote `.gitattributes`\n"
+    );
+    assert_eq!(sandbox.contents(GITATTRIBUTES_FILE), LINGUIST_LINE);
+}
+
+#[test]
+fn upgrade_without_the_workflow_writes_no_github_file() {
+    let sandbox = Sandbox::with_committed_project("upgrade_missing_github")
+        .without_file(GITATTRIBUTES_FILE)
+        .without_file(&format!("demo-app/{WORKFLOW_FILE}"));
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    assert!(!sandbox.directory.join(GITATTRIBUTES_FILE).exists());
+    assert!(
+        !sandbox
+            .directory
+            .join("demo-app")
+            .join(WORKFLOW_FILE)
+            .exists()
+    );
+}
+
+#[test]
+fn upgrade_without_the_workflow_leaves_gitattributes_alone() {
+    let sandbox = Sandbox::with_committed_project("upgrade_gitattributes_without_workflow")
+        .without_file(&format!("demo-app/{WORKFLOW_FILE}"))
+        .with_file(GITATTRIBUTES_FILE, "*.png binary");
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    assert_eq!(sandbox.contents(GITATTRIBUTES_FILE), "*.png binary");
+}
+
+#[test]
+fn upgrade_writes_a_missing_copy_of_the_skill() {
+    let [kept, missing] = AGENT_SKILL_PATHS;
+    let sandbox =
+        Sandbox::with_committed_project("upgrade_missing_skill_copy").without_file(missing);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert_eq!(
+        upgrade.assert_exit_code(0).stderr(),
+        format!("wrote `{}`\n", missing.trim_start_matches("demo-app/"))
+    );
+    assert_eq!(sandbox.contents(missing), sandbox.contents(kept));
+}
+
+#[test]
+fn upgrade_writes_no_skill_when_both_copies_are_missing() {
+    let sandbox = AGENT_SKILL_PATHS.into_iter().fold(
+        Sandbox::with_committed_project("upgrade_missing_skill"),
+        |sandbox, path| sandbox.without_file(path),
+    );
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    for path in AGENT_SKILL_PATHS {
+        assert!(!sandbox.directory.join(path).exists(), "{path}");
+    }
+}
+
+#[test]
 fn upgrade_writes_no_skill_into_a_project_made_without_one() {
     let sandbox = Sandbox::with_outdated_project("upgrade_without_skill", &["--skip-agent-skill"]);
     sandbox

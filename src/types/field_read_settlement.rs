@@ -106,9 +106,12 @@ impl<'r> FieldReadSettlement<'r> {
             let definition = program.declarations.types().structs.get(owner);
             let read =
                 definition.and_then(|found| reads.instantiated(found, &reader.field, &arguments));
-            let Some(read) = read.filter(|read| read.read == reader.read) else {
+            let Some(read) = read else {
                 continue;
             };
+            if read.read != reader.read {
+                return Err(WrittenRefusal::Read(ReadRefusal::StructReadsOtherwise));
+            }
             let implementor = Type::Named(owner, arguments);
             let found = plan.get_or_insert_with(|| FieldTraitPlan {
                 read: read.read,

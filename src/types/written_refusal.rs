@@ -9,6 +9,7 @@ pub(super) enum ReadRefusal {
     Function,
     Open,
     OpenStruct,
+    StructReadsOtherwise,
     Otherwise,
 }
 

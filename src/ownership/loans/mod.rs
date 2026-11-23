@@ -49,6 +49,7 @@ mod point_id;
 mod point_index;
 mod point_lists;
 mod result_loans;
+mod sorted_set;
 mod type_memo;
 mod value_regions;
 mod value_use;

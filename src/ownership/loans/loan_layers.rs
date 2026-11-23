@@ -1,24 +1,23 @@
 use super::loan_depth::LoanDepth;
 use super::loan_id::LoanId;
+use super::sorted_set::SortedSet;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct LoanLayers {
-    loans: Vec<(LoanDepth, LoanId)>,
+    loans: SortedSet<(LoanDepth, LoanId)>,
 }
 
 impl LoanLayers {
     pub fn insert(&mut self, depth: LoanDepth, loan: LoanId) {
-        if let Err(position) = self.loans.binary_search(&(depth, loan)) {
-            self.loans.insert(position, (depth, loan));
-        }
+        self.loans.insert((depth, loan));
     }
 
     pub fn holds(&self, depth: LoanDepth, loan: LoanId) -> bool {
-        self.loans.binary_search(&(depth, loan)).is_ok()
+        self.loans.contains(&(depth, loan))
     }
 
     pub fn loans(&self) -> impl Iterator<Item = (LoanDepth, LoanId)> + '_ {
-        self.loans.iter().copied()
+        self.loans.iter()
     }
 
     pub fn referent(&self) -> Self {

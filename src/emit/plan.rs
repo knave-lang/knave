@@ -14,7 +14,6 @@ use super::trait_use_search::TraitUseSearch;
 use super::visibility::Visibility;
 use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::{Diagnostic, Diagnostics};
-use crate::ownership::DefinitionLookup;
 use crate::source::Span;
 use crate::types::{
     GenericParam, Type, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
@@ -605,12 +604,6 @@ impl<'p> EmitPlan<'p> {
             span,
             first_info.span(),
         )
-    }
-}
-
-impl DefinitionLookup for EmitPlan<'_> {
-    fn definition(&self, binding: BindingId) -> Option<&TypedDefinition> {
-        EmitPlan::definition(self, binding)
     }
 }
 

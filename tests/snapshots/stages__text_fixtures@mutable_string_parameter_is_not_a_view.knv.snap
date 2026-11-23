@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/mutable_string_parameter_is_not_a_view.knv
+---
+defn reset!
+  name: owned, written mutable
+defn main
+  local name: owned

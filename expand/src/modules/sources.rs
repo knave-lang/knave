@@ -395,6 +395,8 @@ mod tests {
 
     use super::{ModuleSources, PublicPrelude};
     use crate::core::ModulePath;
+    use crate::language::Language;
+    use crate::modules::LibraryFolder;
     use crate::modules::ModuleSource;
     use crate::modules::libraries::{LibraryRoot, LibraryTable};
 
@@ -421,8 +423,11 @@ mod tests {
         fn sources_with_library(&self) -> ModuleSources {
             let library = LibraryRoot::new(
                 Self::LIBRARY.to_string(),
-                self.directory.join("src"),
-                self.directory.join("src"),
+                LibraryFolder {
+                    project_file: self.directory.join(Language::project_file_name()),
+                    source_root: self.directory.join("src"),
+                    display_root: self.directory.join("src"),
+                },
                 "main".to_string(),
                 Vec::new(),
             );

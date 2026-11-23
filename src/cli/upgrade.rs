@@ -3,10 +3,10 @@ use std::path::Path;
 
 use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
-use super::github_linguist::GithubLinguist;
 use super::new_components::NewComponents;
 use super::new_file::NewFile;
 use super::owned_file::OwnedFile;
+use super::owned_line::OwnedLine;
 use super::program_file::ProgramFile;
 use super::project_component::ProjectComponent;
 use super::project_file_edit::ProjectFileEdit;
@@ -78,10 +78,10 @@ impl UpgradeCommand {
             .any(|file| root.join(file.path()).exists())
     }
 
-    fn refresh_line(root: &Path, line: &GithubLinguist) -> Result<bool, ExitStatus> {
-        let path = root.join(GithubLinguist::PATH);
+    fn refresh_line(root: &Path, line: &OwnedLine) -> Result<bool, ExitStatus> {
+        let path = root.join(line.path());
         if !path.exists() {
-            return Self::write_missing(&line.new_file(root), Path::new(GithubLinguist::PATH));
+            return Self::write_missing(&line.new_file(root), line.path());
         }
         let written = fs::read_to_string(&path).map_err(|error| {
             UnreadableFile::new(&path, &error).report_to(&StandardErrorMessages)
@@ -91,7 +91,7 @@ impl UpgradeCommand {
         };
         fs::write(&path, upgrade.text())
             .map_err(|error| ProgramFile::report_unwritable(&path, &error))?;
-        StandardError::write_line(format_args!("{}", line.announcement(&upgrade)));
+        StandardError::write_line(format_args!("{}", upgrade.announcement()));
         Ok(true)
     }
 

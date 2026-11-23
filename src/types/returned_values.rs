@@ -25,6 +25,14 @@ impl<'p> ReturnedValues<'p> {
         closures
     }
 
+    pub fn values<'e>(&self, lambda: &'e TypedLambda) -> Vec<&'e TypedExpr> {
+        let mut values = Vec::new();
+        Self::visit_block(&lambda.body, Lets::default(), &mut |value, _| {
+            values.push(value)
+        });
+        values
+    }
+
     fn visit_block<'e>(
         block: &'e TypedBlock,
         mut lets: Lets<'e>,

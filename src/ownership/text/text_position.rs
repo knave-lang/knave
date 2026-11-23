@@ -16,13 +16,35 @@ impl TextPosition {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FunctionParts {
+    Visited,
+    Skipped,
+}
+
 pub struct TextPositions {
     found: Vec<TextPosition>,
+    functions: FunctionParts,
 }
 
 impl TextPositions {
     pub fn of(ty: &Type) -> Vec<TextPosition> {
-        let mut positions = Self { found: Vec::new() };
+        Self::visited(ty, FunctionParts::Visited)
+    }
+
+    pub fn elements(ty: &Type) -> Vec<TypePath> {
+        Self::visited(ty, FunctionParts::Skipped)
+            .into_iter()
+            .map(|position| position.path)
+            .filter(|path| !path.is_top())
+            .collect()
+    }
+
+    fn visited(ty: &Type, functions: FunctionParts) -> Vec<TextPosition> {
+        let mut positions = Self {
+            found: Vec::new(),
+            functions,
+        };
         positions.visit(ty, TypePath::default(), Access::Direct);
         positions.found
     }
@@ -45,6 +67,7 @@ impl TextPositions {
                     self.visit(argument, path.child(part), Access::Direct)
                 })
             }
+            Type::Function(..) if self.functions == FunctionParts::Skipped => {}
             Type::Function(_, parameters, result) => {
                 parameters.iter().enumerate().for_each(|(part, parameter)| {
                     self.visit(parameter, path.child(part), Access::Direct)
@@ -123,6 +146,24 @@ mod tests {
             vec![Types::text(PrimitiveType::Str)],
         );
         assert_eq!(TextPositions::of(&boxed)[0].written, Representation::Owned);
+    }
+
+    #[test]
+    fn the_elements_of_a_type_leave_out_its_top_and_its_functions() {
+        let function = Type::Function(
+            crate::core::ClosureKind::Fn,
+            vec![Type::str_ref()],
+            Box::new(Type::unit()),
+        );
+        let pair = Type::Named(
+            crate::core::BindingId::from_index(0),
+            vec![Type::str_ref(), function],
+        );
+        assert_eq!(
+            TextPositions::elements(&pair),
+            vec![TypePath::default().child(0)]
+        );
+        assert!(TextPositions::elements(&Type::str_ref()).is_empty());
     }
 
     #[test]

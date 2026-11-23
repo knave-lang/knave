@@ -4,6 +4,7 @@ use std::path::Path;
 use super::exit_status::ExitStatus;
 use super::github_linguist::GithubLinguist;
 use super::new_components::NewComponents;
+use super::new_file::NewFile;
 use super::owned_file::OwnedFile;
 use super::program_file::ProgramFile;
 use super::project_component::ProjectComponent;
@@ -55,14 +56,15 @@ impl UpgradeCommand {
         root: &Path,
         component: &dyn ProjectComponent,
     ) -> Result<bool, ExitStatus> {
+        if !Self::shows(root, component) {
+            return Ok(false);
+        }
         let mut changed = false;
         for file in component.owned_files() {
             changed |= Self::refresh(root, &file)?;
         }
-        if Self::shows(root, component) {
-            for line in component.owned_lines() {
-                changed |= Self::refresh_line(root, &line)?;
-            }
+        for line in component.owned_lines() {
+            changed |= Self::refresh_line(root, &line)?;
         }
         Ok(changed)
     }
@@ -76,6 +78,9 @@ impl UpgradeCommand {
 
     fn refresh_line(root: &Path, line: &GithubLinguist) -> Result<bool, ExitStatus> {
         let path = root.join(GithubLinguist::PATH);
+        if !path.exists() {
+            return Self::write_missing(&line.new_file(root), Path::new(GithubLinguist::PATH));
+        }
         let Ok(written) = fs::read_to_string(&path) else {
             return Ok(false);
         };
@@ -95,6 +100,9 @@ impl UpgradeCommand {
 
     fn refresh(root: &Path, file: &OwnedFile) -> Result<bool, ExitStatus> {
         let path = root.join(file.path());
+        if !path.exists() {
+            return Self::write_missing(&file.new_file(root), file.path());
+        }
         let Ok(written) = fs::read_to_string(&path) else {
             return Ok(false);
         };
@@ -103,6 +111,12 @@ impl UpgradeCommand {
         } else {
             Self::rewrite(&path, file)
         }
+    }
+
+    fn write_missing(file: &NewFile, shown: &Path) -> Result<bool, ExitStatus> {
+        file.write()?;
+        StandardError::write_line(format_args!("wrote `{}`", shown.display()));
+        Ok(true)
     }
 
     fn rewrite(path: &Path, file: &OwnedFile) -> Result<bool, ExitStatus> {

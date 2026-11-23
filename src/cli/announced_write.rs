@@ -4,6 +4,7 @@ use super::exit_status::ExitStatus;
 use super::new_file::NewFile;
 use super::standard_error::StandardError;
 
+#[derive(Debug, PartialEq)]
 pub struct AnnouncedWrite {
     file: NewFile,
     announcement: String,

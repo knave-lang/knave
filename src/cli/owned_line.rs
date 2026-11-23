@@ -4,7 +4,6 @@ use std::path::Path;
 use super::announced_write::AnnouncedWrite;
 use super::exit_status::ExitStatus;
 use super::line_ending::LineEnding;
-use super::line_upgrade::LineUpgrade;
 use super::new_file::NewFile;
 
 pub struct OwnedLine {
@@ -38,10 +37,7 @@ impl OwnedLine {
             None => Ok(Some(AnnouncedWrite::creation(file, Path::new(self.path)))),
             Some(written) => {
                 let written = Self::text_of(&file, &written)?;
-                Ok(self.upgrade(&written).map(|upgrade| {
-                    let text = upgrade.text().to_string();
-                    AnnouncedWrite::new(file.with_text(text), upgrade.announcement().to_string())
-                }))
+                Ok(self.upgrade(file, &written))
             }
         }
     }
@@ -50,16 +46,16 @@ impl OwnedLine {
         io::read_to_string(written).map_err(|error| file.report_unreadable(&error))
     }
 
-    fn upgrade(&self, written: &str) -> Option<LineUpgrade> {
+    fn upgrade(&self, file: NewFile, written: &str) -> Option<AnnouncedWrite> {
         let (mark, body) = Self::split_byte_order_mark(written);
         if !body.lines().any(|line| self.owns(line)) {
             let announcement = format!("added the `{}` line to `{}`", self.pattern(), self.path);
             let appended = format!("{mark}{}", self.appended_to(body));
-            return Some(LineUpgrade::new(appended, announcement));
+            return Some(AnnouncedWrite::new(file.with_text(appended), announcement));
         }
         let replaced = format!("{mark}{}", self.replaced_in(body));
         let announcement = format!("rewrote the `{}` line of `{}`", self.pattern(), self.path);
-        (replaced != written).then(|| LineUpgrade::new(replaced, announcement))
+        (replaced != written).then(|| AnnouncedWrite::new(file.with_text(replaced), announcement))
     }
 
     fn split_byte_order_mark(written: &str) -> (&str, &str) {
@@ -106,7 +102,11 @@ impl OwnedLine {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use super::OwnedLine;
+    use crate::cli::announced_write::AnnouncedWrite;
+    use crate::cli::new_file::NewFile;
 
     const LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false";
     const OWNED: OwnedLine = OwnedLine::new(".gitattributes", LINE, "linguist-");
@@ -114,16 +114,29 @@ mod tests {
     struct LinguistFixture;
 
     impl LinguistFixture {
-        fn upgraded(written: &str) -> String {
-            OWNED
-                .upgrade(written)
-                .map_or_else(|| written.to_string(), |upgrade| upgrade.text().to_string())
+        const ROOT: &str = "demo-app";
+        const APPENDED: &str = "added the `*.knv` line to `.gitattributes`";
+        const REPLACED: &str = "rewrote the `*.knv` line of `.gitattributes`";
+
+        fn upgraded(written: &str) -> Option<AnnouncedWrite> {
+            OWNED.upgrade(Self::file(), written)
         }
 
-        fn is_appended(written: &str) -> bool {
-            OWNED
-                .upgrade(written)
-                .is_some_and(|upgrade| upgrade.announcement().starts_with("added"))
+        fn appended(text: String) -> Option<AnnouncedWrite> {
+            Self::written(text, Self::APPENDED)
+        }
+
+        fn replaced(text: String) -> Option<AnnouncedWrite> {
+            Self::written(text, Self::REPLACED)
+        }
+
+        fn written(text: String, announcement: &str) -> Option<AnnouncedWrite> {
+            let file = Self::file().with_text(text);
+            Some(AnnouncedWrite::new(file, announcement.to_string()))
+        }
+
+        fn file() -> NewFile {
+            OWNED.new_file(Path::new(Self::ROOT))
         }
     }
 
@@ -132,31 +145,28 @@ mod tests {
         let written = "*.knv linguist-language=Lisp\r\n*.png binary\n*.knv -linguist-detectable linguist-generated";
         assert_eq!(
             LinguistFixture::upgraded(written),
-            format!("{LINE}\r\n*.png binary\n{LINE}")
+            LinguistFixture::replaced(format!("{LINE}\r\n*.png binary\n{LINE}"))
         );
-        assert!(!LinguistFixture::is_appended(written));
     }
 
     #[test]
     fn a_current_line_needs_no_upgrade() {
-        assert!(OWNED.upgrade(&format!("{LINE}\n")).is_none());
+        assert_eq!(LinguistFixture::upgraded(&format!("{LINE}\n")), None);
     }
 
     #[test]
     fn a_line_of_another_pattern_is_not_owned() {
-        let written = "*.rs linguist-language=Rust\n";
         assert_eq!(
-            LinguistFixture::upgraded(written),
-            format!("*.rs linguist-language=Rust\n{LINE}\n")
+            LinguistFixture::upgraded("*.rs linguist-language=Rust\n"),
+            LinguistFixture::appended(format!("*.rs linguist-language=Rust\n{LINE}\n"))
         );
-        assert!(LinguistFixture::is_appended(written));
     }
 
     #[test]
     fn a_line_of_the_pattern_without_a_linguist_attribute_is_not_owned() {
         assert_eq!(
             LinguistFixture::upgraded("*.knv text\n"),
-            format!("*.knv text\n{LINE}\n")
+            LinguistFixture::appended(format!("*.knv text\n{LINE}\n"))
         );
     }
 
@@ -164,7 +174,7 @@ mod tests {
     fn a_crlf_file_takes_the_line_with_crlf() {
         assert_eq!(
             LinguistFixture::upgraded("*.png binary\r\n*.txt text"),
-            format!("*.png binary\r\n*.txt text\r\n{LINE}\r\n")
+            LinguistFixture::appended(format!("*.png binary\r\n*.txt text\r\n{LINE}\r\n"))
         );
     }
 
@@ -172,17 +182,23 @@ mod tests {
     fn an_owned_line_after_a_byte_order_mark_is_replaced_and_keeps_the_mark() {
         assert_eq!(
             LinguistFixture::upgraded("\u{feff}*.knv linguist-language=Lisp\n"),
-            format!("\u{feff}{LINE}\n")
+            LinguistFixture::replaced(format!("\u{feff}{LINE}\n"))
         );
     }
 
     #[test]
     fn a_current_line_after_a_byte_order_mark_needs_no_upgrade() {
-        assert!(OWNED.upgrade(&format!("\u{feff}{LINE}\n")).is_none());
+        assert_eq!(
+            LinguistFixture::upgraded(&format!("\u{feff}{LINE}\n")),
+            None
+        );
     }
 
     #[test]
     fn an_empty_file_takes_the_line_alone() {
-        assert_eq!(LinguistFixture::upgraded(""), format!("{LINE}\n"));
+        assert_eq!(
+            LinguistFixture::upgraded(""),
+            LinguistFixture::appended(format!("{LINE}\n"))
+        );
     }
 }

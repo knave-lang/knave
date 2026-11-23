@@ -142,6 +142,7 @@ mod parameter_modes;
 mod parameter_names;
 mod parameter_role;
 mod parameter_usage;
+mod parameterized;
 mod passed_types;
 mod passing_facts;
 #[cfg(test)]
@@ -296,6 +297,7 @@ pub use ownership_facts::OwnershipFacts;
 pub use parameter_copy::ParameterCopy;
 pub use parameter_modes::{ParamMode, ParameterModes};
 pub use parameter_role::ParameterRole;
+pub use parameterized::Parameterized;
 pub use payload_position::PayloadPosition;
 pub use pinning::{InstantiationReport, LiteralDefaults, Pinning};
 pub use pipelines::Pipelines;

@@ -81,10 +81,7 @@ impl<'a> UntiedBorrows<'a> {
         } else {
             ParameterRole::FlowsToResult
         };
-        self.program
-            .ownership
-            .regions
-            .of(role, method.lambda.parameter_bindings())
+        self.program.ownership.regions.of(role, method.lambda)
     }
 
     fn untied(

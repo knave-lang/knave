@@ -5,8 +5,8 @@ use super::result_borrows::ResultBorrows;
 use crate::core::BindingId;
 use crate::modules::ModuleSources;
 use crate::types::{
-    DefinitionTable, ParameterRole, ProgramReach, Regions, Type, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedLambda, TypedProgram,
+    DefinitionTable, ParameterRole, Parameterized, ProgramReach, Regions, Type, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedLambda, TypedProgram,
 };
 
 pub struct RegionRecord<'a> {
@@ -74,7 +74,7 @@ impl RegionRecord<'_> {
         if let TypedExprKind::Fn(lambda) = &expr.kind
             && self.returns_borrow(&expr.ty)
         {
-            self.lambda(self.analysis.analyse(lambda));
+            self.lambda(lambda, self.analysis.analyse(lambda));
         }
         for child in expr.children() {
             self.borrowing_closures(child);
@@ -90,19 +90,19 @@ impl RegionRecord<'_> {
             flows,
             reassigned_parameters,
         } = self.analysis.analyse_function(function, lambda);
-        self.lambda(flows);
+        self.lambda(lambda, flows);
         if self.reads_shared_arguments(function, lambda) {
             let shared = self.analysis.analyse_shared_arguments(lambda).flows;
             self.regions
-                .record(ParameterRole::FlowsThroughSharedArguments, shared);
+                .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
         }
         self.regions
-            .record(ParameterRole::Reassigned, reassigned_parameters);
+            .record(ParameterRole::Reassigned, lambda, reassigned_parameters);
         let stored = self.analysis.definition_stores(function).flows.clone();
         self.regions
-            .record(ParameterRole::StoredValue, stored.values);
+            .record(ParameterRole::StoredValue, lambda, stored.values);
         self.regions
-            .record(ParameterRole::StoredTarget, stored.targets);
+            .record(ParameterRole::StoredTarget, lambda, stored.targets);
     }
 
     fn reads_shared_arguments(&self, function: BindingId, lambda: &TypedLambda) -> bool {
@@ -113,10 +113,10 @@ impl RegionRecord<'_> {
                 .any(|parameter| modes.changes(parameter))
     }
 
-    fn lambda(&mut self, flows: LambdaFlows) {
+    fn lambda(&mut self, lambda: &TypedLambda, flows: LambdaFlows) {
         self.regions
-            .record(ParameterRole::FlowsToResult, flows.flows);
+            .record(ParameterRole::FlowsToResult, lambda, flows.flows);
         self.regions
-            .record(ParameterRole::HigherRanked, flows.higher_ranked);
+            .record(ParameterRole::HigherRanked, lambda, flows.higher_ranked);
     }
 }

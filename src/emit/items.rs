@@ -869,7 +869,7 @@ impl<'a> ItemEmitter<'a> {
                 .program
                 .ownership
                 .regions
-                .of(ParameterRole::FlowsToResult, lambda.parameter_bindings());
+                .of(ParameterRole::FlowsToResult, lambda);
         }
         lambda
             .params
@@ -929,9 +929,8 @@ impl<'a> ItemEmitter<'a> {
         };
         let used = self.used_written_lifetimes(&definition.value);
         let regions = &self.program.ownership.regions;
-        let parameters = lambda.parameter_bindings();
-        let stored = regions.stored(parameters.clone());
-        let shared = stored.with_values(regions.of(ParameterRole::Reassigned, parameters.clone()));
+        let stored = regions.stored(lambda.as_ref());
+        let shared = stored.with_values(regions.of(ParameterRole::Reassigned, lambda.as_ref()));
         let inferred = self.function_lifetime(definition, &shared);
         let mut emitter = self
             .expressions(info.module, &definition.value)
@@ -947,10 +946,10 @@ impl<'a> ItemEmitter<'a> {
             .copied()
             .filter(|binding| used.contains(binding))
             .collect();
-        let flows = regions.of(ParameterRole::FlowsToResult, parameters.clone());
+        let flows = regions.of(ParameterRole::FlowsToResult, lambda.as_ref());
         let sharing = Self::sharing_parameters(&flows, &shared);
         let store_targets = Self::store_targets(&flows, &shared);
-        let higher_ranked = regions.of(ParameterRole::HigherRanked, parameters);
+        let higher_ranked = regions.of(ParameterRole::HigherRanked, lambda.as_ref());
         let capture_plan = self.capture_plan(lambda, &types, &definition.value.ty, &scope);
         let named_lending: Vec<BindingId> = match capture_plan {
             CapturePlan::Precise => self.lending_borrowed_parameters(lambda),
@@ -1256,10 +1255,10 @@ impl<'a> ItemEmitter<'a> {
 
     fn unlent<'l>(&'l self, lambda: &'l TypedLambda) -> UnlentParameters<'l> {
         UnlentParameters::of(self.program, lambda, || {
-            self.program.ownership.regions.of(
-                ParameterRole::FlowsThroughSharedArguments,
-                lambda.parameter_bindings(),
-            )
+            self.program
+                .ownership
+                .regions
+                .of(ParameterRole::FlowsThroughSharedArguments, lambda)
         })
     }
 
@@ -1369,7 +1368,7 @@ impl<'a> ItemEmitter<'a> {
             .program
             .ownership
             .regions
-            .of(ParameterRole::FlowsToResult, lambda.parameter_bindings());
+            .of(ParameterRole::FlowsToResult, lambda.as_ref());
         lambda.params.iter().any(|param| {
             flowing.contains(&param.binding)
                 && SignatureBorrows::new(self.program).hides_borrow_from_elision(&param.ty)

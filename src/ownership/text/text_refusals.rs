@@ -53,18 +53,50 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
             .iter()
             .map(|(_, refusal)| self.classes.class(refusal.flow.target))
             .collect();
-        for (index, flow) in self.classes.flows().iter().enumerate() {
-            if !refused.contains(&index) && self.facts.arriving(flow).is_short_lived() {
-                reported.remove(&self.classes.class(flow.target));
-            }
-        }
+        while self.carry_reports(&mut reported) {}
+        while self.drop_reports(&refused, &mut reported) {}
         reported
     }
 
+    fn carry_reports(&self, reported: &mut FxHashSet<NodeId>) -> bool {
+        let reached: Vec<NodeId> = self
+            .classes
+            .flows()
+            .iter()
+            .filter(|flow| self.from_reported(flow, reported))
+            .filter(|flow| self.facts.arriving(flow).is_short_lived())
+            .map(|flow| self.classes.class(flow.target))
+            .collect();
+        reached
+            .into_iter()
+            .fold(false, |grew, class| reported.insert(class) || grew)
+    }
+
+    fn drop_reports(&self, refused: &FxHashSet<usize>, reported: &mut FxHashSet<NodeId>) -> bool {
+        let unexplained: Vec<NodeId> = self
+            .classes
+            .flows()
+            .iter()
+            .enumerate()
+            .filter(|(index, flow)| {
+                !refused.contains(index)
+                    && !self.from_reported(flow, reported)
+                    && self.facts.arriving(flow).is_short_lived()
+            })
+            .map(|(_, flow)| self.classes.class(flow.target))
+            .collect();
+        unexplained
+            .into_iter()
+            .fold(false, |shrank, class| reported.remove(&class) || shrank)
+    }
+
+    fn from_reported(&self, flow: &Flow, reported: &FxHashSet<NodeId>) -> bool {
+        matches!(flow.source, Source::Slot(node) if reported.contains(&self.classes.class(node)))
+    }
+
     fn repeats_a_report(&self, flow: &Flow, reported: &FxHashSet<NodeId>) -> bool {
-        let from_reported = matches!(flow.source, Source::Slot(node) if reported.contains(&self.classes.class(node)));
         let lasting = self.facts.arriving(flow).without(ReachingText::SHORT_LIVED);
-        from_reported && !self.refuses(flow, lasting)
+        self.from_reported(flow, reported) && !self.refuses(flow, lasting)
     }
 
     fn refusal(&self, flow: &'g Flow) -> Option<Refusal<'g>> {

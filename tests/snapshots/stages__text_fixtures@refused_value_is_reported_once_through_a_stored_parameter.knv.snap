@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/refused_value_is_reported_once_through_a_stored_parameter.knv
+---
+struct item
+  name: owned
+defn take-name
+  name: owned
+  result: a view, written owned
+defn copy-of
+  name: a view, written lent
+  result: a view, written owned
+defn main
+  local made: owned
+needs owned text
+  text/refused_value_is_reported_once_through_a_stored_parameter.knv:7:21

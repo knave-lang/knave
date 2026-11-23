@@ -6,7 +6,7 @@ use super::closure_facts::ClosureFacts;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
 use super::field_place::FieldPlace;
-use super::parameter_modes::ParameterModes;
+use super::ownership_facts::OwnershipFacts;
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
@@ -352,11 +352,7 @@ pub struct TypedProgram {
     pub template_borrows: TemplateBorrows,
     pub template_clauses: TemplateClauses,
     pub pending_mode_checks: Vec<PendingModeCheck>,
-    pub parameter_modes: ParameterModes,
-    pub stored_function_parameters: FxHashSet<BindingId>,
-    pub escaping_lambdas: FxHashSet<BindingId>,
-    pub borrowing_lambdas: FxHashMap<BindingId, FxHashSet<BindingId>>,
-    pub mutable_function_bindings: FxHashSet<BindingId>,
+    pub ownership: OwnershipFacts,
     pub literal_generics: FxHashMap<GenericId, LiteralKind>,
     pub unnameable_types: Diagnostics,
     pub closure_types: Vec<ClosureType>,

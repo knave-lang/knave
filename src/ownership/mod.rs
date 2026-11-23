@@ -144,7 +144,7 @@ impl OwnershipChecker {
             CopyRules::new(&program.declarations, &program.generics),
         )
         .run();
-        program.parameter_modes = ParameterModes::new(modes.clone());
+        program.ownership.parameter_modes = ParameterModes::new(modes.clone());
         let mut diagnostics = Diagnostics::default();
         Self::check_written_modes(
             &program.pending_mode_checks,
@@ -178,11 +178,11 @@ impl OwnershipChecker {
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
         ReturnedLambdas::mark(program);
-        program.escaping_lambdas = EscapingLambdas::in_program(program);
+        program.ownership.escaping_lambdas = EscapingLambdas::in_program(program);
         StoredClosures::check(program)
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
-        program.borrowing_lambdas = BorrowingLambdas::in_program(program);
+        program.ownership.borrowing_lambdas = BorrowingLambdas::in_program(program);
         let kinds = ClosureKinds::new(KindSources {
             declarations: &program.declarations,
             generics: &program.generics,
@@ -191,7 +191,7 @@ impl OwnershipChecker {
             function_parameters: ClosureKinds::function_parameters(program),
             rust_parameter_kinds: ClosureKinds::rust_parameter_kinds(program),
             written_parameter_kinds: ClosureKinds::written_parameter_kinds(program),
-            borrowing_lambdas: &program.borrowing_lambdas,
+            borrowing_lambdas: &program.ownership.borrowing_lambdas,
         });
         let report = kinds.run(&mut program.modules);
         Self::apply_kinds(program, report, &mut diagnostics);
@@ -258,7 +258,7 @@ impl OwnershipChecker {
     }
 
     fn apply_kinds(program: &mut TypedProgram, report: KindReport, diagnostics: &mut Diagnostics) {
-        program.mutable_function_bindings = report.mutable_bindings;
+        program.ownership.mutable_function_bindings = report.mutable_bindings;
         report
             .diagnostics
             .into_iter()

@@ -39,11 +39,12 @@ impl<'a> ReturnedClosureUses<'a> {
         diagnostics: &mut Diagnostics,
     ) {
         let closures = ReturnedValues::new(self.program).closures(lambda);
-        for param in lambda
-            .params
-            .iter()
-            .filter(|param| self.program.parameter_modes.changes(param.binding))
-        {
+        for param in lambda.params.iter().filter(|param| {
+            self.program
+                .ownership
+                .parameter_modes
+                .changes(param.binding)
+        }) {
             if let Some(usage) = closures
                 .iter()
                 .find_map(|closure| Self::use_site(closure, param.binding))

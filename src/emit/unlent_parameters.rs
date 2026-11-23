@@ -61,7 +61,12 @@ impl<'a> UnlentParameters<'a> {
             .lambda
             .params
             .iter()
-            .filter(|param| self.program.parameter_modes.changes(param.binding))
+            .filter(|param| {
+                self.program
+                    .ownership
+                    .parameter_modes
+                    .changes(param.binding)
+            })
             .filter(|param| self.result_cannot_hold(param))
             .collect();
         if changed.is_empty() {

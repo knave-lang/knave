@@ -1,4 +1,4 @@
-use super::result_borrows::LambdaFlows;
+use super::lambda_flows::LambdaFlows;
 use crate::types::ResultRegion;
 
 impl From<&LambdaFlows> for ResultRegion {

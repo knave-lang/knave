@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -6,9 +5,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::callee_parameters::{CalleeParameters, OpenCallees};
 use super::definition_lookup::DefinitionLookup;
+use super::lambda_flows::{FunctionFlows, LambdaFlows};
 use super::local_borrow_calls::{LocalBorrowCalls, PassedLocal};
 use super::store_sites::{StoreSite, StoreSites};
-use super::stored_arguments::Store;
+use super::stored_flows::{DefinitionStores, StoredFlows};
 use crate::core::BindingId;
 use crate::ownership::TailCalls;
 use crate::types::{
@@ -207,93 +207,6 @@ struct BodyFlows<'r, 'a> {
     parameters: FxHashSet<BindingId>,
     aliases: FxHashMap<BindingId, FxHashSet<BindingId>>,
     earliest_reached: Option<usize>,
-}
-
-#[derive(Default)]
-pub struct DefinitionStores {
-    pub flows: StoredFlows,
-    pub(super) positions: Vec<Store>,
-}
-
-#[derive(Clone, Default)]
-pub struct StoredFlows {
-    pub values: FxHashSet<BindingId>,
-    pub targets: FxHashSet<BindingId>,
-}
-
-impl StoredFlows {
-    pub fn is_empty(&self) -> bool {
-        self.values.is_empty()
-    }
-
-    pub fn with_values(&self, values: FxHashSet<BindingId>) -> Cow<'_, StoredFlows> {
-        if values.is_empty() {
-            return Cow::Borrowed(self);
-        }
-        Cow::Owned(StoredFlows {
-            values: self.values.union(&values).copied().collect(),
-            targets: self.targets.clone(),
-        })
-    }
-
-    fn extend(&mut self, other: StoredFlows) {
-        self.values.extend(other.values);
-        self.targets.extend(other.targets);
-    }
-
-    fn positions(&self, lambda: &TypedLambda) -> Vec<Store> {
-        let values = Self::marked(lambda, &self.values);
-        Self::marked(lambda, &self.targets)
-            .into_iter()
-            .flat_map(|target| {
-                values
-                    .iter()
-                    .filter(move |value| **value != target)
-                    .map(move |value| Store {
-                        target,
-                        value: *value,
-                    })
-            })
-            .collect()
-    }
-
-    fn marked(lambda: &TypedLambda, bindings: &FxHashSet<BindingId>) -> Vec<usize> {
-        lambda
-            .params
-            .iter()
-            .enumerate()
-            .filter(|(_, param)| bindings.contains(&param.binding))
-            .map(|(position, _)| position)
-            .collect()
-    }
-}
-
-pub struct LambdaFlows {
-    pub flows: FxHashSet<BindingId>,
-    pub higher_ranked: FxHashSet<BindingId>,
-    earliest_reached: Option<usize>,
-}
-
-impl LambdaFlows {
-    fn parameters(&self, lambda: &TypedLambda) -> CalleeParameters {
-        CalleeParameters::new(
-            Self::marked(lambda, &self.flows),
-            Self::marked(lambda, &self.higher_ranked),
-        )
-    }
-
-    fn marked(lambda: &TypedLambda, bindings: &FxHashSet<BindingId>) -> Vec<bool> {
-        lambda
-            .params
-            .iter()
-            .map(|param| bindings.contains(&param.binding))
-            .collect()
-    }
-}
-
-pub struct FunctionFlows {
-    pub flows: LambdaFlows,
-    pub reassigned_parameters: FxHashSet<BindingId>,
 }
 
 impl<'r, 'a> BodyFlows<'r, 'a> {

@@ -79,7 +79,7 @@ mod tests {
     use super::GithubLinguist;
     use crate::cli::linguist_upgrade::LinguistUpgrade;
 
-    const LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false";
+    const LINE: &str = GithubLinguist::LINE;
 
     struct LinguistFixture;
 

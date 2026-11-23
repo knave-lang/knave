@@ -32,7 +32,9 @@ impl<'w> TreeWalk<'w> {
     }
 
     pub fn walk(mut self) -> io::Result<Self> {
-        self.collect(self.root)?;
+        if self.root.is_dir() {
+            self.collect(self.root)?;
+        }
         Ok(self)
     }
 

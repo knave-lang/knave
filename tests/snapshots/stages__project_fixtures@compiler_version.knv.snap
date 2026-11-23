@@ -7,9 +7,10 @@ Project {
     name: "browser",
     version: "0.1.0",
     modules: ProjectModules {
-        entry: "src/main.knv",
+        entry: Default(
+            "src/main.knv",
+        ),
         library_root: "src/lib.knv",
-        entry_written: false,
     },
     edition: 2026,
     compiler_version: Some(
@@ -34,5 +35,5 @@ Project {
     lints: LintTable {
         entries: [],
     },
-    exported_tasks: [],
+    exported_tasks: None,
 }

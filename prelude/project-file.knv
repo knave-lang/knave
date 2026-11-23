@@ -12,8 +12,8 @@
   [exported-tasks] names the tasks that the projects listing it can run. A
   call of any of these forms in a program is an error.")
 
-(export defproject dependencies dev-dependencies exported-tasks
-        libraries lints)
+(export defproject dependencies dev-dependencies
+        exported-tasks libraries lints)
 
 (def outside-the-project-file
   (fn (form)

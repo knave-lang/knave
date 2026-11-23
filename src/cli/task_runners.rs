@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use super::exit_status::ExitStatus;
+use super::form_block::FormBlock;
 use super::project_task::{ProjectTask, TaskName};
 use super::task_catalog::{EnteredProgram, TaskCatalog};
 use super::terminal::Terminal;
@@ -37,11 +38,11 @@ impl<'c> TaskRunners<'c> {
     }
 
     pub fn check(&self, terminal: &mut Terminal) -> Result<Diagnostics, ExitStatus> {
-        let entered = self.program(terminal)?;
-        let checked = terminal
-            .checking()
-            .check_keeping_warnings(&entered.program)?;
-        Ok(checked.warnings)
+        let exports = self.catalog.check_exports(terminal);
+        let checked = self
+            .program(terminal)
+            .and_then(|entered| terminal.checking().check_keeping_warnings(&entered.program));
+        exports.and(checked).map(|checked| checked.warnings)
     }
 
     pub fn program(&self, terminal: &mut Terminal) -> Result<EnteredProgram, ExitStatus> {
@@ -52,8 +53,8 @@ impl<'c> TaskRunners<'c> {
             .zip(&signatures)
             .map(|(name, signature)| Self::runner(name, signature))
             .collect();
-        let (block, _) = TaskCatalog::block_of(&runners);
-        self.catalog.entered_program(terminal, &block)
+        let block = FormBlock::of(&runners);
+        self.catalog.entered_program(terminal, &block.text)
     }
 
     fn runner(name: &TaskName, signature: &str) -> String {

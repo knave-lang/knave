@@ -35,6 +35,10 @@ impl TreeKind {
         matches!(self, Self::Tasks)
     }
 
+    fn allows_absent_folder(self) -> bool {
+        matches!(self, Self::Tasks)
+    }
+
     fn entry_name(self) -> &'static str {
         match self {
             Self::Tests => Self::TESTS_ENTRY,
@@ -87,15 +91,13 @@ impl EntryTree {
     }
 
     pub fn holds_tasks(&self) -> bool {
-        self.path.is_dir()
-            || self
-                .project
-                .as_ref()
-                .is_some_and(|project| project.task_layout().exports_tasks)
+        self.project
+            .as_ref()
+            .is_some_and(|project| project.task_layout().has_tasks())
     }
 
     pub fn load(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {
-        if self.path.is_dir() || self.is_missing_task_folder() {
+        if self.is_folder() {
             self.load_directory(terminal)
         } else {
             self.load_file(terminal)
@@ -139,13 +141,11 @@ impl EntryTree {
 
     fn walk(&self) -> Result<(Vec<TreeFile>, TreeWalk<'_>), ExitStatus> {
         let bounds = self.kind.stays_inside().then(|| TreeBounds::of(&self.path));
-        let walk = TreeWalk::new(&self.path, &self.skipped, bounds);
-        let walk = match self.is_missing_task_folder() {
-            true => walk,
-            false => walk.walk().map_err(|error| {
+        let walk = TreeWalk::new(&self.path, &self.skipped, bounds)
+            .walk()
+            .map_err(|error| {
                 UnreadableFile::new(&self.path, &error).report_to(&StandardErrorMessages)
-            })?,
-        };
+            })?;
         let mut files: Vec<TreeFile> = walk
             .sources()
             .iter()
@@ -158,8 +158,8 @@ impl EntryTree {
         }
     }
 
-    fn is_missing_task_folder(&self) -> bool {
-        matches!(self.kind, TreeKind::Tasks) && !self.path.exists()
+    fn is_folder(&self) -> bool {
+        self.path.is_dir() || self.kind.allows_absent_folder()
     }
 
     fn load_directory(&self, terminal: &mut Terminal) -> Result<ModuleOfSources, ExitStatus> {

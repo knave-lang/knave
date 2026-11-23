@@ -10,7 +10,7 @@ use super::problems::ProjectProblems;
 use super::release_version::ReleaseVersion;
 use super::section::Section;
 use super::vocabulary::ProjectVocabulary;
-use super::{CompilerVersion, Project, ProjectModules};
+use super::{CompilerVersion, EntryModule, Project, ProjectModules};
 use crate::diagnostic::Diagnostics;
 use crate::language::Language;
 use crate::reader::Form;
@@ -143,7 +143,7 @@ impl<'v> ProjectReader<'v> {
             }
             Section::ExportedTasks => {
                 ExportedTaskReader::new(self.vocabulary.section_name(section), &mut self.problems)
-                    .read(entries, &mut sections.exported_tasks)
+                    .read(entries, sections.exported_tasks.get_or_insert_default())
             }
         }
     }
@@ -212,14 +212,15 @@ impl<'v> ProjectReader<'v> {
     }
 
     fn modules(&mut self, fields: &Fields<'_>) -> ProjectModules {
-        let written_entry = self.written_module_file(fields, "entry");
-        let entry_written = written_entry.is_some();
+        let entry = match self.written_module_file(fields, "entry") {
+            Some(written) => EntryModule::Written(written),
+            None => EntryModule::Default(Self::default_module_file(Self::DEFAULT_ENTRY)),
+        };
         ProjectModules {
-            entry: written_entry.unwrap_or_else(|| Self::default_module_file(Self::DEFAULT_ENTRY)),
+            entry,
             library_root: self
                 .written_module_file(fields, "lib")
                 .unwrap_or_else(|| Self::default_module_file(Self::DEFAULT_LIBRARY_ROOT)),
-            entry_written,
         }
     }
 
@@ -269,5 +270,5 @@ pub struct SectionTable {
     pub dependencies: Vec<super::CrateDependency>,
     pub dev_dependencies: Vec<super::CrateDependency>,
     pub lints: super::LintTable,
-    pub exported_tasks: Vec<super::ExportedTask>,
+    pub exported_tasks: Option<Vec<super::ExportedTask>>,
 }

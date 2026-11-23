@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
+use super::entry_module::EntryModule;
+
 #[derive(Debug)]
 pub struct ProjectModules {
-    pub entry: PathBuf,
+    pub entry: EntryModule,
     pub library_root: PathBuf,
-    pub entry_written: bool,
 }

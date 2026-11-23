@@ -42,6 +42,7 @@ impl<'p> ProjectTask<'p> {
 
     fn directory_of(project: &LocatedProject, name: &TaskName) -> PathBuf {
         project
+            .crates()
             .build_directory()
             .join(SearchScope::TASKS_DIRECTORY)
             .join(name.as_str())

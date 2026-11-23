@@ -8,13 +8,12 @@
 (use prelude/text display from-str str)
 (use prelude/types option result vec)
 
-(use code add-module-note bool-not closest-name concat empty? fail
-          first
-          form-location keyword-field keyword-name keyword?
-          len list list? module-notes nth number-add
-          number-lt number-sub number? prepend
-          program-modules project-folders project-modules
-          read-form rest sorted-names string
+(use code add-module-note bool-not closest-name concat
+          empty? fail first form-location keyword-field
+          keyword-name keyword? len list list? module-notes
+          nth number-add number-lt number-sub number?
+          prepend program-modules project-folders
+          project-modules read-form rest sorted-names string
           string-contains? string-length string-lines
           string-strip-prefix string-trim-start string?
           symbol symbol-name symbol? value-eq)
@@ -24,8 +23,8 @@
 (module
   "Runs the tasks of a project and lists them for `knave task`.")
 
-(export deftask run-task task-listing task-names
-        task-signature)
+(export deftask exported-task-check run-task task-listing
+        task-names task-signature)
 
 (def define-task
   (macro (call)
@@ -742,12 +741,12 @@
 
 (def task-names
   (macro (form)
-    (local tree
-      (task-tree (rest form) (task-tree-of (list) (list) (list) (list))))
-    (check-task-modules (program-modules) tree)
-    (local names (map-list (program-tasks) note-name))
-    (check-exported-tasks (tree-exported-tasks tree) names)
-    (string-joined (map-list names symbol-name))))
+    (check-task-modules (program-modules)
+                        (task-tree (rest form)
+                                   (task-tree-of (list) (list) (list))))
+    (string-joined (map-list (program-tasks)
+                     (fn (note)
+                       (symbol-name (note-name note)))))))
 
 (document (task-names module ...)
   "Returns the names of the program's tasks, one per line.
@@ -756,10 +755,20 @@
   `:hidden-folder` and a `:project-file` pair name a folder and a project
   file that the walk of `tasks/` skipped, as a module path from `tasks/`. A
   [deftask] in any other module fails, because a task lives under `tasks/`,
-  and the pairs say why a module under `tasks/` is not a task file. Each
-  `:exported-task` pair names a task that the project file's section of
-  exported tasks lists, at its place there; a name that no task of the
-  program takes fails.")
+  and the pairs say why a module under `tasks/` is not a task file.")
+
+(def exported-task-check
+  (macro (form)
+    (check-exported-task (nth form 2)
+                         (map-list (program-tasks) note-name))
+    ""))
+
+(document (exported-task-check :exported-task name)
+  "Returns an empty string when a task of the program takes `name`.
+
+  `name` is a name of the project file's section of exported tasks, at its
+  place there. A name that no task takes fails, with the closest task's name
+  as a suggestion.")
 
 (def task-listing
   (macro (form)
@@ -825,40 +834,28 @@
       tree
       (if (keyword? (first forms))
         (task-tree (rest (rest forms))
-                   (with-pair tree
+                   (with-skip tree
                               (keyword-name (first forms))
-                              (nth forms 1)))
+                              (string (nth forms 1))))
         (task-tree (rest forms)
                    (task-tree-of (concat (tree-task-files tree)
                                          (list (string (first forms))))
                                  (tree-hidden-folders tree)
-                                 (tree-project-files tree)
-                                 (tree-exported-tasks tree)))))))
-
-(def with-pair
-  (fn (tree kind value)
-    (if (value-eq kind "exported-task")
-      (task-tree-of (tree-task-files tree)
-                    (tree-hidden-folders tree)
-                    (tree-project-files tree)
-                    (concat (tree-exported-tasks tree) (list value)))
-      (with-skip tree kind (string value)))))
+                                 (tree-project-files tree)))))))
 
 (def with-skip
   (fn (tree kind path)
     (if (value-eq kind "hidden-folder")
       (task-tree-of (tree-task-files tree)
                     (concat (tree-hidden-folders tree) (list path))
-                    (tree-project-files tree)
-                    (tree-exported-tasks tree))
+                    (tree-project-files tree))
       (task-tree-of (tree-task-files tree)
                     (tree-hidden-folders tree)
-                    (concat (tree-project-files tree) (list path))
-                    (tree-exported-tasks tree)))))
+                    (concat (tree-project-files tree) (list path))))))
 
 (def task-tree-of
-  (fn (task-files hidden-folders project-files exported-tasks)
-    (list task-files hidden-folders project-files exported-tasks)))
+  (fn (task-files hidden-folders project-files)
+    (list task-files hidden-folders project-files)))
 
 (def tree-task-files
   (fn (tree) (nth tree 0)))
@@ -868,17 +865,6 @@
 
 (def tree-project-files
   (fn (tree) (nth tree 2)))
-
-(def tree-exported-tasks
-  (fn (tree) (nth tree 3)))
-
-(def check-exported-tasks
-  (fn (exported names)
-    (if (empty? exported)
-      true
-      (do
-        (check-exported-task (first exported) names)
-        (check-exported-tasks (rest exported) names)))))
 
 (def check-exported-task
   (fn (name names)
@@ -894,8 +880,7 @@
         "define the task with `deftask` in a file under `tasks/`, or remove the name"
         missing-exported-task-description)
       (fail (missing-exported-task-title name)
-        name
-        "a task with a similar name exists"
+        name "a task with a similar name exists"
         (template (:code missing-exported-task
                          :label (unquote missing-exported-task-label)
                          :suggest (unquote (first closest))))))))

@@ -7,9 +7,10 @@ Project {
     name: "linter",
     version: "0.1.0",
     modules: ProjectModules {
-        entry: "main.knv",
+        entry: Written(
+            "main.knv",
+        ),
         library_root: "src/lib.knv",
-        entry_written: true,
     },
     edition: 2026,
     compiler_version: None,
@@ -19,26 +20,28 @@ Project {
     lints: LintTable {
         entries: [],
     },
-    exported_tasks: [
-        ExportedTask {
-            name: "lint",
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 77,
-                end: 81,
+    exported_tasks: Some(
+        [
+            ExportedTask {
+                name: "lint",
+                span: Span {
+                    source: SourceId(
+                        0,
+                    ),
+                    start: 77,
+                    end: 81,
+                },
             },
-        },
-        ExportedTask {
-            name: "fix",
-            span: Span {
-                source: SourceId(
-                    0,
-                ),
-                start: 82,
-                end: 85,
+            ExportedTask {
+                name: "fix",
+                span: Span {
+                    source: SourceId(
+                        0,
+                    ),
+                    start: 82,
+                    end: 85,
+                },
             },
-        },
-    ],
+        ],
+    ),
 }

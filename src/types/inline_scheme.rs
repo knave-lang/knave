@@ -80,20 +80,26 @@ impl<'s> SchemeShape<'s> {
             (Type::Named(mine, my_parts), Type::Named(theirs, their_parts)) => {
                 mine == theirs && self.same_types(my_parts, their_parts)
             }
-            (
-                Type::Function(my_kind, my_parameters, my_result),
-                Type::Function(their_kind, their_parameters, their_result),
-            ) => {
-                my_kind == their_kind
-                    && self.same_types(my_parameters, their_parameters)
-                    && self.same_type(my_result, their_result)
-            }
+            (Type::Function(..), Type::Function(..)) => self.same_function(mine, theirs),
             (Type::Ref(mine, my_referent), Type::Ref(theirs, their_referent))
             | (Type::Mut(mine, my_referent), Type::Mut(theirs, their_referent)) => {
                 Self::same_lifetime(mine, theirs) && self.same_type(my_referent, their_referent)
             }
             _ => mine == theirs,
         }
+    }
+
+    fn same_function(&self, mine: &Type, theirs: &Type) -> bool {
+        let (
+            Type::Function(my_kind, my_parameters, my_result),
+            Type::Function(their_kind, their_parameters, their_result),
+        ) = (mine, theirs)
+        else {
+            return false;
+        };
+        my_kind == their_kind
+            && self.same_types(my_parameters, their_parameters)
+            && self.same_type(my_result, their_result)
     }
 
     fn same_types(&self, mine: &[Type], theirs: &[Type]) -> bool {

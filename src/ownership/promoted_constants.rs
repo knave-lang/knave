@@ -30,6 +30,10 @@ impl<'p> PromotedConstants<'p> {
         ) && !self.promotes(borrowed)
     }
 
+    pub fn is_unpromoted_value(&self, value: &TypedExpr) -> bool {
+        !value.is_place() && !self.promotes(value)
+    }
+
     fn promotes(&self, value: &TypedExpr) -> bool {
         match &value.kind {
             TypedExprKind::Call(callee, arguments) => self.promotes_operation(callee, arguments),

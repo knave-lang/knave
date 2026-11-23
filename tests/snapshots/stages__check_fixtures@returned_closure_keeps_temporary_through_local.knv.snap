@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_temporary_through_local.knv
+---
+error[L0520]: the result of `first-greeter` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_temporary_through_local.knv:6:30
+  |
+1 | (defn first-greeter (names)
+  |                      ----- the returned closure keeps this borrow of `names`
+...
+6 |   (let (greet (first-greeter (vec (str "ana") (str "bo"))))
+  |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

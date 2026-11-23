@@ -1,0 +1,112 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_temporary_in_each_position.knv
+---
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_temporary_in_each_position.knv:3:30
+  |
+1 | (defn sizer (items) (fn () (len items)))
+  |              ----- the returned closure keeps this borrow of `items`
+2 |
+3 | (defn later () (fn () (sizer (vec 7))))
+  |                              ^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_temporary_in_each_position.knv:7:23
+  |
+1 | (defn sizer (items) (fn () (len items)))
+  |              ----- the returned closure keeps this borrow of `items`
+...
+7 |                (sizer (vec 1))
+  |                       ^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_temporary_in_each_position.knv:8:23
+  |
+1 | (defn sizer (items) (fn () (len items)))
+  |              ----- the returned closure keeps this borrow of `items`
+...
+8 |                (sizer (vec 2 3))))
+  |                       ^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+  --> check/returned_closure_keeps_temporary_in_each_position.knv:11:35
+   |
+ 1 | (defn sizer (items) (fn () (len items)))
+   |              ----- the returned closure keeps this borrow of `items`
+...
+11 |                  ((some n) (sizer (vec n)))
+   |                                   ^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+  --> check/returned_closure_keeps_temporary_in_each_position.knv:12:31
+   |
+ 1 | (defn sizer (items) (fn () (len items)))
+   |              ----- the returned closure keeps this borrow of `items`
+...
+12 |                  (none (sizer (vec 0)))))
+   |                               ^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+  --> check/returned_closure_keeps_temporary_in_each_position.knv:14:42
+   |
+ 1 | (defn sizer (items) (fn () (len items)))
+   |              ----- the returned closure keeps this borrow of `items`
+...
+14 |   (let (blocked (do (println "x") (sizer (vec 4))))
+   |                                          ^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+  --> check/returned_closure_keeps_temporary_in_each_position.knv:16:35
+   |
+ 1 | (defn sizer (items) (fn () (len items)))
+   |              ----- the returned closure keeps this borrow of `items`
+...
+16 |   (let (looped (loop (i 0) (sizer (vec 8))))
+   |                                   ^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+  --> check/returned_closure_keeps_temporary_in_each_position.knv:18:22
+   |
+ 1 | (defn sizer (items) (fn () (len items)))
+   |              ----- the returned closure keeps this borrow of `items`
+...
+18 |   (loop (size (sizer (vec 5))
+   |                      ^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+  --> check/returned_closure_keeps_temporary_in_each_position.knv:21:21
+   |
+ 1 | (defn sizer (items) (fn () (len items)))
+   |              ----- the returned closure keeps this borrow of `items`
+...
+21 |       (recur (sizer (vec 6)) (+ i 1))
+   |                     ^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation

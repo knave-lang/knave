@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_call_keeps_temporary.knv
+---
+error[L0520]: the result of `wrap` keeps a borrow of a temporary
+ --> check/returned_call_keeps_temporary.knv:6:20
+  |
+3 | (defn wrap (items) (sizer items))
+  |             ----- the returned closure keeps this borrow of `items`
+...
+6 |   (let (size (wrap (vec 1 2)))
+  |                    ^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

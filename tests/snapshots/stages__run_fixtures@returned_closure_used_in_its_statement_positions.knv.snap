@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_used_in_its_statement_positions.knv
+---
+2
+3
+2

@@ -1,0 +1,9 @@
+(defn sizer (items) (fn () (len items)))
+
+(defn report (size) (println (size)))
+
+(defn main ()
+  (println ((sizer (vec 1 2))))
+  (report (sizer (vec 1 2 3)))
+  (let (total (+ 1 ((sizer (vec 4)))))
+    (println total)))

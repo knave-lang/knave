@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_keeps_local_argument.knv
+---
+hi ana
+hi ana

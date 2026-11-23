@@ -1,0 +1,4 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main () ((greeter (str "ana"))))

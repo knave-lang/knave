@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_generic_closure_keeps_temporary.knv
+---
+error[L0520]: the result of `adder` keeps a borrow of a temporary
+  --> check/returned_generic_closure_keeps_temporary.knv:33:19
+   |
+30 | (defn adder (x) (fn (y) (+ (rank x) y)))
+   |              - the returned closure keeps this borrow of `x`
+...
+33 |   (local f (adder (make-ledger 3)))
+   |                   ^^^^^^^^^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `adder` keeps a borrow of a temporary
+  --> check/returned_generic_closure_keeps_temporary.knv:35:12
+   |
+30 | (defn adder (x) (fn (y) (+ (rank x) y)))
+   |              - the returned closure keeps this borrow of `x`
+...
+35 |     (adder (new coin (worth (+ 1 (len (vec 1 2)))))))
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation

@@ -15,6 +15,8 @@ mod function_values;
 mod functions;
 mod gate;
 mod held;
+mod kept_temporaries;
+mod kept_temporary_problems;
 mod kinds;
 mod lambda_address;
 mod lambda_parameters;
@@ -80,6 +82,7 @@ use checks::OwnershipNeeds;
 use copied_reads::CopiedMutReads;
 use escaping_lambdas::EscapingLambdas;
 use functions::{FunctionTable, ParamMode};
+use kept_temporaries::KeptTemporaries;
 use kinds::{ClosureKinds, KindReport, KindSources};
 use modes::ModeInference;
 use moves::{MoveChecker, MoveReport};
@@ -245,6 +248,9 @@ impl OwnershipChecker {
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
         Self::record_regions(program);
+        KeptTemporaries::check(program)
+            .into_iter()
+            .for_each(|diagnostic| diagnostics.push(diagnostic));
         OwnershipFindings {
             inferred_copies,
             refusals: diagnostics,

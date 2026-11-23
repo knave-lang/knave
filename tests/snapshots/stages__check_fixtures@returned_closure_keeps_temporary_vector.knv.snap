@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_temporary_vector.knv
+---
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_temporary_vector.knv:4:21
+  |
+1 | (defn sizer (items) (fn () (len items)))
+  |              ----- the returned closure keeps this borrow of `items`
+...
+4 |   (let (size (sizer (vec 1 2 3)))
+  |                     ^^^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

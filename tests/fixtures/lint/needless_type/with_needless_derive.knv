@@ -1,0 +1,14 @@
+(defstruct point
+  :x int
+  :y int)
+
+(derive point clone partial-eq)
+
+(type total (fn ((ref point)) int))
+
+(defn total (p) (+ (:x p) (:y p)))
+
+(defn main ()
+  (let (p (->point :x 1 :y 2))
+    (println (total p))
+    (println (= p (->point :x 1 :y 2)))))

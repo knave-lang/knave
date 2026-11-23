@@ -15,6 +15,7 @@ use super::task_runners::TaskRunners;
 use super::terminal::Terminal;
 use super::test_entries::TestEntries;
 use super::test_runner_program::TestRunnerProgram;
+use crate::lint::ExampleRuns;
 use crate::source::SourceId;
 
 pub struct ProjectPrograms {
@@ -68,6 +69,7 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
+        loaded.publish(project.module_files().library());
         if !project.task_layout().checks_tasks_alone() {
             loaded.add(Self::entry(terminal, project.entry()));
         }
@@ -79,7 +81,11 @@ impl ProjectPrograms {
     fn entry(terminal: &mut Terminal, file: ProgramFile) -> Result<ProjectProgram, ExitStatus> {
         let source = terminal.sources().load(file.path())?;
         let program = terminal.expansion().expand(&file, source)?;
-        Ok(ProjectProgram { file, program })
+        Ok(ProjectProgram {
+            file,
+            program,
+            examples: ExampleRuns::NoModule,
+        })
     }
 
     fn tests(
@@ -94,7 +100,11 @@ impl ProjectPrograms {
         loaded.add(tree.load(terminal).and_then(|module| {
             let file = module.file.clone();
             let program = TestRunnerProgram::new(None).program(terminal, module)?;
-            Ok(ProjectProgram { file, program })
+            Ok(ProjectProgram {
+                file,
+                program,
+                examples: ExampleRuns::EveryModule,
+            })
         }));
         Self::project_of(tree)
     }
@@ -122,6 +132,7 @@ impl ProjectPrograms {
         loaded.add(program.map(|entered| ProjectProgram {
             file: entered.file,
             program: entered.program,
+            examples: ExampleRuns::NoModule,
         }));
     }
 

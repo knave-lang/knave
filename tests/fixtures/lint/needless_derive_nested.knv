@@ -1,0 +1,12 @@
+(defstruct label
+  :name string)
+
+(derive label clone partial-eq)
+
+(defstruct crate
+  :label label
+  :weight int)
+
+(defn main ()
+  (println (= (->crate :label (->label :name (str "fake")) :weight 3)
+              (->crate :label (->label :name (str "fake")) :weight 3))))

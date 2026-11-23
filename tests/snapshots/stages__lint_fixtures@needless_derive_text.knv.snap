@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/lint/needless_derive_text.knv
+---
+warning[L0811]: `note` does not need its `derive` form
+ --> lint/needless_derive_text/notes.knv:4:1
+  |
+4 | (derive note clone partial-eq)
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ inference gives every trait this form lists
+  |
+help: remove the form
+  |
+4 - (derive note clone partial-eq)
+  |
+  = note: run `knave doc L0811` for an explanation

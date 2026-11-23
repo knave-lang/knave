@@ -58,7 +58,7 @@ impl LocatedProgram {
     pub fn entry_project(&self) -> Option<&LocatedProject> {
         self.project
             .as_ref()
-            .filter(|project| project.is_entry(&self.file))
+            .filter(|project| project.module_files().is_entry(&self.file))
     }
 
     fn report_no_program() -> ExitStatus {

@@ -2778,6 +2778,225 @@ impl WholeProject {
     }
 }
 
+#[test]
+fn lint_exits_one_on_a_needless_derive_that_check_does_not_print() {
+    let sandbox = Sandbox::new("lint_needless_derive")
+        .with_file(&Language::project_file_name(), "(defproject demo)\n")
+        .with_file(
+            "src/main.knv",
+            "(defstruct point :x int :y int)\n\n(derive point clone copy partial-eq)\n\n(defn main () (println (= (->point :x 1 :y 2) (->point :x 1 :y 2))))\n",
+        );
+    let lint = sandbox.compiler(&["lint"]).assert_exit_code(1).stderr();
+    assert!(
+        lint.contains("warning[L0811]: `point` does not need its `derive` form"),
+        "{lint}"
+    );
+    let check = sandbox.compiler(&["check"]);
+    check.assert_exit_code(0);
+    assert!(!check.stderr().contains("L0811"), "{}", check.stderr());
+}
+
+#[test]
+fn lint_keeps_a_derive_form_that_only_a_test_needs() {
+    let lint = DeriveProject::sandbox("lint_derive_test_needs")
+        .with_file("tests/geometry-test.knv", DeriveProject::TEST_THAT_CHANGES)
+        .compiler(&["lint"])
+        .stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_keeps_a_derive_form_that_only_a_task_needs() {
+    let lint = DeriveProject::sandbox("lint_derive_task_needs")
+        .with_file(
+            "tasks/shift.knv",
+            "(use geometry ->point dup)\n\n(defn shift! (p) (set! (:x p) 9))\n\n(deftask shift ()\n  (let (p (->point :x 1 :y 2))\n    (shift! p)\n    (println (:x (first (dup p))))))\n",
+        )
+        .compiler(&["lint"])
+        .stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_keeps_a_derive_form_reached_under_two_module_paths() {
+    let lint = Sandbox::new("lint_derive_two_paths")
+        .with_file(&Language::project_file_name(), "(defproject twopaths)\n")
+        .with_file("src/main.knv", "(defn main () (println 1))\n")
+        .with_file("examples/a/b.knv", DeriveProject::GEOMETRY)
+        .with_file(
+            "examples/z.knv",
+            "(use a/b ->point dup)\n\n(defn shift! (p) (set! (:x p) 9))\n\n(defn main ()\n  (let (p (->point :x 1 :y 2))\n    (shift! p)\n    (println (:x (first (dup p))))))\n",
+        )
+        .compiler(&["lint"])
+        .stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_tries_no_derive_form_beside_a_failing_test_file() {
+    let lint = DeriveProject::sandbox("lint_derive_failing_test")
+        .with_file(
+            "tests/broken-test.knv",
+            "(deftest t (assert (= (nope) 1)))\n",
+        )
+        .compiler(&["lint"])
+        .stderr();
+    assert!(lint.contains("error[L0201]"), "{lint}");
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_keeps_a_derive_form_on_a_type_that_a_library_exports() {
+    let sandbox = Sandbox::new("lint_derive_library_export")
+        .with_file(
+            &format!("geo/{}", Language::project_file_name()),
+            "(defproject geo :lib \"src/lib.knv\")\n",
+        )
+        .with_file("geo/src/lib.knv", DeriveProject::GEOMETRY)
+        .with_file(
+            "geo/src/main.knv",
+            "(use lib ->point dup)\n\n(defn main () (println (:x (first (dup (->point :x 1 :y 2))))))\n",
+        )
+        .with_file(
+            &format!("app/{}", Language::project_file_name()),
+            "(defproject app\n  (libraries (geo :path \"../geo\")))\n",
+        )
+        .with_file(
+            "app/src/main.knv",
+            "(use geo ->point dup)\n\n(defn shift! (p) (set! (:x p) 9))\n\n(defn main ()\n  (let (p (->point :x 1 :y 2))\n    (shift! p)\n    (println (:x (first (dup p))))))\n",
+        );
+    let lint = sandbox.compiler_in("geo", &["lint"]).stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_keeps_a_derive_form_on_a_library_type_that_an_export_returns() {
+    let sandbox = DeriveProject::library(
+        "lint_derive_library_returns",
+        "(export make dup)\n\n(defstruct point :x int :y int)\n\n(derive point clone copy partial-eq)\n\n(defn make (x y) (->point :x x :y y))\n\n(defn dup (p) (pair p p))\n",
+    )
+    .with_file(
+        &format!("app/{}", Language::project_file_name()),
+        "(defproject app\n  (libraries (geo :path \"../geo\")))\n",
+    )
+    .with_file(
+        "app/src/main.knv",
+        "(use geo make dup)\n\n(defn main ()\n  (let (p (make 1 2))\n    (set! (:x p) 9)\n    (println (:x (first (dup p))))))\n",
+    );
+    let lint = sandbox.compiler_in("geo", &["lint"]).stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_keeps_a_derive_form_on_a_library_type_that_is_copy_only_without_it() {
+    let sandbox = DeriveProject::library(
+        "lint_derive_library_copy_without",
+        "(export make)\n\n(defstruct point :x int :y int)\n\n(derive point clone partial-eq)\n\n(defn make (x y) (->point :x x :y y))\n",
+    );
+    let lint = sandbox.compiler_in("geo", &["lint"]).stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_keeps_a_derive_form_that_an_example_of_a_module_no_test_reaches_needs() {
+    let lint = DeriveProject::sandbox("lint_derive_untested_example")
+        .with_file(
+            "src/geometry.knv",
+            &format!(
+                "(export ->point point dup)\n\n{}",
+                DeriveProject::EXAMPLE_GEOMETRY
+            ),
+        )
+        .with_file("tests/basic.knv", "(deftest basic\n  (assert (= 1 1)))\n")
+        .compiler(&["lint"])
+        .stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_warns_on_a_derive_form_whose_examples_a_test_program_runs() {
+    let lint = DeriveProject::sandbox("lint_derive_tested_example")
+        .with_file(
+            "src/geometry.knv",
+            "(export ->point point dup)\n\n(defstruct point :x int :y int)\n\n(derive point clone copy partial-eq)\n\n(defn dup (p)\n  \"Pairs a point with itself.\n\n  (:x (first (dup (->point :x 1 :y 2))))\n  => 1\"\n  (pair p p))\n",
+        )
+        .with_file(
+            "tests/geometry-test.knv",
+            "(use geometry ->point dup)\n\n(deftest dup-pairs\n  (assert (= (:x (first (dup (->point :x 1 :y 2)))) 1)))\n",
+        )
+        .compiler(&["lint"])
+        .stderr();
+    assert!(lint.contains("warning[L0811]"), "{lint}");
+}
+
+#[test]
+fn lint_exits_as_check_does_beside_a_note_the_example_question_cannot_read() {
+    let sandbox = Sandbox::new("lint_derive_odd_note").with_file(
+        "odd.knv",
+        "(use code add-module-note)\n\n(defmacro odd ()\n  (add-module-note (quote module-docstrings) (quote (1 2)))\n  (quote (do)))\n\n(odd)\n\n(defstruct point :x int :y int)\n\n(derive point clone copy partial-eq)\n\n(defn main () (println (= (->point :x 1 :y 2) (->point :x 1 :y 2))))\n",
+    );
+    sandbox.compiler(&["check", "odd.knv"]).assert_exit_code(0);
+    let lint = sandbox.compiler(&["lint", "odd.knv"]);
+    lint.assert_exit_code(0);
+    assert!(!lint.stderr().contains("L0303"), "{}", lint.stderr());
+}
+
+#[test]
+fn lint_keeps_a_derive_form_that_a_docstring_example_of_a_lone_file_needs() {
+    let sandbox = Sandbox::new("lint_derive_lone_example").with_file(
+        "shift.knv",
+        &format!(
+            "{}\n(defn main () (println (:x (first (dup (->point :x 1 :y 2))))))\n",
+            DeriveProject::EXAMPLE_GEOMETRY
+        ),
+    );
+    let lint = sandbox.compiler(&["lint", "shift.knv"]).stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+#[test]
+fn lint_keeps_a_derive_form_that_a_docstring_example_needs_without_tests() {
+    let lint = DeriveProject::sandbox("lint_derive_example_without_tests")
+        .with_file(
+            "src/geometry.knv",
+            &format!(
+                "(export ->point point dup)\n\n{}",
+                DeriveProject::EXAMPLE_GEOMETRY
+            ),
+        )
+        .compiler(&["lint"])
+        .stderr();
+    assert!(!lint.contains("L0811"), "{lint}");
+}
+
+struct DeriveProject;
+
+impl DeriveProject {
+    const GEOMETRY: &str = "(export ->point point dup)\n\n(defstruct point :x int :y int)\n\n(derive point clone copy partial-eq)\n\n(defn dup (p) (pair p p))\n";
+    const EXAMPLE_GEOMETRY: &str = "(defstruct point :x int :y int)\n\n(derive point clone copy partial-eq)\n\n(defn dup (p)\n  \"Pairs a point with itself.\n\n  (let (p (->point :x 1 :y 2)) (set! (:x p) 9) (:x (first (dup p))))\n  => 9\"\n  (pair p p))\n";
+    const TEST_THAT_CHANGES: &str = "(use geometry ->point dup)\n\n(defn shift! (p) (set! (:x p) 9))\n\n(deftest shifts\n  (let (p (->point :x 1 :y 2))\n    (shift! p)\n    (assert (= (:x (first (dup p))) 9))))\n";
+
+    fn library(name: &str, library: &str) -> Sandbox {
+        Sandbox::new(name)
+            .with_file(
+                &format!("geo/{}", Language::project_file_name()),
+                "(defproject geo :lib \"src/lib.knv\")\n",
+            )
+            .with_file("geo/src/lib.knv", library)
+            .with_file("geo/src/main.knv", "(defn main () (println 1))\n")
+    }
+
+    fn sandbox(name: &str) -> Sandbox {
+        Sandbox::new(name)
+            .with_file(&Language::project_file_name(), "(defproject derives)\n")
+            .with_file("src/geometry.knv", Self::GEOMETRY)
+            .with_file(
+                "src/main.knv",
+                "(use geometry ->point dup)\n\n(defn main () (println (:x (first (dup (->point :x 1 :y 2))))))\n",
+            )
+    }
+}
+
 struct NeedlessTypeProject;
 
 impl NeedlessTypeProject {

@@ -54,11 +54,13 @@ mod text_traits;
 mod text_types;
 mod text_value;
 mod text_walk;
+mod trait_method_slots;
 mod transfer;
 mod try_flows;
 mod type_path;
 mod user_function;
 mod walk_context;
+mod written_bindings;
 
 use slot_classes::SlotClasses;
 use text_decision_table::TextDecisionTable;

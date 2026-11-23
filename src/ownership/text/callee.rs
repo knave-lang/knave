@@ -1,9 +1,12 @@
 use super::call_target::CallTarget;
 use super::callee_scheme::CalleeScheme;
 use super::closure_slots::ClosureUse;
+use super::function_value::FunctionValue;
 use super::inline_declaration::InlineDeclaration;
 use super::inline_rust::InlineRust;
 use super::map_queries::MapQueries;
+use super::slot::Slot;
+use super::slot_owner::SlotOwner;
 use super::template_call::TemplateCall;
 use super::text_program::TextProgram;
 use super::user_function::UserFunction;
@@ -18,7 +21,17 @@ impl Callee {
     ) -> Option<Box<dyn CallTarget<'t> + 't>> {
         match &callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => {
-                program.definition(*binding).map(Self::defined)
+                match (
+                    program.definition(*binding),
+                    program.written().trait_method(*binding),
+                ) {
+                    (_, Some(declared)) => Some(Box::new(FunctionValue::new(
+                        CalleeScheme::new(&callee.ty, &[]),
+                        Slot::from(SlotOwner::TraitMethod(declared)),
+                    ))),
+                    (Some(definition), None) => Some(Self::defined(definition)),
+                    (None, None) => None,
+                }
             }
             TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 Some(match InlineDeclaration::of(&template.type_expr) {

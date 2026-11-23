@@ -7,6 +7,7 @@ use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
 use super::text_position::{TextPosition, TextPositions};
 use super::text_program::TextProgram;
+use super::trait_method_slots::TraitMethodSlots;
 
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
@@ -41,7 +42,7 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         for definition in &module.definitions {
             match &definition.value.kind {
                 TypedExprKind::Fn(lambda) => self.walk_function(definition.binding, lambda),
-                _ if self.program.is_written_value(definition.binding) => {
+                _ if self.program.written().is_value(definition.binding) => {
                     self.walk_value(definition.binding, &definition.value)
                 }
                 _ => {}
@@ -105,10 +106,24 @@ impl<'w, 'p> TextWalk<'w, 'p> {
 
     fn walk_function(&mut self, binding: BindingId, lambda: &TypedLambda) {
         let names = self.program.names();
-        let heading =
-            (!names.is_generated(binding)).then(|| format!("defn {}", names.name(binding)));
+        let heading = match self.program.written().trait_method(binding) {
+            Some(_) => Some(format!("method {}", names.name(binding))),
+            None => (!names.is_generated(binding)).then(|| format!("defn {}", names.name(binding))),
+        };
         self.listing.open(heading);
         let context = WalkContext::new(self.program, &mut self.graph);
         BodyFlows::new(context, &mut self.listing, binding).walk(lambda);
+        self.share_trait_method(binding, lambda);
+    }
+
+    fn share_trait_method(&mut self, binding: BindingId, lambda: &TypedLambda) {
+        let declared = self.program.written().trait_method(binding);
+        let definition = self.program.definition(binding);
+        if let (Some(declared), Some(definition)) = (declared, definition)
+            && let Type::Function(_, _, result) = &definition.value.ty
+        {
+            let mut context = WalkContext::new(self.program, &mut self.graph);
+            TraitMethodSlots::new(&mut context, declared).share(binding, (lambda, result));
+        }
     }
 }

@@ -149,7 +149,7 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
                 TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
             }
             TypedLeaf::Local(binding) => self.local(*binding, expr),
-            TypedLeaf::Global(binding) if self.context.program().is_written_value(*binding) => {
+            TypedLeaf::Global(binding) if self.context.program().written().is_value(*binding) => {
                 let read = TextRead::of(expr, Transfer::Refer);
                 let global = Slot::from(SlotOwner::Global(*binding));
                 self.context.read(&global, read)

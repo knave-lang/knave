@@ -9,7 +9,7 @@
 (use prelude/vec iter)
 (use prelude/sequence len)
 
-(use code empty? first list list? prepend rest same-binding?
+(use code empty? first list? prepend rest same-binding?
           symbol?)
 
 (module

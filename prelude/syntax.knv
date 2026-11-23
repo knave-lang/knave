@@ -10,8 +10,8 @@
                              declared-name default-bindings
                              default-pairs defaults-clause?
                              definition find-keyword
-                             has-argument? joined-names
-                             key-names-one-of? keyword-of?
+                             joined-names key-names-one-of?
+                             keyword-of?
                              names-without-argument
                              pair-keys read-call
                              signature-defaults
@@ -19,12 +19,11 @@
                              type-missing?
                              unknown-key-error)
 
-(use code bool-not closest-name concat declare-definition
-          drop empty? fail field-keyword first keyword-field
-          keyword-name keyword-trim-end keyword? len list
-          list? located nth number-sub number? pattern-head?
-          prepend rest same-binding? string string? symbol
-          symbol-name symbol? take value-eq)
+(use code bool-not concat declare-definition drop empty?
+          fail field-keyword first keyword-name keyword? len
+          list list? located nth number-sub number?
+          pattern-head? prepend rest same-binding? string
+          string? symbol symbol-name symbol? value-eq)
 
 (use prelude/internal/code require-module)
 

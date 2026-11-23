@@ -1,5 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::flow_origin::FlowOrigin;
+use super::text_names::TextNames;
 use crate::core::{BindingId, ModuleId};
 use crate::modules::ModuleSources;
 use crate::types::{Type, TypedProgram};
@@ -8,6 +10,7 @@ pub struct WrittenBindings {
     values: FxHashSet<BindingId>,
     trait_methods: FxHashMap<BindingId, BindingId>,
     receivers: FxHashSet<BindingId>,
+    generated: FxHashSet<BindingId>,
 }
 
 impl WrittenBindings {
@@ -20,10 +23,28 @@ impl WrittenBindings {
             .filter(|definition| !matches!(definition.value.ty, Type::Function(..)))
             .map(|definition| definition.binding)
             .collect();
+        let trait_methods = Self::trait_methods(program);
+        let names = TextNames::new(program);
+        let generated = program
+            .modules
+            .iter()
+            .flat_map(|module| &module.definitions)
+            .map(|definition| definition.binding)
+            .filter(|binding| names.is_generated(*binding) && !trait_methods.contains_key(binding))
+            .collect();
         Self {
             values,
-            trait_methods: Self::trait_methods(program),
+            trait_methods,
             receivers: Self::receivers(program),
+            generated,
+        }
+    }
+
+    pub fn origin(&self, function: BindingId) -> FlowOrigin {
+        if self.generated.contains(&function) {
+            FlowOrigin::Generated
+        } else {
+            FlowOrigin::Written
         }
     }
 

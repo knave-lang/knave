@@ -1,0 +1,11 @@
+(defstruct user
+  :name str)
+
+(defn label (s)
+  (if (> (len s) 1) s "short"))
+
+(defn main ()
+  (local made (str "a" 1))
+  (local a (->user :name (label "lit")))
+  (local b (label (as-str made)))
+  (println (:name a) b))

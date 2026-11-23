@@ -1,5 +1,6 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::call_results::CallResults;
 use super::class_role::ClassRole;
 use super::flow::Flow;
 use super::node_id::NodeId;
@@ -8,23 +9,25 @@ use super::representation::Representation;
 use super::slot_classes::SlotClasses;
 use super::source::Source;
 use super::transfer::Transfer;
+use crate::core::BindingId;
 
 pub struct TextFacts<'c, 'g> {
     classes: &'c SlotClasses<'g>,
+    calls: &'c CallResults,
     views: FxHashSet<NodeId>,
     reaching: FxHashMap<NodeId, ReachingText>,
 }
 
 impl<'c, 'g> TextFacts<'c, 'g> {
-    pub fn spread(classes: &'c SlotClasses<'g>) -> Self {
+    pub fn spread(classes: &'c SlotClasses<'g>, calls: &'c CallResults) -> Self {
         let roles = classes.roles();
-        let mut facts = Self::spread_handing_views(classes, FxHashSet::default());
+        let mut facts = Self::spread_handing_views((classes, calls), FxHashSet::default());
         loop {
             let views = facts.view_classes(&roles);
             if views.len() == facts.views.len() {
                 return facts;
             }
-            facts = Self::spread_handing_views(classes, views);
+            facts = Self::spread_handing_views((classes, calls), views);
         }
     }
 
@@ -33,12 +36,21 @@ impl<'c, 'g> TextFacts<'c, 'g> {
     }
 
     pub fn arriving(&self, flow: &Flow) -> ReachingText {
+        if let Transfer::Through(parameter) = flow.transfer
+            && !self.passes_through(parameter, flow.target)
+        {
+            return ReachingText::NOTHING;
+        }
         self.transfer(flow).carry(self.emitted(flow))
     }
 
-    fn spread_handing_views(classes: &'c SlotClasses<'g>, views: FxHashSet<NodeId>) -> Self {
+    fn spread_handing_views(
+        (classes, calls): (&'c SlotClasses<'g>, &'c CallResults),
+        views: FxHashSet<NodeId>,
+    ) -> Self {
         let mut facts = Self {
             classes,
+            calls,
             views,
             reaching: FxHashMap::default(),
         };
@@ -79,9 +91,17 @@ impl<'c, 'g> TextFacts<'c, 'g> {
         match flow.source {
             Source::Text(text) => text,
             Source::Slot(node) if self.speaks_for_itself(node, flow.target) => {
-                ReachingText::BORROWED
+                ReachingText::PARAMETER
             }
-            Source::Slot(node) => self.handed_on(self.classes.class(node)),
+            Source::Slot(node) => {
+                let class = self.classes.class(node);
+                let text = self.handed_on(class);
+                if self.reads_a_view_result(class, flow.target) {
+                    text.without(ReachingText::PARAMETER)
+                } else {
+                    text
+                }
+            }
         }
     }
 
@@ -101,6 +121,19 @@ impl<'c, 'g> TextFacts<'c, 'g> {
             }
             _ => flow.transfer,
         }
+    }
+
+    fn reads_a_view_result(&self, class: NodeId, per_call: NodeId) -> bool {
+        self.calls.result_of(self.classes.class(per_call)) == Some(class)
+            && self.views.contains(&class)
+    }
+
+    fn passes_through(&self, parameter: BindingId, per_call: NodeId) -> bool {
+        self.calls
+            .result_of(self.classes.class(per_call))
+            .is_some_and(|result| {
+                self.views.contains(&result) && self.calls.reaches(result, parameter)
+            })
     }
 
     fn speaks_for_itself(&self, node: NodeId, target: NodeId) -> bool {

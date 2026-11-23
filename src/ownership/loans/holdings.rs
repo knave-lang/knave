@@ -4,41 +4,40 @@ use super::held_value::HeldValue;
 use super::loan_depth::LoanDepth;
 use super::loan_id::LoanId;
 use super::loan_layers::LoanLayers;
+use super::sorted_set::SortedSet;
 use crate::core::BindingId;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Holdings {
     loans: LoanLayers,
-    values: Vec<HeldValue>,
+    values: SortedSet<HeldValue>,
 }
 
 impl Holdings {
     pub fn of_value(binding: BindingId) -> Self {
         Self {
             loans: LoanLayers::default(),
-            values: vec![HeldValue::of(binding)],
+            values: iter::once(HeldValue::of(binding)).collect(),
         }
     }
 
     pub fn merged(mut self, other: Self) -> Self {
         self.loans.extend(other.loans.loans());
-        for value in other.values {
-            self.hold_value(value);
-        }
+        self.values.extend(other.values.iter());
         self
     }
 
     pub fn referent(&self) -> Self {
         Self {
             loans: self.loans.referent(),
-            values: self.values.iter().map(|value| value.referent()).collect(),
+            values: self.values.iter().map(HeldValue::referent).collect(),
         }
     }
 
     pub fn within(self) -> Self {
         Self {
             loans: self.loans.within(),
-            values: self.values.into_iter().map(HeldValue::within).collect(),
+            values: self.values.iter().map(HeldValue::within).collect(),
         }
     }
 
@@ -47,13 +46,7 @@ impl Holdings {
     }
 
     pub fn values(&self) -> impl Iterator<Item = HeldValue> + '_ {
-        self.values.iter().copied()
-    }
-
-    fn hold_value(&mut self, value: HeldValue) {
-        if let Err(position) = self.values.binary_search(&value) {
-            self.values.insert(position, value);
-        }
+        self.values.iter()
     }
 }
 
@@ -61,7 +54,7 @@ impl From<LoanId> for Holdings {
     fn from(loan: LoanId) -> Self {
         Self {
             loans: iter::once((LoanDepth::TOP, loan)).collect(),
-            values: Vec::new(),
+            values: SortedSet::default(),
         }
     }
 }

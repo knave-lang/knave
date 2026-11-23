@@ -1,3 +1,12 @@
+(defstruct tag
+  :text str)
+
+(deftrait tagged
+  (tag-of (fn ((ref self)) tag)))
+
+(impl tagged str
+  (tag-of (text) (->tag :text text)))
+
 (deftrait shouted
   (shout (fn ((ref self)) string)))
 
@@ -15,4 +24,5 @@
 (defn main ()
   (println (shout "a")
            (shout (str "b" 1))
-           (keep (str "c" 2))))
+           (keep (str "c" 2))
+           (:text (tag-of "d"))))

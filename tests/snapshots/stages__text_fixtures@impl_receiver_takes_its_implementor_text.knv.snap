@@ -3,6 +3,10 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/text/impl_receiver_takes_its_implementor_text.knv
 ---
+struct tag
+  text: owned, written a view
+method tag-of
+  text: a view
 method shout
   text: a view
   result: owned
@@ -12,3 +16,5 @@ method shout
 method keep
   text: owned
   result: owned
+needs owned text
+  text/impl_receiver_takes_its_implementor_text.knv:8:31

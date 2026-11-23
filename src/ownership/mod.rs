@@ -96,7 +96,7 @@ use uncoerced_parameters::UncoercedMethodParameters;
 use values::FunctionValueModes;
 
 pub use changes::InPlaceChanges;
-pub use gate::{EnforcedOwnership, OwnershipGate, WaivedOwnership};
+pub use gate::{EnforcedOwnership, OwnershipGate, TextReportOwnership, WaivedOwnership};
 pub use loans::{LabeledSpans, LoanConflicts, LoanFacts};
 pub use mutation::ChangedValues;
 use regions::RegionRecord;

@@ -7,8 +7,8 @@ use crate::diagnostic::Diagnostics;
 use crate::expand::Program;
 use crate::ownership::{InPlaceChanges, OwnershipGate};
 use crate::types::{
-    DefinitionGraph, FormResult, FormResults, InferredCopies, InstantiationReport, LiteralDefaults,
-    MainResult, Pinning, Type, TypeChecker, TypedProgram,
+    DefinitionGraph, DroppedInlineSchemes, FormResult, FormResults, InferredCopies,
+    InstantiationReport, LiteralDefaults, MainResult, Pinning, Type, TypeChecker, TypedProgram,
 };
 
 pub struct ProgramChecker;
@@ -25,7 +25,7 @@ impl ProgramChecker {
         program: &Program,
         printer: BindingId,
     ) -> Result<Vec<FormResult>, Diagnostics> {
-        let typed = TypeChecker::check(
+        let typed = TypeChecker::check::<DroppedInlineSchemes>(
             program,
             &DefinitionGraph::of(program),
             &FxHashSet::default(),
@@ -214,7 +214,7 @@ impl<'a, Gate: OwnershipGate> CheckRuns<'a, Gate> {
         pins: &FxHashMap<BindingId, Type>,
         defaulting: DefaultingRule,
     ) -> Result<TypedProgram, Diagnostics> {
-        TypeChecker::check(
+        TypeChecker::check::<Gate::Schemes>(
             self.program,
             &self.graph,
             &self.blocked,

@@ -24,7 +24,7 @@ pub(super) struct WrittenTypeFixture {
 impl WrittenTypeFixture {
     pub(super) fn new() -> Self {
         Self {
-            checker: TypeChecker::new(BindingArena::default()),
+            checker: TypeChecker::new::<crate::types::DroppedInlineSchemes>(BindingArena::default()),
         }
     }
 

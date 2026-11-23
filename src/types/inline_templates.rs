@@ -4,6 +4,7 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::inline_scheme::InlineScheme;
+use super::inline_schemes::SchemeRecording;
 use super::registered_template::RegisteredTemplate;
 use super::synthetic_template::SyntheticTemplate;
 use super::template_ties::TemplateTies;
@@ -14,16 +15,36 @@ use crate::core::RustTemplate;
 pub struct InlineTemplates {
     written: FxHashMap<Rc<str>, RegisteredTemplate>,
     schemes: FxHashMap<Rc<str>, InlineScheme>,
+    recording: SchemeRecording,
     compiler: RefCell<FxHashMap<Rc<str>, RegisteredTemplate>>,
+}
+
+impl From<SchemeRecording> for InlineTemplates {
+    fn from(recording: SchemeRecording) -> Self {
+        Self {
+            recording,
+            ..Self::default()
+        }
+    }
 }
 
 impl InlineTemplates {
     pub fn register(&mut self, text: &Rc<str>, scheme: &Scheme, ties: Option<TemplateTies>) {
+        if self.recording == SchemeRecording::Kept {
+            self.keep_scheme(text, scheme);
+        }
+        self.widen_ties(text, ties);
+    }
+
+    fn keep_scheme(&mut self, text: &Rc<str>, scheme: &Scheme) {
         let widened = match self.schemes.remove(text) {
             Some(known) => known.widened(scheme),
             None => InlineScheme::One(Rc::new(scheme.clone())),
         };
         self.schemes.insert(Rc::clone(text), widened);
+    }
+
+    fn widen_ties(&mut self, text: &Rc<str>, ties: Option<TemplateTies>) {
         match self.written.get_mut(text) {
             Some(known) => known.widen(ties),
             None => {
@@ -74,6 +95,7 @@ mod tests {
     use crate::core::{PrimitiveType, RustTemplate, TypeExpr, TypeExprKind};
     use crate::source::{SourceId, Span};
     use crate::types::SyntheticTemplate;
+    use crate::types::inline_schemes::SchemeRecording;
     use crate::types::template_ties::TemplateTies;
     use crate::types::ty::{Scheme, Type};
 
@@ -133,7 +155,7 @@ mod tests {
 
     #[test]
     fn a_text_registered_twice_with_one_shape_keeps_its_scheme() {
-        let mut templates = InlineTemplates::default();
+        let mut templates = InlineTemplates::from(SchemeRecording::Kept);
         let written = InlineFixture::written("{0}");
         templates.register(&written.template, &InlineFixture::scheme(), None);
         templates.register(&written.template, &InlineFixture::scheme(), None);
@@ -145,12 +167,20 @@ mod tests {
 
     #[test]
     fn a_text_registered_with_two_shapes_has_no_single_scheme() {
-        let mut templates = InlineTemplates::default();
+        let mut templates = InlineTemplates::from(SchemeRecording::Kept);
         let written = InlineFixture::written("{0}");
         let mut other = InlineFixture::scheme();
         other.body = Type::bool();
         templates.register(&written.template, &InlineFixture::scheme(), None);
         templates.register(&written.template, &other, None);
+        assert!(templates.scheme("{0}").is_none());
+    }
+
+    #[test]
+    fn a_check_that_drops_schemes_keeps_none() {
+        let mut templates = InlineTemplates::default();
+        let written = InlineFixture::written("{0}");
+        templates.register(&written.template, &InlineFixture::scheme(), None);
         assert!(templates.scheme("{0}").is_none());
     }
 

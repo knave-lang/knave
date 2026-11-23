@@ -158,7 +158,7 @@ pub(super) struct VariantArmReference {
 }
 
 impl TypeChecker {
-    pub(super) fn new(bindings: BindingArena) -> Self {
+    pub(super) fn new<Schemes: super::InlineSchemes>(bindings: BindingArena) -> Self {
         Self {
             bindings,
             unifier: Unifier::default(),
@@ -188,7 +188,7 @@ impl TypeChecker {
             single_field_readers: FxHashMap::default(),
             deferred: DeferredDecisions::default(),
             vector_bases: FxHashSet::default(),
-            template_borrows: TemplateBorrows::default(),
+            template_borrows: TemplateBorrows::from(Schemes::RECORDING),
             template_clauses: TemplateClauses::default(),
             recur_target: None,
             checking_function_body: false,
@@ -1459,7 +1459,7 @@ impl TypeChecker {
 }
 
 impl TypeChecker {
-    pub fn check(
+    pub fn check<Schemes: super::InlineSchemes>(
         program: &crate::expand::Program,
         graph: &DefinitionGraph,
         changed_structs: &FxHashSet<BindingId>,
@@ -1469,7 +1469,7 @@ impl TypeChecker {
         default_literal_parameters: bool,
     ) -> Result<super::typed::TypedProgram, Diagnostics> {
         let configured = |facts: &RoundFacts| {
-            let mut checker = Self::new(program.bindings.clone());
+            let mut checker = Self::new::<Schemes>(program.bindings.clone());
             checker.string_view = program.string_view;
             checker.checking = facts.checking();
             checker.changed_structs = changed_structs.clone();

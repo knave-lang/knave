@@ -40,7 +40,7 @@ impl ProjectInspection {
         let skips_entry = defaults_to_project_entry
             && program
                 .project()
-                .is_some_and(|project| project.task_layout().checks_tasks_alone());
+                .is_some_and(|project| project.entry_layout().skips_entry());
         let separated = Rc::new(SeparatedBatches::new(terminal.diagnostic_output()));
         let output = TaskCatalog::user_output(separated);
         terminal.configure(|settings| settings.rerouted_to(output));

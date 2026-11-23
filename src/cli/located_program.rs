@@ -32,7 +32,7 @@ impl LocatedProgram {
         let working_directory = WorkingDirectory::path();
         match LocatedProject::enter_from(working_directory, terminal, FetchingStore::default())? {
             Some(project) => Ok(Self {
-                file: project.entry(),
+                file: project.entry_layout().entry(),
                 project: Some(project),
             }),
             None => Err(Self::report_no_program()),
@@ -58,7 +58,7 @@ impl LocatedProgram {
     pub fn entry_project(&self) -> Option<&LocatedProject> {
         self.project
             .as_ref()
-            .filter(|project| project.is_entry(&self.file))
+            .filter(|project| project.entry_layout().is_entry(&self.file))
     }
 
     fn report_no_program() -> ExitStatus {

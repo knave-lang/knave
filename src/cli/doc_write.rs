@@ -95,7 +95,7 @@ impl DocWriteCommand {
             .placement()
             .file_within(project.source_root().join(DocumentedModules::CALL_SOURCE));
         let modules = SourceWalk::of(&project).module_paths(terminal)?;
-        let entry = project.entry();
+        let entry = project.entry_layout().entry();
         let text = Self::entry_text(entry.path())?;
         let entry = EntryProgram::new(entry, text);
         let modules = DocumentedModules::new(file, entry, modules);

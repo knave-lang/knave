@@ -1,10 +1,15 @@
+use std::path::{Path, PathBuf};
+
+use rustc_hash::FxHashSet;
+
 use super::diagnostic_output::DiagnosticOutput;
 use super::exit_status::ExitStatus;
 use super::leveled_diagnostics::LeveledDiagnostics;
 use super::lint_levels::LintLevels;
 use super::lint_report::LintReport;
+use super::program_file::ProgramFile;
 use crate::diagnostic::Diagnostics;
-use crate::source::SourceMap;
+use crate::source::{SourceId, SourceMap};
 
 pub struct SourceReport<'a> {
     sources: &'a SourceMap,
@@ -27,6 +32,14 @@ impl<'a> SourceReport<'a> {
 
     pub fn sources(&self) -> &'a SourceMap {
         self.sources
+    }
+
+    pub fn canonical_files_from(&self, first_source: usize) -> FxHashSet<PathBuf> {
+        (first_source..self.sources.next_id().index())
+            .filter_map(|index| {
+                ProgramFile::canonical(Path::new(self.sources.file(SourceId::new(index)).name()))
+            })
+            .collect()
     }
 
     pub fn lints(&self) -> LintReport<'a> {

@@ -17,6 +17,7 @@ pub struct OwnedLine {
 impl OwnedLine {
     const LF: &str = "\n";
     const CRLF: &str = "\r\n";
+    const BYTE_ORDER_MARK: &str = "\u{feff}";
 
     pub const fn new(
         path: &'static str,
@@ -50,13 +51,22 @@ impl OwnedLine {
     }
 
     fn upgrade(&self, written: &str) -> Option<LineUpgrade> {
-        if !written.lines().any(|line| self.owns(line)) {
+        let (mark, body) = Self::split_byte_order_mark(written);
+        if !body.lines().any(|line| self.owns(line)) {
             let announcement = format!("added the `{}` line to `{}`", self.pattern(), self.path);
-            return Some(LineUpgrade::new(self.appended_to(written), announcement));
+            let appended = format!("{mark}{}", self.appended_to(body));
+            return Some(LineUpgrade::new(appended, announcement));
         }
-        let replaced = self.replaced_in(written);
+        let replaced = format!("{mark}{}", self.replaced_in(body));
         let announcement = format!("rewrote the `{}` line of `{}`", self.pattern(), self.path);
         (replaced != written).then(|| LineUpgrade::new(replaced, announcement))
+    }
+
+    fn split_byte_order_mark(written: &str) -> (&str, &str) {
+        match written.strip_prefix(Self::BYTE_ORDER_MARK) {
+            Some(body) => (Self::BYTE_ORDER_MARK, body),
+            None => ("", written),
+        }
     }
 
     fn replaced_in(&self, written: &str) -> String {
@@ -163,6 +173,19 @@ mod tests {
             LinguistFixture::upgraded("*.png binary\r\n*.txt text"),
             format!("*.png binary\r\n*.txt text\r\n{LINE}\r\n")
         );
+    }
+
+    #[test]
+    fn an_owned_line_after_a_byte_order_mark_is_replaced_and_keeps_the_mark() {
+        assert_eq!(
+            LinguistFixture::upgraded("\u{feff}*.knv linguist-language=Lisp\n"),
+            format!("\u{feff}{LINE}\n")
+        );
+    }
+
+    #[test]
+    fn a_current_line_after_a_byte_order_mark_needs_no_upgrade() {
+        assert!(OWNED.upgrade(&format!("\u{feff}{LINE}\n")).is_none());
     }
 
     #[test]

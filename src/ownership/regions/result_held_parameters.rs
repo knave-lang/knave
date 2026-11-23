@@ -1,14 +1,18 @@
+use std::cell::RefCell;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::BindingId;
 use crate::types::{
-    BorrowingTypes, ReturnedValues, Type, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem,
-    TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedProgram,
-    TypedStructExpr,
+    BorrowingTypes, DefinitionTable, ReturnedValues, Type, TypedArgument, TypedBinder, TypedBlock,
+    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
+    TypedProgram, TypedStructExpr,
 };
 
 pub(super) struct ResultHeldParameters<'a> {
     program: &'a TypedProgram,
+    definitions: &'a DefinitionTable<'a>,
+    open_callees: RefCell<Vec<BindingId>>,
 }
 
 struct FunctionScope<'l> {
@@ -18,8 +22,12 @@ struct FunctionScope<'l> {
 }
 
 impl<'a> ResultHeldParameters<'a> {
-    pub(super) fn new(program: &'a TypedProgram) -> Self {
-        Self { program }
+    pub(super) fn new(program: &'a TypedProgram, definitions: &'a DefinitionTable<'a>) -> Self {
+        Self {
+            program,
+            definitions,
+            open_callees: RefCell::default(),
+        }
     }
 
     pub(super) fn of(&self, lambda: &TypedLambda) -> FxHashSet<BindingId> {
@@ -31,7 +39,7 @@ impl<'a> ResultHeldParameters<'a> {
         }
         for value in returned.values(lambda) {
             if matches!(value.ty, Type::Function(..)) {
-                held.extend(scope.borrowed_names(value));
+                held.extend(self.held_through(value, &scope));
             }
         }
         let parameters: FxHashSet<BindingId> =
@@ -40,6 +48,44 @@ impl<'a> ResultHeldParameters<'a> {
             .intersection(&parameters)
             .copied()
             .collect()
+    }
+
+    fn held_through(&self, value: &TypedExpr, scope: &FunctionScope) -> FxHashSet<BindingId> {
+        match self.held_arguments(value) {
+            Some(arguments) => arguments
+                .into_iter()
+                .flat_map(|argument| scope.borrowed_names(argument))
+                .collect(),
+            None => scope.borrowed_names(value),
+        }
+    }
+
+    fn held_arguments<'e>(&self, value: &'e TypedExpr) -> Option<Vec<&'e TypedExpr>> {
+        let TypedExprKind::Call(callee, arguments) = &value.kind else {
+            return None;
+        };
+        let TypedExprKind::Leaf(TypedLeaf::Global(function)) = callee.kind else {
+            return None;
+        };
+        let lambda = self
+            .definitions
+            .definition(function)?
+            .value
+            .lambda_value()?;
+        if self.open_callees.borrow().contains(&function) {
+            return None;
+        }
+        self.open_callees.borrow_mut().push(function);
+        let held = self.of(lambda);
+        self.open_callees.borrow_mut().pop();
+        let held_arguments = lambda
+            .params
+            .iter()
+            .zip(arguments)
+            .filter(|(parameter, _)| held.contains(&parameter.binding))
+            .map(|(_, argument)| &argument.value)
+            .collect();
+        Some(held_arguments)
     }
 
     fn collect_held(expr: &TypedExpr, held: &mut Vec<BindingId>) {
@@ -241,7 +287,7 @@ mod tests {
     use super::ResultHeldParameters;
     use crate::core::BindingId;
     use crate::ownership::OwnershipChecker;
-    use crate::types::{TypedExprKind, TypedLambda, TypedProgram, TypedSource};
+    use crate::types::{DefinitionTable, TypedExprKind, TypedLambda, TypedProgram, TypedSource};
 
     struct HeldFixture {
         program: TypedProgram,
@@ -252,6 +298,7 @@ mod tests {
             (defn sizer (items) (fn () (len items)))
             (defn wrap (items other) (println (len other)) (sizer items))
             (defn counter (items) (let (n (len items)) (fn () n)))
+            (defn wrapc (items) (counter items))
             (defn looped! (items)
               (push! items 1)
               (loop (it (iter items))
@@ -313,7 +360,8 @@ mod tests {
 
         fn held_names(&self, function: &str) -> Vec<&str> {
             let lambda = self.lambda(function);
-            let held = ResultHeldParameters::new(&self.program).of(lambda);
+            let definitions = DefinitionTable::of(&self.program);
+            let held = ResultHeldParameters::new(&self.program, &definitions).of(lambda);
             lambda
                 .params
                 .iter()
@@ -348,6 +396,11 @@ mod tests {
     #[test]
     fn a_borrow_passed_to_a_returned_call_is_held() {
         assert_eq!(HeldFixture::new().held_names("wrap"), vec!["items"]);
+    }
+
+    #[test]
+    fn a_borrow_passed_to_a_returned_call_that_holds_nothing_is_not_held() {
+        assert!(HeldFixture::new().held_names("wrapc").is_empty());
     }
 
     #[test]

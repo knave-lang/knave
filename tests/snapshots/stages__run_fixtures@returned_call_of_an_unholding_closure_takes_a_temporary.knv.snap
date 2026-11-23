@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_call_of_an_unholding_closure_takes_a_temporary.knv
+---
+2

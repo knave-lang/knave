@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::core::Keyword;
+use crate::core::{FieldLabel, Keyword};
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
 
@@ -20,8 +20,9 @@ impl<'b> BoundedOwnerProblems<'b> {
         }
     }
 
-    pub(super) fn unbound_read(&self, field: &str, span: Span) -> Diagnostic {
+    pub(super) fn unbound_read(&self, label: &FieldLabel, span: Span) -> Diagnostic {
         let owner = self.owner;
+        let field = &label.name;
         Diagnostic::error(
             DiagnosticCode::NO_FIELDS,
             format!(

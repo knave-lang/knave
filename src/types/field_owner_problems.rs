@@ -1,5 +1,8 @@
 use std::rc::Rc;
 
+use super::field_getter_name::FieldGetterName;
+use super::field_trait::FieldTrait;
+use super::field_traits::FieldTraits;
 use super::problems::TypeProblems;
 use super::shown_read_mismatch::ShownReadMismatch;
 use super::unifier::LiteralKind;
@@ -37,22 +40,21 @@ impl FieldOwnerProblems {
             owner,
             field,
             read,
-            passed,
+            bound,
         } = mismatch;
         let field = format!("{}{field}", Keyword::MARKER);
         Diagnostic::error(
             DiagnosticCode::MISSING_TRAIT,
-            format!("`{owner}` reads `{field}` as `{read}`, but this call passes `{passed}`"),
+            format!(
+                "`{owner}` reads `{field}` as `{read}`, but the `has` bound reads it as `{bound}`"
+            ),
             Label::new(span, format!("this `{owner}` reads `{field}` as `{read}`")),
         )
-        .with_help(format!(
-            "pass a `{read}`, or write `{read}` as the read of the bound"
-        ))
+        .with_help(format!("pass a struct whose `{field}` reads as `{bound}`"))
     }
 
     pub(super) fn unkept(refusal: WrittenRefusal, field: &str, span: Span) -> Diagnostic {
-        let field = format!("{}{field}", Keyword::MARKER);
-        let (title, help) = Self::unkept_wording(refusal, &field);
+        let (title, help) = Self::unkept_wording(refusal, field);
         Diagnostic::error(
             DiagnosticCode::UNKEPT_FIELD_BOUND,
             title,
@@ -68,7 +70,8 @@ impl FieldOwnerProblems {
         }
     }
 
-    fn read_wording(refusal: ReadRefusal, field: &str) -> (String, String) {
+    fn read_wording(refusal: ReadRefusal, bare: &str) -> (String, String) {
+        let field = &format!("{}{bare}", Keyword::MARKER);
         match refusal {
             ReadRefusal::Function => (
                 format!("a `has` bound cannot read the function field `{field}`"),
@@ -76,7 +79,7 @@ impl FieldOwnerProblems {
             ),
             ReadRefusal::Open => (
                 format!("the read of `{field}` in this `has` bound names a type variable"),
-                format!("write the field's type in the bound, as in `(has {field} int)`"),
+                "write the read with no type variable, as the field declares it".to_string(),
             ),
             ReadRefusal::OpenStruct => (
                 format!(
@@ -91,7 +94,8 @@ impl FieldOwnerProblems {
         }
     }
 
-    fn use_wording(refusal: UseRefusal, field: &str) -> (String, String) {
+    fn use_wording(refusal: UseRefusal, bare: &str) -> (String, String) {
+        let field = &format!("{}{bare}", Keyword::MARKER);
         match refusal {
             UseRefusal::ChangesField => (
                 format!("this function changes `{field}` through a `has` bound"),
@@ -109,10 +113,12 @@ impl FieldOwnerProblems {
             ),
             UseRefusal::NameTaken => (
                 format!(
-                    "the trait or getter for `{field}` would take a name the program already uses"
+                    "the Rust trait `{}`, its method `{}` or the module `{}` for `{field}` would take a name the program already uses",
+                    FieldTrait::rust_name(bare),
+                    FieldGetterName::of(bare),
+                    FieldTraits::MODULE
                 ),
-                "rename the type, trait or method that takes the name, or name the struct"
-                    .to_string(),
+                "rename what the program names that way, or name the struct".to_string(),
             ),
         }
     }

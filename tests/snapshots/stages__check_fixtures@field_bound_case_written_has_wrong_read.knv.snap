@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/check/field_bound_case_written_has_wrong_read.knv
 ---
-error[L0404]: `animal` reads `:n` as `bool`, but this call passes `int`
+error[L0404]: `animal` reads `:n` as `bool`, but the `has` bound reads it as `int`
   --> check/field_bound_case_written_has_wrong_read.knv:15:19
    |
 15 |   (println (get-n (->animal true))))
    |                   ^^^^^^^^^^^^^^^ this `animal` reads `:n` as `bool`
    |
-   = help: pass a `bool`, or write `bool` as the read of the bound
+   = help: pass a struct whose `:n` reads as `int`
    = note: run `knave doc L0404` for an explanation

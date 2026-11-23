@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/check/field_read_case_call_written_open_wrong.knv
 ---
-error[L0404]: `animal` reads `:n` as `(option int)`, but this call passes `(option (ref str))`
+error[L0404]: `animal` reads `:n` as `(option int)`, but the `has` bound reads it as `(option (ref str))`
   --> check/field_read_case_call_written_open_wrong.knv:15:18
    |
 15 |   (println (n-or (->animal none) "w")))
    |                  ^^^^^^^^^^^^^^^ this `animal` reads `:n` as `(option int)`
    |
-   = help: pass a `(option int)`, or write `(option int)` as the read of the bound
+   = help: pass a struct whose `:n` reads as `(option (ref str))`
    = note: run `knave doc L0404` for an explanation

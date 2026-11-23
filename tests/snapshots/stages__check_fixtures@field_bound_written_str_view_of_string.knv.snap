@@ -3,20 +3,20 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/check/field_bound_written_str_view_of_string.knv
 ---
-error[L0404]: `book` reads `:title` as `(ref string)`, but this call passes `(ref str)`
+error[L0404]: `book` reads `:title` as `(ref string)`, but the `has` bound reads it as `(ref str)`
   --> check/field_bound_written_str_view_of_string.knv:14:23
    |
 14 |   (println (title-len (->book (str "dune"))))
    |                       ^^^^^^^^^^^^^^^^^^^^^ this `book` reads `:title` as `(ref string)`
    |
-   = help: pass a `(ref string)`, or write `(ref string)` as the read of the bound
+   = help: pass a struct whose `:title` reads as `(ref str)`
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `film` reads `:title` as `(ref string)`, but this call passes `(ref str)`
+error[L0404]: `film` reads `:title` as `(ref string)`, but the `has` bound reads it as `(ref str)`
   --> check/field_bound_written_str_view_of_string.knv:15:23
    |
 15 |   (println (title-len (->film (str "jaws")))))
    |                       ^^^^^^^^^^^^^^^^^^^^^ this `film` reads `:title` as `(ref string)`
    |
-   = help: pass a `(ref string)`, or write `(ref string)` as the read of the bound
+   = help: pass a struct whose `:title` reads as `(ref str)`
    = note: run `knave doc L0404` for an explanation

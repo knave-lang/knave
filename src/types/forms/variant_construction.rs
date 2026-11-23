@@ -1,4 +1,4 @@
-use super::{ChildTypingAgainst, ExpressionForm, VariantSites};
+use super::{ExpectedChildTyping, ExpressionForm, VariantSites};
 use crate::core::{BindingId, Expr};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -42,7 +42,7 @@ impl<'e> VariantConstruction<'e> {
 
 impl<C> ExpressionForm<C> for VariantConstruction<'_>
 where
-    C: ChildTypingAgainst + VariantSites,
+    C: ExpectedChildTyping + VariantSites,
 {
     fn type_against(
         &self,
@@ -60,7 +60,7 @@ where
         }
         let mut typed = Vec::new();
         for (argument, expected) in self.arguments.iter().zip(&site.payload) {
-            typed.push(context.type_child_against(argument, expected)?);
+            typed.push(context.type_child_against(argument, Expectation::plain(expected))?);
         }
         if context.is_result_ok(site.info)
             && let Some(value) = Self::ok_of_try(&typed)
@@ -82,7 +82,7 @@ mod tests {
     use crate::diagnostic::Diagnostic;
     use crate::source::{SourceId, Span};
     use crate::types::expectation::Expectation;
-    use crate::types::forms::{ChildTypingAgainst, ExpressionForm, VariantSites};
+    use crate::types::forms::{ExpectedChildTyping, ExpressionForm, VariantSites};
     use crate::types::ty::Type;
     use crate::types::typed::{TryErrorConversion, TypedExpr, TypedExprKind, TypedLeaf};
     use crate::types::variant_site::VariantSite;
@@ -149,13 +149,13 @@ mod tests {
         }
     }
 
-    impl ChildTypingAgainst for VariantFixture {
+    impl ExpectedChildTyping for VariantFixture {
         fn type_child_against(
             &mut self,
             _child: &Expr,
-            expected: &Type,
+            expectation: Expectation,
         ) -> Result<TypedExpr, Diagnostic> {
-            self.payload_expected.push(expected.clone());
+            self.payload_expected.push(expectation.expected.clone());
             let typed = match self.child_conversion {
                 Some(conversion) => TypedExpr {
                     kind: TypedExprKind::Try {

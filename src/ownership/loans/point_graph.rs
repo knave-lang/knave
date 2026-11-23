@@ -9,17 +9,16 @@ use crate::core::BindingId;
 use crate::source::Span;
 
 pub struct PointGraph {
-    points: usize,
     facts: IndexedPoints,
 }
 
 impl PointGraph {
-    pub fn new(points: usize, facts: IndexedPoints) -> Self {
-        Self { points, facts }
+    pub fn new(facts: IndexedPoints) -> Self {
+        Self { facts }
     }
 
     pub fn points(&self) -> impl DoubleEndedIterator<Item = (PointId, PointFacts<'_>)> + '_ {
-        (0..self.points).map(|index| {
+        (0..self.facts.successors.points()).map(|index| {
             let point = PointId::new(index);
             (point, self.facts(point))
         })
@@ -56,3 +55,4 @@ impl PointGraph {
         PointFacts::new(&self.facts, point)
     }
 }
+

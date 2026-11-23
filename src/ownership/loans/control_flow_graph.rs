@@ -64,15 +64,12 @@ impl ControlFlowGraph {
 
     pub fn finished(self) -> PointGraph {
         let points = self.points;
-        PointGraph::new(
-            points,
-            IndexedPoints {
-                defined: self.defined.indexed(points),
-                used: self.used.indexed(points),
-                received: self.received.indexed(points),
-                accesses: self.accesses.indexed(points),
-                successors: self.successors.indexed(points),
-            },
-        )
+        PointGraph::new(IndexedPoints {
+            defined: self.defined.indexed(points),
+            used: self.used.indexed(points),
+            received: self.received.indexed(points),
+            accesses: self.accesses.indexed(points),
+            successors: self.successors.indexed(points),
+        })
     }
 }

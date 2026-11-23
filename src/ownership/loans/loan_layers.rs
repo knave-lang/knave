@@ -1,33 +1,24 @@
-use std::collections::BTreeSet;
-
 use super::loan_depth::LoanDepth;
 use super::loan_id::LoanId;
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct LoanLayers {
-    layers: Vec<BTreeSet<LoanId>>,
+    loans: Vec<(LoanDepth, LoanId)>,
 }
 
 impl LoanLayers {
     pub fn insert(&mut self, depth: LoanDepth, loan: LoanId) {
-        let index = depth.index();
-        if self.layers.len() <= index {
-            self.layers.resize_with(index + 1, BTreeSet::new);
+        if let Err(position) = self.loans.binary_search(&(depth, loan)) {
+            self.loans.insert(position, (depth, loan));
         }
-        self.layers[index].insert(loan);
     }
 
     pub fn holds(&self, depth: LoanDepth, loan: LoanId) -> bool {
-        self.layers
-            .get(depth.index())
-            .is_some_and(|loans| loans.contains(&loan))
+        self.loans.binary_search(&(depth, loan)).is_ok()
     }
 
     pub fn loans(&self) -> impl Iterator<Item = (LoanDepth, LoanId)> + '_ {
-        self.layers
-            .iter()
-            .enumerate()
-            .flat_map(|(index, loans)| loans.iter().map(move |loan| (LoanDepth::at(index), *loan)))
+        self.loans.iter().copied()
     }
 
     pub fn referent(&self) -> Self {

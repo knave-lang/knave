@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::iter;
 
 use super::held_value::HeldValue;
@@ -10,20 +9,22 @@ use crate::core::BindingId;
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct Holdings {
     loans: LoanLayers,
-    values: BTreeSet<HeldValue>,
+    values: Vec<HeldValue>,
 }
 
 impl Holdings {
     pub fn of_value(binding: BindingId) -> Self {
         Self {
             loans: LoanLayers::default(),
-            values: BTreeSet::from([HeldValue::of(binding)]),
+            values: vec![HeldValue::of(binding)],
         }
     }
 
     pub fn merged(mut self, other: Self) -> Self {
         self.loans.extend(other.loans.loans());
-        self.values.extend(other.values);
+        for value in other.values {
+            self.hold_value(value);
+        }
         self
     }
 
@@ -48,13 +49,19 @@ impl Holdings {
     pub fn values(&self) -> impl Iterator<Item = HeldValue> + '_ {
         self.values.iter().copied()
     }
+
+    fn hold_value(&mut self, value: HeldValue) {
+        if let Err(position) = self.values.binary_search(&value) {
+            self.values.insert(position, value);
+        }
+    }
 }
 
 impl From<LoanId> for Holdings {
     fn from(loan: LoanId) -> Self {
         Self {
             loans: iter::once((LoanDepth::TOP, loan)).collect(),
-            values: BTreeSet::new(),
+            values: Vec::new(),
         }
     }
 }

@@ -16,6 +16,7 @@ impl LoanDepth {
         }
     }
 
+    #[cfg(test)]
     pub fn index(self) -> usize {
         self.0
     }

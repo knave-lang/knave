@@ -9,6 +9,8 @@ impl GithubLinguist {
     pub const PATH: &str = ".gitattributes";
     pub const PATTERN: &str = "*.knv";
     const ATTRIBUTE_PREFIX: &str = "linguist-";
+    const LF: &str = "\n";
+    const CRLF: &str = "\r\n";
     const LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false";
 
     pub fn new_file(&self, root: &Path) -> NewFile {
@@ -49,12 +51,20 @@ impl GithubLinguist {
     }
 
     fn appended_to(written: &str) -> String {
+        let ending = Self::line_ending_of(written);
         let separator = if written.is_empty() || written.ends_with('\n') {
             ""
         } else {
-            "\n"
+            ending
         };
-        format!("{written}{separator}{}\n", Self::LINE)
+        format!("{written}{separator}{}{ending}", Self::LINE)
+    }
+
+    fn line_ending_of(written: &str) -> &'static str {
+        match written.split_once('\n') {
+            Some((first, _)) if first.ends_with('\r') => Self::CRLF,
+            _ => Self::LF,
+        }
     }
 
     fn owns(line: &str) -> bool {
@@ -118,6 +128,14 @@ mod tests {
         assert_eq!(
             LinguistFixture::upgraded("*.knv text\n"),
             format!("*.knv text\n{LINE}\n")
+        );
+    }
+
+    #[test]
+    fn a_crlf_file_takes_the_line_with_crlf() {
+        assert_eq!(
+            LinguistFixture::upgraded("*.png binary\r\n*.txt text"),
+            format!("*.png binary\r\n*.txt text\r\n{LINE}\r\n")
         );
     }
 

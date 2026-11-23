@@ -1,0 +1,7 @@
+(defn reset! ((name (mut string)))
+  (set! name (str "b" 1)))
+
+(defn main ()
+  (local name (str "a" 1))
+  (reset! (mut name))
+  (println name))

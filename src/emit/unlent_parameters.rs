@@ -1,11 +1,7 @@
 use super::problems::EmitProblems;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
-use rustc_hash::FxHashSet;
-
-use crate::types::{
-    CopyRules, ParameterCopy, ParameterRole, Type, TypedBinder, TypedLambda, TypedProgram,
-};
+use crate::types::{CopyRules, ParameterCopy, TypedBinder, TypedLambda, TypedProgram};
 
 pub struct UnlentParameters<'a> {
     program: &'a TypedProgram,
@@ -63,7 +59,7 @@ impl<'a> UnlentParameters<'a> {
         if candidates.is_empty() {
             return Vec::new();
         }
-        let kept = self.kept_by_result();
+        let kept = self.program.ownership.regions.kept_by_result(self.lambda);
         candidates
             .into_iter()
             .map(|param| param.binding)
@@ -75,19 +71,8 @@ impl<'a> UnlentParameters<'a> {
         if self.changes(param) {
             self.result_cannot_hold(param)
         } else {
-            self.returns_closure() && self.is_borrowed(param)
+            self.lambda.returns_closure() && self.is_borrowed(param)
         }
-    }
-
-    fn kept_by_result(&self) -> FxHashSet<BindingId> {
-        let regions = &self.program.ownership.regions;
-        [
-            ParameterRole::HeldByResult,
-            ParameterRole::FlowsThroughSharedArguments,
-        ]
-        .into_iter()
-        .flat_map(|role| regions.of(role, self.lambda))
-        .collect()
     }
 
     fn changes(&self, param: &TypedBinder) -> bool {
@@ -101,15 +86,8 @@ impl<'a> UnlentParameters<'a> {
         param.ty.is_reference() || self.program.type_holds_borrow(&param.ty)
     }
 
-    fn returns_closure(&self) -> bool {
-        self.lambda
-            .body
-            .tail()
-            .is_some_and(|tail| matches!(tail.ty, Type::Function(..)))
-    }
-
     fn result_cannot_hold(&self, param: &TypedBinder) -> bool {
-        self.returns_closure() || self.copy_rules().is_copy(param.ty.referent())
+        self.lambda.returns_closure() || self.copy_rules().is_copy(param.ty.referent())
     }
 
     fn copy_rules(&self) -> CopyRules<'_> {

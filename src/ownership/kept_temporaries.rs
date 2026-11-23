@@ -1,54 +1,54 @@
-use rustc_hash::FxHashMap;
-
-use super::kept_temporary_problems::{KeptTemporary, KeptTemporaryProblems};
+use super::kept_temporary_problems::{KeptTemporary, KeptTemporaryProblems, KeptUntil};
 use super::promoted_constants::PromotedConstants;
+use super::statement_temporary::StatementTemporary;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
 use crate::types::{
-    ParameterRole, Type, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl,
-    TypedDefinition, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
+    DefinitionTable, Regions, ReturnedValues, TypedArgument, TypedBinder, TypedBlock,
+    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
 };
 
 pub struct KeptTemporaries<'p> {
     program: &'p TypedProgram,
-    functions: FxHashMap<BindingId, &'p TypedLambda>,
+    definitions: &'p DefinitionTable<'p>,
+    regions: &'p Regions,
     constants: PromotedConstants<'p>,
     problems: Vec<Diagnostic>,
 }
 
+struct OutlivingCall<'e> {
+    function: BindingId,
+    arguments: &'e [TypedArgument],
+    kept_until: KeptUntil,
+}
+
 impl<'p> KeptTemporaries<'p> {
-    pub fn check(program: &'p TypedProgram) -> Vec<Diagnostic> {
-        let mut check = Self {
+    pub fn new(
+        program: &'p TypedProgram,
+        definitions: &'p DefinitionTable<'p>,
+        regions: &'p Regions,
+    ) -> Self {
+        Self {
             program,
-            functions: Self::functions(program),
+            definitions,
+            regions,
             constants: PromotedConstants::new(program),
             problems: Vec::new(),
-        };
-        for definition in Self::user_definitions(program) {
-            check.walk(&definition.value);
         }
-        check.problems
     }
 
-    fn functions(program: &TypedProgram) -> FxHashMap<BindingId, &TypedLambda> {
-        program
-            .modules
-            .iter()
-            .flat_map(|module| &module.definitions)
-            .filter_map(|definition| match &definition.value.kind {
-                TypedExprKind::Fn(lambda) => Some((definition.binding, lambda.as_ref())),
-                _ => None,
-            })
-            .collect()
-    }
-
-    fn user_definitions(program: &TypedProgram) -> impl Iterator<Item = &TypedDefinition> {
-        program
+    pub fn check(mut self) -> Vec<Diagnostic> {
+        let user_definitions = self
+            .program
             .modules
             .iter()
             .filter(|module| !ModuleSources::is_prelude(&module.path))
-            .flat_map(|module| &module.definitions)
+            .flat_map(|module| &module.definitions);
+        for definition in user_definitions {
+            self.walk(&definition.value);
+        }
+        self.problems
     }
 
     fn walk(&mut self, expr: &'p TypedExpr) {
@@ -62,7 +62,9 @@ impl<'p> KeptTemporaries<'p> {
             TypedExprKind::Recur(arguments) => self.bound_arguments(arguments),
             TypedExprKind::Fn(lambda) => {
                 self.block(&lambda.body);
-                self.returned(&lambda.body);
+                if let Some(tail) = lambda.body.tail() {
+                    self.outliving(tail, KeptUntil::FunctionReturn);
+                }
             }
             TypedExprKind::Control(TypedControl::Block(block)) => self.block(block),
             TypedExprKind::Control(TypedControl::Match(matched)) => {
@@ -80,7 +82,7 @@ impl<'p> KeptTemporaries<'p> {
 
     fn bound_arguments(&mut self, arguments: &'p [TypedArgument]) {
         for argument in arguments {
-            self.outliving(&argument.value);
+            self.outliving(&argument.value, KeptUntil::StatementEnd);
             self.walk(&argument.value);
         }
     }
@@ -89,7 +91,7 @@ impl<'p> KeptTemporaries<'p> {
         for item in &block.items {
             match item {
                 TypedBodyItem::Let(_, value) => {
-                    self.outliving(value);
+                    self.outliving(value, KeptUntil::StatementEnd);
                     self.walk(value);
                 }
                 TypedBodyItem::Expr(expr) => self.walk(expr),
@@ -97,79 +99,56 @@ impl<'p> KeptTemporaries<'p> {
         }
     }
 
-    fn returned(&mut self, body: &'p TypedBlock) {
-        if let Some(tail) = body.tail() {
-            self.outliving(tail);
-        }
-    }
-
-    fn outliving(&mut self, value: &'p TypedExpr) {
-        match &value.kind {
-            TypedExprKind::Control(TypedControl::Block(block)) => self.returned(block),
-            TypedExprKind::Control(TypedControl::If(_, then, otherwise)) => {
-                self.outliving(then);
-                self.outliving(otherwise);
-            }
-            TypedExprKind::Control(TypedControl::Match(matched)) => {
-                for arm in &matched.arms {
-                    self.returned(&arm.body);
-                }
-            }
-            TypedExprKind::Call(callee, _) if let TypedExprKind::Fn(body) = &callee.kind => {
-                self.returned(&body.body);
-            }
-            TypedExprKind::Call(callee, arguments)
-                if let TypedExprKind::Leaf(TypedLeaf::Global(function)) = callee.kind =>
+    fn outliving(&mut self, value: &'p TypedExpr, kept_until: KeptUntil) {
+        for outliving in ReturnedValues::new(self.program).of_value(value) {
+            if let TypedExprKind::Call(callee, arguments) = &outliving.kind
+                && let TypedExprKind::Leaf(TypedLeaf::Global(function)) = callee.kind
             {
-                self.kept_call(function, arguments);
+                self.kept_call(OutlivingCall {
+                    function,
+                    arguments,
+                    kept_until,
+                });
             }
-            _ => {}
         }
     }
 
-    fn kept_call(&mut self, function: BindingId, arguments: &'p [TypedArgument]) {
-        let Some(lambda) = self.functions.get(&function).copied() else {
+    fn kept_call(&mut self, call: OutlivingCall<'p>) {
+        let Some(lambda) = self
+            .definitions
+            .definition(call.function)
+            .and_then(|definition| definition.value.lambda_value())
+        else {
             return;
         };
-        if !Self::returns_closure(lambda) {
+        if !lambda.returns_closure() {
             return;
         }
-        let held = self
-            .program
-            .ownership
-            .regions
-            .of(ParameterRole::HeldByResult, lambda);
-        for (parameter, argument) in lambda.params.iter().zip(arguments) {
-            if held.contains(&parameter.binding) && self.lends_temporary(parameter, &argument.value)
-            {
-                self.report(function, parameter, &argument.value);
+        let kept = self.regions.kept_by_result(lambda);
+        for (parameter, argument) in lambda.params.iter().zip(call.arguments) {
+            if kept.contains(&parameter.binding) && parameter.ty.is_reference() {
+                self.temporary_argument(&call, parameter, &argument.value);
             }
         }
     }
 
-    fn returns_closure(lambda: &TypedLambda) -> bool {
-        lambda
-            .body
-            .tail()
-            .is_some_and(|tail| matches!(tail.ty, Type::Function(..)))
-    }
-
-    fn lends_temporary(&self, parameter: &TypedBinder, argument: &TypedExpr) -> bool {
-        let lent = match &argument.kind {
-            TypedExprKind::Borrow(_, value) => value,
-            _ => argument,
-        };
-        parameter.ty.is_reference() && self.constants.is_unpromoted_value(lent)
-    }
-
-    fn report(&mut self, function: BindingId, parameter: &TypedBinder, argument: &TypedExpr) {
+    fn temporary_argument(
+        &mut self,
+        call: &OutlivingCall,
+        parameter: &TypedBinder,
+        argument: &TypedExpr,
+    ) {
+        if StatementTemporary::of(argument, self.constants).is_none() {
+            return;
+        }
         let bindings = &self.program.bindings;
         self.problems
             .push(KeptTemporaryProblems::kept_temporary(&KeptTemporary {
                 argument: argument.span,
-                callee: bindings.get(function).name(),
+                callee: bindings.get(call.function).name(),
                 parameter: bindings.get(parameter.binding).name(),
                 parameter_span: parameter.span,
+                kept_until: call.kept_until,
             }));
     }
 }

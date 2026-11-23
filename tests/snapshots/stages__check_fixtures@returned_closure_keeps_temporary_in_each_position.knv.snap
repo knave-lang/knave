@@ -10,9 +10,9 @@ error[L0520]: the result of `sizer` keeps a borrow of a temporary
   |              ----- the returned closure keeps this borrow of `items`
 2 |
 3 | (defn later () (fn () (sizer (vec 7))))
-  |                              ^^^^^^^ this temporary is dropped at the end of the statement
+  |                              ^^^^^^^ this temporary is dropped when the function returns, while the result still borrows it
   |
-  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = help: take the value as a parameter of the function that returns this result, so the caller keeps it alive
   = note: run `knave doc L0520` for an explanation
 
 error[L0520]: the result of `sizer` keeps a borrow of a temporary

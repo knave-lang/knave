@@ -33,6 +33,12 @@ impl<'p> ReturnedValues<'p> {
         values
     }
 
+    pub fn of_value<'e>(&self, value: &'e TypedExpr) -> Vec<&'e TypedExpr> {
+        let mut values = Vec::new();
+        Self::visit_value(value, &Lets::default(), &mut |value, _| values.push(value));
+        values
+    }
+
     fn visit_block<'e>(
         block: &'e TypedBlock,
         mut lets: Lets<'e>,

@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_its_kept_value_as_a_parameter.knv
+---
+hi ana

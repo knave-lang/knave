@@ -33,10 +33,6 @@ impl<'a> FieldTraitItems<'a> {
     }
 
     pub fn of_module(&self, module: ModuleId) -> Vec<Vec<Fragment>> {
-        if module != self.program.entry {
-            return Vec::new();
-        }
-        let types = RustTypes::new(self.program, self.plan, self.types, module);
         let field_traits = self
             .program
             .declarations
@@ -44,18 +40,36 @@ impl<'a> FieldTraitItems<'a> {
             .rust_paths()
             .field_traits();
         let traits: Vec<FieldTrait> = (field_traits.plans())
-            .filter_map(|(binding, plan)| self.field_trait(binding, plan))
+            .filter_map(|(binding, plan)| self.field_trait(binding, plan, module))
             .collect();
         if traits.is_empty() {
             return Vec::new();
         }
-        let implementations = (traits.iter()).flat_map(|field_trait| {
-            (field_trait.plan.implementors.iter())
-                .map(|implementor| self.implementation(&types, field_trait, implementor))
-        });
-        std::iter::once(self.trait_module(&traits))
-            .chain(implementations)
+        let trait_module = (module == self.program.entry).then(|| self.trait_module(&traits));
+        trait_module
+            .into_iter()
+            .chain(self.implementations_in(module, &traits))
             .collect()
+    }
+
+    fn implementations_in(&self, module: ModuleId, traits: &[FieldTrait]) -> Vec<Vec<Fragment>> {
+        let types = RustTypes::new(self.program, self.plan, self.types, module);
+        let mut implementations = Vec::new();
+        for field_trait in traits {
+            let local = (field_trait.plan.implementors.iter())
+                .filter(|implementor| self.emitted_module(implementor) == Some(module));
+            implementations.extend(
+                local.map(|implementor| self.implementation(&types, field_trait, implementor)),
+            );
+        }
+        implementations
+    }
+
+    fn emitted_module(&self, implementor: &Type) -> Option<ModuleId> {
+        let Type::Named(binding, _) = implementor else {
+            return None;
+        };
+        self.plan.item(*binding).map(|item| item.module)
     }
 
     fn trait_module(&self, traits: &[FieldTrait]) -> Vec<Fragment> {
@@ -82,6 +96,7 @@ impl<'a> FieldTraitItems<'a> {
         &self,
         binding: BindingId,
         plan: &'p FieldTraitPlan,
+        module: ModuleId,
     ) -> Option<FieldTrait<'p>> {
         let traits = self.program.declarations.traits();
         let name = traits.table().get(binding)?.path.to_string();
@@ -92,7 +107,7 @@ impl<'a> FieldTraitItems<'a> {
             .field_of(binding)?;
         Some(FieldTrait {
             name,
-            path: FieldTraitPath::new(self.program).of(binding, self.program.entry)?,
+            path: FieldTraitPath::new(self.program).of(binding, module)?,
             getter: FieldGetterName::of(field),
             plan,
         })

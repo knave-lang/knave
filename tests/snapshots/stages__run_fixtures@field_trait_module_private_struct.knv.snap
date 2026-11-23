@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_module_private_struct.knv
+---
+hello ana
+hello r2

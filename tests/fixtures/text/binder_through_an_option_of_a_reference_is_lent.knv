@@ -1,0 +1,11 @@
+(defenum token
+  (name string)
+  blank)
+
+(defn first-name (tokens)
+  (match (get tokens 0)
+    ((some (name text)) (str text "!"))
+    (_ (str "none"))))
+
+(defn main ()
+  (println (first-name (vec (token/name (str "a" 1))))))

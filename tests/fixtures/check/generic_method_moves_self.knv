@@ -1,0 +1,34 @@
+(trait ranked (rank (fn (self) i64)))
+
+(struct ledger
+        (opened i64)
+        (closed i64)
+        (balance i64))
+
+(derive ledger copy clone)
+
+(impl ranked ledger
+  (rank (entry) (field entry balance)))
+
+(type higher
+  (where ((a ranked)) (fn (a a) a)))
+
+(defn higher (x y)
+  (if (> (rank x) (rank y)) x y))
+
+(defn pick ((x (ref ledger)) (y (ref ledger)))
+  (higher x y))
+
+(defn main ()
+  (local first
+    (new ledger
+      (opened 1)
+      (closed 2)
+      (balance 30)))
+  (local second
+    (new ledger
+      (opened 3)
+      (closed 4)
+      (balance 40)))
+  (println (field (pick (ref first) (ref second))
+                  balance)))

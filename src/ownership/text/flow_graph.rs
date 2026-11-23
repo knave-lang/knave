@@ -1,6 +1,7 @@
 use rustc_hash::FxHashMap;
 
 use super::flow::Flow;
+use super::flow_origin::FlowOrigin;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::node_partition::NodePartition;
@@ -26,7 +27,7 @@ impl FlowGraph {
         id
     }
 
-    pub fn receive(&mut self, slot: &Slot, value: &TextValue) {
+    pub fn receive(&mut self, slot: &Slot, value: &TextValue, origin: FlowOrigin) {
         let target = self.node(slot.clone());
         for (source, transfer, span) in value.sources() {
             self.flows.push(Flow {
@@ -34,6 +35,7 @@ impl FlowGraph {
                 target,
                 transfer: *transfer,
                 span: *span,
+                origin,
             });
         }
         for (path, nested) in value.nested() {

@@ -1,5 +1,6 @@
 use super::call_results::CallResults;
 use super::flow_graph::FlowGraph;
+use super::flow_origin::FlowOrigin;
 use super::need::Need;
 use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
@@ -43,7 +44,8 @@ impl FlowFixture {
 
     pub fn text(mut self, kind: ReachingText, (into, at): (SlotOwner, usize)) -> Self {
         let value = TextValue::from(Source::Text(kind), Self::span(at));
-        self.graph.receive(&Slot::from(into), &value);
+        self.graph
+            .receive(&Slot::from(into), &value, FlowOrigin::Written);
         self
     }
 
@@ -55,7 +57,28 @@ impl FlowFixture {
     ) -> Self {
         let source = self.node(&from);
         let value = TextValue::from(Source::Slot(source), Self::span(at)).transferred(transfer);
-        self.graph.receive(&Slot::from(into), &value);
+        self.graph
+            .receive(&Slot::from(into), &value, FlowOrigin::Written);
+        self
+    }
+
+    pub fn generated_text(mut self, kind: ReachingText, (into, at): (SlotOwner, usize)) -> Self {
+        let value = TextValue::from(Source::Text(kind), Self::span(at));
+        self.graph
+            .receive(&Slot::from(into), &value, FlowOrigin::Generated);
+        self
+    }
+
+    pub fn generated_flow(
+        mut self,
+        (from, into): (SlotOwner, SlotOwner),
+        transfer: Transfer,
+        at: usize,
+    ) -> Self {
+        let source = self.node(&from);
+        let value = TextValue::from(Source::Slot(source), Self::span(at)).transferred(transfer);
+        self.graph
+            .receive(&Slot::from(into), &value, FlowOrigin::Generated);
         self
     }
 

@@ -1,3 +1,4 @@
+use super::flow_origin::FlowOrigin;
 use super::node_id::NodeId;
 use super::source::Source;
 use super::transfer::Transfer;
@@ -9,4 +10,5 @@ pub struct Flow {
     pub target: NodeId,
     pub transfer: Transfer,
     pub span: Span,
+    pub origin: FlowOrigin,
 }

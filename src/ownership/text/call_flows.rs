@@ -1,4 +1,5 @@
 use super::access::Access;
+use super::call_result_reads::CallResultReads;
 use super::call_target::CallTarget;
 use super::callee::Callee;
 use super::callee_scheme::CalleeScheme;
@@ -240,7 +241,8 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
                     span: self.call.span,
                     transfer: Transfer::Move,
                 };
-                self.context.read(&slot, read)
+                let read = self.context.read(&slot, read);
+                CallResultReads::new(self.context, self.call).read(read, (target, self.values))
             }),
         };
         instantiation

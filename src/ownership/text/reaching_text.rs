@@ -9,7 +9,9 @@ impl ReachingText {
     pub const LENT: Self = Self(1 << 3);
     pub const ASSUMED: Self = Self(1 << 4);
     pub const LENT_MIXED: Self = Self(1 << 5);
-    pub const SHORT_LIVED_VIEWS: Self = Self(Self::BORROWED.0 | Self::ASSUMED.0);
+    pub const PARAMETER: Self = Self(1 << 6);
+    pub const SHORT_LIVED_VIEWS: Self =
+        Self(Self::BORROWED.0 | Self::ASSUMED.0 | Self::PARAMETER.0);
     pub const SHORT_LIVED: Self =
         Self(Self::SHORT_LIVED_VIEWS.0 | Self::LENT.0 | Self::LENT_MIXED.0);
 

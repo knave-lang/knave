@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/view_result_is_static_at_a_call_of_static_text.knv
+---
+struct user
+  name: a 'static view, written a view
+defn label
+  s: a view
+  result: a view
+defn main
+  local made: owned
+  local b: a view

@@ -17,6 +17,7 @@ pub enum SlotOwner {
     Value(Span),
     Argument(Span),
     Query(Span),
+    CallResult(Span),
     Written(Span),
 }
 

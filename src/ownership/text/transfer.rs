@@ -1,5 +1,6 @@
 use super::access::Access;
 use super::reaching_text::ReachingText;
+use crate::core::BindingId;
 use crate::types::Borrow;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -10,6 +11,7 @@ pub enum Transfer {
     Lend,
     View,
     Query,
+    Through(BindingId),
 }
 
 impl Transfer {
@@ -64,7 +66,7 @@ impl Transfer {
                 ReachingText::OWNED.with(ReachingText::LENT),
             ),
             Self::Query => ReachingText::NOTHING,
-            Self::View => Self::replace(
+            Self::View | Self::Through(_) => Self::replace(
                 text,
                 ReachingText::OWNED
                     .with(ReachingText::LENT)
@@ -233,6 +235,7 @@ mod tests {
 
     #[test]
     fn a_dereferenced_argument_is_reborrowed_and_any_other_moved() {
+        use crate::core::BindingId;
         use crate::types::Borrow;
         assert_eq!(Transfer::passing(&Borrow::Deref(1)), Transfer::Reborrow);
         assert_eq!(Transfer::passing(&Borrow::Shared), Transfer::Move);

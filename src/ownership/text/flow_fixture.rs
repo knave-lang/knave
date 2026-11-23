@@ -1,3 +1,4 @@
+use super::call_results::CallResults;
 use super::flow_graph::FlowGraph;
 use super::need::Need;
 use super::node_id::NodeId;
@@ -71,7 +72,8 @@ impl FlowFixture {
 
     pub fn representation(&self, owner: SlotOwner) -> Representation {
         let classes = SlotClasses::of(&self.graph);
-        let facts = TextFacts::spread(&classes);
+        let calls = CallResults::of(&self.graph, &classes);
+        let facts = TextFacts::spread(&classes, &calls);
         TextDecisionTable::decide(&self.graph, &classes, &facts).of_slot(&Slot::from(owner))
     }
 
@@ -85,7 +87,8 @@ impl FlowFixture {
 
     fn refusals_where(&self, wanted: impl Fn(RefusalCause) -> bool) -> Vec<usize> {
         let classes = SlotClasses::of(&self.graph);
-        let facts = TextFacts::spread(&classes);
+        let calls = CallResults::of(&self.graph, &classes);
+        let facts = TextFacts::spread(&classes, &calls);
         let table = TextDecisionTable::decide(&self.graph, &classes, &facts);
         TextRefusals::new(&classes, &facts, &table)
             .found()

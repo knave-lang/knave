@@ -3,6 +3,8 @@ mod assoc_flows;
 mod binding_owners;
 mod body_flows;
 mod call_flows;
+mod call_result_reads;
+mod call_results;
 mod call_target;
 mod callee;
 mod callee_scheme;
@@ -64,6 +66,7 @@ mod user_function;
 mod walk_context;
 mod written_bindings;
 
+use call_results::CallResults;
 use slot_classes::SlotClasses;
 use text_decision_table::TextDecisionTable;
 use text_facts::TextFacts;
@@ -89,7 +92,8 @@ impl<'p> TextDecisions<'p> {
     pub fn report(&self, sources: &SourceMap) -> String {
         let (graph, listing) = TextWalk::of(&self.program);
         let classes = SlotClasses::of(&graph);
-        let facts = TextFacts::spread(&classes);
+        let calls = CallResults::of(&graph, &classes);
+        let facts = TextFacts::spread(&classes, &calls);
         let table = TextDecisionTable::decide(&graph, &classes, &facts);
         let refusals = TextRefusals::new(&classes, &facts, &table).found();
         TextReport::new(&self.program, &table, &refusals).written(&listing, sources)

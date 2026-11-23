@@ -64,6 +64,7 @@ impl Slot {
             | SlotOwner::Value(_)
             | SlotOwner::Argument(_)
             | SlotOwner::Query(_)
+            | SlotOwner::CallResult(_)
             | SlotOwner::Written(_) => String::new(),
         }
     }

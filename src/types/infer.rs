@@ -1,9 +1,12 @@
+mod form_capabilities;
 mod labeled_variant;
 mod open_collections;
 mod shared_variables;
 mod short_pattern;
 mod variant_target;
 
+use super::forms::{Conditional, ExpressionForm, IfBranches};
+use super::result_span::ResultSpan;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
@@ -243,7 +246,14 @@ impl TypeChecker {
                     .map(|(block, ty)| (TypedExprKind::Control(TypedControl::Block(block)), ty));
                 Self::typed(inferred, span)
             }
-            Control::If(test, then, otherwise) => self.infer_if(test, then, otherwise, span),
+            Control::If(test, then, otherwise) => {
+                let branches = IfBranches {
+                    test,
+                    then,
+                    otherwise,
+                };
+                Conditional::new(branches, span).type_against(self, None)
+            }
             Control::Match(value, arms) => self.infer_match(value, arms, span),
         }
     }
@@ -367,7 +377,7 @@ impl TypeChecker {
         let mut result: Option<Type> = None;
         for arm in arms {
             let (mut typed_arm, body_type) = self.infer_arm(arm, &pattern_type, expected)?;
-            let span = Self::block_result_span(&typed_arm.body).unwrap_or(typed_arm.span);
+            let span = ResultSpan::of_block(&typed_arm.body).unwrap_or(typed_arm.span);
             self.record_arm_result(
                 &mut result,
                 &mut typed_arms,
@@ -1201,7 +1211,7 @@ impl TypeChecker {
         self.checking_function_body = enclosing_body;
         self.try_target = previous_try;
         let (body, found) = inferred?;
-        let result_span = Self::block_result_span(&body).unwrap_or(span);
+        let result_span = ResultSpan::of_block(&body).unwrap_or(span);
         self.unification()
             .expect(Expectation::new(&result, context), &found, result_span)?;
         let body = self.view_closure_result(body, &result, &found)?;
@@ -2162,68 +2172,6 @@ impl TypeChecker {
             decided.insert(id, borrow);
         }
         DecidedBorrows::new(decided)
-    }
-
-    fn infer_if(
-        &mut self,
-        test: &Expr,
-        then: &Expr,
-        otherwise: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let test = self.infer(test)?;
-        let expanded_from = self.macro_name(span);
-        self.unification().expect(
-            Expectation::new(
-                &Type::bool(),
-                MismatchContext::IfTest {
-                    expanded_from: expanded_from.clone(),
-                },
-            ),
-            &test.ty,
-            test.span,
-        )?;
-        let then = self.infer(then)?;
-        let otherwise = self.infer(otherwise)?;
-        let first = Self::result_span(&then);
-        self.unification().expect(
-            Expectation::new(
-                &then.ty,
-                MismatchContext::IfBranch {
-                    first,
-                    expanded_from,
-                },
-            ),
-            &otherwise.ty,
-            Self::result_span(&otherwise),
-        )?;
-        let ty = then.ty.clone();
-        Ok(TypedExpr {
-            kind: TypedExprKind::Control(TypedControl::If(
-                Box::new(test),
-                Box::new(then),
-                Box::new(otherwise),
-            )),
-            ty,
-            span,
-        })
-    }
-
-    fn block_result_span(block: &TypedBlock) -> Option<Span> {
-        match block.items.last() {
-            Some(TypedBodyItem::Expr(last)) => Some(Self::result_span(last)),
-            _ => None,
-        }
-    }
-
-    fn result_span(expr: &TypedExpr) -> Span {
-        match &expr.kind {
-            TypedExprKind::Control(TypedControl::Block(block)) => match block.items.last() {
-                Some(TypedBodyItem::Expr(last)) => Self::result_span(last),
-                _ => expr.span,
-            },
-            _ => expr.span,
-        }
     }
 
     fn infer_new(

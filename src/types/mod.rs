@@ -75,6 +75,7 @@ mod field_read_problems;
 mod finalize;
 mod first_positions;
 mod form_results;
+mod forms;
 mod generalization;
 #[cfg(test)]
 mod generalization_fixture;
@@ -172,6 +173,7 @@ mod reopened_parameter;
 mod reopened_parameters;
 mod result_borrow_source;
 mod result_region;
+mod result_span;
 mod returned_let;
 mod returned_values;
 mod round_facts;

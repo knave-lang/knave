@@ -84,17 +84,12 @@ impl UpgradeCommand {
         let Ok(written) = fs::read_to_string(&path) else {
             return Ok(false);
         };
-        let upgraded = line.upgraded(&written);
-        if upgraded == written {
+        let Some(upgrade) = line.upgrade(&written) else {
             return Ok(false);
-        }
-        fs::write(&path, upgraded)
+        };
+        fs::write(&path, upgrade.text())
             .map_err(|error| ProgramFile::report_unwritable(&path, &error))?;
-        StandardError::write_line(format_args!(
-            "rewrote the `{}` line of `{}`",
-            GithubLinguist::PATTERN,
-            GithubLinguist::PATH
-        ));
+        StandardError::write_line(format_args!("{}", line.announcement(&upgrade)));
         Ok(true)
     }
 

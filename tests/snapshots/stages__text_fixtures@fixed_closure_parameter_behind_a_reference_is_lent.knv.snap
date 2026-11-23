@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/fixed_closure_parameter_behind_a_reference_is_lent.knv
+---
+defn main
+  local words[0]: owned
+  local word: lent

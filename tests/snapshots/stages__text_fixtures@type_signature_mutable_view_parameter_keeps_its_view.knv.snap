@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/type_signature_mutable_view_parameter_keeps_its_view.knv
+---
+defn swap-in!
+  m: a view
+defn main
+  local s: owned
+  local r: a view

@@ -235,3 +235,61 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ReachSearch;
+    use crate::core::BindingId;
+    use crate::types::{DefinitionTable, ProgramReach, TypedProgram, TypedSource};
+
+    struct ReachFixture {
+        program: TypedProgram,
+    }
+
+    impl ReachFixture {
+        const ENTRY_CALLING_ITS_OWN_AND_A_PRELUDE_FUNCTION: &str = "
+            (defn helper () 1)
+            (defn main () (println (+ (helper) (sum (vec 1 2)))))";
+
+        fn new() -> Self {
+            Self {
+                program: TypedSource::expand(Self::ENTRY_CALLING_ITS_OWN_AND_A_PRELUDE_FUNCTION)
+                    .typed(),
+            }
+        }
+
+        fn reach(&self) -> ProgramReach {
+            ReachSearch::of(&self.program, &DefinitionTable::of(&self.program))
+        }
+
+        fn definition(&self, name: &str) -> BindingId {
+            self.program
+                .modules
+                .iter()
+                .flat_map(|module| &module.definitions)
+                .map(|definition| definition.binding)
+                .find(|binding| self.program.bindings.get(*binding).name() == name)
+                .expect("the fixture reaches the definition")
+        }
+    }
+
+    #[test]
+    fn a_definition_used_only_from_its_own_module_is_reached_but_not_shared() {
+        let fixture = ReachFixture::new();
+        let reach = fixture.reach();
+        let helper = fixture.definition("helper");
+        assert!(reach.reached.contains(&helper));
+        assert!(!reach.used_from_other_modules.contains(&helper));
+    }
+
+    #[test]
+    fn a_prelude_definition_the_entry_calls_is_used_from_another_module() {
+        let fixture = ReachFixture::new();
+        let reach = fixture.reach();
+        assert!(
+            reach
+                .used_from_other_modules
+                .contains(&fixture.definition("sum"))
+        );
+    }
+}

@@ -1,5 +1,5 @@
+use super::if_operands::IfOperands;
 use super::{ChildTyping, ExpressionForm, MacroOrigins, TypeFitting};
-use crate::core::Expr;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::expectation::Expectation;
@@ -9,19 +9,13 @@ use crate::types::ty::Type;
 use crate::types::typed::{TypedControl, TypedExpr, TypedExprKind};
 
 pub(in crate::types) struct Conditional<'e> {
-    branches: IfBranches<'e>,
+    operands: IfOperands<'e>,
     span: Span,
 }
 
-pub(in crate::types) struct IfBranches<'e> {
-    pub(in crate::types) test: &'e Expr,
-    pub(in crate::types) then: &'e Expr,
-    pub(in crate::types) otherwise: &'e Expr,
-}
-
 impl<'e> Conditional<'e> {
-    pub(in crate::types) fn new(branches: IfBranches<'e>, span: Span) -> Self {
-        Self { branches, span }
+    pub(in crate::types) fn new(operands: IfOperands<'e>, span: Span) -> Self {
+        Self { operands, span }
     }
 }
 
@@ -34,7 +28,7 @@ where
         context: &mut C,
         _expectation: Option<Expectation>,
     ) -> Result<TypedExpr, Diagnostic> {
-        let test = context.type_child(self.branches.test)?;
+        let test = context.type_child(self.operands.test)?;
         let expanded_from = context.macro_name(self.span);
         let bool_type = Type::bool();
         let test_context = MismatchContext::IfTest {
@@ -45,8 +39,8 @@ where
             &test.ty,
             test.span,
         )?;
-        let then = context.type_child(self.branches.then)?;
-        let otherwise = context.type_child(self.branches.otherwise)?;
+        let then = context.type_child(self.operands.then)?;
+        let otherwise = context.type_child(self.operands.otherwise)?;
         let branch_context = MismatchContext::IfBranch {
             first: ResultSpan::of(&then),
             expanded_from,
@@ -72,11 +66,12 @@ where
 mod tests {
     use std::rc::Rc;
 
-    use super::{Conditional, IfBranches};
+    use super::Conditional;
     use crate::core::{Expr, ExprKind, Leaf, Literal, PrimitiveType};
     use crate::diagnostic::Diagnostic;
     use crate::source::{SourceId, Span};
     use crate::types::expectation::Expectation;
+    use crate::types::forms::IfOperands;
     use crate::types::forms::{ChildTyping, ExpressionForm, MacroOrigins, TypeFitting};
     use crate::types::problems::MismatchContext;
     use crate::types::ty::Type;
@@ -105,12 +100,12 @@ mod tests {
         }
 
         fn type_if(&mut self, test: &Expr, then: &Expr, otherwise: &Expr) -> TypedExpr {
-            let branches = IfBranches {
+            let operands = IfOperands {
                 test,
                 then,
                 otherwise,
             };
-            Conditional::new(branches, Self::span(0))
+            Conditional::new(operands, Self::span(0))
                 .type_against(self, None)
                 .unwrap_or_else(|_| panic!("the fixture fits every type"))
         }

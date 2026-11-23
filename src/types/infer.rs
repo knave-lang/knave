@@ -5,7 +5,7 @@ mod shared_variables;
 mod short_pattern;
 mod variant_target;
 
-use super::forms::{Conditional, ExpressionForm, IfBranches};
+use super::forms::{Conditional, ExpressionForm, IfOperands};
 use super::result_span::ResultSpan;
 use std::rc::Rc;
 
@@ -247,12 +247,12 @@ impl TypeChecker {
                 Self::typed(inferred, span)
             }
             Control::If(test, then, otherwise) => {
-                let branches = IfBranches {
+                let operands = IfOperands {
                     test,
                     then,
                     otherwise,
                 };
-                Conditional::new(branches, span).type_against(self, None)
+                Conditional::new(operands, span).type_against(self, None)
             }
             Control::Match(value, arms) => self.infer_match(value, arms, span),
         }

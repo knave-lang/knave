@@ -45,8 +45,9 @@ impl<'g> StoredParameters<'g> {
     fn newly_stored(&self, stored: &FxHashSet<BindingId>) -> Vec<BindingId> {
         self.parameters()
             .filter(|(binding, class)| {
-                let pinned = self.graph.partition().need(*class) == Some(Need::View);
-                !pinned && !stored.contains(binding) && self.reaches_storage(*class, stored)
+                !self.keeps_its_pin(*class)
+                    && !stored.contains(binding)
+                    && self.reaches_storage(*class, stored)
             })
             .map(|(binding, _)| binding)
             .collect()
@@ -77,10 +78,17 @@ impl<'g> StoredParameters<'g> {
 
     fn stores(&self, class: NodeId, stored: &FxHashSet<BindingId>) -> bool {
         match self.graph.partition().need(class) {
-            Some(Need::View | Need::Lent) => false,
+            _ if self.keeps_its_pin(class) => false,
             Some(Need::Owned) => true,
-            Some(Need::OwnedOrMixed) | None => self.holds_stored_place(class, stored),
+            _ => self.holds_stored_place(class, stored),
         }
+    }
+
+    fn keeps_its_pin(&self, class: NodeId) -> bool {
+        matches!(
+            self.graph.partition().need(class),
+            Some(Need::View | Need::Lent)
+        )
     }
 
     fn holds_stored_place(&self, class: NodeId, stored: &FxHashSet<BindingId>) -> bool {

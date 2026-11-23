@@ -1,0 +1,15 @@
+(defstruct (boxed t)
+  :v t)
+
+(defstruct (held t)
+  :v t)
+
+(type v-of
+  (where ((a (has :v (ref int))))
+    (fn ((ref a)) int)))
+
+(defn v-of (x) (deref (:v x)))
+
+(defn main ()
+  (println (v-of (->boxed 2)))
+  (println (v-of (->held 3))))

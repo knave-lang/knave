@@ -84,6 +84,10 @@ impl FieldOwnerProblems {
                 ),
                 "pass the struct with its type arguments fixed, or name the struct".to_string(),
             ),
+            ReadRefusal::StructReadsOtherwise => (
+                format!("a struct passed to this `has` bound reads `{field}` as a different type"),
+                format!("write the type that each passed struct reads `{field}` as in the bound"),
+            ),
             ReadRefusal::Otherwise => (
                 format!("another `has` bound reads `{field}` as a different type"),
                 format!("write `{field}` with one read type in every `has` bound"),

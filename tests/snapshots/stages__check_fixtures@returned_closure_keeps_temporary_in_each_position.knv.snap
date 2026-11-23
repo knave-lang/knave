@@ -110,3 +110,15 @@ error[L0520]: the result of `sizer` keeps a borrow of a temporary
    |
    = help: bind the argument with `let` before the call, so it lives as long as the result
    = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `sizer` keeps a borrow of a temporary
+  --> check/returned_closure_keeps_temporary_in_each_position.knv:24:34
+   |
+ 1 | (defn sizer (items) (fn () (len items)))
+   |              ----- the returned closure keeps this borrow of `items`
+...
+24 |     ((some n) (let (inner (sizer (vec n))) (println (inner))))
+   |                                  ^^^^^^^ this temporary is dropped at the end of the statement
+   |
+   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation

@@ -6,7 +6,7 @@ mod short_pattern;
 mod variant_target;
 
 use super::forms::{
-    Body, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, Sequence,
+    Association, Body, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, Sequence,
     TypeTextRequest, VariantConstruction,
 };
 use super::result_span::ResultSpan;
@@ -162,7 +162,7 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         match kind {
-            ExprKind::Assoc(path) => self.infer_assoc(path, span),
+            ExprKind::Assoc(path) => Association::new(path, span).type_against(self, None),
             ExprKind::MapAt(operation, value, arguments) => {
                 self.infer_map_at(*operation, value, arguments, span)
             }
@@ -1982,65 +1982,6 @@ impl TypeChecker {
         ))
     }
 
-    fn infer_assoc(&mut self, path: &KeyedPath, span: Span) -> Result<TypedExpr, Diagnostic> {
-        let KeyedPath { value, keys, item } = path;
-        let value = self.infer(value)?;
-        let value = self.moved_field_base(value);
-        let resolved = self.unifier.resolve(&value.ty);
-        if let Some(collection) = Collection::of(&resolved, &self.declarations.types().rust_types)
-            .filter(Collection::is_map)
-        {
-            return self.infer_map_assoc(value, resolved, collection, keys, item, span);
-        }
-        self.infer_vector_assoc(value, keys, item, span)
-    }
-
-    fn infer_map_assoc(
-        &mut self,
-        value: TypedExpr,
-        resolved: Type,
-        collection: Collection,
-        keys: &[Expr],
-        item: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if keys.len() != 1 {
-            return Err(TypeProblems::wrong_argument_count(1, keys.len(), span));
-        }
-        let key = self.infer(&keys[0])?;
-        self.unification()
-            .expect(Expectation::plain(collection.key()), &key.ty, key.span)?;
-        self.check_map_key(&collection, key.span);
-        let item = self.infer(item)?;
-        self.unification()
-            .expect(Expectation::plain(collection.value()), &item.ty, item.span)?;
-        Ok(TypedExpr {
-            kind: TypedExprKind::Assoc(Box::new(value), vec![key], Box::new(item)),
-            ty: resolved,
-            span,
-        })
-    }
-
-    fn infer_vector_assoc(
-        &mut self,
-        value: TypedExpr,
-        keys: &[Expr],
-        item: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let element = self.assoc_element(keys.len(), &value.ty, value.span)?;
-        let typed_keys = self.assoc_keys(keys)?;
-        let item = self.infer(item)?;
-        self.unification()
-            .expect(Expectation::plain(&element), &item.ty, item.span)?;
-        let ty = self.unifier.resolve(&value.ty);
-        Ok(TypedExpr {
-            kind: TypedExprKind::Assoc(Box::new(value), typed_keys, Box::new(item)),
-            ty,
-            span,
-        })
-    }
-
     fn infer_map_at(
         &mut self,
         operation: MapOperation,
@@ -2589,15 +2530,6 @@ impl TypeChecker {
         }
     }
 
-    fn assoc_element(&mut self, depth: usize, base: &Type, span: Span) -> Result<Type, Diagnostic> {
-        let element = self.unifier.fresh();
-        let expected = self.prelude_types().nested_vector_of(depth, &element);
-        self.unification()
-            .expect(Expectation::plain(&expected), base, span)
-            .map_err(|error| self.point_struct_base_to_fields(error, base))?;
-        Ok(element)
-    }
-
     fn point_struct_base_to_fields(&self, error: Diagnostic, base: &Type) -> Diagnostic {
         if self.names_struct(base) {
             error.with_help(TypeProblems::struct_base_help())
@@ -2609,20 +2541,6 @@ impl TypeChecker {
     fn names_struct(&self, ty: &Type) -> bool {
         let declared = self.declared_types();
         matches!(self.unifier.shallow(ty), Type::Named(binding, _) if declared.is_struct(binding))
-    }
-
-    fn assoc_keys(&mut self, keys: &[Expr]) -> Result<Vec<TypedExpr>, Diagnostic> {
-        let mut typed_keys = Vec::new();
-        for key in keys {
-            let typed = self.infer(key)?;
-            self.unification().expect(
-                Expectation::plain(&Collection::INDEX),
-                &typed.ty,
-                typed.span,
-            )?;
-            typed_keys.push(typed);
-        }
-        Ok(typed_keys)
     }
 
     fn infer_update(

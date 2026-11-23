@@ -1,0 +1,8 @@
+(defstruct item
+  :name str)
+
+(type keep (fn ((ref str)) item))
+
+(defn keep (n) (->item :name n))
+
+(defn main () (prn (keep "ana")))

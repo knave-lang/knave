@@ -1,9 +1,10 @@
 use super::function_slots::FunctionSlots;
+use super::need::Need;
 use super::slot::Slot;
 use super::slot_owner::SlotOwner;
 use super::walk_context::WalkContext;
 use crate::core::BindingId;
-use crate::types::{Type, TypedLambda};
+use crate::types::{Type, TypedBinder, TypedLambda};
 
 pub struct TraitMethodSlots<'c, 'w, 'p> {
     context: &'c mut WalkContext<'w, 'p>,
@@ -22,6 +23,13 @@ impl<'c, 'w, 'p> TraitMethodSlots<'c, 'w, 'p> {
             .iter()
             .map(|parameter| (SlotOwner::Parameter(parameter.binding), &parameter.ty))
             .collect();
+        let written = lambda.params.iter().skip(usize::from(receiver));
+        for parameter in
+            written.filter(|parameter| TypedBinder::writes_a_view(None, Some(&parameter.ty)))
+        {
+            let pinned = Slot::from(SlotOwner::Parameter(parameter.binding));
+            self.context.require(pinned, Need::View);
+        }
         let slots = FunctionSlots::new(parameters, (SlotOwner::Result(body), result));
         for (path, own, _) in slots.positions() {
             if receiver && path.below(0).is_some() {

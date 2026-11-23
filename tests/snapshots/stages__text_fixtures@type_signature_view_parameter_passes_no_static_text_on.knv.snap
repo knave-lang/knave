@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/type_signature_view_parameter_passes_no_static_text_on.knv
+---
+struct item
+  name: owned, written a view
+defn keep
+  n: a view
+needs owned text
+  text/type_signature_view_parameter_passes_no_static_text_on.knv:6:30

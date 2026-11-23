@@ -355,7 +355,7 @@ impl<'a> MoveChecker<'a> {
                 self.closure(lambda);
                 Some(lambda.kind)
             }
-            TypedExprKind::Leaf(TypedLeaf::Global(_)) | TypedExprKind::Leaf(TypedLeaf::Rust(_)) => {
+            TypedExprKind::Leaf(TypedLeaf::Global(_) | TypedLeaf::Rust(..)) => {
                 matches!(value.ty, Type::Function(..)).then_some(ClosureKind::Fn)
             }
             TypedExprKind::Leaf(TypedLeaf::Local(other)) => {
@@ -394,7 +394,7 @@ impl<'a> MoveChecker<'a> {
     fn call(&mut self, callee: &TypedExpr, arguments: &[TypedArgument]) {
         if !matches!(
             callee.kind,
-            TypedExprKind::Leaf(TypedLeaf::Global(_)) | TypedExprKind::Leaf(TypedLeaf::Rust(_))
+            TypedExprKind::Leaf(TypedLeaf::Global(_) | TypedLeaf::Rust(..))
         ) {
             let usage = self.callee_usage(callee);
             self.expr(callee, usage);

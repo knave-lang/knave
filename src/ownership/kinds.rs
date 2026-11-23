@@ -185,7 +185,7 @@ impl<'a> ClosureKinds<'a> {
             .filter_map(|definition| {
                 if !matches!(
                     definition.value.kind,
-                    TypedExprKind::Leaf(TypedLeaf::Rust(_))
+                    TypedExprKind::Leaf(TypedLeaf::Rust(..))
                 ) {
                     return None;
                 }

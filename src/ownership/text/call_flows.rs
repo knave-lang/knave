@@ -46,7 +46,7 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
         if let Type::Function(_, parameters, _) = &callee.ty {
             CompoundQueries::new(self.context, self.call).check(parameters, self.values);
         }
-        let Some(target) = Callee::of(callee, self.context.program()) else {
+        let Some(target) = Callee::new(self.context.program()).of(callee) else {
             return self.unknown_result();
         };
         if let Some(value) = target.inline_value(self.context, self.call, self.values) {

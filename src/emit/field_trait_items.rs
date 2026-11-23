@@ -39,6 +39,9 @@ impl<'a> FieldTraitItems<'a> {
             .traits()
             .rust_paths()
             .field_traits();
+        if field_traits.plans().next().is_none() {
+            return Vec::new();
+        }
         let traits: Vec<FieldTrait> = (field_traits.plans())
             .filter_map(|(binding, plan)| self.field_trait(binding, plan, module))
             .collect();

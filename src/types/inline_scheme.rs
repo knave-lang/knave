@@ -153,6 +153,27 @@ mod tests {
     }
 
     #[test]
+    fn a_reference_keeps_one_scheme_only_beside_the_same_reference() {
+        let referring = |generic: usize| {
+            let mut scheme = Schemes::identity(generic);
+            let id = GenericId::new(generic);
+            scheme.body = Type::shared(Type::Generic(id));
+            scheme
+        };
+        let kept = InlineScheme::One(Rc::new(referring(0))).widened(&referring(3));
+        assert!(kept.single().is_some());
+        let mut changed = referring(3);
+        changed.body = Type::mutable(Type::Generic(GenericId::new(3)));
+        let mut changed_again = referring(5);
+        changed_again.body = Type::mutable(Type::Generic(GenericId::new(5)));
+        let writes = InlineScheme::One(Rc::new(changed)).widened(&changed_again);
+        assert!(writes.single().is_some());
+        let mut shared = referring(3);
+        shared.body = Type::mutable(Type::Generic(GenericId::new(3)));
+        assert!(kept.widened(&shared).single().is_none());
+    }
+
+    #[test]
     fn a_scheme_of_another_shape_makes_several() {
         let mut other = Schemes::identity(7);
         other.body = Type::unit();

@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+expression: report
 input_file: tests/fixtures/emit/trait_slice_parameters.knv
 ---
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -25,7 +25,7 @@ fn report(o: Odometer, readings: &[i64]) -> i64 {
     o.total(readings)
 }
 
-fn log<A: Mileage>(m: A, readings: &mut Vec<i64>) {
+fn log<A: Mileage>(m: &A, readings: &mut Vec<i64>) {
     m.record(readings)
 }
 
@@ -34,8 +34,8 @@ fn main() {
     let mut readings: Vec<i64> = vec![1200_i64, 3400_i64];
     println!("{}", report(make_odometer(10), &readings));
     println!("{}", make_meter(2).total(&readings));
-    log(make_odometer(10), &mut readings);
-    log(make_meter(2), &mut readings);
+    log(&make_odometer(10), &mut readings);
+    log(&make_meter(2), &mut readings);
     println!("{} {}", readings[0], crate::rt::length(readings.len()))
 }
 

@@ -1,6 +1,6 @@
 ---
 source: tests/stages.rs
-expression: "Fixture::load(path).emit_report()"
+expression: report
 input_file: tests/fixtures/emit/trait_supertraits.knv
 ---
 #[derive(Clone, Copy, PartialEq)]
@@ -13,15 +13,15 @@ struct Square {
     side: f64,
 }
 
-fn show<A: Shape>(s: A) -> String {
+fn show<A: Shape>(s: &A) -> String {
     s.area();
     s.to_string()
 }
 
 fn main() {
     crate::rt::restore_default_sigpipe();
-    println!("{}", show(Circle { radius: 1.0 }));
-    println!("{}", show(Square { side: 2.0 }))
+    println!("{}", show(&Circle { radius: 1.0 }));
+    println!("{}", show(&Square { side: 2.0 }))
 }
 
 trait Shape: std::fmt::Display + Clone {

@@ -521,7 +521,9 @@ exit 101
             .compiler(&["new", "demo-app"])
             .assert_silent_success();
         let project = format!("(defproject demo-app :knave \"{version}\")\n");
-        sandbox.with_file("demo-app/project.knv", &project)
+        sandbox
+            .committed("demo-app")
+            .with_file("demo-app/project.knv", &project)
     }
 
     fn with_library_project(test_name: &str, library_project: &str) -> Self {
@@ -796,6 +798,16 @@ exit 101
     fn compiler_in(&self, working_directory: &str, arguments: &[&str]) -> Outcome {
         let mut command = self.command(Path::new(Self::COMPILER), arguments);
         command.current_dir(self.directory.join(working_directory));
+        Outcome::of(&mut command)
+    }
+
+    fn compiler_without_programs(&self, working_directory: &str, arguments: &[&str]) -> Outcome {
+        let empty = self.directory.join("empty-bin");
+        fs::create_dir_all(&empty).expect("the sandbox accepts directories");
+        let mut command = self.command(Path::new(Self::COMPILER), arguments);
+        command
+            .current_dir(self.directory.join(working_directory))
+            .env("PATH", empty);
         Outcome::of(&mut command)
     }
 
@@ -9292,6 +9304,30 @@ fn upgrade_rewrites_a_committed_workflow_with_an_added_step() {
 }
 
 #[test]
+fn upgrade_rewrites_a_workflow_edited_since_the_last_commit() {
+    let sandbox = Sandbox::with_committed_project("upgrade_edited_workflow");
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let current = sandbox.contents(&workflow);
+    let sandbox = sandbox.with_file(&workflow, &format!("{current}{OUTDATED_LINE}"));
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    assert_eq!(sandbox.contents(&workflow), current);
+}
+
+#[test]
+fn upgrade_without_git_rewrites_the_workflow_with_no_warning() {
+    let sandbox = Sandbox::with_committed_project("upgrade_without_git");
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let current = sandbox.contents(&workflow);
+    let sandbox = sandbox.with_file(&workflow, &format!("{current}{OUTDATED_LINE}"));
+    let upgrade = sandbox.compiler_without_programs("demo-app", &["upgrade"]);
+    let stderr = upgrade.assert_exit_code(0).stderr();
+    assert!(!stderr.contains("warning"), "{stderr}");
+    assert_eq!(sandbox.contents(&workflow), current);
+}
+
+#[test]
 fn upgrade_keeps_the_recorded_version_when_a_write_fails() {
     let sandbox = Sandbox::with_recorded_version("upgrade_failed_write", EARLIER_VERSION);
     let workflow = format!("demo-app/{WORKFLOW_FILE}");
@@ -9523,10 +9559,7 @@ fn upgrade_writes_no_skill_into_a_project_made_without_one() {
 
 #[test]
 fn upgrade_of_a_current_project_changes_nothing() {
-    let sandbox = Sandbox::new("upgrade_current");
-    sandbox
-        .compiler(&["new", "demo-app"])
-        .assert_silent_success();
+    let sandbox = Sandbox::with_committed_project("upgrade_current");
     let before = sandbox.files_with_contents("demo-app");
     let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
     insta::assert_snapshot!(Sandbox::without_version(
@@ -9541,6 +9574,7 @@ fn upgrade_of_a_current_project_without_a_skill_says_it_is_current() {
     sandbox
         .compiler(&["new", "demo-app", "--skip-agent-skill"])
         .assert_silent_success();
+    let sandbox = sandbox.committed("demo-app");
     let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
     assert!(
         upgrade
@@ -9875,7 +9909,7 @@ fn upgrade_of_an_earlier_version_records_it_without_the_warning() {
 fn upgrade_keeps_a_comment_after_the_project_name_on_its_line() {
     let sandbox = Sandbox::new("upgrade_name_comment");
     sandbox.compiler(&["new", "demo"]).assert_silent_success();
-    let sandbox = sandbox.with_file(
+    let sandbox = sandbox.committed("demo").with_file(
         "demo/project.knv",
         ";; my project\n(defproject demo ; the name\n  :version \"1.0.0\" ; ver\n  (dependencies (serde \"1.0\"))) ; trailing\n\n;; end\n",
     );

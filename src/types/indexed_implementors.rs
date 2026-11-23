@@ -6,7 +6,7 @@ use crate::core::{BindingId, PrimitiveType};
 
 pub struct IndexedImplementors {
     implementors: Vec<Implementor>,
-    index: OnceCell<HeadIndex>,
+    index: OnceCell<Box<HeadIndex>>,
 }
 
 impl IndexedImplementors {
@@ -26,11 +26,17 @@ impl IndexedImplementors {
         self.implementors.iter()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.implementors.is_empty()
+    }
+
     pub fn candidates(&self, target: &Type) -> Candidates<'_> {
         let Some(head) = TypeHead::of(target) else {
             return Candidates::Every(self.implementors.iter());
         };
-        let index = self.index.get_or_init(|| HeadIndex::of(&self.implementors));
+        let index = self
+            .index
+            .get_or_init(|| Box::new(HeadIndex::of(&self.implementors)));
         Candidates::Headed {
             implementors: &self.implementors,
             positions: index.positions(head),
@@ -55,7 +61,7 @@ impl IndexedImplementors {
 }
 
 struct HeadIndex {
-    headed: Vec<(HeadRank, usize)>,
+    headed: Vec<(TypeHead, usize)>,
     open: Vec<usize>,
 }
 
@@ -67,7 +73,7 @@ impl HeadIndex {
         };
         for (position, implementor) in implementors.iter().enumerate() {
             match TypeHead::of(&implementor.scheme.body) {
-                Some(head) => index.headed.push((head.rank(), position)),
+                Some(head) => index.headed.push((head, position)),
                 None => index.open.push(position),
             }
         }
@@ -76,9 +82,8 @@ impl HeadIndex {
     }
 
     fn positions(&self, head: TypeHead) -> MergedPositions<'_> {
-        let rank = head.rank();
-        let start = self.headed.partition_point(|(entry, _)| *entry < rank);
-        let end = self.headed.partition_point(|(entry, _)| *entry <= rank);
+        let start = self.headed.partition_point(|(entry, _)| *entry < head);
+        let end = self.headed.partition_point(|(entry, _)| *entry <= head);
         MergedPositions {
             headed: &self.headed[start..end],
             open: &self.open,
@@ -109,7 +114,7 @@ impl<'i> Iterator for Candidates<'i> {
 }
 
 pub struct MergedPositions<'i> {
-    headed: &'i [(HeadRank, usize)],
+    headed: &'i [(TypeHead, usize)],
     open: &'i [usize],
 }
 
@@ -135,9 +140,7 @@ impl Iterator for MergedPositions<'_> {
     }
 }
 
-type HeadRank = (u8, u32);
-
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum TypeHead {
     Primitive(PrimitiveType),
     Named(BindingId),
@@ -157,17 +160,6 @@ impl TypeHead {
             Type::Function(..) => Some(Self::Function),
             Type::Ref(..) => Some(Self::Ref),
             Type::Mut(..) => Some(Self::Mut),
-        }
-    }
-
-    fn rank(self) -> HeadRank {
-        match self {
-            Self::Primitive(primitive) => (0, primitive as u32),
-            Self::Named(binding) => (1, binding.index()),
-            Self::TraitObject(binding) => (2, binding.index()),
-            Self::Function => (3, 0),
-            Self::Ref => (4, 0),
-            Self::Mut => (5, 0),
         }
     }
 }

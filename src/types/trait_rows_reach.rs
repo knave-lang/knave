@@ -103,7 +103,7 @@ mod tests {
         let mut rows = RowsFixture::lowered();
         rows.assert_reached();
         assert!(rows.get().is_some());
-        assert!(rows.reached_mut().implementors().iter().next().is_none());
+        assert!(rows.reached_mut().implementors().is_empty());
     }
 
     #[test]

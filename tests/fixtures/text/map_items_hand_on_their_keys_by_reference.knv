@@ -1,0 +1,6 @@
+(defn main ()
+  (local moves (hash-map (str "a" 1) 2))
+  (local busiest
+    (max-by-key (iter moves)
+      (fn (pair) (deref (second pair)))))
+  (println (len moves)))

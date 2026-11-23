@@ -4,6 +4,7 @@ use super::slot_owner::SlotOwner;
 use super::source::Source;
 use super::text_position::TextPositions;
 use super::text_value::TextValue;
+use super::transfer::Transfer;
 use super::value_parts::ValueParts;
 use super::walk_context::WalkContext;
 use crate::types::{GenericId, TypedExpr};
@@ -20,7 +21,7 @@ impl<'c, 'w, 'p> InlineFlows<'c, 'w, 'p> {
         Self { context, call }
     }
 
-    pub fn value(self, arguments: &[TextValue], queries: &[usize]) -> TextValue {
+    pub fn value(mut self, arguments: &[TextValue], queries: &[usize]) -> TextValue {
         let owner = SlotOwner::Variable(self.call.span, GenericId::new(Self::SHARED_VARIABLE));
         let variable = self.context.node(Slot::from(owner.clone()));
         let shared = arguments
@@ -38,16 +39,24 @@ impl<'c, 'w, 'p> InlineFlows<'c, 'w, 'p> {
         self.result(variable)
     }
 
-    fn result(&self, variable: NodeId) -> TextValue {
-        TextPositions::of(&self.call.ty).into_iter().fold(
-            TextValue::default(),
-            |value, position| {
-                if position.path.is_top() {
-                    value.merged(TextValue::from(Source::Slot(variable), self.call.span))
-                } else {
-                    value.nesting(position.path, variable)
-                }
-            },
-        )
+    fn result(&mut self, variable: NodeId) -> TextValue {
+        let mut value = TextValue::default();
+        for position in TextPositions::of(&self.call.ty) {
+            let transfer = if position.is_written_reference() {
+                Transfer::Refer
+            } else {
+                Transfer::Move
+            };
+            let read =
+                TextValue::from(Source::Slot(variable), self.call.span).transferred(transfer);
+            if position.path.is_top() {
+                value = value.merged(read);
+            } else {
+                let slot = Slot::new(SlotOwner::Value(self.call.span), position.path.clone());
+                self.context.receive(&slot, &read);
+                value = value.nesting(position.path, self.context.node(slot));
+            }
+        }
+        value
     }
 }

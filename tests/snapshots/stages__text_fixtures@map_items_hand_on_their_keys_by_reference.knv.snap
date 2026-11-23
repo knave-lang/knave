@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/map_items_hand_on_their_keys_by_reference.knv
+---
+defn main
+  local moves[0]: owned
+  local pair[0]: a view, written lent
+  local busiest[0][0]: a view, written lent

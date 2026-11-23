@@ -227,7 +227,7 @@ mod tests {
             };
             let rules = LoanRules::of(self.source.program());
             let passing = <dyn Passing>::of(&argument, None, &rules);
-            let mut graph = ControlFlowGraph::new();
+            let mut graph = ControlFlowGraph::default();
             let mut loans = LoanTable::default();
             let mut lender = Lender::new(&mut graph, &mut loans, PointId::ENTRY);
             let held = Holdings::of_value(self.source.binder("v").binding);
@@ -239,7 +239,7 @@ mod tests {
             let argument = self.argument(local, borrow);
             let rules = LoanRules::of(self.source.program());
             let passing = <dyn Passing>::of(&argument, parameter, &rules);
-            let mut graph = ControlFlowGraph::new();
+            let mut graph = ControlFlowGraph::default();
             let mut loans = LoanTable::default();
             let passed = {
                 let mut lender = Lender::new(&mut graph, &mut loans, PointId::ENTRY);
@@ -248,6 +248,7 @@ mod tests {
             };
             let names = LoanNames::new(&self.source.program().bindings, &self.sources);
             let accesses = graph
+                .finished()
                 .points()
                 .flat_map(|(_, facts)| {
                     facts

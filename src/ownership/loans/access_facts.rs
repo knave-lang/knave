@@ -1,8 +1,8 @@
-use super::control_flow_graph::ControlFlowGraph;
 use super::live_loan::LiveLoan;
 use super::loan_conflict::LoanConflict;
 use super::loan_names::LoanNames;
 use super::place_access::PlaceAccess;
+use super::point_graph::PointGraph;
 use super::point_id::PointId;
 
 pub struct AccessFacts<'b> {
@@ -20,7 +20,7 @@ impl<'b> AccessFacts<'b> {
         }
     }
 
-    pub fn conflicts(&self, graph: &ControlFlowGraph) -> Vec<LoanConflict<'b>> {
+    pub fn conflicts(&self, graph: &PointGraph) -> Vec<LoanConflict<'b>> {
         self.live
             .iter()
             .filter_map(|loan| loan.conflict_with(self.access, self.point, graph))

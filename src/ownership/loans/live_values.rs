@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 
-use super::control_flow_graph::ControlFlowGraph;
+use super::point_graph::PointGraph;
 use super::point_id::PointId;
 use crate::core::BindingId;
 
@@ -9,7 +9,7 @@ pub struct LiveValues {
 }
 
 impl LiveValues {
-    pub fn of(graph: &ControlFlowGraph) -> Self {
+    pub fn of(graph: &PointGraph) -> Self {
         let mut live = Self {
             live_before: graph.points().map(|_| FxHashSet::default()).collect(),
         };
@@ -21,7 +21,7 @@ impl LiveValues {
         &self.live_before[point.index()]
     }
 
-    fn grow(&mut self, graph: &ControlFlowGraph) -> bool {
+    fn grow(&mut self, graph: &PointGraph) -> bool {
         let mut grew = false;
         let mut live = FxHashSet::default();
         for (point, facts) in graph.points().rev() {
@@ -51,18 +51,16 @@ mod tests {
     #[test]
     fn a_value_is_live_from_its_definition_to_its_last_use_and_around_a_loop() {
         let value = BindingId::from_index(7);
-        let mut graph = ControlFlowGraph::new();
+        let mut graph = ControlFlowGraph::default();
         let defined = graph.join(&[PointId::ENTRY]);
-        graph.point_mut(defined).define(value);
+        graph.define(defined, value);
         let head = graph.join(&[defined]);
         let used = graph.join(&[head]);
-        graph
-            .point_mut(used)
-            .using(value, Span::new(SourceId::new(0), 0..1));
+        graph.using(used, value, Span::new(SourceId::new(0), 0..1));
         let back = graph.join(&[used]);
         graph.link(back, head);
         let after = graph.join(&[back]);
-        let live = LiveValues::of(&graph);
+        let live = LiveValues::of(&graph.finished());
         assert!(!live.before(defined).contains(&value));
         assert!(live.before(head).contains(&value));
         assert!(live.before(back).contains(&value));

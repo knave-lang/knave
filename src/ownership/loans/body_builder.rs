@@ -27,12 +27,12 @@ impl<'w> BodyBuilder<'w> {
 
     pub fn read(&mut self, at: PointId, binding: BindingId, span: Span) -> PointId {
         let point = self.graph.join(&[at]);
-        self.graph.point_mut(point).using(binding, span);
+        self.graph.using(point, binding, span);
         point
     }
 
     pub fn define(&mut self, point: PointId, binder: &TypedBinder, held: &Holdings) {
-        self.graph.point_mut(point).define(binder.binding);
+        self.graph.define(point, binder.binding);
         self.regions.flow_into(binder.binding, held);
     }
 
@@ -45,7 +45,7 @@ impl<'w> BodyBuilder<'w> {
     }
 
     pub fn into_facts(self, returned: Holdings, closures: Vec<Closure<'w>>) -> BodyFacts<'w> {
-        BodyFacts::new(self.graph, self.loans, self.regions)
+        BodyFacts::new(self.graph.finished(), self.loans, self.regions)
             .returning(returned)
             .with_closures(closures)
     }

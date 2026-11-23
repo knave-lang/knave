@@ -119,7 +119,7 @@ Take the `exported-tasks` section, and run a library's tasks in the library's ow
 
 ### The new diagnostic
 
-`prelude/task` reports a section name that no `deftask` of the project's tree defines, so it takes the macro range, `L0367`, `missing-exported-task`, and exits 1 as every coded error does. The task program's lookup compares the section's symbols, which reach the prelude with their places in `project.knv` through a builtin, with the tree's tasks. It fires in every program that checks the project's tree: in the library's own project under `knave check` and `knave task`, and in a dependent under each command that loads the library's task program. A project with a section and no `tasks/` still gets a task program, holding no task file, under `knave check` and `knave task`, except a qualified run, so each name is `L0367` there. A name that is not kebab-case cannot name a task, so it is `L0367` too.
+`prelude/task` reports a section name that no `deftask` of the project's tree defines, so it takes the macro range, `L0367`, `missing-exported-task`, and exits 1 as every coded error does. The task program's lookup compares the section's names with the tree's tasks: `src/cli/` reads the project file into the lookup's own session and passes each name as an `:exported-task` argument of `(task-names ...)`, a symbol that keeps its place in `project.knv`. It fires in every program that checks the project's tree: in the library's own project under `knave check` and `knave task`, and in a dependent under each command that loads the library's task program. A project with a section and no `tasks/` still gets a task program, holding no task file, under `knave check` and `knave task`, except a qualified run, so each name is `L0367` there. A name that is not kebab-case cannot name a task, so it is `L0367` too.
 
 ```text
 error[L0367]: no task named `ledelnt` to export
@@ -168,7 +168,7 @@ A word with a `/` that does not split into two nonempty names, as `ledelint/`, `
 - **Reading the section,** because the project file is data that the compiler reads.
 - **Resolving a name and wording its errors,** in `src/cli/`, because the rule picks a program, which no program's prelude can do.
 - **Building a library's task program** with the library as its root project, its working directory at the user's root, its build directory under `library_tasks/`, its checkout bounds, and no lint levels or warnings, in `src/cli/` and `ModuleSources`, because only they touch the file system and run processes.
-- **One builtin,** `(project-exported-tasks)`, which returns the root project's section as symbols that carry their places in `project.knv`, for `L0367`, because a text argument loses the places. Its name differs from the section's, so `knave doc` never confuses the two. The library's entry name needs no builtin: it is an argument of the lookups `src/cli/` writes.
+- **No builtin.** The section's names reach `L0367` as `:exported-task` arguments of the lookup that `src/cli/` writes, each a symbol read from `project.knv` that keeps its place there, and the library's entry name is an argument of the same lookups.
 - **`L0262` on a `use`** of a library's missing root module, for every library, in module resolution.
 - **`knave check` skipping a missing default `:entry`** when the project has tasks to check.
 

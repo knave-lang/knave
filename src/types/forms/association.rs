@@ -1,5 +1,5 @@
 use super::{AssociationTyping, ExpressionForm};
-use crate::core::{Expr, KeyedPath};
+use crate::core::KeyedPath;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::collection::Collection;
@@ -45,8 +45,8 @@ impl<'e> Association<'e> {
         context: &mut C,
         value: TypedExpr,
     ) -> Result<TypedExpr, Diagnostic> {
-        let element = Self::element(context, self.path.keys.len(), &value)?;
-        let keys = Self::type_keys(context, &self.path.keys)?;
+        let element = self.element(context, &value)?;
+        let keys = self.type_keys(context)?;
         let item = context.type_child(&self.path.item)?;
         context.fit(Expectation::plain(&element), &item.ty, item.span)?;
         let ty = context.resolve(&value.ty);
@@ -58,23 +58,23 @@ impl<'e> Association<'e> {
     }
 
     fn element<C: AssociationTyping>(
+        &self,
         context: &mut C,
-        depth: usize,
         base: &TypedExpr,
     ) -> Result<Type, Diagnostic> {
         let element = context.fresh();
-        let expected = context.nested_vector_of(depth, &element);
+        let expected = context.nested_vector_of(self.path.keys.len(), &element);
         let fitted = context.fit(Expectation::plain(&expected), &base.ty, base.span);
         fitted.map_err(|error| context.explain_struct_base(error, &base.ty))?;
         Ok(element)
     }
 
     fn type_keys<C: AssociationTyping>(
+        &self,
         context: &mut C,
-        keys: &[Expr],
     ) -> Result<Vec<TypedExpr>, Diagnostic> {
         let mut typed_keys = Vec::new();
-        for key in keys {
+        for key in &self.path.keys {
             let typed = context.type_child(key)?;
             context.fit(
                 Expectation::plain(&Collection::INDEX),

@@ -13,6 +13,7 @@ mod bound_fit;
 mod bound_origin_problems;
 mod bound_origins;
 mod bound_proof;
+mod bounded_owner_problems;
 mod boxed_payload;
 mod boxes;
 mod callee_borrows;

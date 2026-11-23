@@ -1,0 +1,14 @@
+(defstruct cat
+  :age int)
+
+(defstruct dog
+  :age int)
+
+(type older
+  (where ((a (has :age int))) (fn (a) a)))
+
+(defn older (x)
+  (assoc x :age (+ (:age x) 1)))
+
+(defn main ()
+  (println (:age (older (->cat 1)))))

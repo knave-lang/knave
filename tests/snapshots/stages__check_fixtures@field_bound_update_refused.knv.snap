@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/field_bound_update_refused.knv
+---
+error[L0410]: cannot update `a` through its `has` bounds
+  --> check/field_bound_update_refused.knv:11:10
+   |
+11 |   (assoc x :age (+ (:age x) 1)))
+   |          ^ the bounds on `a` only read `:age`
+   |
+   = help: name the struct in the signature to build an updated copy
+   = note: run `knave doc L0410` for an explanation

@@ -2602,10 +2602,13 @@ impl TypeChecker {
             Type::Ref(_, inner) | Type::Mut(_, inner) if self.names_struct(&inner) => Err(
                 TypeProblems::borrowed_update_base(&self.display().show(&inner), base.span),
             ),
-            other => Err(TypeProblems::no_fields(
-                &self.display().show(&other),
-                base.span,
-            )),
+            other => Err(
+                FieldBound::new(&self.unifier, &self.declarations).unbound_update(
+                    &self.display().show(&other),
+                    &other,
+                    base.span,
+                ),
+            ),
         }
     }
 
@@ -2764,10 +2767,14 @@ impl TypeChecker {
                 Some(literal) => Err(FieldOwnerProblems::literal_owner(literal, value.span)),
                 None => self.unique_owner(&owner, label),
             },
-            other => Err(TypeProblems::no_fields(
-                &self.display().show(&other),
-                value.span,
-            )),
+            other => Err(
+                FieldBound::new(&self.unifier, &self.declarations).unbound_read(
+                    &self.display().show(&other),
+                    &other,
+                    &label.name,
+                    value.span,
+                ),
+            ),
         }
     }
 

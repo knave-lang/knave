@@ -3,20 +3,20 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/check/field_bound_case_written_str_bound_string_struct.knv
 ---
-error[L0404]: `user` reads `:name` as `(ref string)`, but this call passes `(ref str)`
+error[L0404]: `user` reads `:name` as `(ref string)`, but the `has` bound reads it as `(ref str)`
   --> check/field_bound_case_written_str_bound_string_struct.knv:14:22
    |
 14 |   (println (name-len (->user (str "ana"))))
    |                      ^^^^^^^^^^^^^^^^^^^^ this `user` reads `:name` as `(ref string)`
    |
-   = help: pass a `(ref string)`, or write `(ref string)` as the read of the bound
+   = help: pass a struct whose `:name` reads as `(ref str)`
    = note: run `knave doc L0404` for an explanation
 
-error[L0404]: `animal` reads `:name` as `(ref string)`, but this call passes `(ref str)`
+error[L0404]: `animal` reads `:name` as `(ref string)`, but the `has` bound reads it as `(ref str)`
   --> check/field_bound_case_written_str_bound_string_struct.knv:15:22
    |
 15 |   (println (name-len (->animal (str "rex")))))
    |                      ^^^^^^^^^^^^^^^^^^^^^^ this `animal` reads `:name` as `(ref string)`
    |
-   = help: pass a `(ref string)`, or write `(ref string)` as the read of the bound
+   = help: pass a struct whose `:name` reads as `(ref str)`
    = note: run `knave doc L0404` for an explanation

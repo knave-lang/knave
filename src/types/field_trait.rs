@@ -20,6 +20,10 @@ impl FieldTrait {
         }
     }
 
+    pub(super) fn rust_name(field: &str) -> String {
+        NameMangler::type_name(&format!("has-{field}"))
+    }
+
     pub(super) fn binding_info(&self, bindings: &BindingArena) -> BindingInfo {
         let module = (self.implementors.first())
             .and_then(|(owner, _)| bindings.get(*owner).kind().defining_module())
@@ -34,7 +38,7 @@ impl FieldTrait {
             .into_iter()
             .map(|(_, implementor)| implementor);
         let rows = LoweredRows::new(implementors.collect(), Vec::new());
-        let path = NameMangler::type_name(&format!("has-{}", self.field));
+        let path = Self::rust_name(&self.field);
         let read = NameMangler::type_name(&self.field);
         (
             self.field,

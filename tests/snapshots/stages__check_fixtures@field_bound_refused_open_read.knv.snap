@@ -9,5 +9,5 @@ error[L0427]: the read of `:name` in this `has` bound names a type variable
 11 | (defn hello (x) (println (:name x)))
    |                           ^^^^^ this read goes through the `has` bound
    |
-   = help: write the field's type in the bound, as in `(has :name int)`
+   = help: write the read with no type variable, as the field declares it
    = note: run `knave doc L0427` for an explanation

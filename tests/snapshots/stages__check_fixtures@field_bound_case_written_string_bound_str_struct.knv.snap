@@ -3,11 +3,11 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/check/field_bound_case_written_string_bound_str_struct.knv
 ---
-error[L0404]: `animal` reads `:name` as `(ref str)`, but this call passes `(ref string)`
+error[L0404]: `animal` reads `:name` as `(ref str)`, but the `has` bound reads it as `(ref string)`
   --> check/field_bound_case_written_string_bound_str_struct.knv:15:22
    |
 15 |   (println (name-len (->animal "rex"))))
    |                      ^^^^^^^^^^^^^^^^ this `animal` reads `:name` as `(ref str)`
    |
-   = help: pass a `(ref str)`, or write `(ref str)` as the read of the bound
+   = help: pass a struct whose `:name` reads as `(ref string)`
    = note: run `knave doc L0404` for an explanation

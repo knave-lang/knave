@@ -19,7 +19,7 @@ impl<'s, 'a> FieldReadMismatch<'s, 'a> {
         let traits = self.sources.declarations.traits();
         let field_traits = traits.rust_paths().field_traits();
         let field = field_traits.bindings().field_of(missing.bound.binding)?;
-        let passed = missing.shown_argument.as_ref()?;
+        let bound = missing.shown_argument.as_ref()?;
         let selection =
             FieldReadSelection::open_selection(traits.table(), missing.bound, missing.implementor);
         let Selection::Implemented {
@@ -34,7 +34,7 @@ impl<'s, 'a> FieldReadMismatch<'s, 'a> {
             owner: display.show(missing.implementor),
             field: field.to_string(),
             read: display.show(&read),
-            passed: display.show(passed),
+            bound: display.show(bound),
         };
         Some(FieldOwnerProblems::read_mismatch(&mismatch, missing.span))
     }

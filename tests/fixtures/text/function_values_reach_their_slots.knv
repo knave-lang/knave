@@ -1,0 +1,10 @@
+(defn shout (word) (str word "!"))
+
+(defn apply-to (f s) (f s))
+
+(defn main ()
+  (local names (vec (str "a" 1)))
+  (println ((fn (name) (str name "?")) (str "b" 2)))
+  (println (apply-to shout "c"))
+  (println (len (the (vec string)
+                     (collect (map (iter names) shout))))))

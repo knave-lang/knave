@@ -15,6 +15,7 @@ mod flow;
 mod flow_fixture;
 mod flow_graph;
 mod function_value;
+mod global_reads;
 mod inline_declaration;
 mod inline_flows;
 mod inline_rust;

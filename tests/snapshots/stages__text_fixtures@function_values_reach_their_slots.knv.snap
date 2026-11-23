@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/function_values_reach_their_slots.knv
+---
+defn shout
+  result: owned
+defn apply-to
+  f[0]: a view
+  f[result]: owned
+  s: a view
+  result: owned
+defn main
+  local names[0]: owned
+  name: a view, written owned
+  closure result: owned
+  local argument: lent
+  closure result: owned
+  local result[0]: owned

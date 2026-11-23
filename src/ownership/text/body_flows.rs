@@ -4,6 +4,7 @@ use super::call_flows::CallFlows;
 use super::callee::Callee;
 use super::closure_slots::{ClosureSlots, ClosureUse};
 use super::construction_flows::ConstructionFlows;
+use super::global_reads::GlobalReads;
 use super::pattern_flows::PatternFlows;
 use super::place_writes::PlaceWrites;
 use super::reaching_text::ReachingText;
@@ -118,20 +119,29 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
                 value.transferred(Transfer::passing(&argument.borrow))
             })
             .collect();
-        if !matches!(callee.kind, TypedExprKind::Leaf(_)) {
-            self.value(callee);
-        }
+        let function_value = self.function_value(callee);
         for (argument, value) in arguments.iter().zip(&values) {
             if self.owners.writes_a_parameter(&argument.value) {
                 PlaceWrites::new(&mut self.context, expr).into_parameter(value);
             }
         }
         let flows = CallFlows::new(&mut self.context, expr, &values);
+        match function_value {
+            Some(owner) => flows.function_value(callee, owner),
+            None => flows.value(callee),
+        }
+    }
+
+    fn function_value(&mut self, callee: &TypedExpr) -> Option<SlotOwner> {
         match &callee.kind {
-            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => {
-                flows.function_value(callee, self.owners.owner(*binding))
+            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => Some(self.owners.owner(*binding)),
+            TypedExprKind::Leaf(_) => None,
+            _ => {
+                let value = self.value(callee);
+                let owner = SlotOwner::Value(callee.span);
+                self.context.receive(&Slot::from(owner.clone()), &value);
+                Some(owner)
             }
-            _ => flows.value(callee),
         }
     }
 
@@ -148,26 +158,14 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             TypedLeaf::Literal(Literal::String(_)) => {
                 TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
             }
-            TypedLeaf::Local(binding) => self.local(*binding, expr),
-            TypedLeaf::Global(binding) if self.context.program().written().is_value(*binding) => {
-                let read = TextRead::of(expr, Transfer::Refer);
-                let global = Slot::from(SlotOwner::Global(*binding));
-                self.context.read(&global, read)
+            TypedLeaf::Local(binding) if TextPositions::holds_text(&expr.ty) => {
+                let owner = Slot::from(self.owners.owner(*binding));
+                self.context
+                    .read(&owner, TextRead::of(expr, Transfer::Move))
             }
-            TypedLeaf::Global(_) if TextPositions::holds_text(&expr.ty) => {
-                TextValue::from(Source::Text(ReachingText::STATIC), expr.span)
-            }
+            TypedLeaf::Global(binding) => GlobalReads::new(&mut self.context, expr).value(*binding),
             _ => TextValue::default(),
         }
-    }
-
-    fn local(&mut self, binding: BindingId, expr: &TypedExpr) -> TextValue {
-        if !TextPositions::holds_text(&expr.ty) {
-            return TextValue::default();
-        }
-        let owner = self.owners.owner(binding);
-        self.context
-            .read(&Slot::from(owner), TextRead::of(expr, Transfer::Move))
     }
 
     fn closure(

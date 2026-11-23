@@ -3,7 +3,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::flow_graph::FlowGraph;
 use super::need::Need;
 use super::node_id::NodeId;
-use super::slot_owner::SlotOwner;
 use super::source::Source;
 use super::transfer::Transfer;
 use crate::core::BindingId;
@@ -18,10 +17,7 @@ impl<'g> StoredParameters<'g> {
     pub fn new(graph: &'g FlowGraph, classes: &'g FxHashMap<NodeId, Vec<NodeId>>) -> Self {
         let mut moves: FxHashMap<NodeId, Vec<NodeId>> = FxHashMap::default();
         for flow in graph.flows() {
-            let per_call = matches!(graph.slot(flow.target).owner(), SlotOwner::CallResult(_));
-            if let (Source::Slot(source), Transfer::Move, false) =
-                (flow.source, flow.transfer, per_call)
-            {
+            if let (Source::Slot(source), Transfer::Move) = (flow.source, flow.transfer) {
                 moves
                     .entry(graph.partition().class(source))
                     .or_default()

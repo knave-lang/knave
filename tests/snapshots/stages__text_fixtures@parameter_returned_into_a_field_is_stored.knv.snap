@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/parameter_returned_into_a_field_is_stored.knv
+---
+struct item
+  name: owned
+defn take-name
+  name: owned
+  result: owned
+defn main
+  local made: owned
+  local r: lent, written a view

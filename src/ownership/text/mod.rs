@@ -8,6 +8,7 @@ mod callee;
 mod callee_scheme;
 mod class_role;
 mod closure_slots;
+mod compound_queries;
 mod construction_flows;
 mod enum_payloads;
 mod flow;

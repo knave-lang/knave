@@ -27,6 +27,18 @@ impl<'p> MapQueries<'p> {
             .collect()
     }
 
+    pub fn pair(&self, parameters: &[Type]) -> Option<(usize, usize)> {
+        let (map, key) = parameters
+            .iter()
+            .enumerate()
+            .find_map(|(index, parameter)| Some((index, self.key_of(parameter)?)))?;
+        let query = parameters
+            .iter()
+            .enumerate()
+            .position(|(index, parameter)| index != map && Self::refers_to(parameter, &key))?;
+        Some((map, query))
+    }
+
     fn key_of(&self, parameter: &Type) -> Option<Vec<TypePath>> {
         let collection = self.types.collection_of(Self::referent(parameter))?;
         collection

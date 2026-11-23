@@ -7,6 +7,7 @@ use super::slot::Slot;
 pub enum ClassRole {
     NeedsOwned,
     KeepsView,
+    KeepsLent,
     Stored,
     Parameter { tied: Option<NodeId> },
     Local,
@@ -32,6 +33,7 @@ impl ClassRole {
         match self {
             Self::NeedsOwned => Representation::Owned,
             Self::KeepsView => Representation::View,
+            Self::KeepsLent => Representation::Lent,
             Self::Stored => Representation::of_stored(reaching),
             Self::Parameter { tied } => tied.map_or(Representation::View, |variable| {
                 Representation::of_tied_parameter(reaching_at(variable))

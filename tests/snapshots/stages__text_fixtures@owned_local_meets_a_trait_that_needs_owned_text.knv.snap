@@ -6,5 +6,5 @@ input_file: tests/fixtures/text/owned_local_meets_a_trait_that_needs_owned_text.
 defn main
   local name: owned
 method label
-  text: a view, written lent
+  text: lent
   result: owned

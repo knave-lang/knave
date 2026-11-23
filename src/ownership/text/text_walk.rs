@@ -2,6 +2,7 @@ use super::body_flows::BodyFlows;
 use super::enum_payloads::EnumPayloads;
 use super::flow_graph::FlowGraph;
 use super::need::Need;
+use super::representation::Representation;
 use super::slot::Slot;
 use super::slot_listing::SlotListing;
 use super::slot_owner::SlotOwner;
@@ -114,6 +115,26 @@ impl<'w, 'p> TextWalk<'w, 'p> {
         let context = WalkContext::new(self.program, &mut self.graph);
         BodyFlows::new(context, &mut self.listing, binding).walk(lambda);
         self.share_trait_method(binding, lambda);
+        if self.program.written().has_receiver(binding) {
+            self.keep_receiver(lambda);
+        }
+    }
+
+    fn keep_receiver(&mut self, lambda: &TypedLambda) {
+        let Some(receiver) = lambda.params.first() else {
+            return;
+        };
+        let top = TextPositions::of(&receiver.ty)
+            .into_iter()
+            .find(|position| position.path.is_top());
+        let need = match top.map(|position| position.written) {
+            Some(Representation::Owned) => Need::Owned,
+            Some(Representation::View) => Need::View,
+            Some(Representation::Lent) => Need::Lent,
+            _ => return,
+        };
+        let slot = Slot::from(SlotOwner::Parameter(receiver.binding));
+        self.graph.require(slot, need);
     }
 
     fn share_trait_method(&mut self, binding: BindingId, lambda: &TypedLambda) {

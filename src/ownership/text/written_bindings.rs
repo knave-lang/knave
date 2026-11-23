@@ -7,6 +7,7 @@ use crate::types::{Type, TypedProgram};
 pub struct WrittenBindings {
     values: FxHashSet<BindingId>,
     trait_methods: FxHashMap<BindingId, BindingId>,
+    receivers: FxHashSet<BindingId>,
 }
 
 impl WrittenBindings {
@@ -22,11 +23,16 @@ impl WrittenBindings {
         Self {
             values,
             trait_methods: Self::trait_methods(program),
+            receivers: Self::receivers(program),
         }
     }
 
     pub fn is_value(&self, binding: BindingId) -> bool {
         self.values.contains(&binding)
+    }
+
+    pub fn has_receiver(&self, method: BindingId) -> bool {
+        self.receivers.contains(&method)
     }
 
     pub fn trait_method(&self, binding: BindingId) -> Option<BindingId> {
@@ -57,5 +63,22 @@ impl WrittenBindings {
                 })
             })
             .collect()
+    }
+
+    fn receivers(program: &TypedProgram) -> FxHashSet<BindingId> {
+        let traits = program.declarations.traits();
+        let implemented = traits
+            .impls()
+            .iter()
+            .flat_map(|implementation| &implementation.methods)
+            .filter(|method| method.receiver.is_some())
+            .map(|method| method.binding);
+        let defaults = traits
+            .definitions()
+            .iter()
+            .flat_map(|definition| &definition.methods)
+            .filter(|method| method.receiver.is_some())
+            .filter_map(|method| method.default);
+        implemented.chain(defaults).collect()
     }
 }

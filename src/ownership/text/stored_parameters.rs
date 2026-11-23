@@ -76,7 +76,7 @@ impl<'g> StoredParameters<'g> {
 
     fn stores(&self, class: NodeId, stored: &FxHashSet<BindingId>) -> bool {
         match self.graph.partition().need(class) {
-            Some(Need::View) => false,
+            Some(Need::View | Need::Lent) => false,
             Some(Need::Owned) => true,
             Some(Need::OwnedOrMixed) | None => self.holds_stored_place(class, stored),
         }

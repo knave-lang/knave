@@ -95,6 +95,7 @@ impl<'g> SlotClasses<'g> {
         match self.need(class) {
             Some(Need::Owned) => ClassRole::NeedsOwned,
             Some(Need::View) => ClassRole::KeepsView,
+            Some(Need::Lent) => ClassRole::KeepsLent,
             _ if members.iter().any(|slot| self.is_stored(slot)) => ClassRole::Stored,
             _ if members.iter().any(|slot| slot.parameter().is_some()) => {
                 ClassRole::Parameter { tied }

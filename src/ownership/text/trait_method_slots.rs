@@ -17,7 +17,8 @@ impl<'c, 'w, 'p> TraitMethodSlots<'c, 'w, 'p> {
     }
 
     pub fn share(mut self, body: BindingId, (lambda, result): (&TypedLambda, &Type)) {
-        for (part, parameter) in lambda.params.iter().enumerate() {
+        let skipped = usize::from(self.context.program().written().has_receiver(body));
+        for (part, parameter) in lambda.params.iter().enumerate().skip(skipped) {
             let owner = SlotOwner::Parameter(parameter.binding);
             self.unite(&owner, &parameter.ty, &TypePath::default().child(part));
         }

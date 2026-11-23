@@ -1,0 +1,18 @@
+(deftrait shouted
+  (shout (fn ((ref self)) string)))
+
+(deftrait kept
+  (keep (fn (self) string)))
+
+(impl shouted str
+  (shout (text) (str text "!")))
+
+(impl shouted string
+  (shout (text) (str text "?")))
+
+(impl kept string (keep (text) text))
+
+(defn main ()
+  (println (shout "a")
+           (shout (str "b" 1))
+           (keep (str "c" 2))))

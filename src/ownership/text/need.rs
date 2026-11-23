@@ -2,6 +2,7 @@
 pub enum Need {
     Owned,
     View,
+    Lent,
     OwnedOrMixed,
 }
 

@@ -398,8 +398,9 @@ impl<'p> EmitPlan<'p> {
 #[cfg(test)]
 mod tests {
     use crate::emit::RustEmitter;
+    use crate::ownership::OwnershipChecker;
     use crate::source::{SourceId, Span};
-    use crate::types::{ReachSearch, TypedSource};
+    use crate::types::TypedSource;
 
     struct EntryFixture {
         source: TypedSource,
@@ -418,7 +419,7 @@ mod tests {
 
         fn emitted(&self) -> String {
             let mut program = self.source.typed();
-            program.ownership.reach = ReachSearch::of(&program);
+            OwnershipChecker::record_regions(&mut program);
             RustEmitter::emit(&program, Span::new(SourceId::new(0), 0..0))
                 .unwrap_or_else(|_| panic!("the fixture emits"))
                 .code

@@ -1,22 +1,22 @@
 use rustc_hash::FxHashMap;
 
-use super::definition_table::DefinitionTable;
-use super::program_reach::ProgramReach;
-use super::typed::{TypedExpr, TypedProgram};
-use super::{GenericParam, Type, TypedExprKind, TypedLeaf};
 use crate::core::{BindingId, ModuleId};
+use crate::types::{
+    DefinitionTable, GenericParam, ProgramReach, Type, TypedExpr, TypedExprKind, TypedLeaf,
+    TypedProgram,
+};
 
-pub struct ReachSearch<'p> {
+pub struct ReachSearch<'p, 'd> {
     program: &'p TypedProgram,
-    definitions: DefinitionTable<'p>,
+    definitions: &'d DefinitionTable<'p>,
     reach: ProgramReach,
 }
 
-impl<'p> ReachSearch<'p> {
-    pub fn of(program: &'p TypedProgram) -> ProgramReach {
+impl<'p, 'd> ReachSearch<'p, 'd> {
+    pub fn of(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> ProgramReach {
         let mut search = Self {
             program,
-            definitions: DefinitionTable::of(program),
+            definitions,
             reach: ProgramReach {
                 main: Self::find_main(program),
                 type_modules: Self::type_modules(program),

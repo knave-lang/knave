@@ -38,6 +38,7 @@ mod pending_diagnostic;
 mod place_arguments;
 mod problems;
 mod promoted_constants;
+mod reach_search;
 mod read_usage;
 mod recurrence;
 mod refusals;
@@ -70,7 +71,7 @@ use rustc_hash::FxHashMap;
 use crate::core::{BindingArena, BindingId};
 use crate::diagnostic::Diagnostics;
 use crate::types::{
-    CopyRules, InferredCopies, ParameterModes, PendingModeCheck, Pipelines, ReachSearch,
+    CopyRules, DefinitionTable, InferredCopies, ParameterModes, PendingModeCheck, Pipelines,
     TypedExprKind, TypedProgram,
 };
 use aliased_changes::AliasedChanges;
@@ -99,6 +100,7 @@ pub use changes::InPlaceChanges;
 pub use gate::{EnforcedOwnership, OwnershipGate, TextReportOwnership, WaivedOwnership};
 pub use loans::{LabeledSpans, LoanConflicts, LoanFacts};
 pub use mutation::ChangedValues;
+use reach_search::ReachSearch;
 use regions::RegionRecord;
 pub use tail_calls::TailCalls;
 pub use text::TextDecisions;
@@ -135,6 +137,14 @@ impl OwnershipChecker {
 
     pub fn waived(program: &mut TypedProgram) -> InferredCopies {
         Self::findings(program).waived(program)
+    }
+
+    pub fn record_regions(program: &mut TypedProgram) {
+        let definitions = DefinitionTable::of(program);
+        let reach = ReachSearch::of(program, &definitions);
+        let regions = RegionRecord::of(program, &definitions, &reach);
+        program.ownership.reach = reach;
+        program.ownership.regions = regions;
     }
 
     fn findings(program: &mut TypedProgram) -> OwnershipFindings {
@@ -234,8 +244,7 @@ impl OwnershipChecker {
             .check(&LabeledSpans::of(&diagnostics))
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
-        program.ownership.reach = ReachSearch::of(program);
-        program.ownership.regions = RegionRecord::of(program);
+        Self::record_regions(program);
         OwnershipFindings {
             inferred_copies,
             refusals: diagnostics,

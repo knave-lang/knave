@@ -134,6 +134,10 @@ impl TaskCatalog {
             .collect())
     }
 
+    pub fn exports(&self) -> Result<(), ExitStatus> {
+        self.exports
+    }
+
     pub fn listing(&self, terminal: &mut Terminal) -> Result<String, ExitStatus> {
         self.names(terminal)?;
         self.exports?;
@@ -161,7 +165,7 @@ impl TaskCatalog {
             text: block,
             ranges,
         } = FormBlock::of(&lookups);
-        let entered = self.entered_runner(terminal, &block)?;
+        let entered = self.entered_program(terminal, &block)?;
         let typed = terminal.checking().check(&entered.program)?;
         let texts = Self::texts_by_span(&typed);
         names
@@ -177,15 +181,6 @@ impl TaskCatalog {
     }
 
     pub fn entered_program(
-        &self,
-        terminal: &mut Terminal,
-        entry: &str,
-    ) -> Result<EnteredProgram, ExitStatus> {
-        let entered = self.entered_runner(terminal, entry);
-        self.exports.and(entered)
-    }
-
-    fn entered_runner(
         &self,
         terminal: &mut Terminal,
         entry: &str,

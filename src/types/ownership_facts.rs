@@ -1,6 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::parameter_modes::ParameterModes;
+use super::program_reach::ProgramReach;
 use super::regions::Regions;
 use crate::core::BindingId;
 
@@ -11,5 +12,6 @@ pub struct OwnershipFacts {
     pub escaping_lambdas: FxHashSet<BindingId>,
     pub borrowing_lambdas: FxHashMap<BindingId, FxHashSet<BindingId>>,
     pub mutable_function_bindings: FxHashSet<BindingId>,
+    pub reach: ProgramReach,
     pub regions: Regions,
 }

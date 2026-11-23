@@ -1,0 +1,237 @@
+use rustc_hash::FxHashMap;
+
+use super::definition_table::DefinitionTable;
+use super::program_reach::ProgramReach;
+use super::typed::{TypedExpr, TypedProgram};
+use super::{GenericParam, Type, TypedExprKind, TypedLeaf};
+use crate::core::{BindingId, ModuleId};
+
+pub struct ReachSearch<'p> {
+    program: &'p TypedProgram,
+    definitions: DefinitionTable<'p>,
+    reach: ProgramReach,
+}
+
+impl<'p> ReachSearch<'p> {
+    pub fn of(program: &'p TypedProgram) -> ProgramReach {
+        let mut search = Self {
+            program,
+            definitions: DefinitionTable::of(program),
+            reach: ProgramReach {
+                main: Self::find_main(program),
+                type_modules: Self::type_modules(program),
+                ..ProgramReach::default()
+            },
+        };
+        if let Some(main) = search.reach.main {
+            search.visit_definition(main);
+        }
+        search.reach_implementations();
+        search.reach_trait_defaults();
+        search.reach
+    }
+
+    fn find_main(program: &TypedProgram) -> Option<BindingId> {
+        program
+            .entry_module()
+            .definitions
+            .iter()
+            .find(|definition| {
+                program.entry_function == Some(definition.binding)
+                    && matches!(definition.value.kind, TypedExprKind::Fn(_))
+            })
+            .map(|definition| definition.binding)
+    }
+
+    fn type_modules(program: &TypedProgram) -> FxHashMap<BindingId, ModuleId> {
+        program
+            .modules
+            .iter()
+            .flat_map(|module| {
+                module
+                    .structs
+                    .iter()
+                    .chain(module.enums.iter())
+                    .map(move |binding| (*binding, module.id))
+            })
+            .collect()
+    }
+
+    fn reach_trait_defaults(&mut self) {
+        let traits = &self.program.declarations.traits();
+        let defaults: Vec<BindingId> = traits
+            .definitions()
+            .iter()
+            .flat_map(|trait_definition| trait_definition.methods.iter())
+            .filter_map(|method| method.default)
+            .collect();
+        for binding in defaults {
+            self.visit_definition(binding);
+        }
+    }
+
+    fn reach_implementations(&mut self) {
+        let traits = &self.program.declarations.traits();
+        let implementations: Vec<(Type, ModuleId, Vec<BindingId>)> = traits
+            .impls()
+            .iter()
+            .map(|implementation| {
+                (
+                    implementation.implementor.clone(),
+                    implementation.module,
+                    implementation
+                        .methods
+                        .iter()
+                        .map(|method| method.binding)
+                        .collect(),
+                )
+            })
+            .collect();
+        for (implementor, module, methods) in implementations {
+            self.visit_type(&implementor, module);
+            for method in methods {
+                self.visit_definition(method);
+            }
+        }
+    }
+
+    fn visit_definition(&mut self, binding: BindingId) {
+        let Some((definition, module)) = self.definitions.entry(binding) else {
+            return;
+        };
+        if matches!(
+            definition.value.kind,
+            TypedExprKind::Leaf(TypedLeaf::Rust(_))
+        ) || self.reach.reached.contains(&binding)
+        {
+            return;
+        }
+        self.reach.reached.push(binding);
+        self.visit_type(&definition.scheme.body, module);
+        self.visit_params(&definition.scheme.params, module);
+        self.visit_expr(&definition.value, module);
+    }
+
+    fn visit_params(&mut self, params: &[GenericParam], module: ModuleId) {
+        for param in params {
+            let mut arguments: Vec<Type> = param
+                .bounds
+                .iter()
+                .filter_map(|bound| bound.argument.clone())
+                .collect();
+            arguments.extend(
+                self.program
+                    .implied_bounds
+                    .get(&param.id)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|bound| bound.argument.clone()),
+            );
+            for argument in &arguments {
+                self.visit_type(argument, module);
+            }
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &TypedExpr, module: ModuleId) {
+        self.visit_type(&expr.ty, module);
+        if let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &expr.kind {
+            self.reference(*binding, module);
+        }
+        for binder in expr.binders() {
+            self.visit_type(&binder.ty, module);
+        }
+        for child in expr.children() {
+            self.visit_expr(child, module);
+        }
+    }
+
+    fn visit_type(&mut self, visited: &Type, module: ModuleId) {
+        match visited {
+            Type::Named(binding, arguments) => {
+                arguments
+                    .iter()
+                    .for_each(|argument| self.visit_type(argument, module));
+                self.reach_named(*binding, module);
+            }
+            Type::Function(_, parameters, result) => {
+                parameters
+                    .iter()
+                    .for_each(|parameter| self.visit_type(parameter, module));
+                self.visit_type(result, module);
+            }
+            Type::Ref(_, inner) | Type::Mut(_, inner) => self.visit_type(inner, module),
+            Type::Var(_) | Type::Generic(_) | Type::Primitive(_) | Type::TraitObject(_) => {}
+        }
+    }
+
+    fn reach_named(&mut self, binding: BindingId, from: ModuleId) {
+        let types = &self.program.declarations.types();
+        if types.rust_types().get(binding).is_some() {
+            self.reach.used_rust_types.insert(binding);
+        } else if types.enums().get(binding).is_some() {
+            self.reach_enum(binding, from);
+        } else {
+            self.reach_struct(binding, from);
+        }
+    }
+
+    fn reach_enum(&mut self, binding: BindingId, from: ModuleId) {
+        let Some(owner) = self.reach.type_modules.get(&binding).copied() else {
+            return;
+        };
+        self.note_use(binding, owner, from);
+        if self.reach.reached.contains(&binding) {
+            return;
+        }
+        self.reach.reached.push(binding);
+        let types = &self.program.declarations.types();
+        let payloads: Vec<Type> = types
+            .enums()
+            .get(binding)
+            .map(|definition| definition.payload_types().cloned().collect())
+            .unwrap_or_default();
+        payloads
+            .iter()
+            .for_each(|payload| self.visit_type(payload, owner));
+    }
+
+    fn reach_struct(&mut self, binding: BindingId, from: ModuleId) {
+        let Some(owner) = self.reach.type_modules.get(&binding).copied() else {
+            return;
+        };
+        self.note_use(binding, owner, from);
+        if self.reach.reached.contains(&binding) {
+            return;
+        }
+        self.reach.reached.push(binding);
+        let types = &self.program.declarations.types();
+        let fields: Vec<Type> = types
+            .structs()
+            .get(binding)
+            .map(|definition| {
+                definition
+                    .fields
+                    .iter()
+                    .map(|(_, field)| field.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        fields
+            .iter()
+            .for_each(|field| self.visit_type(field, owner));
+    }
+
+    fn reference(&mut self, binding: BindingId, from: ModuleId) {
+        if let Some((_, owner)) = self.definitions.entry(binding) {
+            self.note_use(binding, owner, from);
+        }
+        self.visit_definition(binding);
+    }
+
+    fn note_use(&mut self, binding: BindingId, owner: ModuleId, from: ModuleId) {
+        if owner != from {
+            self.reach.used_from_other_modules.insert(binding);
+        }
+    }
+}

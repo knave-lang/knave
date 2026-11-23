@@ -2602,13 +2602,12 @@ impl TypeChecker {
             Type::Ref(_, inner) | Type::Mut(_, inner) if self.names_struct(&inner) => Err(
                 TypeProblems::borrowed_update_base(&self.display().show(&inner), base.span),
             ),
-            other => Err(
-                FieldBound::new(&self.unifier, &self.declarations).unbound_update(
-                    &self.display().show(&other),
-                    &other,
-                    base.span,
-                ),
-            ),
+            other => {
+                Err(
+                    FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
+                        .unbound_update(&self.display().show(&other), &other, base.span),
+                )
+            }
         }
     }
 
@@ -2729,8 +2728,8 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         let value = self.infer(value)?;
-        let bound_read =
-            FieldBound::new(&self.unifier, &self.declarations).read(&value.ty, &label.name);
+        let bound_read = FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
+            .read(&value.ty, &label.name);
         if let Some(ty) = bound_read {
             return Ok(FieldReadExpr::new(value, label).typed(ty, span));
         }
@@ -2767,13 +2766,12 @@ impl TypeChecker {
                 Some(literal) => Err(FieldOwnerProblems::literal_owner(literal, value.span)),
                 None => self.unique_owner(&owner, label),
             },
-            other => Err(
-                FieldBound::new(&self.unifier, &self.declarations).unbound_read(
-                    &self.display().show(&other),
-                    value,
-                    label,
-                ),
-            ),
+            other => {
+                Err(
+                    FieldBound::new(&self.unifier, &self.declarations, &self.bindings)
+                        .unbound_read(&self.display().show(&other), value, label),
+                )
+            }
         }
     }
 

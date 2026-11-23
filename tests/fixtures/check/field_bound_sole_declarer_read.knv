@@ -1,0 +1,14 @@
+(defstruct pt
+  :n int
+  :m int)
+
+(defstruct qt
+  :n int)
+
+(type get
+  (where ((a (has :n int)))
+    (fn ((ref a)) int)))
+
+(defn get (x) (+ (:n x) (:m x)))
+
+(defn main () (println (get (->qt 1))))

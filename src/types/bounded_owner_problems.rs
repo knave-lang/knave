@@ -40,6 +40,24 @@ impl<'b> BoundedOwnerProblems<'b> {
         ))
     }
 
+    pub(super) fn sole_declarer_read(
+        &self,
+        label: &FieldLabel,
+        declarer: &str,
+        span: Span,
+    ) -> Diagnostic {
+        let owner = self.owner;
+        let field = format!("{}{}", Keyword::MARKER, label.name);
+        Diagnostic::error(
+            DiagnosticCode::NO_FIELDS,
+            format!("no `has` bound can read `{field}`: only `{declarer}` declares it"),
+            Label::new(span, format!("the bounds on `{owner}` read {}", self.bound_fields)),
+        )
+        .with_help(format!(
+            "read `{field}` where the value's type is `{declarer}`, and pass what it reads into this function"
+        ))
+    }
+
     pub(super) fn update(&self, span: Span) -> Diagnostic {
         let owner = self.owner;
         Diagnostic::error(

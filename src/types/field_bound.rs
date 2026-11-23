@@ -7,20 +7,26 @@ use super::problems::TypeProblems;
 use super::ty::{GenericId, Type};
 use super::typed::TypedExpr;
 use super::unifier::Unifier;
-use crate::core::FieldLabel;
+use crate::core::{BindingArena, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 
 pub(super) struct FieldBound<'c> {
     unifier: &'c Unifier,
     declarations: &'c Declarations,
+    bindings: &'c BindingArena,
 }
 
 impl<'c> FieldBound<'c> {
-    pub(super) fn new(unifier: &'c Unifier, declarations: &'c Declarations) -> Self {
+    pub(super) fn new(
+        unifier: &'c Unifier,
+        declarations: &'c Declarations,
+        bindings: &'c BindingArena,
+    ) -> Self {
         Self {
             unifier,
             declarations,
+            bindings,
         }
     }
 
@@ -55,10 +61,11 @@ impl<'c> FieldBound<'c> {
         span: Span,
     ) -> Diagnostic {
         let structs = &self.declarations.types().structs;
-        if structs.with_field(&label.name).is_empty() {
-            return FieldOwnerProblems::undeclared(label, structs.closest_field(&label.name));
+        match structs.with_field(&label.name).as_slice() {
+            [] => FieldOwnerProblems::undeclared(label, structs.closest_field(&label.name)),
+            [sole] => problems.sole_declarer_read(label, self.bindings.get(*sole).name(), span),
+            _ => problems.unbound_read(label, span),
         }
-        problems.unbound_read(label, span)
     }
 
     pub(super) fn unbound_update(&self, shown: &str, owner: &Type, span: Span) -> Diagnostic {

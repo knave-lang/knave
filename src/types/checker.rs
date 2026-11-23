@@ -75,6 +75,7 @@ use super::solver_sources::SolverSources;
 use super::solver_state::SolverState;
 use super::string_views::StringViews;
 use super::struct_field_traits::StructFieldTraits;
+use super::supertrait_check::SupertraitCheck;
 use super::template_clauses::{ClauseTarget, TemplateClauses};
 use super::trait_declaration_collector::TraitDeclarationCollector;
 use super::ty::{Bound, GenericId, GenericParam, Scheme, Type, TypeVar};
@@ -1314,62 +1315,8 @@ impl TypeChecker {
     }
 
     fn report_supertraits(&mut self) {
-        let implementations: Vec<(BindingId, Type, Span)> = self
-            .declarations
-            .traits()
-            .impls
-            .iter()
-            .map(|implementation| {
-                (
-                    implementation.trait_binding,
-                    implementation.implementor.clone(),
-                    implementation.implementor_span,
-                )
-            })
-            .collect();
-        for (trait_binding, implementor, span) in implementations {
-            self.report_missing_supertraits(trait_binding, &implementor, span);
-        }
-    }
-
-    fn report_missing_supertraits(
-        &mut self,
-        trait_binding: BindingId,
-        implementor: &Type,
-        span: Span,
-    ) {
-        let Some(rust_trait) = self.declarations.traits().table.get(trait_binding) else {
-            return;
-        };
-        let supertraits = rust_trait.rows().reached().supertraits().to_vec();
-        if supertraits.is_empty() {
-            return;
-        }
-        let trait_name = self.bindings.get(trait_binding).name().to_string();
-        let implementor_name = self.display().show(implementor);
-        for supertrait in supertraits {
-            if self.declarations.traits().table.satisfies(
-                &supertrait,
-                implementor,
-                &|generic, bound| self.unifier.generic_bounds(generic).contains(bound),
-            ) {
-                continue;
-            }
-            let supertrait_name = self.bindings.get(supertrait.binding).name().to_string();
-            let help = self
-                .declarations
-                .traits()
-                .table
-                .get(supertrait.binding)
-                .and_then(|known| known.help.clone());
-            self.diagnostics.push(TypeProblems::missing_supertrait(
-                &trait_name,
-                &supertrait_name,
-                &implementor_name,
-                span,
-                help,
-            ));
-        }
+        let check = SupertraitCheck::new(&self.declarations, &self.bindings, &self.unifier);
+        self.diagnostics.extend(check.missing(&self.display()));
     }
 
     fn acyclic_requirements(

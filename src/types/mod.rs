@@ -237,6 +237,7 @@ mod structs;
 mod structural;
 mod structural_trait;
 mod structural_uses;
+mod supertrait_check;
 mod synthetic_template;
 mod template_author;
 mod template_clauses;

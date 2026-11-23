@@ -63,13 +63,13 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
             .classes
             .flows()
             .iter()
-            .filter(|flow| self.from_reported(flow, reported))
+            .filter(|flow| self.comes_from_a_report(flow, reported))
             .filter(|flow| self.facts.arriving(flow).is_short_lived())
             .map(|flow| self.classes.class(flow.target))
             .collect();
-        reached
-            .into_iter()
-            .fold(false, |grew, class| reported.insert(class) || grew)
+        let before = reported.len();
+        reported.extend(reached);
+        reported.len() > before
     }
 
     fn drop_reports(&self, refused: &FxHashSet<usize>, reported: &mut FxHashSet<NodeId>) -> bool {
@@ -80,23 +80,25 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
             .enumerate()
             .filter(|(index, flow)| {
                 !refused.contains(index)
-                    && !self.from_reported(flow, reported)
+                    && !self.comes_from_a_report(flow, reported)
                     && self.facts.arriving(flow).is_short_lived()
             })
             .map(|(_, flow)| self.classes.class(flow.target))
             .collect();
-        unexplained
-            .into_iter()
-            .fold(false, |shrank, class| reported.remove(&class) || shrank)
+        let before = reported.len();
+        for class in unexplained {
+            reported.remove(&class);
+        }
+        reported.len() < before
     }
 
-    fn from_reported(&self, flow: &Flow, reported: &FxHashSet<NodeId>) -> bool {
+    fn comes_from_a_report(&self, flow: &Flow, reported: &FxHashSet<NodeId>) -> bool {
         matches!(flow.source, Source::Slot(node) if reported.contains(&self.classes.class(node)))
     }
 
     fn repeats_a_report(&self, flow: &Flow, reported: &FxHashSet<NodeId>) -> bool {
         let lasting = self.facts.arriving(flow).without(ReachingText::SHORT_LIVED);
-        self.from_reported(flow, reported) && !self.refuses(flow, lasting)
+        self.comes_from_a_report(flow, reported) && !self.refuses(flow, lasting)
     }
 
     fn refusal(&self, flow: &'g Flow) -> Option<Refusal<'g>> {

@@ -1,10 +1,13 @@
+use std::hint::black_box;
 use std::rc::Rc;
 
 use super::form_fixtures::FormFixtures;
-use super::{AnnotationLowering, ChildTyping, ExpectedChildTyping, LocalScope};
+use super::{
+    AnnotationLowering, ChildTyping, ExpectedChildTyping, ExpressionForm, LocalScope, Sequence,
+};
 use crate::core::{
-    Binder, BindingId, Block, BodyItem, Expr, ExprKind, Leaf, Literal, PrimitiveType, TypeExpr,
-    TypeExprKind,
+    Binder, BindingId, Block, BodyItem, Control, Expr, ExprKind, Leaf, Literal, PrimitiveType,
+    TypeExpr, TypeExprKind,
 };
 use crate::diagnostic::Diagnostic;
 use crate::types::expectation::Expectation;
@@ -15,6 +18,7 @@ use crate::types::typed::TypedExpr;
 pub(in crate::types) struct BodyFixture {
     pub(in crate::types) fitted: Vec<Type>,
     pub(in crate::types) bound: Vec<(BindingId, Type)>,
+    pub(in crate::types) stack_marks: Vec<usize>,
 }
 
 impl BodyFixture {
@@ -46,6 +50,21 @@ impl BodyFixture {
         }
     }
 
+    pub(in crate::types) fn nested_do_forms(depth: usize) -> Block {
+        (0..depth).fold(Self::block(vec![Self::truth()]), |inner, _| {
+            let do_form = Expr::new(
+                ExprKind::Control(Control::Block(inner)),
+                FormFixtures::span(),
+            );
+            Self::block(vec![BodyItem::Expr(do_form)])
+        })
+    }
+
+    fn stack_mark() -> usize {
+        let mark = black_box(0u8);
+        std::ptr::from_ref(&mark).addr()
+    }
+
     pub(in crate::types) fn block(items: Vec<BodyItem>) -> Block {
         Block { items }
     }
@@ -64,10 +83,16 @@ impl BodyFixture {
 
 impl ChildTyping for BodyFixture {
     fn type_child(&mut self, child: &Expr) -> Result<TypedExpr, Diagnostic> {
-        Ok(FormFixtures::typed_leaf(
-            Literal::Bool(true),
-            Self::type_of(child),
-        ))
+        self.stack_marks.push(Self::stack_mark());
+        match child.kind() {
+            ExprKind::Control(Control::Block(block)) => {
+                Sequence::new(block, child.span()).type_against(self, None)
+            }
+            _ => Ok(FormFixtures::typed_leaf(
+                Literal::Bool(true),
+                Self::type_of(child),
+            )),
+        }
     }
 }
 

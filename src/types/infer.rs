@@ -1190,12 +1190,13 @@ impl TypeChecker {
         let written_by_signature = expected.is_some_and(|(expected, written)| {
             written && !matches!(self.unifier.shallow(expected), Type::Var(_))
         });
+        let signature = written_by_signature.then_some(&ty);
         Ok(TypedBinder {
             binding: param.binding,
+            written_view: TypedBinder::writes_a_view(param.annotation.as_ref(), signature),
             ty,
             span: param.span,
             annotated: param.annotation.is_some() || written_by_signature,
-            written_view: TypedBinder::writes_a_view(param.annotation.as_ref()),
         })
     }
 

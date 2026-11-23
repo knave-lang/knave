@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/trait_signature_view_parameter_passes_no_static_text_on.knv
+---
+struct car
+  model: owned, written a view
+method label-with
+  name: a view
+needs owned text
+  text/trait_signature_view_parameter_passes_no_static_text_on.knv:12:38

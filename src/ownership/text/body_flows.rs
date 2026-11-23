@@ -66,7 +66,8 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             self.owners.add_parameter(parameter.binding);
             let owner = SlotOwner::Parameter(parameter.binding);
             self.listing.list(&owner, &parameter.ty);
-            if parameter.written_view {
+            if parameter.written_view && !self.context.program().names().is_generated(self.function)
+            {
                 self.context.require(Slot::from(owner), Need::View);
             }
         }

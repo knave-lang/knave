@@ -1,0 +1,15 @@
+(defstruct car
+  :model str)
+
+(defstruct maker
+  :id i64)
+
+(deftrait labeled
+  (label-with
+    (fn ((ref self) (ref str)) car)))
+
+(impl labeled maker
+  (label-with (m name) (->car :model name)))
+
+(defn main ()
+  (prn (:model (label-with (->maker :id 1) "x"))))

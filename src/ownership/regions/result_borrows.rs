@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::body_flows::BodyFlows;
 use super::callee_parameters::{CalleeParameters, OpenCallees};
@@ -40,7 +40,7 @@ impl<'a> ResultBorrows<'a> {
         BodyFlows::of(self, lambda, None)
     }
 
-    pub fn analyse_shared_arguments(&self, lambda: &TypedLambda) -> LambdaFlows {
+    pub fn analyse_shared_arguments(&self, lambda: &TypedLambda) -> FxHashSet<BindingId> {
         BodyFlows::of_shared_arguments(self, lambda)
     }
 

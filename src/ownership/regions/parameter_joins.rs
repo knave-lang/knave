@@ -20,7 +20,8 @@ impl<'r> ParameterJoins<'r> {
         calls: &TailCalls,
     ) -> FunctionFlows {
         let mut body = BodyFlows::new(rules, lambda, None);
-        let flows = body.lambda_flows(lambda);
+        let flows = body.block(&lambda.body);
+        let flows = body.separating_higher_ranked(flows, lambda);
         let mut joins = Self { rules, body };
         FunctionFlows {
             flows,

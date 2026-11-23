@@ -75,7 +75,7 @@ impl RegionRecord<'_> {
             reassigned_parameters,
         } = self.analysis.analyse_function(function, lambda);
         self.lambda(lambda, flows);
-        let shared = self.analysis.analyse_shared_arguments(lambda).flows;
+        let shared = self.analysis.analyse_shared_arguments(lambda);
         self.regions
             .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
         self.regions

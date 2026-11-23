@@ -11,4 +11,4 @@ method shout
   result: owned
 method keep
   text: owned
-  result: a view, written owned
+  result: owned

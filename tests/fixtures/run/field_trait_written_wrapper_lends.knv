@@ -1,0 +1,33 @@
+(defstruct cat
+  :age int
+  :tag string)
+
+(defstruct dog
+  :age int
+  :tag string)
+
+(type age-of
+  (where ((a (has :age int)))
+    (fn ((ref a)) int)))
+
+(defn age-of (x) (:age x))
+
+(type twice
+  (where ((a (has :age int)))
+    (fn ((ref a)) int)))
+
+(defn twice (x) (* 2 (age-of x)))
+
+(type shown
+  (where ((a (has :age int)))
+    (fn (a) string)))
+
+(defn shown (x)
+  (str (age-of (ref x))
+       " and "
+       (age-of (ref x))))
+
+(defn main ()
+  (println (twice (->cat 1 (str "t"))))
+  (println (twice (->dog 2 (str "u"))))
+  (println (shown (->cat 3 (str "v")))))

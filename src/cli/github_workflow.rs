@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use super::github_linguist::GithubLinguist;
 use super::owned_file::OwnedFile;
 use super::project_component::ProjectComponent;
 use super::versioned_text::VersionedText;
@@ -14,5 +15,9 @@ impl GithubWorkflow {
 impl ProjectComponent for GithubWorkflow {
     fn owned_files(&self) -> Vec<OwnedFile> {
         vec![OwnedFile::new(PathBuf::from(Self::PATH), Self::TEXT)]
+    }
+
+    fn owned_lines(&self) -> Vec<GithubLinguist> {
+        vec![GithubLinguist]
     }
 }

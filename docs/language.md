@@ -666,10 +666,11 @@ A project is a directory with a `project.knv` file ([RFC 0061](../rfcs/0061-proj
 
 The name argument is checked first: a name that is not kebab-case is `L0718`, labeled on the argument. A path that already exists, or a file that cannot be written, is a usage error, and a failed write removes what `new` wrote.
 
-**`knave upgrade` moves a project to the running compiler's version.** Outside a project it is a usage error. It sets `:knave` to the compiler's version, adding the key after the project's name, below a comment that shares the name's line, when the file lacks it. It edits the project file through the formatter, as `knave add` does, so comments stay and the file takes the formatter's layout. Then it visits each file that Knave owns: the two copies of the agent skill and the GitHub workflow. It touches no other file, and it reads only the root project file, so it never loads or fetches a library.
+**`knave upgrade` moves a project to the running compiler's version.** Outside a project it is a usage error. It sets `:knave` to the compiler's version, adding the key after the project's name, below a comment that shares the name's line, when the file lacks it. It edits the project file through the formatter, as `knave add` does, so comments stay and the file takes the formatter's layout. Then it visits each file that Knave owns, the two copies of the agent skill and the GitHub workflow, and its line in `.gitattributes`. It touches no other file, and it reads only the root project file, so it never loads or fetches a library.
 
 - A missing file stays missing, so a component that a `--skip-` flag left out stays out.
 - Knave owns each of those files: a file that differs from this compiler's text takes that text, and the command names it. It keeps no edit and offers no merge, so a project's own steps belong in a file of its own, such as another workflow.
+- In `.gitattributes`, the GitHub component owns each line whose pattern is `*.knv` and that sets an attribute starting with `linguist-`, and every other line stays byte for byte. When the workflow exists, each owned line that differs from Knave's line takes that line in place, and a file with no owned line takes the line at its end, after a newline when the file lacks a final one.
 - When nothing changes, the command says so, with a help that names `cargo install knave --locked`. It exits 0 in each case.
 - It prints no `L0737`, since it clears it. A compiler older than `:knave` gets `L0736` and leaves every file as it is, so the command never lowers the version.
 

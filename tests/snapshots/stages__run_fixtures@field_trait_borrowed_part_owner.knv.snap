@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/field_trait_borrowed_part_owner.knv
+---
+3
+5
+4

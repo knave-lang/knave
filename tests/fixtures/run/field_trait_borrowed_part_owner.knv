@@ -1,0 +1,25 @@
+(defstruct cat
+  :age int
+  :tag string)
+
+(defstruct dog
+  :age int
+  :tag string)
+
+(type age-of
+  (where ((a (has :age int)))
+    (fn ((ref (pair a int))) int)))
+
+(defn age-of (p)
+  (+ (:age (first p)) (second p)))
+
+(type first-age
+  (where ((a (has :age int)))
+    (fn ((ref (vec a))) int)))
+
+(defn first-age (xs) (:age (at xs 0)))
+
+(defn main ()
+  (println (age-of (ref (pair (->cat 1 (str "t")) 2))))
+  (println (age-of (ref (pair (->dog 2 (str "u")) 3))))
+  (println (first-age (ref (vec (->cat 4 (str "v")))))))

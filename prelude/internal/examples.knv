@@ -1,0 +1,310 @@
+(use code bool-not concat empty? first len list nth
+          number-add number-lt number-sub prepend read-form
+          rest string-drop string-length string-lines
+          string-strip-prefix string-strip-suffix
+          string-trim-end string-trim-start symbol-name
+          value-eq)
+
+(use prelude/internal/docstrings arrow-line? closes-fence?
+                                 example-arrow
+                                 opening-fence)
+
+(use prelude/internal/macros module-docstrings-key)
+
+(export built-steps counted-module-docstring docstring-steps
+        noted-text)
+
+(def built-steps
+  (fn (steps checked unchecked unreadable)
+    (if (empty? steps)
+      steps
+      (prepend (built-step (first steps) checked unchecked unreadable)
+               (built-steps (rest steps) checked unchecked unreadable)))))
+
+(def built-step
+  (fn (step checked unchecked unreadable)
+    (local kind (symbol-name (first step)))
+    (if (value-eq kind "checked")
+      (checked (nth step 1)
+               (nth step 2)
+               (nth step 3))
+      (if (value-eq kind "unchecked")
+        (unchecked (nth step 1) (nth step 2))
+        (if (value-eq kind "unreadable")
+          (unreadable (nth step 1))
+          (nth step 1))))))
+
+(def code-descriptor
+  (fn (code) (list (quote code) code)))
+
+(def checked-descriptor
+  (fn (arrow-form code expected)
+    (list (quote checked) arrow-form code expected)))
+
+(def unchecked-descriptor
+  (fn (arrow-form code)
+    (list (quote unchecked) arrow-form code)))
+
+(def unreadable-descriptor
+  (fn (code)
+    (list (quote unreadable) code)))
+
+(def noted-text
+  (fn (note)
+    (nth note (number-sub (len note) 1))))
+
+(def counted-module-docstring
+  (fn (notes-of)
+    (local docstrings (notes-of module-docstrings-key))
+    (if (empty? docstrings)
+      docstrings
+      (list (first docstrings)))))
+
+(def docstring-steps
+  (fn (context text)
+    (blocks-steps context text
+                  (paragraphs (doc-lines (string-lines text)
+                                         0
+                                         (list)
+                                         (list))
+                              (list)
+                              (list)))))
+
+(def blocks-steps
+  (fn (context text blocks)
+    (if (empty? blocks)
+      blocks
+      (concat (block-steps context text (first blocks))
+              (blocks-steps context text (rest blocks))))))
+
+(def doc-lines
+  (fn (remaining offset fence found)
+    (if (empty? remaining)
+      found
+      (recur (rest remaining)
+             (number-add offset
+                         (number-add (string-length (first remaining)) 1))
+             (fence-after fence (first remaining))
+             (concat found
+                     (list (doc-line fence (first remaining) offset)))))))
+
+(def fence-after
+  (fn (fence line)
+    (if (empty? fence)
+      (opening-fence line)
+      (if (closes-fence? fence line) (list) fence))))
+
+(def starts-with?
+  (fn (line prefix)
+    (bool-not (value-eq (string-strip-prefix (string-trim-start line) prefix)
+                        (string-trim-start line)))))
+
+(def doc-line
+  (fn (fence line offset)
+    (if (empty? (concat fence (fence-after fence line)))
+      (list line offset)
+      (list "" offset))))
+
+(def line-text (fn (line) (first line)))
+
+(def line-offset
+  (fn (line) (nth line 1)))
+
+(def blank-line?
+  (fn (line)
+    (value-eq (string-trim-start (line-text line)) "")))
+
+(def paragraphs
+  (fn (lines current found)
+    (if (empty? lines)
+      (closed-paragraph found current)
+      (if (blank-line? (first lines))
+        (recur (rest lines)
+               (list)
+               (closed-paragraph found current))
+        (recur (rest lines)
+               (concat current (list (first lines)))
+               found)))))
+
+(def closed-paragraph
+  (fn (found current)
+    (if (empty? current)
+      found
+      (concat found (list current)))))
+
+(def block-steps
+  (fn (context text lines)
+    (local block
+      (block-forms context text (list lines (list) 0)))
+    (if (state-found? block)
+      (state-steps block)
+      (list))))
+
+(def block-forms
+  (fn (context text state)
+    (local next (block-state context text state))
+    (if (empty? (state-lines next))
+      next
+      (recur context text next))))
+
+(def state-lines
+  (fn (state) (first state)))
+
+(def state-steps
+  (fn (state) (nth state 1)))
+
+(def state-examples
+  (fn (state) (nth state 2)))
+
+(def state-found?
+  (fn (state)
+    (number-lt 0 (state-examples state))))
+
+(def code-state
+  (fn (lines state code)
+    (list lines
+          (concat (state-steps state)
+                  (list (code-descriptor code)))
+          (state-examples state))))
+
+(def example-state
+  (fn (lines state step)
+    (list lines
+          (concat (state-steps state) (list step))
+          (number-add (state-examples state) 1))))
+
+(def finished-block
+  (fn (state step)
+    (example-state (list) state step)))
+
+(def rejected-block
+  (fn () (list (list) (list) 0)))
+
+(def block-state
+  (fn (context text state)
+    (code-form-state context text state
+                     (read-line-form context text
+                                     (first (state-lines state))))))
+
+(def read-line-form
+  (fn (context text line)
+    (read-form context text
+               (number-add (line-offset line) (line-indent line)))))
+
+(def code-form-state
+  (fn (context text state read)
+    (if (empty? read)
+      (rejected-block)
+      (after-code context text
+                  (lines-after (state-lines state) (nth read 1))
+                  state
+                  (first read)))))
+
+(def lines-after
+  (fn (lines end)
+    (if (empty? lines)
+      lines
+      (if (number-lt (end-of-line (first lines)) end)
+        (recur (rest lines) end)
+        (prepend (list (nth (first lines) 0)
+                       (nth (first lines) 1)
+                       end)
+                 (rest lines))))))
+
+(def end-of-line
+  (fn (line)
+    (number-add (line-offset line)
+                (string-length (line-text line)))))
+
+(def after-code
+  (fn (context text lines state code)
+    (if (form-ends-its-line? lines)
+      (next-step context text (rest lines) state code)
+      (rejected-block))))
+
+(def form-ends-its-line?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (rest-blank? (first lines)))))
+
+(def rest-blank?
+  (fn (line)
+    (blank-text? (string-drop (line-text line)
+                              (number-sub (nth line 2) (line-offset line))))))
+
+(def blank-text?
+  (fn (text)
+    (local trimmed (string-trim-start text))
+    (if (value-eq trimmed "")
+      true
+      (starts-with? trimmed comment-mark))))
+
+(def comment-mark ";")
+
+(def next-step
+  (fn (context text lines state code)
+    (if (arrow-first? lines)
+      (read-example context text lines state code)
+      (code-state lines state code))))
+
+(def arrow-first?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (arrow-line? (line-text (first lines))))))
+
+(def read-example
+  (fn (context text lines state code)
+    (local arrow-form (read-arrow context text (first lines)))
+    (local read
+      (read-form context text (result-offset (first lines))))
+    (local remaining (result-lines lines read))
+    (if (unchecked-result? remaining)
+      (example-state (rest remaining)
+                     state
+                     (unchecked-descriptor arrow-form code))
+      (compared-state state arrow-form code read remaining))))
+
+(def read-arrow
+  (fn (context text line)
+    (first (read-form context text
+                      (number-add (line-offset line) (line-indent line))))))
+
+(def result-offset
+  (fn (line)
+    (number-add (line-offset line)
+                (number-add (line-indent line)
+                            (string-length example-arrow)))))
+
+(def line-indent
+  (fn (line)
+    (number-sub (string-length (line-text line))
+                (string-length (string-trim-start (line-text line))))))
+
+(def result-lines
+  (fn (lines read)
+    (if (empty? read)
+      lines
+      (lines-after lines (nth read 1)))))
+
+(def unchecked-result?
+  (fn (lines)
+    (if (empty? lines)
+      false
+      (ends-with-unchecked-mark? (string-trim-end (line-text (first lines)))))))
+
+(def ends-with-unchecked-mark?
+  (fn (text)
+    (bool-not (value-eq (string-strip-suffix text unchecked-result-mark)
+                        text))))
+
+(def unchecked-result-mark "...")
+
+(def compared-state
+  (fn (state arrow-form code read remaining)
+    (if (if (empty? read) false (form-ends-its-line? remaining))
+      (example-state (rest remaining)
+                     state
+                     (checked-descriptor arrow-form code (first read)))
+      (finished-block state (unreadable-descriptor code)))))

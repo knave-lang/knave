@@ -80,9 +80,16 @@ mod tests {
     }
 
     #[test]
-    fn a_type_text_is_noted_and_its_operand_typed_as_an_operand() {
+    fn a_type_text_is_noted() {
         let mut fixture = TypeTextFixture::default();
         fixture.request();
-        assert_eq!((fixture.notes, fixture.operands), (1, 1));
+        assert_eq!(fixture.notes, 1);
+    }
+
+    #[test]
+    fn a_type_text_types_its_operand_as_an_operand() {
+        let mut fixture = TypeTextFixture::default();
+        fixture.request();
+        assert_eq!(fixture.operands, 1);
     }
 }

@@ -1,0 +1,8 @@
+(use field_trait_modules/lib hello robo)
+
+(defstruct user
+  :name str)
+
+(defn main ()
+  (println (hello (->user "ana")))
+  (println (robo)))

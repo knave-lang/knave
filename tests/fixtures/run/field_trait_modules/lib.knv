@@ -1,3 +1,6 @@
+(defstruct robot
+  :name str)
+
 (type hello
   (where ((a (has :name (ref str))))
     (fn ((ref a)) string)))
@@ -5,4 +8,6 @@
 (defn hello (x)
   (str "hello " (:name x)))
 
-(export hello)
+(defn robo () (hello (->robot "r2")))
+
+(export hello robo)

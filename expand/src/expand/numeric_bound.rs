@@ -6,7 +6,8 @@ use crate::core::{
     BindingId, BindingKind, CoreModule, ItemKind, KernelType, ModuleId, ModulePath, PrimitiveType,
     RustTraitDeclaration, TypeExprKind,
 };
-use crate::modules::{ModuleRecord, ModuleRegistry, ModuleSources};
+use crate::modules::ReservedModulePaths;
+use crate::modules::{ModuleRecord, ModuleRegistry};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum NumberFamily {
@@ -53,7 +54,7 @@ impl NumericBound {
             return None;
         };
         let family = NumberFamily::of(primitive)?;
-        let prelude = modules.get(modules.find(&ModulePath::new(ModuleSources::PRELUDE))?);
+        let prelude = modules.get(modules.find(&ModulePath::new(ReservedModulePaths::PRELUDE))?);
         let mut traits = Self::covering_traits(family, prelude, &Self::declarations(expanded));
         traits.sort();
         let mut names = traits.into_iter().map(|(_, name)| name);
@@ -136,7 +137,7 @@ mod tests {
         KernelType, ModuleId, ModulePath, Namespace, PrimitiveType, RustTraitDeclaration,
         RustTraitImplementor, TypeExpr, TypeExprKind,
     };
-    use crate::modules::{ModuleRegistry, ModuleScopes, ModuleSources};
+    use crate::modules::{ModuleRegistry, ModuleScopes, ReservedModulePaths};
     use crate::scope::{ScopeKind, Scopes};
     use crate::source::{SourceId, Span};
 
@@ -151,7 +152,7 @@ mod tests {
         fn new() -> Self {
             let mut scopes = Scopes::default();
             let mut modules = ModuleRegistry::default();
-            let path = ModulePath::new(ModuleSources::PRELUDE);
+            let path = ModulePath::new(ReservedModulePaths::PRELUDE);
             let prelude = modules.register(
                 path.clone(),
                 ModuleScopes::new(

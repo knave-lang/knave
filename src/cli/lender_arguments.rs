@@ -2,7 +2,7 @@ use crate::reader::StringLiteral;
 
 pub struct LenderArguments<'l> {
     library: &'l str,
-    fetched: bool,
+    library_key: &'static str,
     exported_tasks: &'l [String],
 }
 
@@ -15,25 +15,24 @@ impl<'l> LenderArguments<'l> {
     pub fn local(library: &'l str, exported_tasks: &'l [String]) -> Self {
         Self {
             library,
-            fetched: false,
+            library_key: Self::LIBRARY,
             exported_tasks,
         }
     }
 
     pub fn fetched(library: &'l str, exported_tasks: &'l [String]) -> Self {
         Self {
-            fetched: true,
+            library_key: Self::GIT_LIBRARY,
             ..Self::local(library, exported_tasks)
         }
     }
 
     pub fn export_check(&self) -> String {
-        let key = if self.fetched {
-            Self::GIT_LIBRARY
-        } else {
-            Self::LIBRARY
-        };
-        format!(" {key} {}", StringLiteral::quoted(self.library))
+        format!(
+            " {} {}",
+            self.library_key,
+            StringLiteral::quoted(self.library)
+        )
     }
 
     pub fn listing(&self, qualified: impl Fn(&str) -> bool) -> String {

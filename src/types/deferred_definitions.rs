@@ -36,7 +36,7 @@ mod tests {
     use super::DeferredDefinitions;
     use crate::core::{BindingId, CoreModule, ModulePath};
     use crate::expand::Program;
-    use crate::modules::ModuleSources;
+    use crate::modules::ReservedModulePaths;
     use crate::types::TypedSource;
     use crate::types::written_bodies::WrittenBodies;
 
@@ -57,7 +57,7 @@ mod tests {
         const METHOD_BODIES: usize = 2;
 
         fn new() -> Self {
-            Self::moved_to(ModuleSources::PRELUDE)
+            Self::moved_to(ReservedModulePaths::PRELUDE)
         }
 
         fn moved_to(path: &str) -> Self {
@@ -118,7 +118,7 @@ mod tests {
     #[test]
     fn an_entry_named_like_the_prelude_never_waits() {
         let mut source = TypedSource::expand(PreludeModuleFixture::MODULE);
-        source.move_entry_to(ModulePath::new(ModuleSources::PRELUDE));
+        source.move_entry_to(ModulePath::new(ReservedModulePaths::PRELUDE));
         let fixture = PreludeModuleFixture { source };
         assert!(!fixture.defers("helper"));
     }

@@ -39,10 +39,6 @@ pub struct ModuleSources {
 }
 
 impl ModuleSources {
-    pub const KERNEL: &str = ReservedModulePaths::KERNEL;
-    pub const CODE: &str = ReservedModulePaths::CODE;
-    pub const PRELUDE_CODE: &str = ReservedModulePaths::PRELUDE_CODE;
-    pub const PRELUDE: &str = ReservedModulePaths::PRELUDE;
     pub const TEST: &str = "prelude/test";
     pub const LIBRARY_EXAMPLES: &str = "prelude/library-examples";
     pub const TASK: &str = "prelude/task";
@@ -247,12 +243,14 @@ impl ModuleSources {
     }
 
     pub fn is_prelude(path: &ModulePath) -> bool {
-        path.as_str() == Self::PRELUDE || path.as_str().starts_with(Self::PRELUDE_DIRECTORY)
+        path.as_str() == ReservedModulePaths::PRELUDE
+            || path.as_str().starts_with(Self::PRELUDE_DIRECTORY)
     }
 
     pub fn is_internal(path: &ModulePath) -> bool {
         path.as_str().starts_with(Self::INTERNAL_DIRECTORY)
-            && (Self::is_embedded_prelude(path) || path.as_str() == Self::PRELUDE_CODE)
+            && (Self::is_embedded_prelude(path)
+                || path.as_str() == ReservedModulePaths::PRELUDE_CODE)
     }
 
     pub fn is_embedded_prelude(path: &ModulePath) -> bool {
@@ -295,9 +293,11 @@ impl ModuleSources {
 
     fn builtin(&self, path: &ModulePath) -> Option<ModuleSource> {
         match path.as_str() {
-            Self::KERNEL => Some(ModuleSource::Builtin(BuiltinModule::Kernel)),
-            Self::CODE => Some(ModuleSource::Builtin(BuiltinModule::Code)),
-            Self::PRELUDE_CODE => Some(ModuleSource::Builtin(BuiltinModule::PreludeCode)),
+            ReservedModulePaths::KERNEL => Some(ModuleSource::Builtin(BuiltinModule::Kernel)),
+            ReservedModulePaths::CODE => Some(ModuleSource::Builtin(BuiltinModule::Code)),
+            ReservedModulePaths::PRELUDE_CODE => {
+                Some(ModuleSource::Builtin(BuiltinModule::PreludeCode))
+            }
             _ => None,
         }
     }
@@ -332,18 +332,23 @@ impl ModuleSources {
                 .missing_root_module(path, file.display)
                 .map(LibraryFileProblem::MissingRootModule);
         }
-        let resolved = fs::canonicalize(&file.path).ok()?;
-        let checkout = self.libraries.checkout_of(path)?;
-        (!resolved.starts_with(checkout))
-            .then_some(LibraryFileProblem::OutsideCheckout(file.display))
+        self.outside_checkout(path, &file.path, file.display)
     }
 
     fn program_file_outside(&self, path: &ModulePath) -> Option<LibraryFileProblem<'_>> {
-        let checkout = self.libraries.checkout_of(path)?;
         let reached = self.reached_files(path).next()?;
-        let resolved = fs::canonicalize(&reached.path).ok()?;
-        (!resolved.starts_with(checkout))
-            .then_some(LibraryFileProblem::OutsideCheckout(reached.shown))
+        self.outside_checkout(path, &reached.path, reached.shown)
+    }
+
+    fn outside_checkout(
+        &self,
+        path: &ModulePath,
+        file: &Path,
+        shown: PathBuf,
+    ) -> Option<LibraryFileProblem<'_>> {
+        let checkout = self.libraries.checkout_of(path)?;
+        let resolved = fs::canonicalize(file).ok()?;
+        (!resolved.starts_with(checkout)).then_some(LibraryFileProblem::OutsideCheckout(shown))
     }
 
     fn library_file(&self, path: &ModulePath) -> Option<ModuleSource> {

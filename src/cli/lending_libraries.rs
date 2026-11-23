@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::direct_library::DirectLibrary;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug)]
 pub struct LendingLibraries {
     libraries: Vec<DirectLibrary>,
 }

@@ -311,7 +311,7 @@ impl Expander<'_> {
     fn prelude_scopes(&self) -> ScopeSet {
         let prelude = self
             .modules
-            .find(&ModulePath::new(ModuleSources::PRELUDE))
+            .find(&ModulePath::new(ReservedModulePaths::PRELUDE))
             .expect("macro code runs after the prelude module is registered");
         self.modules.get(prelude).scopes().set()
     }

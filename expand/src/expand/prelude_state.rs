@@ -11,6 +11,7 @@ use crate::core::{BindingTables, SavedBindings};
 use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
 use crate::interpret::{Closure, Value};
+use crate::modules::ReservedModulePaths;
 use crate::modules::{ModuleRecord, ModuleSource, ModuleSources};
 use crate::reader::Form;
 use crate::scope::{NameTables, SavedNames};
@@ -178,7 +179,7 @@ impl Expander<'_> {
         let first_scope = self.tables.scopes.next_scope();
         let prelude = self
             .load_module(
-                &ModulePath::new(ModuleSources::PRELUDE),
+                &ModulePath::new(ReservedModulePaths::PRELUDE),
                 Span::new(entry, 0..0),
             )
             .expect("the prelude loads");
@@ -396,7 +397,7 @@ mod tests {
 
         fn names_the_prelude_documents_by_type() -> Vec<(&'static str, &'static str)> {
             let state = UserProgram::loaded_state();
-            let prelude = Self::module(&state, ModuleSources::PRELUDE);
+            let prelude = Self::module(&state, ReservedModulePaths::PRELUDE);
             KernelType::all()
                 .flat_map(|kernel_type| {
                     kernel_type

@@ -1,7 +1,8 @@
 use super::bindings::Bindings;
 use super::docstring_notes::DocstringNotes;
 use crate::core::{ModuleId, ModulePath, Namespace};
-use crate::modules::{ModuleRegistry, ModuleSources};
+use crate::modules::ModuleRegistry;
+use crate::modules::ReservedModulePaths;
 
 pub(super) struct NotesModule<'t> {
     modules: &'t ModuleRegistry,
@@ -16,7 +17,7 @@ impl<'t> NotesModule<'t> {
     pub(super) fn find(&self) -> Option<ModuleId> {
         let prelude = self
             .modules
-            .find(&ModulePath::new(ModuleSources::PRELUDE))?;
+            .find(&ModulePath::new(ReservedModulePaths::PRELUDE))?;
         let page_macro = self
             .modules
             .get(prelude)
@@ -36,6 +37,7 @@ mod tests {
 
     use super::*;
     use crate::expand::Expander;
+    use crate::modules::ModuleSources;
     use crate::source::SourceMap;
 
     struct NotesModuleFixture {

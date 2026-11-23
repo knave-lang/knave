@@ -4,7 +4,6 @@ use std::rc::Rc;
 use rustc_hash::FxHashMap;
 
 use super::inline_scheme::InlineScheme;
-use super::inline_schemes::SchemeRecording;
 use super::registered_template::RegisteredTemplate;
 use super::synthetic_template::SyntheticTemplate;
 use super::template_ties::TemplateTies;
@@ -14,34 +13,27 @@ use crate::core::RustTemplate;
 #[derive(Default)]
 pub struct InlineTemplates {
     written: FxHashMap<Rc<str>, RegisteredTemplate>,
-    schemes: FxHashMap<Rc<str>, InlineScheme>,
-    recording: SchemeRecording,
+    schemes: Option<FxHashMap<Rc<str>, InlineScheme>>,
     compiler: RefCell<FxHashMap<Rc<str>, RegisteredTemplate>>,
 }
 
-impl From<SchemeRecording> for InlineTemplates {
-    fn from(recording: SchemeRecording) -> Self {
+impl InlineTemplates {
+    pub fn keeping_schemes() -> Self {
         Self {
-            recording,
+            schemes: Some(FxHashMap::default()),
             ..Self::default()
         }
     }
-}
 
-impl InlineTemplates {
     pub fn register(&mut self, text: &Rc<str>, scheme: &Scheme, ties: Option<TemplateTies>) {
-        if self.recording == SchemeRecording::Kept {
-            self.keep_scheme(text, scheme);
+        if let Some(schemes) = &mut self.schemes {
+            let widened = match schemes.remove(text) {
+                Some(known) => known.widened(scheme),
+                None => InlineScheme::One(Rc::new(scheme.clone())),
+            };
+            schemes.insert(Rc::clone(text), widened);
         }
         self.widen_ties(text, ties);
-    }
-
-    fn keep_scheme(&mut self, text: &Rc<str>, scheme: &Scheme) {
-        let widened = match self.schemes.remove(text) {
-            Some(known) => known.widened(scheme),
-            None => InlineScheme::One(Rc::new(scheme.clone())),
-        };
-        self.schemes.insert(Rc::clone(text), widened);
     }
 
     fn widen_ties(&mut self, text: &Rc<str>, ties: Option<TemplateTies>) {
@@ -55,7 +47,10 @@ impl InlineTemplates {
     }
 
     pub fn scheme(&self, text: &str) -> Option<&Scheme> {
-        self.schemes.get(text).and_then(InlineScheme::single)
+        self.schemes
+            .as_ref()?
+            .get(text)
+            .and_then(InlineScheme::single)
     }
 
     pub fn read<T>(
@@ -95,7 +90,6 @@ mod tests {
     use crate::core::{PrimitiveType, RustTemplate, TypeExpr, TypeExprKind};
     use crate::source::{SourceId, Span};
     use crate::types::SyntheticTemplate;
-    use crate::types::inline_schemes::SchemeRecording;
     use crate::types::template_ties::TemplateTies;
     use crate::types::ty::{Scheme, Type};
 
@@ -155,7 +149,7 @@ mod tests {
 
     #[test]
     fn a_text_registered_twice_with_one_shape_keeps_its_scheme() {
-        let mut templates = InlineTemplates::from(SchemeRecording::Kept);
+        let mut templates = InlineTemplates::keeping_schemes();
         let written = InlineFixture::written("{0}");
         templates.register(&written.template, &InlineFixture::scheme(), None);
         templates.register(&written.template, &InlineFixture::scheme(), None);
@@ -167,7 +161,7 @@ mod tests {
 
     #[test]
     fn a_text_registered_with_two_shapes_has_no_single_scheme() {
-        let mut templates = InlineTemplates::from(SchemeRecording::Kept);
+        let mut templates = InlineTemplates::keeping_schemes();
         let written = InlineFixture::written("{0}");
         let mut other = InlineFixture::scheme();
         other.body = Type::bool();

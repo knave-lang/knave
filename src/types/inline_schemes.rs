@@ -1,12 +1,8 @@
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum SchemeRecording {
-    #[default]
-    Dropped,
-    Kept,
-}
+use super::inline_templates::InlineTemplates;
+use super::templates::TemplateBorrows;
 
 pub trait InlineSchemes {
-    const RECORDING: SchemeRecording;
+    fn template_borrows() -> TemplateBorrows;
 }
 
 pub struct DroppedInlineSchemes;
@@ -14,9 +10,13 @@ pub struct DroppedInlineSchemes;
 pub struct KeptInlineSchemes;
 
 impl InlineSchemes for DroppedInlineSchemes {
-    const RECORDING: SchemeRecording = SchemeRecording::Dropped;
+    fn template_borrows() -> TemplateBorrows {
+        TemplateBorrows::default()
+    }
 }
 
 impl InlineSchemes for KeptInlineSchemes {
-    const RECORDING: SchemeRecording = SchemeRecording::Kept;
+    fn template_borrows() -> TemplateBorrows {
+        TemplateBorrows::from(InlineTemplates::keeping_schemes())
+    }
 }

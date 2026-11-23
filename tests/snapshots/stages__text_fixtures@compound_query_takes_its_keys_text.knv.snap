@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/text/compound_query_takes_its_keys_text.knv
+---
+defn main
+  local owned-keys[0][0]: owned
+  local view-keys[0][0]: a 'static view, written a view
+  local mixed-keys[0][0]: mixed, written a view
+needs owned text
+  text/compound_query_takes_its_keys_text.knv:10:24

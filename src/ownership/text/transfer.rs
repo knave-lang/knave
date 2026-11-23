@@ -9,6 +9,7 @@ pub enum Transfer {
     Reborrow,
     Lend,
     View,
+    Query,
 }
 
 impl Transfer {
@@ -62,6 +63,7 @@ impl Transfer {
                 ReachingText::OWNED.with(ReachingText::LENT),
                 ReachingText::OWNED.with(ReachingText::LENT),
             ),
+            Self::Query => ReachingText::NOTHING,
             Self::View => Self::replace(
                 text,
                 ReachingText::OWNED
@@ -109,6 +111,14 @@ mod tests {
         assert_eq!(
             Transfer::View.carry(ReachingText::LENT_MIXED),
             ReachingText::BORROWED
+        );
+    }
+
+    #[test]
+    fn a_query_carries_no_text() {
+        assert_eq!(
+            Transfer::Query.carry(ReachingText::STATIC),
+            ReachingText::NOTHING
         );
     }
 

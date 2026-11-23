@@ -1,0 +1,12 @@
+(defn main ()
+  (local owned-keys
+    (hash-map (pair (str "a") 1) 10))
+  (local view-keys (hash-map (pair "b" 2) 20))
+  (local mixed-keys
+    (hash-map (pair "c" 3)
+              30
+              (pair (as-str (str "d")) 4)
+              40))
+  (prn (get owned-keys (pair "a" 1))
+       (get view-keys (pair "b" 2))
+       (get mixed-keys (pair "c" 3))))

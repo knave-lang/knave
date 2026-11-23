@@ -5,6 +5,7 @@ use super::need::Need;
 use super::node_id::NodeId;
 use super::reaching_text::ReachingText;
 use super::refusal::{Refusal, RefusalCause};
+use super::representation::Representation;
 use super::slot_classes::SlotClasses;
 use super::source::Source;
 use super::text_decision_table::TextDecisionTable;
@@ -67,6 +68,9 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
     }
 
     fn refusal(&self, flow: &'g Flow) -> Option<Refusal<'g>> {
+        if flow.transfer == Transfer::Query {
+            return self.query_refusal(flow);
+        }
         let arriving = self.facts.arriving(flow);
         if !self.refuses(flow, arriving) {
             return None;
@@ -77,6 +81,26 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
             RefusalCause::StatedLimit
         };
         Some(Refusal { flow, cause })
+    }
+
+    fn query_refusal(&self, flow: &'g Flow) -> Option<Refusal<'g>> {
+        let Source::Slot(asked) = flow.source else {
+            return None;
+        };
+        let asked = self.facts.at(self.classes.class(asked));
+        let key = self.table.of_class(self.classes.class(flow.target));
+        Self::refuses_query(key, asked).then_some(Refusal {
+            flow,
+            cause: RefusalCause::Rule,
+        })
+    }
+
+    fn refuses_query(key: Representation, asked: ReachingText) -> bool {
+        match key {
+            Representation::Owned => asked.holds(ReachingText::STATIC) || asked.is_short_lived(),
+            Representation::Mixed => asked.is_short_lived(),
+            _ => false,
+        }
     }
 
     fn refuses(&self, flow: &Flow, arriving: ReachingText) -> bool {
@@ -116,6 +140,21 @@ impl<'r, 'g> TextRefusals<'r, 'g> {
 
 #[cfg(test)]
 mod tests {
+    use super::TextRefusals;
+    use crate::ownership::text::representation::Representation;
+
+    #[test]
+    fn owned_keys_refuse_a_static_query_and_mixed_keys_take_it() {
+        let (owned, mixed) = (Representation::Owned, Representation::Mixed);
+        assert!(TextRefusals::refuses_query(owned, ReachingText::STATIC));
+        assert!(!TextRefusals::refuses_query(mixed, ReachingText::STATIC));
+        assert!(TextRefusals::refuses_query(mixed, ReachingText::BORROWED));
+        assert!(!TextRefusals::refuses_query(
+            Representation::View,
+            ReachingText::BORROWED
+        ));
+    }
+
     use crate::ownership::text::flow_fixture::FlowFixture;
     use crate::ownership::text::need::Need;
     use crate::ownership::text::reaching_text::ReachingText;

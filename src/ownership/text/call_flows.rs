@@ -2,6 +2,7 @@ use super::access::Access;
 use super::call_target::CallTarget;
 use super::callee::Callee;
 use super::callee_scheme::CalleeScheme;
+use super::compound_queries::CompoundQueries;
 use super::function_value::FunctionValue;
 use super::instantiation::Instantiation;
 use super::need::Need;
@@ -41,6 +42,9 @@ impl<'c, 'w, 'p> CallFlows<'c, 'w, 'p> {
     }
 
     pub fn value(mut self, callee: &TypedExpr) -> TextValue {
+        if let Type::Function(_, parameters, _) = &callee.ty {
+            CompoundQueries::new(self.context, self.call).check(parameters, self.values);
+        }
         let Some(target) = Callee::of(callee, self.context.program()) else {
             return self.unknown_result();
         };

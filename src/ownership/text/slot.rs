@@ -63,6 +63,7 @@ impl Slot {
             | SlotOwner::TraitMethod(_)
             | SlotOwner::Value(_)
             | SlotOwner::Argument(_)
+            | SlotOwner::Query(_)
             | SlotOwner::Written(_) => String::new(),
         }
     }

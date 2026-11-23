@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
-use crate::core::{BindingId, Expr, VariantInfo};
+use crate::core::{BindingId, Expr, TypeExpr, VariantInfo};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::checker::TypeChecker;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    ChildTyping, ExpectedChildTyping, MacroOrigins, Obligations, OperandTyping, PlaceReads,
-    TypeFitting, TypeTextRecords, Unknowns, VariantSites,
+    AnnotationLowering, ChildTyping, ExpectedChildTyping, LocalScope, MacroOrigins, Obligations,
+    OperandTyping, PlaceReads, TypeFitting, TypeTextRecords, Unknowns, VariantSites,
 };
 use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
@@ -99,5 +99,17 @@ impl OperandTyping for TypeChecker {
 impl TypeTextRecords for TypeChecker {
     fn note_type_text(&mut self) {
         self.holds_infer_forms = true;
+    }
+}
+
+impl AnnotationLowering for TypeChecker {
+    fn lower_annotation(&mut self, annotation: &TypeExpr) -> Result<Type, Diagnostic> {
+        self.written_types().lower_without_generics(annotation)
+    }
+}
+
+impl LocalScope for TypeChecker {
+    fn bind_local(&mut self, binding: BindingId, ty: Type) {
+        self.locals.insert(binding, ty);
     }
 }

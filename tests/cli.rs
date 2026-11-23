@@ -48,6 +48,7 @@ const EARLIER_VERSION: &str = "0.18.0";
 const VERSION_MASK: &str = "<version>";
 const MISSING_VERSION_ERROR: &str =
     "::error file=project.knv::project.knv records no :knave \"x.y.z\" on one line\n";
+const NOT_UTF8: &[u8] = b"*.png binary\n\xff\xfe\n";
 const OUTDATED_LINE: &str = "# a line an earlier Knave wrote\n";
 const AGENT_SKILL_PATHS: [&str; 2] = [
     "demo-app/.agents/skills/writing-knave/SKILL.md",
@@ -9388,6 +9389,36 @@ fn upgrade_writes_no_skill_when_both_copies_are_missing() {
     for path in AGENT_SKILL_PATHS {
         assert!(!sandbox.directory.join(path).exists(), "{path}");
     }
+}
+
+#[test]
+fn upgrade_rewrites_a_workflow_that_is_not_utf8() {
+    let sandbox = Sandbox::with_committed_project("upgrade_workflow_not_utf8");
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let current = sandbox.contents(&workflow);
+    fs::write(sandbox.directory.join(&workflow), NOT_UTF8).expect("the sandbox accepts files");
+    sandbox.git(
+        "demo-app",
+        &["commit", "--quiet", "--all", "--message", "Bytes"],
+    );
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    assert_eq!(sandbox.contents(&workflow), current);
+}
+
+#[test]
+fn upgrade_reports_a_gitattributes_that_is_not_utf8() {
+    let sandbox = Sandbox::with_committed_project("upgrade_gitattributes_not_utf8");
+    let gitattributes = sandbox.directory.join(GITATTRIBUTES_FILE);
+    fs::write(&gitattributes, NOT_UTF8).expect("the sandbox accepts files");
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    let stderr = upgrade.assert_exit_code(2).stderr();
+    assert!(
+        stderr.contains("error: cannot read `.gitattributes`"),
+        "{stderr}"
+    );
+    assert_eq!(fs::read(&gitattributes).expect("the file stays"), NOT_UTF8);
 }
 
 #[test]

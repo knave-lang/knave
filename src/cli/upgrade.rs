@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 
+use super::diagnostic_output::StandardErrorMessages;
 use super::exit_status::ExitStatus;
 use super::github_linguist::GithubLinguist;
 use super::new_components::NewComponents;
@@ -11,6 +12,7 @@ use super::project_component::ProjectComponent;
 use super::project_file_edit::ProjectFileEdit;
 use super::standard_error::StandardError;
 use super::terminal::Terminal;
+use super::unreadable_file::UnreadableFile;
 use crate::language::Language;
 
 pub struct UpgradeCommand;
@@ -81,9 +83,9 @@ impl UpgradeCommand {
         if !path.exists() {
             return Self::write_missing(&line.new_file(root), Path::new(GithubLinguist::PATH));
         }
-        let Ok(written) = fs::read_to_string(&path) else {
-            return Ok(false);
-        };
+        let written = fs::read_to_string(&path).map_err(|error| {
+            UnreadableFile::new(&path, &error).report_to(&StandardErrorMessages)
+        })?;
         let Some(upgrade) = line.upgrade(&written) else {
             return Ok(false);
         };
@@ -98,10 +100,10 @@ impl UpgradeCommand {
         if !path.exists() {
             return Self::write_missing(&file.new_file(root), file.path());
         }
-        let Ok(written) = fs::read_to_string(&path) else {
-            return Ok(false);
-        };
-        if written == file.current_text() {
+        let written = fs::read(&path).map_err(|error| {
+            UnreadableFile::new(&path, &error).report_to(&StandardErrorMessages)
+        })?;
+        if written == file.current_text().as_bytes() {
             Ok(false)
         } else {
             Self::rewrite(&path, file)

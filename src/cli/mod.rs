@@ -103,6 +103,7 @@ mod owned_file;
 mod owned_line;
 mod painted_program;
 mod path_scope;
+mod pending_writes;
 mod program_binary;
 mod program_command;
 mod program_file;

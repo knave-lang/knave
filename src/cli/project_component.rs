@@ -1,10 +1,9 @@
 use std::path::Path;
 
-use super::announced_write::AnnouncedWrite;
-use super::exit_status::ExitStatus;
 use super::new_file::NewFile;
 use super::owned_file::OwnedFile;
 use super::owned_line::OwnedLine;
+use super::pending_writes::PendingWrites;
 
 pub trait ProjectComponent {
     fn owned_files(&self) -> Vec<OwnedFile> {
@@ -26,7 +25,7 @@ pub trait ProjectComponent {
         !self.existing_files(root).is_empty()
     }
 
-    fn pending_writes(&self, root: &Path) -> Vec<Result<Option<AnnouncedWrite>, ExitStatus>> {
+    fn pending_writes(&self, root: &Path) -> PendingWrites {
         let files = self
             .owned_files()
             .into_iter()

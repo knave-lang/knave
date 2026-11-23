@@ -3,6 +3,7 @@ use std::path::Path;
 use super::announced_write::AnnouncedWrite;
 use super::exit_status::ExitStatus;
 use super::new_components::NewComponents;
+use super::pending_writes::PendingWrites;
 use super::project_component::ProjectComponent;
 use super::project_file_edit::ProjectFileEdit;
 use super::standard_error::StandardError;
@@ -56,15 +57,12 @@ impl UpgradeCommand {
         root: &Path,
         components: &[Box<dyn ProjectComponent>],
     ) -> Result<Vec<AnnouncedWrite>, ExitStatus> {
-        let reads: Vec<Result<Option<AnnouncedWrite>, ExitStatus>> = components
+        components
             .iter()
             .filter(|component| component.shows(root))
-            .flat_map(|component| component.pending_writes(root))
-            .collect();
-        if let Some(status) = reads.iter().find_map(|read| read.as_ref().err()) {
-            return Err(*status);
-        }
-        Ok(reads.into_iter().flatten().flatten().collect())
+            .map(|component| component.pending_writes(root))
+            .collect::<PendingWrites>()
+            .into_writes()
     }
 
     fn report_current() {

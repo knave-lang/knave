@@ -38,6 +38,16 @@ impl Regions {
             .collect()
     }
 
+    pub fn kept_by_result(&self, lambda: &impl Parameterized) -> FxHashSet<BindingId> {
+        [
+            ParameterRole::HeldByResult,
+            ParameterRole::FlowsThroughSharedArguments,
+        ]
+        .into_iter()
+        .flat_map(|role| self.of(role, lambda))
+        .collect()
+    }
+
     pub fn stored(&self, lambda: &impl Parameterized) -> StoredFlows {
         StoredFlows {
             values: self.of(ParameterRole::StoredValue, lambda),
@@ -58,4 +68,42 @@ impl Regions {
 
     #[cfg(not(debug_assertions))]
     fn assert_analysed(&self, _role: ParameterRole, _lambda: &impl Parameterized) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use rustc_hash::FxHashSet;
+
+    use super::{ParameterRole, Parameterized, Regions};
+    use crate::core::BindingId;
+
+    struct Parameters(Vec<BindingId>);
+
+    impl Parameterized for Parameters {
+        fn parameter_bindings(&self) -> impl Iterator<Item = BindingId> + Clone + '_ {
+            self.0.iter().copied()
+        }
+    }
+
+    #[test]
+    fn a_parameter_kept_through_a_shared_argument_is_kept_by_the_result() {
+        let shared = BindingId::from_index(1);
+        let held = BindingId::from_index(2);
+        let lambda = Parameters(vec![shared, held, BindingId::from_index(3)]);
+        let mut regions = Regions::default();
+        regions.record(
+            ParameterRole::FlowsThroughSharedArguments,
+            &lambda,
+            FxHashSet::from_iter([shared]),
+        );
+        regions.record(
+            ParameterRole::HeldByResult,
+            &lambda,
+            FxHashSet::from_iter([held]),
+        );
+        assert_eq!(
+            regions.kept_by_result(&lambda),
+            FxHashSet::from_iter([shared, held])
+        );
+    }
 }

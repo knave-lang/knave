@@ -292,6 +292,12 @@ impl TypedStructExpr {
 }
 
 impl TypedLambda {
+    pub fn returns_closure(&self) -> bool {
+        self.body
+            .tail()
+            .is_some_and(|tail| matches!(tail.ty, Type::Function(..)))
+    }
+
     pub fn wrapped_call(&self) -> Option<(&TypedExpr, &[TypedArgument])> {
         self.wraps.as_ref()?;
         match self.body.items.as_slice() {

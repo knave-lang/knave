@@ -27,14 +27,10 @@ impl<'p> PromotedConstants<'p> {
         matches!(
             borrowed.kind,
             TypedExprKind::Call(..) | TypedExprKind::Control(_)
-        ) && !self.promotes(borrowed)
+        ) && !self.is_promoted(borrowed)
     }
 
-    pub fn is_unpromoted_value(&self, value: &TypedExpr) -> bool {
-        !value.is_place() && !self.promotes(value)
-    }
-
-    fn promotes(&self, value: &TypedExpr) -> bool {
+    pub fn is_promoted(&self, value: &TypedExpr) -> bool {
         match &value.kind {
             TypedExprKind::Call(callee, arguments) => self.promotes_operation(callee, arguments),
             TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
@@ -42,24 +38,24 @@ impl<'p> PromotedConstants<'p> {
                     .is_ok_and(|parsed| self.promotes_template(&parsed, &[]))
             }
             TypedExprKind::Control(TypedControl::Block(block)) => {
-                LocalBorrows::tail_of(block).is_none_or(|tail| self.promotes(tail))
+                LocalBorrows::tail_of(block).is_none_or(|tail| self.is_promoted(tail))
             }
             TypedExprKind::Leaf(TypedLeaf::Global(binding)) => self
                 .values
                 .definition_value(*binding)
-                .is_some_and(|value| self.promotes(value)),
+                .is_some_and(|value| self.is_promoted(value)),
             TypedExprKind::Leaf(TypedLeaf::Local(_)) | TypedExprKind::Control(_) => false,
             _ => value
                 .children()
                 .into_iter()
-                .all(|child| self.promotes(child)),
+                .all(|child| self.is_promoted(child)),
         }
     }
 
     fn promotes_operation(&self, callee: &TypedExpr, arguments: &[TypedArgument]) -> bool {
         arguments
             .iter()
-            .all(|argument| self.promotes(&argument.value))
+            .all(|argument| self.is_promoted(&argument.value))
             && ClauseChoice::new(self.program).read_selected_template(callee, false, |template| {
                 self.promotes_template(template, arguments)
             })

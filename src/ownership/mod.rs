@@ -53,6 +53,7 @@ mod rewrite;
 mod shrunk_parameters;
 mod slices;
 mod slots;
+mod statement_temporary;
 mod stored;
 mod stored_definitions;
 mod subtree;
@@ -74,7 +75,7 @@ use crate::core::{BindingArena, BindingId};
 use crate::diagnostic::Diagnostics;
 use crate::types::{
     CopyRules, DefinitionTable, InferredCopies, ParameterModes, PendingModeCheck, Pipelines,
-    TypedExprKind, TypedProgram,
+    ProgramReach, Regions, TypedExprKind, TypedProgram,
 };
 use aliased_changes::AliasedChanges;
 use borrowing_lambdas::BorrowingLambdas;
@@ -144,8 +145,20 @@ impl OwnershipChecker {
 
     pub fn record_regions(program: &mut TypedProgram) {
         let definitions = DefinitionTable::of(program);
-        let reach = ReachSearch::of(program, &definitions);
-        let regions = RegionRecord::of(program, &definitions, &reach);
+        let (reach, regions) = Self::regions_of(program, &definitions);
+        Self::keep_regions(program, reach, regions);
+    }
+
+    fn regions_of(
+        program: &TypedProgram,
+        definitions: &DefinitionTable<'_>,
+    ) -> (ProgramReach, Regions) {
+        let reach = ReachSearch::of(program, definitions);
+        let regions = RegionRecord::of(program, definitions, &reach);
+        (reach, regions)
+    }
+
+    fn keep_regions(program: &mut TypedProgram, reach: ProgramReach, regions: Regions) {
         program.ownership.reach = reach;
         program.ownership.regions = regions;
     }
@@ -247,10 +260,13 @@ impl OwnershipChecker {
             .check(&LabeledSpans::of(&diagnostics))
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
-        Self::record_regions(program);
-        KeptTemporaries::check(program)
+        let definitions = DefinitionTable::of(program);
+        let (reach, regions) = Self::regions_of(program, &definitions);
+        KeptTemporaries::new(program, &definitions, &regions)
+            .check()
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
+        Self::keep_regions(program, reach, regions);
         OwnershipFindings {
             inferred_copies,
             refusals: diagnostics,

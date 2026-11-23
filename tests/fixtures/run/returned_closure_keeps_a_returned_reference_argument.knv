@@ -1,0 +1,11 @@
+(struct user (name string))
+
+(defn name-of (u) (ref (field u name)))
+
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (u (new user (name (str "ana")))
+        greet (greeter (name-of u)))
+    (greet)))

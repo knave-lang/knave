@@ -4,9 +4,9 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::plan::EmitPlan;
-use super::result_borrows::ResultBorrows;
 use super::signature_borrows::SignatureBorrows;
 use crate::core::BindingId;
+use crate::ownership::ResultBorrows;
 use crate::types::{
     ReceiverKind, Type, TypedExprKind, TypedLambda, TypedProgram, TypedTraitMethod,
 };

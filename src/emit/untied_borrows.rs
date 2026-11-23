@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use super::problems::{EmitProblems, UntiedNames};
-use super::result_borrows::ResultBorrows;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
+use crate::ownership::ResultBorrows;
 use crate::types::{GenericId, Type, TypeDisplay, TypedBinder, TypedLambda, TypedProgram};
 
 pub struct ShownMethod<'s> {

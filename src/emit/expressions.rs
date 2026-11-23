@@ -21,7 +21,6 @@ use super::plan::{EmitPlan, ItemKind};
 use super::preceded_code::PrecededCode;
 use super::print_formats::PrintFormats;
 use super::problems::EmitProblems;
-use super::result_borrows::ResultBorrows;
 use super::reused_locals::ReusedLocals;
 use super::short_form::ShortForm;
 use super::stored_functions::StoredFunctions;
@@ -34,6 +33,7 @@ use crate::core::{
     PrimitiveType, ReferenceKind, RustTemplate, VariantInfo,
 };
 use crate::diagnostic::Diagnostic;
+use crate::ownership::ResultBorrows;
 use crate::ownership::StructUpdateOrder;
 use crate::reader::{Number, NumberValue};
 use crate::source::Span;

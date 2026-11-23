@@ -5,7 +5,7 @@ use std::rc::Rc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::callee_parameters::{CalleeParameters, OpenCallees};
-use super::plan::EmitPlan;
+use super::definition_lookup::DefinitionLookup;
 use super::store_sites::{StoreSite, StoreSites};
 use super::stored_arguments::Store;
 use crate::core::BindingId;
@@ -17,7 +17,7 @@ use crate::types::{
 
 pub struct ResultBorrows<'a> {
     program: &'a TypedProgram,
-    plan: &'a EmitPlan<'a>,
+    definitions: &'a dyn DefinitionLookup,
     parameters_by_callee: RefCell<FxHashMap<BindingId, CalleeParameters>>,
     open_callees: RefCell<OpenCallees>,
     stores_by_definition: RefCell<FxHashMap<BindingId, Rc<DefinitionStores>>>,
@@ -30,10 +30,10 @@ struct Visit {
 }
 
 impl<'a> ResultBorrows<'a> {
-    pub fn new(program: &'a TypedProgram, plan: &'a EmitPlan<'a>) -> Self {
+    pub fn new(program: &'a TypedProgram, definitions: &'a dyn DefinitionLookup) -> Self {
         Self {
             program,
-            plan,
+            definitions,
             parameters_by_callee: RefCell::new(FxHashMap::default()),
             open_callees: RefCell::new(OpenCallees::default()),
             stores_by_definition: RefCell::new(FxHashMap::default()),
@@ -187,7 +187,7 @@ impl<'a> ResultBorrows<'a> {
     }
 
     fn callee_lambda(&self, callee: BindingId) -> Option<&'a TypedLambda> {
-        match &self.plan.definition(callee)?.value.kind {
+        match &self.definitions.definition(callee)?.value.kind {
             TypedExprKind::Fn(lambda) => Some(lambda),
             _ => None,
         }
@@ -211,7 +211,7 @@ struct BodyFlows<'r, 'a> {
 #[derive(Default)]
 pub struct DefinitionStores {
     pub flows: StoredFlows,
-    pub positions: Vec<Store>,
+    pub(super) positions: Vec<Store>,
 }
 
 #[derive(Clone, Default)]

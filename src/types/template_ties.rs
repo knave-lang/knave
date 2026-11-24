@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
 
 use super::pipelines::Pipelines;
@@ -97,11 +98,11 @@ impl TemplateTies {
             .collect()
     }
 
-    pub fn lent_positions(parameters: &[Type], result: &Type) -> Vec<usize> {
-        Self::lifetime_ties(parameters, result).unwrap_or_default()
+    pub fn lent_positions<P: Borrow<Type>>(parameters: &[P], result: &Type) -> Option<Vec<usize>> {
+        Self::lifetime_ties(parameters, result)
     }
 
-    fn lifetime_ties(parameters: &[Type], result: &Type) -> Option<Vec<usize>> {
+    fn lifetime_ties<P: Borrow<Type>>(parameters: &[P], result: &Type) -> Option<Vec<usize>> {
         let mut tied = BTreeSet::new();
         for output in TypeLifetimes::of(result).all() {
             tied.extend(Self::sources_of(output, parameters)?);
@@ -109,12 +110,12 @@ impl TemplateTies {
         Some(tied.into_iter().collect())
     }
 
-    fn sources_of(output: Lifetime, parameters: &[Type]) -> Option<Vec<usize>> {
+    fn sources_of<P: Borrow<Type>>(output: Lifetime, parameters: &[P]) -> Option<Vec<usize>> {
         let inputs: Vec<(usize, Lifetime)> = parameters
             .iter()
             .enumerate()
             .flat_map(|(position, parameter)| {
-                TypeLifetimes::of(parameter)
+                TypeLifetimes::of(parameter.borrow())
                     .all()
                     .into_iter()
                     .map(move |lifetime| (position, lifetime))

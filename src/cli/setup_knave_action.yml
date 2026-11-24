@@ -1,0 +1,28 @@
+name: Set up Knave
+description: Install the Knave version that {project-file} records.
+
+runs:
+  using: composite
+  steps:
+    - name: Read the Knave version from {project-file}
+      run: bash "$GITHUB_ACTION_PATH/read-version.sh"
+      shell: bash
+    - id: knave-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/.cargo/bin/knave
+          ~/.cargo/.crates.toml
+          ~/.cargo/.crates2.json
+        key: knave-${{ env.KNAVE_VERSION }}-${{ runner.os }}
+    - name: Install Knave
+      run: cargo install knave --version "$KNAVE_VERSION" --locked
+      shell: bash
+    - if: steps.knave-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cargo/bin/knave
+          ~/.cargo/.crates.toml
+          ~/.cargo/.crates2.json
+        key: ${{ steps.knave-cache.outputs.cache-primary-key }}

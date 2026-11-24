@@ -86,7 +86,7 @@ mod tests {
 
     use super::VariableReference;
     use crate::core::{BindingId, BindingKind, ModuleId, PrimitiveType};
-    use crate::diagnostic::Diagnostic;
+    use crate::diagnostic::{Diagnostic, DiagnosticCode};
     use crate::source::Span;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{
@@ -147,6 +147,18 @@ mod tests {
         fn type_of(&mut self) -> Option<Type> {
             self.reference().ok().map(|typed| typed.ty)
         }
+
+        fn refusal_code(&mut self) -> Option<DiagnosticCode> {
+            self.reference().err()?.code().cloned()
+        }
+
+        fn code_of(problem: Diagnostic) -> Option<DiagnosticCode> {
+            problem.code().cloned()
+        }
+
+        fn selfless_problem() -> Diagnostic {
+            TypeProblems::wrong_argument_count(0, 1, FormFixtures::span())
+        }
     }
 
     impl Bindings for VariableFixture {
@@ -180,9 +192,9 @@ mod tests {
             &self,
             _binding: BindingId,
             _name: &str,
-            span: Span,
+            _span: Span,
         ) -> Option<Diagnostic> {
-            self.selfless.then(|| TypeProblems::quote_at_runtime(span))
+            self.selfless.then(Self::selfless_problem)
         }
 
         fn global_type(&mut self, _binding: BindingId, _span: Span) -> Type {
@@ -206,20 +218,23 @@ mod tests {
     fn an_unchecked_global_is_refused() {
         let mut fixture = VariableFixture::of(VariableFixture::global());
         fixture.unchecked = true;
-        assert!(fixture.reference().is_err());
+        let expected = TypeProblems::compile_time_only("name", FormFixtures::span());
+        assert_eq!(fixture.refusal_code(), VariableFixture::code_of(expected));
     }
 
     #[test]
     fn a_selfless_method_is_refused() {
         let mut fixture = VariableFixture::of(VariableFixture::global());
         fixture.selfless = true;
-        assert!(fixture.reference().is_err());
+        let expected = VariableFixture::selfless_problem();
+        assert_eq!(fixture.refusal_code(), VariableFixture::code_of(expected));
     }
 
     #[test]
     fn a_compile_time_binding_is_refused() {
         let mut fixture = VariableFixture::of(BindingKind::Macro(ModuleId::new(0)));
-        assert!(fixture.reference().is_err());
+        let expected = TypeProblems::compile_time_only("name", FormFixtures::span());
+        assert_eq!(fixture.refusal_code(), VariableFixture::code_of(expected));
     }
 
     #[test]
@@ -232,6 +247,7 @@ mod tests {
     #[test]
     fn a_variant_arm_binding_without_an_outer_binding_is_refused() {
         let mut fixture = VariableFixture::of(BindingKind::Local).in_variant_arm(None);
-        assert!(fixture.reference().is_err());
+        let expected = TypeProblems::variant_arm_value("name", "name", FormFixtures::span());
+        assert_eq!(fixture.refusal_code(), VariableFixture::code_of(expected));
     }
 }

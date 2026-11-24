@@ -29,12 +29,7 @@ impl<'p> LoanRules<'p> {
     }
 
     pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        RecordedTies::new(
-            self.program,
-            &self.definitions,
-            &self.program.ownership.regions,
-        )
-        .of(callee)
+        RecordedTies::new(self.program, &self.definitions).of(callee)
     }
 
     pub fn reads_through_a_stored_reference(&self, read: &TypedExpr) -> bool {

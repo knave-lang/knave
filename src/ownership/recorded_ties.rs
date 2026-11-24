@@ -7,19 +7,15 @@ use crate::types::{
 pub struct RecordedTies<'p, 'd> {
     templates: &'p TemplateBorrows,
     definitions: &'d DefinitionTable<'p>,
-    regions: &'d Regions,
+    regions: &'p Regions,
 }
 
 impl<'p, 'd> RecordedTies<'p, 'd> {
-    pub fn new(
-        program: &'p TypedProgram,
-        definitions: &'d DefinitionTable<'p>,
-        regions: &'d Regions,
-    ) -> Self {
+    pub fn new(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> Self {
         Self {
             templates: &program.template_borrows,
             definitions,
-            regions,
+            regions: &program.ownership.regions,
         }
     }
 

@@ -31,7 +31,7 @@ impl<'p> KeptTemporaries<'p> {
             regions: &program.ownership.regions,
             temporaries: LentTemporary::new(
                 program,
-                CallResultSources::new(program, definitions),
+                CallResultSources::new(program),
                 BuiltParts::new(program, definitions),
             ),
             problems: Vec::new(),

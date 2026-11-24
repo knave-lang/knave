@@ -54,7 +54,7 @@ impl<'p> DefinitionTable<'p> {
         self.definition(function)?.value.lambda_value()
     }
 
-    fn called_global(callee: &TypedExpr) -> Option<BindingId> {
+    pub fn called_global(callee: &TypedExpr) -> Option<BindingId> {
         match callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(function)) => Some(function),
             _ => None,

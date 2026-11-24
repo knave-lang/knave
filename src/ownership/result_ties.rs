@@ -1,4 +1,6 @@
-use rustc_hash::FxHashSet;
+use std::cell::RefCell;
+
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::tied_parts::TiedParts;
 use crate::core::BindingId;
@@ -7,27 +9,38 @@ use crate::types::{
     TypedExpr, TypedLambda, TypedProgram,
 };
 
-pub struct ResultTies<'p, 'd> {
+pub struct ResultTies<'p> {
     program: &'p TypedProgram,
-    definitions: &'d DefinitionTable<'p>,
+    definitions: DefinitionTable<'p>,
+    functions: RefCell<FxHashMap<BindingId, TemplateTies>>,
 }
 
-impl<'p, 'd> ResultTies<'p, 'd> {
-    pub fn new(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> Self {
+impl<'p> ResultTies<'p> {
+    pub fn new(program: &'p TypedProgram) -> Self {
         Self {
             program,
-            definitions,
+            definitions: DefinitionTable::of(program),
+            functions: RefCell::default(),
         }
     }
 
     pub fn of(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        match self.definitions.called_lambda(callee) {
-            Some(lambda) => Some(self.function_ties(lambda)),
+        let function = DefinitionTable::called_global(callee);
+        match function.zip(self.definitions.called_lambda(callee)) {
+            Some((function, lambda)) => Some(self.remembered_ties(function, lambda)),
             None => self
                 .program
                 .template_borrows
                 .read_template(callee, None, |_, ties| ties.cloned()),
         }
+    }
+
+    fn remembered_ties(&self, function: BindingId, lambda: &TypedLambda) -> TemplateTies {
+        self.functions
+            .borrow_mut()
+            .entry(function)
+            .or_insert_with(|| self.function_ties(lambda))
+            .clone()
     }
 
     fn function_ties(&self, lambda: &TypedLambda) -> TemplateTies {

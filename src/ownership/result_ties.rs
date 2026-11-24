@@ -4,13 +4,13 @@ use crate::types::{
     TypedLambda, TypedProgram,
 };
 
-pub struct RecordedTies<'p, 'd> {
+pub struct ResultTies<'p, 'd> {
     templates: &'p TemplateBorrows,
     definitions: &'d DefinitionTable<'p>,
     regions: &'p Regions,
 }
 
-impl<'p, 'd> RecordedTies<'p, 'd> {
+impl<'p, 'd> ResultTies<'p, 'd> {
     pub fn new(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> Self {
         Self {
             templates: &program.template_borrows,

@@ -1,5 +1,5 @@
 use super::type_memo::TypeMemo;
-use crate::ownership::recorded_ties::RecordedTies;
+use crate::ownership::result_ties::ResultTies;
 use crate::types::{
     BorrowingTypes, CopyRules, DefinitionTable, TemplateTies, Type, TypedExpr, TypedExprKind,
     TypedProgram, TypedStructExpr,
@@ -29,7 +29,7 @@ impl<'p> LoanRules<'p> {
     }
 
     pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        RecordedTies::new(self.program, &self.definitions).of(callee)
+        ResultTies::new(self.program, &self.definitions).of(callee)
     }
 
     pub fn reads_through_a_stored_reference(&self, read: &TypedExpr) -> bool {

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use rustc_hash::FxHashSet;
 
-use super::super::{Expander, ExpansionTables};
+use super::super::{Expander, ExpansionTables, MacroCallLookup};
 use crate::core::{BindingKind, ModuleId, ModulePath};
 use crate::diagnostic::{DiagnosticRenderer, Diagnostics};
 use crate::modules::ModuleSources;
@@ -12,6 +12,7 @@ use crate::source::{SourceMap, Span};
 pub(super) struct LonePreludeModule {
     tables: ExpansionTables,
     module: ModuleId,
+    sources: SourceMap,
 }
 
 impl LonePreludeModule {
@@ -20,12 +21,14 @@ impl LonePreludeModule {
     pub(super) fn expanded(path: &ModulePath) -> Self {
         let mut sources = SourceMap::default();
         let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
-        Self::expanding(&mut sources, module_sources, path).unwrap_or_else(|problems| {
-            panic!(
-                "{path} expands without problems, but it reports:\n{}",
-                DiagnosticRenderer::plain(&sources).render_all(&problems)
-            )
-        })
+        let module =
+            Self::expanding(&mut sources, module_sources, path).unwrap_or_else(|problems| {
+                panic!(
+                    "{path} expands without problems, but it reports:\n{}",
+                    DiagnosticRenderer::plain(&sources).render_all(&problems)
+                )
+            });
+        Self { sources, ..module }
     }
 
     fn expanding(
@@ -48,7 +51,17 @@ impl LonePreludeModule {
         problems.into_result(Self {
             tables: std::mem::take(&mut expander.tables),
             module,
+            sources: SourceMap::default(),
         })
+    }
+
+    pub(super) fn quoted_call(&self, site: Span) -> String {
+        let call = self.tables.macro_origins.calls.enclosing(site);
+        let written = call.map_or(site, |call| call.call_site);
+        let file = self.sources.file(written.source());
+        let position = self.sources.start_position(written);
+        let text = &file.text()[written.range()];
+        format!("{}:{position}: `{text}`", file.name())
     }
 
     pub(super) fn notes(&self, key: &str) -> Vec<Form> {
@@ -74,12 +87,32 @@ mod tests {
     use crate::core::ModulePath;
     use crate::diagnostic::{DiagnosticCode, Diagnostics};
     use crate::modules::ModuleSources;
-    use crate::source::SourceMap;
+    use crate::project::LintDefaults;
+    use crate::source::{SourceMap, Span};
 
     struct LonePreludeFixture;
 
     impl LonePreludeFixture {
         const BROKEN: &str = "../tests/fixtures/expand/broken_project_file";
+        const FORM_GAP: &str = "\n\n";
+
+        fn lint() -> LonePreludeModule {
+            LonePreludeModule::expanded(&ModulePath::new(ModuleSources::LINT))
+        }
+
+        fn first_default_lint(module: &LonePreludeModule) -> Span {
+            let notes = module.notes(LintDefaults::NOTE);
+            let entry = notes.first().expect("prelude/lint states a default");
+            entry.as_list().expect("a default is a list")[0].span()
+        }
+
+        fn gap_between_forms(module: &LonePreludeModule, inside: Span) -> Span {
+            let text = module.sources.file(inside.source()).text();
+            let gap = text
+                .find(Self::FORM_GAP)
+                .expect("the module holds two forms");
+            Span::new(inside.source(), gap..gap + Self::FORM_GAP.len())
+        }
 
         fn expanding(module: &str) -> Result<LonePreludeModule, Diagnostics> {
             let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(Self::BROKEN);
@@ -98,6 +131,25 @@ mod tests {
                 .filter_map(|problem| problem.code().cloned())
                 .collect()
         }
+    }
+
+    #[test]
+    fn a_quoted_call_shows_the_written_call_at_its_location() {
+        let lint = LonePreludeFixture::lint();
+        let quoted = lint.quoted_call(LonePreludeFixture::first_default_lint(&lint));
+        assert!(quoted.starts_with("prelude/lint.knv:"), "{quoted}");
+        assert!(
+            quoted.ends_with(": `(lint-default needless-type allow)`"),
+            "{quoted}"
+        );
+    }
+
+    #[test]
+    fn a_quoted_site_outside_a_call_shows_the_site_itself() {
+        let lint = LonePreludeFixture::lint();
+        let inside = LonePreludeFixture::first_default_lint(&lint);
+        let gap = LonePreludeFixture::gap_between_forms(&lint, inside);
+        assert!(lint.quoted_call(gap).ends_with(": `\n\n`"));
     }
 
     #[test]

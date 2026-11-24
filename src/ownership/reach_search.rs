@@ -349,4 +349,13 @@ mod tests {
         assert!(!reaches.main.reached.contains(&sum));
         assert!(reaches.from_user_definitions.contains(&sum));
     }
+
+    #[test]
+    fn a_user_definition_main_never_calls_is_reached_from_every_user_definition() {
+        let fixture = ReachFixture::of(ReachFixture::PRELUDE_CALL_OUTSIDE_MAIN);
+        let total = fixture.definition("total");
+        let reaches = fixture.reaches();
+        assert!(!reaches.main.reached.contains(&total));
+        assert!(reaches.from_user_definitions.contains(&total));
+    }
 }

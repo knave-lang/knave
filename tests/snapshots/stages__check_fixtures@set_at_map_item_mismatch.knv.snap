@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/set_at_map_item_mismatch.knv
+---
+error[L0401]: mismatched types
+ --> check/set_at_map_item_mismatch.knv:3:20
+  |
+3 |   (set! (at m "a") "b")
+  |                    ^^^ expected an integer, found `(ref str)`
+  |
+  = note: run `knave doc L0401` for an explanation

@@ -6,6 +6,7 @@ use crate::types::expectation::Expectation;
 use crate::types::problems::TypeProblems;
 use crate::types::ty::Type;
 use crate::types::typed::{TypedExpr, TypedExprKind, TypedLeaf};
+use crate::types::variant_arm_reference::VariantArmReference;
 
 pub(in crate::types) struct VariableReference {
     binding: BindingId,
@@ -20,14 +21,13 @@ impl VariableReference {
     fn type_variant_arm<C: VariableTyping>(
         &self,
         context: &mut C,
-        outer: Option<BindingId>,
-        variant: BindingId,
+        reference: VariantArmReference,
     ) -> Result<TypedExpr, Diagnostic> {
-        match outer {
+        match reference.outer {
             Some(outer) => Self::new(outer, self.span).type_against(context, None),
             None => {
                 let name = context.binding_name(self.binding);
-                let variant = context.binding_name(variant);
+                let variant = context.binding_name(reference.variant);
                 Err(TypeProblems::variant_arm_value(&name, &variant, self.span))
             }
         }
@@ -66,7 +66,7 @@ impl<C: VariableTyping> ExpressionForm<C> for VariableReference {
         _hint: Option<Expectation>,
     ) -> Result<TypedExpr, Diagnostic> {
         if let Some(reference) = context.variant_arm(self.binding) {
-            return self.type_variant_arm(context, reference.outer, reference.variant);
+            return self.type_variant_arm(context, reference);
         }
         let name = context.binding_name(self.binding);
         match context.binding_kind(self.binding) {

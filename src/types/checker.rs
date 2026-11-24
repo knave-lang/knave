@@ -85,6 +85,7 @@ use super::unification::Unification;
 use super::unifier::{LiteralKind, Unifier};
 use super::user_trait::UserTrait;
 use super::variable_linking::VariableLinking;
+use super::variant_arm_reference::VariantArmReference;
 use super::variant_payloads::VariantPayloads;
 use super::wrapper::FunctionValueWrapper;
 use super::{
@@ -107,7 +108,7 @@ pub struct TypeChecker {
     pub(super) schemes: FxHashMap<BindingId, Scheme>,
     pub(super) component: FxHashMap<BindingId, Type>,
     pub(super) locals: FxHashMap<BindingId, Type>,
-    pub(super) variant_arm: FxHashMap<BindingId, super::variant_arm_reference::VariantArmReference>,
+    pub(super) variant_arm: FxHashMap<BindingId, VariantArmReference>,
     pub(super) unchecked: FxHashSet<BindingId>,
     entry_function: Option<BindingId>,
     pub(super) outcomes: DefinitionOutcomes,

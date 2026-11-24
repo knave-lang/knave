@@ -25,12 +25,8 @@ impl<'p> ReturnedValues<'p> {
         closures
     }
 
-    pub fn values<'e>(&self, lambda: &'e TypedLambda) -> Vec<&'e TypedExpr> {
-        let mut values = Vec::new();
-        Self::visit_block(&lambda.body, Lets::default(), &mut |value, _| {
-            values.push(value)
-        });
-        values
+    pub fn visit_values<'e>(&self, lambda: &'e TypedLambda, mut visit: impl FnMut(&'e TypedExpr)) {
+        Self::visit_block(&lambda.body, Lets::default(), &mut |value, _| visit(value));
     }
 
     pub fn of_value<'e>(&self, value: &'e TypedExpr) -> Vec<&'e TypedExpr> {

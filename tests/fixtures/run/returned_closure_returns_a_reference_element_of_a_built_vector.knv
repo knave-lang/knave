@@ -1,0 +1,12 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn one (a) (vec a))
+
+(defn mk (s)
+  (greeter (unwrap (first (one (as-str s))))))
+
+(defn main ()
+  (let (s (str "a")
+        g (mk s))
+    (g)))

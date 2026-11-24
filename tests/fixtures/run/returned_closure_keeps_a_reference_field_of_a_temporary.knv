@@ -1,0 +1,11 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(struct holder (r (ref str)))
+
+(defn r-of (h) (field h r))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (r-of (new holder (r (as-str s))))))
+    (g)))

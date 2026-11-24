@@ -1,0 +1,14 @@
+(struct span
+        (start int)
+        (end int)
+        (step int))
+
+(derive span copy clone)
+
+(defn width (s)
+  (fn ()
+    (- (field s end) (field s start))))
+
+(defn main ()
+  (let (measure (width (new span (start 1) (end 4) (step 1))))
+    (println (measure))))

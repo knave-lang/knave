@@ -1,0 +1,15 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(type second
+  (where ('a 'b)
+    (fn ((pair (ref 'a str) (ref 'b str)))
+      (ref 'b str))))
+
+(defn second (p)
+  (let-match ((pair a b) p) b))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (second (pair (as-str (str "zz")) (as-str s)))))
+    (g)))

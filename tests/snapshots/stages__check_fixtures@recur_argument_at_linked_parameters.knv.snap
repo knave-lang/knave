@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/recur_argument_at_linked_parameters.knv
+---
+error[L0401]: mismatched types
+ --> check/recur_argument_at_linked_parameters.knv:2:26
+  |
+2 |   (if (= a b) n (recur 1 "x" (+ n 1))))
+  |                          ^^^ expected an integer, found `str`
+  |
+  = note: run `knave doc L0401` for an explanation

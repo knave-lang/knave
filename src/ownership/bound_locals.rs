@@ -84,7 +84,7 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
                 }
             }
             TypedPatternKind::Struct(structure, parts) => {
-                let selected = self.parts.field_part(scrutinee, *structure);
+                let selected = self.parts.whole_struct(scrutinee, *structure);
                 for part in parts {
                     self.part(part, selected);
                 }

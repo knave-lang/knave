@@ -119,15 +119,17 @@ impl<'w, 'p, 'e> ArgumentWalk<'w, 'p, 'e> {
     ) -> Option<Option<&'e TypedExpr>> {
         match self.bound.of(value)? {
             BoundLocal::Value(bound) => Some(same_mode(self, bound)),
-            BoundLocal::LoopBinder(binder, _) if self.owns_its_value(&binder.ty) => Some(None),
+            BoundLocal::LoopBinder(binder, _) if self.binder_owns_its_value(&binder.ty) => {
+                Some(None)
+            }
             BoundLocal::LoopBinder(_, start) => Some(same_mode(self, start)),
             BoundLocal::Within(scrutinee) => Some(self.held_in(scrutinee)),
             BoundLocal::Unresolved => Some(None),
         }
     }
 
-    fn owns_its_value(&self, ty: &Type) -> bool {
-        !ty.is_reference() && !self.lent.program.type_holds_borrow(ty)
+    fn binder_owns_its_value(&self, ty: &Type) -> bool {
+        !self.lent.program.type_holds_borrow(ty)
     }
 
     fn chosen_values(&self, value: &'e TypedExpr) -> Option<Vec<&'e TypedExpr>> {

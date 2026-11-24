@@ -1,14 +1,13 @@
-use super::text::EnumPayloads;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, FieldOrder, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf,
-    TypedProgram,
+    DefinitionTable, EnumCases, FieldOrder, GenericParam, Type, TypedArgument, TypedExpr,
+    TypedExprKind, TypedLeaf, TypedProgram,
 };
 
 pub struct BuiltParts<'p> {
     program: &'p TypedProgram,
     definitions: &'p DefinitionTable<'p>,
-    payloads: EnumPayloads<'p>,
+    cases: EnumCases<'p>,
 }
 
 impl<'p> BuiltParts<'p> {
@@ -16,7 +15,7 @@ impl<'p> BuiltParts<'p> {
         Self {
             program,
             definitions,
-            payloads: EnumPayloads::new(program),
+            cases: EnumCases::new(program),
         }
     }
 
@@ -26,24 +25,27 @@ impl<'p> BuiltParts<'p> {
         variant: BindingId,
         position: usize,
     ) -> Option<&'e TypedExpr> {
-        let shares_one_lifetime = self
-            .payloads
-            .enumeration_of(variant)
-            .is_some_and(|enumeration| enumeration.lifetimes.len() + enumeration.params.len() <= 1);
+        let shares_one_lifetime = self.cases.case(variant).is_some_and(|(enumeration, _)| {
+            Self::shares_one_lifetime(&enumeration.lifetimes, &enumeration.params)
+        });
         self.built_part(value, variant, position)
             .or(shares_one_lifetime.then_some(value))
     }
 
-    pub fn field_part<'e>(
+    pub fn whole_struct<'e>(
         &self,
         value: &'e TypedExpr,
         structure: BindingId,
     ) -> Option<&'e TypedExpr> {
         let structs = self.program.declarations.types().structs();
-        let shares_one_lifetime = structs
-            .get(structure)
-            .is_some_and(|definition| definition.lifetimes.len() + definition.params.len() <= 1);
+        let shares_one_lifetime = structs.get(structure).is_some_and(|definition| {
+            Self::shares_one_lifetime(&definition.lifetimes, &definition.params)
+        });
         shares_one_lifetime.then_some(value)
+    }
+
+    fn shares_one_lifetime(lifetimes: &[BindingId], params: &[GenericParam]) -> bool {
+        lifetimes.len() + params.len() <= 1
     }
 
     fn built_part<'e>(
@@ -94,7 +96,7 @@ impl<'p> BuiltParts<'p> {
         let Type::Named(_, type_arguments) = result.as_ref() else {
             return None;
         };
-        let built = type_arguments.get(self.payloads.argument(variant, position)?)?;
+        let built = type_arguments.get(self.cases.type_parameter_of(variant, position)?)?;
         Self::only_parameter_of(parameters, built)
     }
 

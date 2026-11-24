@@ -72,8 +72,6 @@ mod value_parts;
 mod walk_context;
 mod written_bindings;
 
-pub(super) use enum_payloads::EnumPayloads;
-
 use call_results::CallResults;
 use refusal_sites::RefusalSites;
 use slot_classes::SlotClasses;

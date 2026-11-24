@@ -9,3 +9,4 @@ main
   22:25 borrow `x`: no live loan
   22:36 borrow `y`: no live loan
   23:9 change `x`: `x` lent at 22:25, held by `whole`; `y` lent at 22:36, held by `whole`
+  24:9 change `y`: `x` lent at 22:25, held by `whole`; `y` lent at 22:36, held by `whole`

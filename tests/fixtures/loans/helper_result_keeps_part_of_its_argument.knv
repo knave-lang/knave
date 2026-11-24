@@ -21,6 +21,7 @@
   (local whole
     (both (pair (as-str x) (as-str y))))
   (set! x (str "c"))
+  (set! y (str "d"))
   (println part)
   (let-match ((pair first _) whole)
     (println first)))

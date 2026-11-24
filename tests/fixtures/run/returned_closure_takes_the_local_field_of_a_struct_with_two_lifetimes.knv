@@ -1,0 +1,14 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(struct (two 'a 'b)
+        (x (ref 'a str))
+        (y (ref 'b str)))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (match (new two
+                            (x (as-str (str "zz")))
+                            (y (as-str s)))
+                     ((two a b) b))))
+    (g)))

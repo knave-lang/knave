@@ -123,6 +123,7 @@ impl<'w, 'p, 'e> ArgumentWalk<'w, 'p, 'e> {
                 Some(same_mode(self, start).filter(|found| !std::ptr::eq(*found, start)))
             }
             BoundLocal::Within(scrutinee) => Some(self.held_in(scrutinee)),
+            BoundLocal::Unresolved => Some(None),
         }
     }
 

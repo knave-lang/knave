@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_the_local_field_of_a_struct_with_two_lifetimes.knv
+---
+hi a

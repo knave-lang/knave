@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_a_closure_whose_body_borrows_a_temporary.knv
+---
+zz
+a

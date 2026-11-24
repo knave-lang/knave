@@ -48,7 +48,6 @@ impl<'e> BoundLocals<'e> {
             {
                 self.loop_binders(body, arguments)
             }
-            TypedExprKind::Fn(lambda) => self.lets(&lambda.body),
             _ => {}
         }
     }

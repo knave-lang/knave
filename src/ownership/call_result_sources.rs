@@ -2,8 +2,13 @@ use super::recorded_ties::RecordedTies;
 use super::result_source::{PassedArgument, ResultSource};
 use crate::types::{
     CalledFunction, DefinitionTable, ParameterRole, Regions, TemplateTies, Type, TypedExpr,
-    TypedExprKind, TypedProgram,
+    TypedExprKind, TypedLambda, TypedProgram,
 };
+
+struct CalleeTies<'t> {
+    ties: TemplateTies,
+    parameters: Vec<&'t Type>,
+}
 
 pub struct CallResultSources<'p> {
     program: &'p TypedProgram,
@@ -25,25 +30,12 @@ impl<'p> CallResultSources<'p> {
     }
 
     pub fn of<'e>(&self, call: &'e TypedExpr) -> Option<Vec<ResultSource<'e>>> {
-        let TypedExprKind::Call(callee, arguments) = &call.kind else {
+        let TypedExprKind::Call(_, arguments) = &call.kind else {
             return None;
         };
-        let (ties, parameters) = match self.definitions.called_function(call) {
-            Some(called) => (
-                self.function_ties(&called),
-                Self::lambda_parameters(&called),
-            ),
-            None => {
-                let Type::Function(_, parameters, _) = &callee.ty else {
-                    return None;
-                };
-                (
-                    RecordedTies::new(self.program).of(callee)?,
-                    parameters.clone(),
-                )
-            }
-        };
-        let sources = parameters
+        let signature = self.callee_signature(call)?;
+        let sources = signature
+            .parameters
             .iter()
             .zip(arguments)
             .enumerate()
@@ -53,7 +45,7 @@ impl<'p> CallResultSources<'p> {
                     argument: &argument.value,
                 };
                 Some(ResultSource::kept_by_call(
-                    ties.tie_at(position)?,
+                    signature.ties.tie_at(position)?,
                     passed,
                     self.program,
                 ))
@@ -62,12 +54,34 @@ impl<'p> CallResultSources<'p> {
         Some(sources)
     }
 
-    fn lambda_parameters(called: &CalledFunction) -> Vec<Type> {
-        called
-            .lambda
+    fn callee_signature<'t>(&'t self, call: &'t TypedExpr) -> Option<CalleeTies<'t>> {
+        match self.definitions.called_function(call) {
+            Some(called) => Some(CalleeTies {
+                ties: self.function_ties(&called),
+                parameters: Self::lambda_parameters(called.lambda),
+            }),
+            None => self.template_signature(call),
+        }
+    }
+
+    fn template_signature<'t>(&self, call: &'t TypedExpr) -> Option<CalleeTies<'t>> {
+        let TypedExprKind::Call(callee, _) = &call.kind else {
+            return None;
+        };
+        let Type::Function(_, parameters, _) = &callee.ty else {
+            return None;
+        };
+        Some(CalleeTies {
+            ties: RecordedTies::new(self.program).of(callee)?,
+            parameters: parameters.iter().collect(),
+        })
+    }
+
+    fn lambda_parameters(lambda: &TypedLambda) -> Vec<&Type> {
+        lambda
             .params
             .iter()
-            .map(|parameter| parameter.ty.clone())
+            .map(|parameter| &parameter.ty)
             .collect()
     }
 
@@ -89,6 +103,7 @@ impl<'p> CallResultSources<'p> {
         let Some(result) = called.lambda.body.tail().map(|tail| &tail.ty) else {
             return Vec::new();
         };
-        TemplateTies::lent_positions(&Self::lambda_parameters(called), result)
+        let parameters = Self::lambda_parameters(called.lambda);
+        TemplateTies::lent_positions(&parameters, result).unwrap_or_default()
     }
 }

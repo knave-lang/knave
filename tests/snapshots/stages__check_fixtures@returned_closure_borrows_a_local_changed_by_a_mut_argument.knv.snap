@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_borrows_a_local_changed_by_a_mut_argument.knv
+---
+(type greeter (fn ((ref str)) (fn () unit)))
+(type main (fn () unit))

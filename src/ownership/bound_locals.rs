@@ -12,6 +12,7 @@ pub enum BoundLocal<'e> {
     Value(&'e TypedExpr),
     LoopBinder(&'e TypedExpr),
     Within(&'e TypedExpr),
+    Unresolved,
 }
 
 pub struct BoundLocals<'b, 'p, 'e> {
@@ -76,17 +77,37 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
                     .insert(binder.binding, BoundLocal::Within(scrutinee));
             }
             TypedPatternKind::Variant(variant, parts) => {
+                let built = self.bound_value(scrutinee);
                 for (position, part) in parts.iter().enumerate() {
-                    let built = self.parts.part(scrutinee, *variant, position);
-                    self.pattern(part, built.unwrap_or(scrutinee));
+                    let selected = self.parts.variant_part(built, *variant, position);
+                    self.part(part, selected);
                 }
             }
-            TypedPatternKind::Struct(_, parts) => {
+            TypedPatternKind::Struct(structure, parts) => {
+                let selected = self.parts.field_part(scrutinee, *structure);
                 for part in parts {
-                    self.pattern(part, scrutinee);
+                    self.part(part, selected);
                 }
             }
             TypedPatternKind::Wildcard | TypedPatternKind::Literal(..) => {}
+        }
+    }
+
+    fn part(&mut self, pattern: &'e TypedPattern, selected: Option<&'e TypedExpr>) {
+        match selected {
+            Some(value) => self.pattern(pattern, value),
+            None => {
+                for binder in pattern.binders() {
+                    self.locals.insert(binder.binding, BoundLocal::Unresolved);
+                }
+            }
+        }
+    }
+
+    fn bound_value(&self, value: &'e TypedExpr) -> &'e TypedExpr {
+        match self.of(value) {
+            Some(BoundLocal::Value(bound)) => self.bound_value(bound),
+            _ => value,
         }
     }
 

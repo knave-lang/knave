@@ -52,6 +52,10 @@ impl<'p> EnumPayloads<'p> {
         }
     }
 
+    pub fn enumeration_of(&self, variant: BindingId) -> Option<&'p EnumDefinition> {
+        self.enumeration(self.info(variant)?.owner)
+    }
+
     fn case(&self, variant: BindingId) -> Option<(&'p EnumDefinition, &'p VariantDefinition)> {
         let info = self.info(variant)?;
         let definition = self.enumeration(info.owner)?;

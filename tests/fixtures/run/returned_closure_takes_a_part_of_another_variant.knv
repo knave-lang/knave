@@ -1,0 +1,14 @@
+(enum (either-part a b)
+  (one b)
+  (two a b))
+
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (match (either-part/two (as-str (str "zz"))
+                                           (as-str s))
+                     ((either-part/one x) x)
+                     ((either-part/two _ y) y))))
+    (g)))

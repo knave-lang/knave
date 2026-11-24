@@ -1,0 +1,12 @@
+(enum (labeled-pair a b)
+  (both (struct (first a) (second b))))
+
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (match (labeled-pair/both :second (as-str s)
+                                             :first (as-str (str "zz")))
+                     ((labeled-pair/both f g) g))))
+    (g)))

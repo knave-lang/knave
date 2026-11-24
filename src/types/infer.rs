@@ -2287,8 +2287,7 @@ impl TypeChecker {
         let item_type = self.unifier.fresh();
         let target = self.set_at_target(depth, &item_type);
         self.unification()
-            .expect(Expectation::plain(&target), collection.ty(), value.span)
-            .map_err(|error| self.point_struct_base_to_fields(error, collection.ty()))?;
+            .expect(Expectation::plain(&target), collection.ty(), value.span)?;
         let mut parameters = vec![Type::mutable(target)];
         parameters.extend((0..depth).map(|_| Collection::INDEX));
         parameters.push(item_type);

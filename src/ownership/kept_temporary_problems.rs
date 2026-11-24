@@ -2,6 +2,12 @@ use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
 
 #[derive(Clone, Copy)]
+pub enum ParameterMode {
+    Borrowed,
+    Owned,
+}
+
+#[derive(Clone, Copy)]
 pub enum KeptUntil {
     StatementEnd,
     FunctionReturn,
@@ -12,6 +18,7 @@ pub struct KeptTemporary<'n> {
     pub callee: &'n str,
     pub parameter: &'n str,
     pub parameter_span: Span,
+    pub parameter_mode: ParameterMode,
     pub kept_until: KeptUntil,
 }
 
@@ -29,6 +36,7 @@ impl KeptTemporaryProblems {
             callee,
             parameter,
             parameter_span,
+            parameter_mode,
             kept_until,
         } = kept;
         let wording = Self::wording(*kept_until);
@@ -39,9 +47,20 @@ impl KeptTemporaryProblems {
         )
         .with_label(Label::new(
             *parameter_span,
-            format!("the returned closure keeps this borrow of `{parameter}`"),
+            Self::kept_borrow(*parameter_mode, parameter),
         ))
         .with_help(wording.help)
+    }
+
+    fn kept_borrow(mode: ParameterMode, parameter: &str) -> String {
+        match mode {
+            ParameterMode::Borrowed => {
+                format!("the returned closure keeps this borrow of `{parameter}`")
+            }
+            ParameterMode::Owned => {
+                format!("the returned closure keeps the borrow that `{parameter}` holds")
+            }
+        }
     }
 
     fn wording(kept_until: KeptUntil) -> KeptWording {

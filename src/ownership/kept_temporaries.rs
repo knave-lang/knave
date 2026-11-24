@@ -1,5 +1,5 @@
 use super::kept_temporary_problems::{KeptTemporary, KeptTemporaryProblems, KeptUntil};
-use super::statement_temporary::StatementTemporary;
+use super::lent_temporary::LentTemporary;
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
 use crate::types::{
@@ -12,7 +12,7 @@ pub struct KeptTemporaries<'p> {
     program: &'p TypedProgram,
     definitions: &'p DefinitionTable<'p>,
     regions: &'p Regions,
-    temporaries: StatementTemporary<'p>,
+    temporaries: LentTemporary<'p>,
     problems: Vec<Diagnostic>,
 }
 
@@ -31,7 +31,7 @@ impl<'p> KeptTemporaries<'p> {
             program,
             definitions,
             regions,
-            temporaries: StatementTemporary::new(program, definitions, regions),
+            temporaries: LentTemporary::new(program, definitions, regions),
             problems: Vec::new(),
         }
     }
@@ -119,7 +119,7 @@ impl<'p> KeptTemporaries<'p> {
             if !kept.contains(&parameter.binding) {
                 continue;
             }
-            if let Some(temporary) = self.temporaries.kept_in(parameter, &argument.value) {
+            if let Some(temporary) = self.temporaries.lent_in(parameter, &argument.value) {
                 self.report(&call, parameter, temporary);
             }
         }

@@ -11,14 +11,14 @@ enum ResultSources {
     ByType,
 }
 
-pub struct StatementTemporary<'p> {
+pub struct LentTemporary<'p> {
     program: &'p TypedProgram,
     definitions: &'p DefinitionTable<'p>,
     regions: &'p Regions,
     constants: PromotedConstants<'p>,
 }
 
-impl<'p> StatementTemporary<'p> {
+impl<'p> LentTemporary<'p> {
     pub fn new(
         program: &'p TypedProgram,
         definitions: &'p DefinitionTable<'p>,
@@ -32,7 +32,7 @@ impl<'p> StatementTemporary<'p> {
         }
     }
 
-    pub fn kept_in<'e>(
+    pub fn lent_in<'e>(
         &self,
         parameter: &TypedBinder,
         argument: &'e TypedExpr,

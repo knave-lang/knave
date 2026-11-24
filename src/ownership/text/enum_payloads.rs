@@ -27,7 +27,7 @@ impl<'p> EnumPayloads<'p> {
     pub fn field(&self, variant: BindingId, field: usize) -> Option<(SlotOwner, &'p Type)> {
         let (_, case) = self.cases.case(variant)?;
         let owner = SlotOwner::Field(self.cases.owner_of(variant)?, Self::label(case, field));
-        Some((owner, case.field_type(field)?))
+        Some((owner, case.payload_types().get(field).copied()?))
     }
 
     pub fn converted_case(&self, target: BindingId, error: &Type) -> Option<SlotOwner> {

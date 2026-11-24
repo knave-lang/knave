@@ -29,7 +29,7 @@ impl<'p> EnumCases<'p> {
 
     pub fn type_parameter_of(&self, variant: BindingId, field: usize) -> Option<usize> {
         let (definition, case) = self.case(variant)?;
-        let Type::Generic(generic) = case.field_type(field)? else {
+        let Type::Generic(generic) = case.payload_types().get(field).copied()? else {
             return None;
         };
         definition

@@ -1,7 +1,7 @@
 use super::tied_parts::TiedParts;
 use crate::types::{
     DefinitionTable, ParameterRole, Regions, TemplateBorrows, TemplateTies, Type, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
+    TypedLambda, TypedProgram,
 };
 
 pub struct RecordedTies<'p, 'd> {
@@ -24,19 +24,12 @@ impl<'p, 'd> RecordedTies<'p, 'd> {
     }
 
     pub fn of(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        match self.called_lambda(callee) {
+        match self.definitions.called_lambda(callee) {
             Some(lambda) => Some(self.function_ties(lambda)),
             None => self
                 .templates
                 .read_template(callee, None, |_, ties| ties.cloned()),
         }
-    }
-
-    fn called_lambda(&self, callee: &TypedExpr) -> Option<&'p TypedLambda> {
-        let TypedExprKind::Leaf(TypedLeaf::Global(function)) = callee.kind else {
-            return None;
-        };
-        self.definitions.definition(function)?.value.lambda_value()
     }
 
     fn function_ties(&self, lambda: &TypedLambda) -> TemplateTies {

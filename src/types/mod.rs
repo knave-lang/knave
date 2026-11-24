@@ -358,7 +358,6 @@ pub use structs::{StructDefinition, StructTable, UnderlyingStruct};
 pub use structural_trait::StructuralTrait;
 pub use structural_uses::{StructuralUse, StructuralUses};
 pub use synthetic_template::SyntheticTemplate;
-pub use template_author::TemplateAuthor;
 pub use template_clauses::TemplateClauses;
 pub use template_ties::TemplateTies;
 pub use templates::{TemplateBorrows, TemplateName};

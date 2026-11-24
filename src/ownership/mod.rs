@@ -44,6 +44,7 @@ mod problems;
 mod promoted_constants;
 mod reach_search;
 mod read_usage;
+mod recorded_ties;
 mod recurrence;
 mod refusals;
 mod regions;

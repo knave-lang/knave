@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/written_result_lends_only_what_its_signature_ties.knv
+---
+main
+  18:27 borrow `x`: no live loan
+  18:38 borrow `y`: no live loan
+  19:10 change `y`: `x` lent at 18:27, held by `r`

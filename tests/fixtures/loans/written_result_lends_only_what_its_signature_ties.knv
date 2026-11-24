@@ -1,7 +1,17 @@
-(type pick (where ('a 'b) (fn ((ref 'a str) (ref 'b str)) (ref 'a str))))
+(type pick
+  (where ('a 'b)
+    (fn ((ref 'a str) (ref 'b str))
+      (ref 'a str))))
+
 (defn pick (a b) (if (> (len b) 0) a a))
-(type outer (where ('a 'b) (fn ((ref 'a str) (ref 'b str)) (ref 'a str))))
+
+(type outer
+  (where ('a 'b)
+    (fn ((ref 'a str) (ref 'b str))
+      (ref 'a str))))
+
 (defn outer (a b) (pick a b))
+
 (defn main ()
   (local x (str "a"))
   (local y (str "b"))

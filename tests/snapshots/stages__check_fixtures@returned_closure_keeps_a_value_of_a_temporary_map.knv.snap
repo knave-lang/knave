@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_value_of_a_temporary_map.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_a_value_of_a_temporary_map.knv:5:33
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+5 |   (let (g (greeter (unwrap (get (hash-map (str "a") (str "b"))
+  |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

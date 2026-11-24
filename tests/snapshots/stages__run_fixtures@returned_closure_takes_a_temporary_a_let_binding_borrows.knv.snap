@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_a_temporary_a_let_binding_borrows.knv
+---
+2
+a

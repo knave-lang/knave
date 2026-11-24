@@ -71,7 +71,7 @@ impl<'a> UnlentParameters<'a> {
         if self.changes(param) {
             self.result_cannot_hold(param)
         } else {
-            self.lambda.returns_closure() && self.is_borrowed(param)
+            self.lambda.returns_closure() && self.program.lends_borrow(&param.ty)
         }
     }
 
@@ -80,10 +80,6 @@ impl<'a> UnlentParameters<'a> {
             .ownership
             .parameter_modes
             .changes(param.binding)
-    }
-
-    fn is_borrowed(&self, param: &TypedBinder) -> bool {
-        param.ty.is_reference() || self.program.type_holds_borrow(&param.ty)
     }
 
     fn result_cannot_hold(&self, param: &TypedBinder) -> bool {

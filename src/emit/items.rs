@@ -1296,7 +1296,7 @@ impl<'a> ItemEmitter<'a> {
             .params
             .iter()
             .filter(|param| unlent.lends(param.binding))
-            .filter(|param| param.ty.is_reference() || self.program.type_holds_borrow(&param.ty))
+            .filter(|param| self.program.lends_borrow(&param.ty))
             .map(|param| param.binding)
             .collect()
     }

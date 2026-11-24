@@ -79,8 +79,8 @@ The rules it would set:
 5. `knave build -o <path>` in a library project writes the rlib to `<path>`.
 6. When the entry exists, `knave build` builds the entry, then the library root as a library crate unless the entry's program loads it, as `knave check` does under RFC 0083.
 7. A written `:entry` whose file is missing stays an error, even when the library root exists.
-8. With no entry file and no library root, the missing entry stays an error.
-9. `knave run` with no file in a project that rule 1 would build as a library is a usage error that says the library has no entry to run, exits 2, and builds nothing.
+8. With no entry file and no library root, `knave build` with no file prints `nothing to build: the project has no entry and no library root` and exits 0 when the project has a task tree. With no task tree either, it is an error that names the missing entry, the missing library root and the missing tasks, and exits 2.
+9. `knave run` with no file, in a project whose entry the project file does not write and that has no entry file, is a usage error that says the library, or the project when it has no library root, has no entry to run, exits 2, and builds nothing.
 10. `knave run <file>`, `knave build <file>`, `test`, `types`, `expand`, `emit`, `doc` and `check <file>` keep their behavior.
 11. A definition whose bound names a type variable that no parameter and no result holds is `L0407` at the definition, in a program and in a library alike, so `knave check` reports it before rustc does.
 
@@ -89,6 +89,8 @@ This RFC supersedes rule 7 of RFC 0083 for `knave build` and `knave run`.
 ## Decision
 
 The project owner, 2026-11-24, D140: accepted the library crate from the library root, with rule 11. In a library project, `knave build` builds the library root as a Rust library crate, and `knave run` is a usage error. A definition whose bound names a type variable that no parameter and no result holds is `L0407` at the definition, in a program and in a library alike.
+
+The project owner, 2026-11-24, D143: a project with at least one program, an entry, a library root or a task tree, builds what it has, and a project with none fails. A task tree alone has nothing to build, so `knave build` exits 0 there, and `knave run` is a usage error.
 
 ## Rejected options and why
 

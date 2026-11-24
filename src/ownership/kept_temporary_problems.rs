@@ -48,7 +48,7 @@ impl KeptTemporaryProblems {
         match kept_until {
             KeptUntil::StatementEnd => KeptWording {
                 dropped: "this temporary is dropped at the end of the statement",
-                help: "bind the argument with `let` before the call, so it lives as long as the result",
+                help: "bind the argument with `let` before the statement that binds the result, so it lives as long as the result",
             },
             KeptUntil::FunctionReturn => KeptWording {
                 dropped: "this temporary is dropped when the function returns, while the result still borrows it",

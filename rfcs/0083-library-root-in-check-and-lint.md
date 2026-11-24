@@ -35,7 +35,7 @@ shelf/
 (defproject shelf :kind :library)
 ```
 
-Go, Gleam and Mix take a third path: they check every package or module of the project, whatever reaches it. `knave lint` already covers every file of a project, each in the program it belongs to, so only the starting point of `knave check` is at stake.
+Go, Gleam and Mix take a third path: they check every package or module of the project, whatever reaches it. `knave lint` already covers every file of a project, but in a library project it fails on the missing `src/main.knv` as `knave check` does, so the starting point of both commands is at stake.
 
 ## Recommendation
 

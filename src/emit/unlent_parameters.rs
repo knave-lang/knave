@@ -29,10 +29,6 @@ impl<'a> UnlentParameters<'a> {
         self.unlent.is_empty()
     }
 
-    pub fn lends(&self, binding: BindingId) -> bool {
-        !self.unlent.contains(&binding)
-    }
-
     pub fn lends_borrow_of(&self, param: &TypedBinder) -> bool {
         self.lends(param.binding) && self.program.type_holds_borrow(&param.ty)
     }
@@ -75,5 +71,9 @@ impl<'a> UnlentParameters<'a> {
             .iter()
             .find(|param| param.binding == binding)
             .expect("the binding names a parameter")
+    }
+
+    fn lends(&self, binding: BindingId) -> bool {
+        !self.unlent.contains(&binding)
     }
 }

@@ -883,20 +883,6 @@ impl<'a> ItemEmitter<'a> {
             .collect()
     }
 
-    fn sharing_parameters(
-        flows: &FxHashSet<BindingId>,
-        stored: &StoredFlows,
-    ) -> FxHashSet<BindingId> {
-        let mut sharing = flows.clone();
-        sharing.extend(&stored.values);
-        sharing.extend(&stored.targets);
-        sharing
-    }
-
-    fn store_targets(flows: &FxHashSet<BindingId>, stored: &StoredFlows) -> FxHashSet<BindingId> {
-        stored.targets.difference(flows).copied().collect()
-    }
-
     fn store_target_scope(
         scope: LifetimeScope,
         store_targets: &FxHashSet<BindingId>,
@@ -949,9 +935,8 @@ impl<'a> ItemEmitter<'a> {
             .copied()
             .filter(|binding| used.contains(binding))
             .collect();
-        let flows = regions.of(ParameterRole::FlowsToResult, lambda.as_ref());
-        let sharing = Self::sharing_parameters(&flows, &shared);
-        let store_targets = Self::store_targets(&flows, &shared);
+        let sharing = regions.sharing_the_result(lambda.as_ref());
+        let store_targets = regions.store_only_targets(lambda.as_ref());
         let higher_ranked = regions.of(ParameterRole::HigherRanked, lambda.as_ref());
         let capture_plan = self.capture_plan(lambda, &types, &definition.value.ty, &scope);
         let named_lending: Vec<BindingId> = match capture_plan {

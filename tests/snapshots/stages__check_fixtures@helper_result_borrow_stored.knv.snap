@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/helper_result_borrow_stored.knv
+---
+error[L0518]: `t` changes while `r` still borrows it
+  --> check/helper_result_borrow_stored.knv:9:10
+   |
+ 8 |   (local r (store-and-first! ns (as-str t)))
+   |                                         - `r` borrows `t` here
+ 9 |   (push! t (char "b"))
+   |          ^ `t` changes here
+10 |   (println r))
+   |            - `r` is used here, after the change
+   |
+   = help: finish using `r` before changing `t`, or copy what you need out of `t` first
+   = note: run `knave doc L0518` for an explanation

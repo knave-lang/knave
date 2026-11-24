@@ -15,6 +15,11 @@ pub struct KeptTemporary<'n> {
     pub kept_until: KeptUntil,
 }
 
+struct KeptWording {
+    dropped: &'static str,
+    help: &'static str,
+}
+
 pub struct KeptTemporaryProblems;
 
 impl KeptTemporaryProblems {
@@ -26,29 +31,29 @@ impl KeptTemporaryProblems {
             parameter_span,
             kept_until,
         } = kept;
-        let (dropped, help) = Self::dropped_and_help(*kept_until);
+        let wording = Self::wording(*kept_until);
         Diagnostic::error(
             DiagnosticCode::KEPT_TEMPORARY_ARGUMENT,
             format!("the result of `{callee}` keeps a borrow of a temporary"),
-            Label::new(*argument, dropped),
+            Label::new(*argument, wording.dropped),
         )
         .with_label(Label::new(
             *parameter_span,
             format!("the returned closure keeps this borrow of `{parameter}`"),
         ))
-        .with_help(help)
+        .with_help(wording.help)
     }
 
-    fn dropped_and_help(kept_until: KeptUntil) -> (&'static str, &'static str) {
+    fn wording(kept_until: KeptUntil) -> KeptWording {
         match kept_until {
-            KeptUntil::StatementEnd => (
-                "this temporary is dropped at the end of the statement",
-                "bind the argument with `let` before the call, so it lives as long as the result",
-            ),
-            KeptUntil::FunctionReturn => (
-                "this temporary is dropped when the function returns, while the result still borrows it",
-                "take the value as a parameter of the function that returns this result, so the caller keeps it alive",
-            ),
+            KeptUntil::StatementEnd => KeptWording {
+                dropped: "this temporary is dropped at the end of the statement",
+                help: "bind the argument with `let` before the call, so it lives as long as the result",
+            },
+            KeptUntil::FunctionReturn => KeptWording {
+                dropped: "this temporary is dropped when the function returns, while the result still borrows it",
+                help: "take the value as a parameter of the function that returns this result, so the caller keeps it alive",
+            },
         }
     }
 }

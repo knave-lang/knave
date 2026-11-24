@@ -1,6 +1,6 @@
 # RFC 0083: The project's files decide what check and lint cover
 
-**Status:** Accepted
+**Status:** Accepted. Its rule 7 is superseded by 0085 for `knave build` and `knave run`.
 **Date:** 2026-11-23
 
 ## Problem

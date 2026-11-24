@@ -12,5 +12,5 @@ error[L0520]: the result of `greeter` keeps a borrow of a temporary
 5 |   (let (greet (greeter (str "ana")))
   |                        ^^^^^^^^^^^ this temporary is dropped at the end of the statement
   |
-  = help: bind the argument with `let` before the call, so it lives as long as the result
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
   = note: run `knave doc L0520` for an explanation

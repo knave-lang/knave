@@ -12,7 +12,7 @@ error[L0520]: the result of `adder` keeps a borrow of a temporary
 33 |   (local f (adder (make-ledger 3)))
    |                   ^^^^^^^^^^^^^^^ this temporary is dropped at the end of the statement
    |
-   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
    = note: run `knave doc L0520` for an explanation
 
 error[L0520]: the result of `adder` keeps a borrow of a temporary
@@ -24,5 +24,5 @@ error[L0520]: the result of `adder` keeps a borrow of a temporary
 35 |     (adder (new coin (worth (+ 1 (len (vec 1 2)))))))
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this temporary is dropped at the end of the statement
    |
-   = help: bind the argument with `let` before the call, so it lives as long as the result
+   = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
    = note: run `knave doc L0520` for an explanation

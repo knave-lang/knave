@@ -3,10 +3,10 @@ source: tests/stages.rs
 expression: report
 input_file: tests/fixtures/run/rustc_borrow_error.knv
 ---
-error[E0515]: cannot return value referencing local variable `someone`
- --> run/rustc_borrow_error.knv:9:3
-  |
-9 |   (name-of someone))
-  |   ^^^^^^^^^^^^^^^^^ returns a value referencing data owned by the current function
-  |
-  = note: reported by rustc while compiling the generated Rust
+error[E0515]: cannot return value referencing local data `someone.name`
+  --> run/rustc_borrow_error.knv:11:3
+   |
+11 |   (name-text (ref someone)))
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^ returns a value referencing data owned by the current function
+   |
+   = note: reported by rustc while compiling the generated Rust

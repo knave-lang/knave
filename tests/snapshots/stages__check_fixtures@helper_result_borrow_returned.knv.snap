@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/helper_result_borrow_returned.knv
+---
+error[L0510]: cannot return a borrow of a local value
+ --> check/helper_result_borrow_returned.knv:8:13
+  |
+7 |   (local u (->book (str "a")))
+  |          - this local is dropped when the function returns
+8 |   (title-of u))
+  |             ^ this borrows a local value
+  |
+  = help: return an owned value with `(clone ...)`, or borrow from a parameter
+  = note: run `knave doc L0510` for an explanation

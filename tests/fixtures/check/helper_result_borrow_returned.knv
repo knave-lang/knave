@@ -1,0 +1,10 @@
+(defstruct book
+  :title string)
+
+(defn title-of (b) (:title b))
+
+(defn pick ()
+  (local u (->book (str "a")))
+  (title-of u))
+
+(defn main () (println (pick)))

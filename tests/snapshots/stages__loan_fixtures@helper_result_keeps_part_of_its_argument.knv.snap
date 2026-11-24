@@ -1,0 +1,11 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/helper_result_keeps_part_of_its_argument.knv
+---
+main
+  20:27 borrow `x`: no live loan
+  20:38 borrow `y`: no live loan
+  22:25 borrow `x`: no live loan
+  22:36 borrow `y`: no live loan
+  23:9 change `x`: `x` lent at 22:25, held by `whole`; `y` lent at 22:36, held by `whole`

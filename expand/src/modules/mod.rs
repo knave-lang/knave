@@ -1,4 +1,5 @@
 mod claim_rules;
+mod embedded_files;
 mod export_table;
 mod lexical_path;
 mod libraries;
@@ -25,6 +26,7 @@ mod unlisted_library;
 mod unnamed_part_target;
 mod visible_library;
 
+pub use embedded_files::EmbeddedModules;
 pub use export_table::ExportTable;
 pub use libraries::{LibraryFile, LibraryRoot, LibraryTable};
 pub use library_file_problem::LibraryFileProblem;
@@ -42,8 +44,6 @@ pub use real_path::RealPath;
 pub use registry::{ModuleRecord, ModuleRegistry};
 pub use reserved_module_paths::ReservedModulePaths;
 pub use search_scope::{ProjectTree, SearchScope};
-pub use sources::{
-    EmbeddedModules, HiddenSourceModule, LocalModuleClash, ModuleSources, PublicPrelude,
-};
+pub use sources::{HiddenSourceModule, LocalModuleClash, ModuleSources, PublicPrelude};
 pub use unlisted_library::UnlistedLibrary;
 pub use unnamed_part_target::UnnamedPartTarget;

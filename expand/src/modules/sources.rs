@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use super::claim_rules::ClaimRules;
+use super::embedded_files::EmbeddedModules;
 use super::libraries::LibraryTable;
 use super::library_file_problem::LibraryFileProblem;
 use super::local_files::LocalFiles;
@@ -49,72 +50,6 @@ impl ModuleSources {
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
-    const PRELUDE_FILES: [(&str, &str); 27] = [
-        ("prelude", include_str!("../../prelude/prelude.knv")),
-        (
-            "prelude/internal/macros",
-            include_str!("../../prelude/internal/macros.knv"),
-        ),
-        ("prelude/macros", include_str!("../../prelude/macros.knv")),
-        ("prelude/logic", include_str!("../../prelude/logic.knv")),
-        (
-            "prelude/internal/syntax",
-            include_str!("../../prelude/internal/syntax.knv"),
-        ),
-        ("prelude/syntax", include_str!("../../prelude/syntax.knv")),
-        ("prelude/number", include_str!("../../prelude/number.knv")),
-        ("prelude/text", include_str!("../../prelude/text.knv")),
-        ("prelude/struct", include_str!("../../prelude/struct.knv")),
-        (
-            "prelude/definers",
-            include_str!("../../prelude/definers.knv"),
-        ),
-        (
-            "prelude/ownership",
-            include_str!("../../prelude/ownership.knv"),
-        ),
-        ("prelude/types", include_str!("../../prelude/types.knv")),
-        ("prelude/pair", include_str!("../../prelude/pair.knv")),
-        ("prelude/assoc", include_str!("../../prelude/assoc.knv")),
-        ("prelude/place", include_str!("../../prelude/place.knv")),
-        ("prelude/vec", include_str!("../../prelude/vec.knv")),
-        (
-            "prelude/iterator",
-            include_str!("../../prelude/iterator.knv"),
-        ),
-        ("prelude/option", include_str!("../../prelude/option.knv")),
-        ("prelude/result", include_str!("../../prelude/result.knv")),
-        ("prelude/io", include_str!("../../prelude/io.knv")),
-        ("prelude/map", include_str!("../../prelude/map.knv")),
-        (
-            "prelude/sequence",
-            include_str!("../../prelude/sequence.knv"),
-        ),
-        (
-            "prelude/internal/docstrings",
-            include_str!("../../prelude/internal/docstrings.knv"),
-        ),
-        ("prelude/test", include_str!("../../prelude/test.knv")),
-        ("prelude/task", include_str!("../../prelude/task.knv")),
-        (
-            "prelude/project-file",
-            include_str!("../../prelude/project-file.knv"),
-        ),
-        (
-            "prelude/documentation",
-            include_str!("../../prelude/documentation.knv"),
-        ),
-    ];
-    // A 28th entry in `PRELUDE_FILES` stops LLVM from unrolling its scan, which costs every
-    // command thousands of instructions, so the tool modules live in their own list.
-    const TOOL_FILES: [(&str, &str); 2] = [
-        (Self::LINT, include_str!("../../prelude/lint.knv")),
-        (
-            "prelude/internal/links",
-            include_str!("../../prelude/internal/links.knv"),
-        ),
-    ];
-
     pub fn new(root: PathBuf, display_root: PathBuf) -> Self {
         Self {
             root,
@@ -302,16 +237,11 @@ impl ModuleSources {
     }
 
     fn prelude_file(&self, path: &ModulePath) -> Option<ModuleSource> {
-        let is_named = |(module, _): &&(&str, &str)| *module == path.as_str();
-        Self::PRELUDE_FILES
-            .iter()
-            .find(is_named)
-            .or_else(|| Self::TOOL_FILES.iter().find(is_named))
-            .map(|(_, text)| ModuleSource::Text {
-                name: Language::file_name(path.as_str()),
-                text: (*text).to_string(),
-                file: None,
-            })
+        EmbeddedModules::text(path).map(|text| ModuleSource::Text {
+            name: Language::file_name(path.as_str()),
+            text: text.to_string(),
+            file: None,
+        })
     }
 
     fn written_file(&self, path: &ModulePath) -> Option<ModuleSource> {
@@ -378,21 +308,6 @@ impl ModuleSources {
     }
 }
 
-pub struct EmbeddedModules;
-
-impl EmbeddedModules {
-    pub fn paths() -> impl Iterator<Item = &'static str> {
-        ModuleSources::PRELUDE_FILES
-            .iter()
-            .chain(&ModuleSources::TOOL_FILES)
-            .map(|(module, _)| *module)
-    }
-
-    pub fn contains(path: &ModulePath) -> bool {
-        Self::paths().any(|module| module == path.as_str())
-    }
-}
-
 pub struct PublicPrelude;
 
 impl PublicPrelude {
@@ -408,7 +323,7 @@ impl PublicPrelude {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{EmbeddedModules, ModuleSources, PublicPrelude};
+    use super::{ModuleSources, PublicPrelude};
     use crate::core::ModulePath;
     use crate::language::Language;
     use crate::modules::ModuleSource;
@@ -471,7 +386,7 @@ mod tests {
     }
 
     #[test]
-    fn every_reader_of_the_embedded_files_sees_the_tool_files() {
+    fn every_reader_of_the_embedded_files_sees_prelude_lint() {
         let lint = ModulePath::new(ModuleSources::LINT);
         let sources = ModuleSources::new(PathBuf::from("no-such-root"), PathBuf::new());
         assert!(ModuleSources::is_embedded_prelude(&lint));
@@ -480,14 +395,6 @@ mod tests {
             Some(ModuleSource::Text { .. })
         ));
         assert!(PublicPrelude::paths().contains(&ModuleSources::LINT.to_string()));
-    }
-
-    #[test]
-    fn only_a_module_the_compiler_embeds_is_embedded() {
-        let embedded = |path: &str| EmbeddedModules::contains(&ModulePath::new(path));
-        assert!(embedded("prelude/internal/links"));
-        assert!(!embedded("prelude/tests/text"));
-        assert!(!embedded("geometry"));
     }
 
     #[test]

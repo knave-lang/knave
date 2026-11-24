@@ -1,9 +1,8 @@
 use rustc_hash::FxHashSet;
 
 use super::promoted_constants::PromotedConstants;
-use crate::core::BindingId;
 use crate::types::{
-    CalledFunction, DefinitionTable, ParameterRole, Regions, TypedBinder, TypedExpr, TypedExprKind,
+    DefinitionTable, ParameterRole, Regions, Type, TypedBinder, TypedExpr, TypedExprKind,
     TypedProgram,
 };
 
@@ -33,7 +32,11 @@ impl<'p> StatementTemporary<'p> {
         parameter: &TypedBinder,
         argument: &'e TypedExpr,
     ) -> Option<&'e TypedExpr> {
-        if parameter.ty.is_reference() {
+        self.kept_at(&parameter.ty, argument)
+    }
+
+    fn kept_at<'e>(&self, parameter: &Type, argument: &'e TypedExpr) -> Option<&'e TypedExpr> {
+        if parameter.is_reference() {
             self.lent_by(argument)
         } else {
             self.held_in(argument)
@@ -69,30 +72,42 @@ impl<'p> StatementTemporary<'p> {
         if let TypedExprKind::Borrow(..) = reference.kind {
             return self.lent_by(reference);
         }
-        let called = self.definitions.called_function(reference)?;
-        let sources = self.result_sources(&called);
-        called
-            .lambda
-            .params
+        let TypedExprKind::Call(callee, arguments) = &reference.kind else {
+            return None;
+        };
+        let Type::Function(_, parameters, _) = &callee.ty else {
+            return None;
+        };
+        let flowing = self.flowing_positions(reference);
+        parameters
             .iter()
-            .zip(called.arguments)
-            .filter(|(parameter, _)| sources.contains(&parameter.binding))
-            .find_map(|(parameter, argument)| self.kept_in(parameter, &argument.value))
+            .zip(arguments)
+            .enumerate()
+            .filter(|(position, (parameter, _))| match &flowing {
+                Some(flowing) => flowing.contains(position),
+                None => self.lends_borrow(parameter),
+            })
+            .find_map(|(_, (parameter, argument))| self.kept_at(parameter, &argument.value))
     }
 
-    fn result_sources(&self, called: &CalledFunction) -> FxHashSet<BindingId> {
+    fn flowing_positions(&self, call: &TypedExpr) -> Option<FxHashSet<usize>> {
+        let called = self.definitions.called_function(call)?;
         let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
-        if !flows.is_empty() {
-            return flows;
+        if flows.is_empty() {
+            return None;
         }
-        called
+        let positions = called
             .lambda
             .params
             .iter()
-            .filter(|parameter| {
-                parameter.ty.is_reference() || self.program.type_holds_borrow(&parameter.ty)
-            })
-            .map(|parameter| parameter.binding)
-            .collect()
+            .enumerate()
+            .filter(|(_, parameter)| flows.contains(&parameter.binding))
+            .map(|(position, _)| position)
+            .collect();
+        Some(positions)
+    }
+
+    fn lends_borrow(&self, parameter: &Type) -> bool {
+        parameter.is_reference() || self.program.type_holds_borrow(parameter)
     }
 }

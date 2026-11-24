@@ -1,11 +1,10 @@
 use super::kept_temporary_problems::{KeptTemporary, KeptTemporaryProblems, KeptUntil};
 use super::statement_temporary::StatementTemporary;
-use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
 use crate::types::{
-    DefinitionTable, Regions, ReturnedValues, TypedArgument, TypedBinder, TypedBlock,
-    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
+    CalledFunction, DefinitionTable, Regions, ReturnedValues, TypedArgument, TypedBinder,
+    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedMatch,
     TypedProgram,
 };
 
@@ -17,9 +16,8 @@ pub struct KeptTemporaries<'p> {
     problems: Vec<Diagnostic>,
 }
 
-struct OutlivingCall<'e> {
-    function: BindingId,
-    arguments: &'e [TypedArgument],
+struct OutlivingCall<'p> {
+    called: CalledFunction<'p, 'p>,
     kept_until: KeptUntil,
 }
 
@@ -105,31 +103,19 @@ impl<'p> KeptTemporaries<'p> {
 
     fn outliving(&mut self, value: &'p TypedExpr, kept_until: KeptUntil) {
         for outliving in ReturnedValues::new(self.program).of_value(value) {
-            if let TypedExprKind::Call(callee, arguments) = &outliving.kind
-                && let TypedExprKind::Leaf(TypedLeaf::Global(function)) = callee.kind
-            {
-                self.kept_call(OutlivingCall {
-                    function,
-                    arguments,
-                    kept_until,
-                });
+            if let Some(called) = self.definitions.called_function(outliving) {
+                self.kept_call(OutlivingCall { called, kept_until });
             }
         }
     }
 
     fn kept_call(&mut self, call: OutlivingCall<'p>) {
-        let Some(lambda) = self
-            .definitions
-            .definition(call.function)
-            .and_then(|definition| definition.value.lambda_value())
-        else {
-            return;
-        };
+        let lambda = call.called.lambda;
         if !lambda.returns_closure() {
             return;
         }
         let kept = self.regions.kept_by_result(lambda);
-        for (parameter, argument) in lambda.params.iter().zip(call.arguments) {
+        for (parameter, argument) in lambda.params.iter().zip(call.called.arguments) {
             if kept.contains(&parameter.binding) && parameter.ty.is_reference() {
                 self.temporary_argument(&call, parameter, &argument.value);
             }
@@ -149,7 +135,7 @@ impl<'p> KeptTemporaries<'p> {
         self.problems
             .push(KeptTemporaryProblems::kept_temporary(&KeptTemporary {
                 argument: argument.span,
-                callee: bindings.get(call.function).name(),
+                callee: bindings.get(call.called.function).name(),
                 parameter: bindings.get(parameter.binding).name(),
                 parameter_span: parameter.span,
                 kept_until: call.kept_until,

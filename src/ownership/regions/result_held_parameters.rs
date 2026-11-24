@@ -66,22 +66,13 @@ impl<'a> ResultHeldParameters<'a> {
     }
 
     fn held_arguments<'e>(&self, value: &'e TypedExpr) -> Option<Vec<&'e TypedExpr>> {
-        let TypedExprKind::Call(callee, arguments) = &value.kind else {
-            return None;
-        };
-        let TypedExprKind::Leaf(TypedLeaf::Global(function)) = callee.kind else {
-            return None;
-        };
-        let lambda = self
-            .definitions
-            .definition(function)?
-            .value
-            .lambda_value()?;
-        let held = self.callee_held(function, lambda)?;
-        let held_arguments = lambda
+        let called = self.definitions.called_function(value)?;
+        let held = self.callee_held(called.function, called.lambda)?;
+        let held_arguments = called
+            .lambda
             .params
             .iter()
-            .zip(arguments)
+            .zip(called.arguments)
             .filter(|(parameter, _)| held.contains(&parameter.binding))
             .map(|(_, argument)| &argument.value)
             .collect();

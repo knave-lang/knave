@@ -29,7 +29,7 @@ When a project holds both files and the entry never uses the library root, `knav
   :x f64
   :y f64)
 
-(defn distance-squared (a b)
+(defn distance-squared ((a point) (b point))
   (+ (square (- (:x a) (:x b))) (square (- (:y a) (:y b)))))
 
 (defn square (n)

@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_the_temporary_half_of_a_pair_bound_by_let.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_the_temporary_half_of_a_pair_bound_by_let.knv:6:42
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+6 |         g (greeter (let (p (pair (as-str (str "zz")) (as-str s)))
+  |                                          ^^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

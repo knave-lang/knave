@@ -30,6 +30,10 @@ impl<'a> UnlentParameters<'a> {
         !self.unlent.contains(&binding)
     }
 
+    pub fn lends_borrow_of(&self, param: &TypedBinder) -> bool {
+        self.lends(param.binding) && LendingTypes::of(self.program).lends_borrow(&param.ty)
+    }
+
     pub fn uncapturable(&self) -> Option<BindingId> {
         self.lambda
             .params

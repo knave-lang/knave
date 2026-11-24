@@ -1,0 +1,11 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn pick (names label)
+  (println label)
+  (at names 0))
+
+(defn main ()
+  (let (names (vec (str "ana") (str "bo"))
+        greet (greeter (pick names (str "picked"))))
+    (greet)))

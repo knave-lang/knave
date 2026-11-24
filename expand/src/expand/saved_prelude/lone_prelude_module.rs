@@ -6,6 +6,7 @@ use super::super::{Expander, ExpansionTables, MacroCallLookup};
 use crate::core::{BindingKind, ModuleId, ModulePath};
 use crate::diagnostic::{DiagnosticRenderer, Diagnostics};
 use crate::modules::ModuleSources;
+use crate::project::WrittenEntries;
 use crate::reader::Form;
 use crate::source::{SourceMap, Span};
 
@@ -62,15 +63,6 @@ impl LonePreludeModule {
         problems.into_result((std::mem::take(&mut expander.tables), module))
     }
 
-    pub(super) fn quoted_call(&self, site: Span) -> String {
-        let call = self.tables.macro_origins.calls.enclosing(site);
-        let written = call.map_or(site, |call| call.call_site);
-        let file = self.sources.file(written.source());
-        let position = self.sources.start_position(written);
-        let text = &file.text()[written.range()];
-        format!("{}:{position}: `{text}`", file.name())
-    }
-
     pub(super) fn notes(&self, key: &str) -> Vec<Form> {
         self.tables.module_notes.of(self.module, key)
     }
@@ -86,6 +78,20 @@ impl LonePreludeModule {
     }
 }
 
+impl WrittenEntries for LonePreludeModule {
+    fn quoted_call(&self, site: Span) -> String {
+        let call = self.tables.macro_origins.calls.enclosing(site);
+        let written = call.map_or(site, |call| call.call_site);
+        let text = &self.sources.file(written.source()).text()[written.range()];
+        format!("{}: `{text}`", self.location(written))
+    }
+
+    fn location(&self, site: Span) -> String {
+        let name = self.sources.file(site.source()).name();
+        format!("{name}:{}", self.sources.start_position(site))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
@@ -94,7 +100,7 @@ mod tests {
     use crate::core::ModulePath;
     use crate::diagnostic::{DiagnosticCode, Diagnostics};
     use crate::modules::ModuleSources;
-    use crate::project::LintDefaults;
+    use crate::project::{LintDefaults, WrittenEntries};
     use crate::source::{SourceMap, Span};
 
     struct LonePreludeFixture;
@@ -144,10 +150,9 @@ mod tests {
     fn a_quoted_call_shows_the_written_call_at_its_location() {
         let lint = LonePreludeFixture::lint();
         let quoted = lint.quoted_call(LonePreludeFixture::first_default_lint(&lint));
-        assert!(quoted.starts_with("prelude/lint.knv:"), "{quoted}");
-        assert!(
-            quoted.ends_with(": `(lint-default needless-type allow)`"),
-            "{quoted}"
+        assert_eq!(
+            quoted,
+            "prelude/lint.knv:24:1: `(lint-default needless-type allow)`"
         );
     }
 

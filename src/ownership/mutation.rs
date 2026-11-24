@@ -2,7 +2,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, ReferenceKind};
 use crate::types::{
-    Borrow, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
+    ChangedRoot, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
     TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
@@ -101,7 +101,7 @@ impl ChangedValues {
     fn written(&mut self, expr: &TypedExpr, enclosing: BindingId) {
         match &expr.kind {
             TypedExprKind::Borrow(ReferenceKind::Mutable, value) => {
-                if let Some(place) = value.place_root() {
+                if let Some(place) = ChangedRoot::of_borrow(expr) {
                     let root = self.root(place);
                     self.changed.insert(root);
                 }
@@ -157,9 +157,7 @@ impl ChangedValues {
 
     fn arguments(&mut self, arguments: &[TypedArgument], enclosing: BindingId, recursive: bool) {
         for argument in arguments {
-            if matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow)
-                && let Some(place) = argument.value.place_root()
-            {
+            if let Some(place) = ChangedRoot::of_argument(argument) {
                 let root = self.root(place);
                 self.changed.insert(root);
             }

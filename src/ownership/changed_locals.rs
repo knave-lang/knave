@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 
-use crate::core::{BindingId, ReferenceKind};
-use crate::types::{Borrow, TypedExpr, TypedExprKind};
+use crate::core::BindingId;
+use crate::types::{ChangedRoot, TypedExpr, TypedExprKind};
 
 pub struct ChangedLocals {
     changed: FxHashSet<BindingId>,
@@ -22,19 +22,10 @@ impl ChangedLocals {
 
     fn collect(&mut self, expr: &TypedExpr) {
         match &expr.kind {
-            TypedExprKind::Call(_, arguments) => {
-                let written = arguments
-                    .iter()
-                    .filter(|argument| {
-                        matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow)
-                    })
-                    .filter_map(|argument| argument.value.place_root());
-                self.changed.extend(written);
-            }
-            TypedExprKind::Borrow(ReferenceKind::Mutable, value) => {
-                self.changed.extend(value.place_root());
-            }
-            _ => {}
+            TypedExprKind::Call(_, arguments) => self
+                .changed
+                .extend(arguments.iter().filter_map(ChangedRoot::of_argument)),
+            _ => self.changed.extend(ChangedRoot::of_borrow(expr)),
         }
         for child in expr.children() {
             self.collect(child);

@@ -35,6 +35,7 @@ const LINGUIST_LINE: &str = "*.knv linguist-language=Clojure linguist-detectable
 const SETUP_KNAVE_ACTION: &str = ".github/actions/setup-knave/action.yml";
 const READ_VERSION_SCRIPT: &str = ".github/actions/setup-knave/read-version.sh";
 const SETUP_KNAVE_FOLDER: &str = "demo-app/.github/actions/setup-knave";
+const ACTIONS_FOLDER: &str = "demo-app/.github/actions";
 const SETUP_KNAVE_STEP: &str = "      - uses: ./.github/actions/setup-knave\n";
 const EVERY_OWNED_FILE: [&str; 5] = [
     ".agents/skills/writing-knave/SKILL.md",
@@ -9365,6 +9366,21 @@ fn upgrade_rewrites_an_edited_setup_knave_action() {
         format!("rewrote `{SETUP_KNAVE_ACTION}`\n")
     );
     assert_eq!(sandbox.contents(&action), current);
+}
+
+#[test]
+fn upgrade_keeps_the_workflow_when_the_setup_knave_action_cannot_be_written() {
+    let sandbox = Sandbox::with_committed_project("upgrade_setup_knave_unwritable");
+    let workflow = format!("demo-app/{WORKFLOW_FILE}");
+    let outdated = format!("{}{OUTDATED_LINE}", sandbox.contents(&workflow));
+    let sandbox = sandbox
+        .with_file(&workflow, &outdated)
+        .without_directory(ACTIONS_FOLDER)
+        .with_file(ACTIONS_FOLDER, "");
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(2);
+    assert_eq!(sandbox.contents(&workflow), outdated);
 }
 
 #[test]

@@ -27,12 +27,12 @@ impl GithubChecks {
 impl ProjectComponent for GithubChecks {
     fn owned_files(&self) -> Vec<OwnedFile> {
         vec![
-            Self::workflow(),
             OwnedFile::new(PathBuf::from(Self::ACTION_PATH), Self::ACTION),
             OwnedFile::new(
                 PathBuf::from(Self::VERSION_SCRIPT_PATH),
                 Self::VERSION_SCRIPT,
             ),
+            Self::workflow(),
         ]
     }
 

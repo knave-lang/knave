@@ -3,14 +3,14 @@ use rustc_hash::FxHashMap;
 use super::built_parts::BuiltParts;
 use crate::core::BindingId;
 use crate::types::{
-    TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
+    TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
+    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
 };
 
 #[derive(Clone, Copy)]
 pub enum BoundLocal<'e> {
     Value(&'e TypedExpr),
-    LoopBinder(&'e TypedExpr),
+    LoopBinder(&'e TypedBinder, &'e TypedExpr),
     Within(&'e TypedExpr),
     Unresolved,
 }
@@ -113,8 +113,10 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
 
     fn loop_binders(&mut self, body: &'e TypedLambda, arguments: &'e [TypedArgument]) {
         for (parameter, argument) in body.params.iter().zip(arguments) {
-            self.locals
-                .insert(parameter.binding, BoundLocal::LoopBinder(&argument.value));
+            self.locals.insert(
+                parameter.binding,
+                BoundLocal::LoopBinder(parameter, &argument.value),
+            );
         }
         self.lets(&body.body);
     }

@@ -68,19 +68,23 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
-        Self::starts(terminal, &project, loaded);
+        Self::load_entry_and_library_root(terminal, &project, loaded);
         let project = Self::tests(terminal, project, loaded);
         let project = Self::tasks(terminal, project, loaded);
         Self::unreached(terminal, &project, loaded)
     }
 
-    fn starts(terminal: &mut Terminal, project: &LocatedProject, loaded: &mut LoadedPrograms) {
-        let entries = project.entry_layout();
-        if !entries.skips_entry() {
-            loaded.add(Self::entry(terminal, entries.entry()));
+    fn load_entry_and_library_root(
+        terminal: &mut Terminal,
+        project: &LocatedProject,
+        loaded: &mut LoadedPrograms,
+    ) {
+        let layout = project.entry_layout();
+        if !layout.skips_entry() {
+            loaded.add(Self::entry(terminal, layout.entry()));
         }
         let held = terminal.source_report().canonical_files_from(0);
-        if let Some(library_root) = entries.library_root_outside(&held) {
+        if let Some(library_root) = layout.library_root_outside(&held) {
             loaded.add(Self::entry(terminal, library_root));
         }
     }

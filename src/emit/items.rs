@@ -32,9 +32,10 @@ use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    Bound, GenericId, GenericParam, Lifetime, ParameterRole, ReceiverKind, Scheme, StoredFlows,
-    Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
+    Bound, GenericId, GenericParam, LendingTypes, Lifetime, ParameterRole, ReceiverKind, Scheme,
+    StoredFlows, Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod,
+    VariantDefinition,
 };
 
 struct ImplementedTrait<'l> {
@@ -1296,7 +1297,7 @@ impl<'a> ItemEmitter<'a> {
             .params
             .iter()
             .filter(|param| unlent.lends(param.binding))
-            .filter(|param| self.program.lends_borrow(&param.ty))
+            .filter(|param| LendingTypes::of(self.program).lends_borrow(&param.ty))
             .map(|param| param.binding)
             .collect()
     }

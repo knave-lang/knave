@@ -1,7 +1,9 @@
 use super::problems::EmitProblems;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
-use crate::types::{CopyRules, ParameterCopy, TypedBinder, TypedLambda, TypedProgram};
+use crate::types::{
+    CopyRules, LendingTypes, ParameterCopy, TypedBinder, TypedLambda, TypedProgram,
+};
 
 pub struct UnlentParameters<'a> {
     program: &'a TypedProgram,
@@ -71,7 +73,7 @@ impl<'a> UnlentParameters<'a> {
         if self.changes(param) {
             self.result_cannot_hold(param)
         } else {
-            self.lambda.returns_closure() && self.program.lends_borrow(&param.ty)
+            self.lambda.returns_closure() && LendingTypes::of(self.program).lends_borrow(&param.ty)
         }
     }
 

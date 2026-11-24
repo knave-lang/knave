@@ -2,8 +2,8 @@ use rustc_hash::FxHashSet;
 
 use super::promoted_constants::PromotedConstants;
 use crate::types::{
-    CalledFunction, DefinitionTable, ParameterRole, Regions, Type, TypedArgument, TypedBinder,
-    TypedExpr, TypedExprKind, TypedProgram,
+    CalledFunction, DefinitionTable, LendingTypes, ParameterRole, Regions, Type, TypedArgument,
+    TypedBinder, TypedExpr, TypedExprKind, TypedProgram,
 };
 
 pub struct LentTemporary<'p> {
@@ -122,7 +122,7 @@ impl<'p> LentTemporary<'p> {
         let receiver = parameters
             .iter()
             .zip(arguments)
-            .find(|(parameter, _)| self.program.lends_borrow(parameter))
+            .find(|(parameter, _)| LendingTypes::of(self.program).lends_borrow(parameter))
             .map(|(parameter, argument)| (parameter.clone(), &argument.value));
         Some(receiver.into_iter().collect())
     }
@@ -155,7 +155,7 @@ impl<'p> LentTemporary<'p> {
             .params
             .iter()
             .enumerate()
-            .filter(|(_, parameter)| self.program.lends_borrow(&parameter.ty))
+            .filter(|(_, parameter)| LendingTypes::of(self.program).lends_borrow(&parameter.ty))
             .map(|(position, _)| position);
         match (lending.next(), lending.next()) {
             (Some(only), None) => FxHashSet::from_iter([only]),

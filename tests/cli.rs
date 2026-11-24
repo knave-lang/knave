@@ -17,10 +17,12 @@ use serde_json::{Map, Value, json};
 const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
 const NEW_PROJECT_CHECKS: [&[&str]; 3] = [&["fmt", "--check"], &["lint"], &["test"]];
 const VERSION_SLOT: &str = "{knave-version}";
-const EVERY_NEW_FILE: [&str; 8] = [
+const EVERY_NEW_FILE: [&str; 10] = [
     ".agents/skills/writing-knave/SKILL.md",
     ".claude/skills/writing-knave/SKILL.md",
     ".gitattributes",
+    ".github/actions/setup-knave/action.yml",
+    ".github/actions/setup-knave/read-version.sh",
     ".github/workflows/knave.yml",
     ".gitignore",
     "project.knv",
@@ -30,11 +32,15 @@ const EVERY_NEW_FILE: [&str; 8] = [
 const WORKFLOW_FILE: &str = ".github/workflows/knave.yml";
 const GITATTRIBUTES_FILE: &str = "demo-app/.gitattributes";
 const LINGUIST_LINE: &str = "*.knv linguist-language=Clojure linguist-detectable=false\n";
-const VERSION_STEP: &str = "name: Read the Knave version";
-const GITHUB_BASH: [&str; 5] = ["--noprofile", "--norc", "-eo", "pipefail", "-c"];
-const EVERY_OWNED_FILE: [&str; 3] = [
+const SETUP_KNAVE_ACTION: &str = ".github/actions/setup-knave/action.yml";
+const READ_VERSION_SCRIPT: &str = ".github/actions/setup-knave/read-version.sh";
+const SETUP_KNAVE_FOLDER: &str = "demo-app/.github/actions/setup-knave";
+const SETUP_KNAVE_STEP: &str = "      - uses: ./.github/actions/setup-knave\n";
+const EVERY_OWNED_FILE: [&str; 5] = [
     ".agents/skills/writing-knave/SKILL.md",
     ".claude/skills/writing-knave/SKILL.md",
+    ".github/actions/setup-knave/action.yml",
+    ".github/actions/setup-knave/read-version.sh",
     ".github/workflows/knave.yml",
 ];
 const FILLED_VERSION: &str = "0.0.1";
@@ -415,6 +421,11 @@ exit 101
         self
     }
 
+    fn without_directory(self, name: &str) -> Self {
+        fs::remove_dir_all(self.directory.join(name)).expect("the sandbox removes directories");
+        self
+    }
+
     fn project_files(&self, directory: &str) -> Vec<String> {
         self.files_under(directory)
             .into_iter()
@@ -453,12 +464,10 @@ exit 101
     }
 
     fn run_version_step(&self, project: &str) -> (bool, String, String) {
-        let workflow = self.contents(&format!("{project}/{WORKFLOW_FILE}"));
         let environment = self.directory.join("github-environment");
         fs::write(&environment, "").expect("the sandbox accepts files");
         let output = Command::new("bash")
-            .args(GITHUB_BASH)
-            .arg(Self::version_step_script(&workflow))
+            .arg(READ_VERSION_SCRIPT)
             .env("GITHUB_ENV", &environment)
             .current_dir(self.directory.join(project))
             .output()
@@ -466,19 +475,6 @@ exit 101
         let exported = fs::read_to_string(&environment).expect("the environment file is readable");
         let printed = String::from_utf8_lossy(&output.stdout).into_owned();
         (output.status.success(), exported, printed)
-    }
-
-    fn version_step_script(workflow: &str) -> String {
-        let step = workflow
-            .split("      - ")
-            .find(|step| step.starts_with(VERSION_STEP))
-            .expect("the workflow reads the Knave version");
-        let (_, script) = step.split_once("run: |\n").expect("the step runs a script");
-        script
-            .lines()
-            .map(str::trim_start)
-            .collect::<Vec<_>>()
-            .join("\n")
     }
 
     fn with_outdated_project(test_name: &str, skipped: &[&str]) -> Self {
@@ -8898,6 +8894,15 @@ fn new_skips_the_github_workflow() {
 }
 
 #[test]
+fn new_skips_the_setup_knave_action_with_the_github_workflow() {
+    let sandbox = Sandbox::new("new_skip_setup_knave");
+    sandbox
+        .compiler(&["new", "demo-app", "--skip-github"])
+        .assert_silent_success();
+    assert!(!sandbox.directory.join("demo-app/.github").exists());
+}
+
+#[test]
 fn new_skips_the_agent_skill() {
     let sandbox = Sandbox::new("new_skip_agent_skill");
     sandbox
@@ -8907,6 +8912,8 @@ fn new_skips_the_agent_skill() {
         sandbox.project_files("demo-app"),
         [
             ".gitattributes",
+            ".github/actions/setup-knave/action.yml",
+            ".github/actions/setup-knave/read-version.sh",
             ".github/workflows/knave.yml",
             ".gitignore",
             "project.knv",
@@ -8928,6 +8935,8 @@ fn new_skips_git_and_keeps_the_github_workflow() {
             ".agents/skills/writing-knave/SKILL.md",
             ".claude/skills/writing-knave/SKILL.md",
             ".gitattributes",
+            ".github/actions/setup-knave/action.yml",
+            ".github/actions/setup-knave/read-version.sh",
             ".github/workflows/knave.yml",
             "project.knv",
             "src/main.knv",
@@ -8985,6 +8994,22 @@ fn new_writes_a_workflow_that_runs_each_check() {
     for check in NEW_PROJECT_CHECKS {
         let step = format!("run: knave {}\n", check.join(" "));
         assert!(workflow.contains(&step), "the workflow has no `{step}`");
+    }
+}
+
+#[test]
+fn new_writes_a_setup_knave_action_that_the_workflow_uses() {
+    let sandbox = Sandbox::new("new_setup_knave_action");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let workflow = sandbox.contents(&format!("demo-app/{WORKFLOW_FILE}"));
+    assert!(workflow.contains(SETUP_KNAVE_STEP), "{workflow}");
+    for path in [SETUP_KNAVE_ACTION, READ_VERSION_SCRIPT] {
+        assert!(
+            sandbox.directory.join("demo-app").join(path).exists(),
+            "{path}"
+        );
     }
 }
 
@@ -9329,6 +9354,20 @@ fn upgrade_rewrites_a_workflow_edited_since_the_last_commit() {
 }
 
 #[test]
+fn upgrade_rewrites_an_edited_setup_knave_action() {
+    let sandbox = Sandbox::with_committed_project("upgrade_edited_setup_knave");
+    let action = format!("demo-app/{SETUP_KNAVE_ACTION}");
+    let current = sandbox.contents(&action);
+    let sandbox = sandbox.with_file(&action, &format!("{current}{OUTDATED_LINE}"));
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert_eq!(
+        upgrade.assert_exit_code(0).stderr(),
+        format!("rewrote `{SETUP_KNAVE_ACTION}`\n")
+    );
+    assert_eq!(sandbox.contents(&action), current);
+}
+
+#[test]
 fn upgrade_without_git_rewrites_the_workflow_with_no_warning() {
     let sandbox = Sandbox::with_committed_project("upgrade_without_git");
     let workflow = format!("demo-app/{WORKFLOW_FILE}");
@@ -9419,6 +9458,26 @@ fn upgrade_writes_a_missing_gitattributes_beside_the_workflow() {
 }
 
 #[test]
+fn upgrade_writes_a_missing_setup_knave_action_beside_the_workflow() {
+    let sandbox = Sandbox::with_committed_project("upgrade_missing_setup_knave")
+        .without_directory(SETUP_KNAVE_FOLDER);
+    let upgrade = sandbox.compiler_in("demo-app", &["upgrade"]);
+    assert_eq!(
+        upgrade.assert_exit_code(0).stderr(),
+        format!("wrote `{SETUP_KNAVE_ACTION}`\nwrote `{READ_VERSION_SCRIPT}`\n")
+    );
+    sandbox
+        .compiler(&["new", "fresh-app"])
+        .assert_silent_success();
+    for path in [SETUP_KNAVE_ACTION, READ_VERSION_SCRIPT] {
+        assert_eq!(
+            sandbox.contents(&format!("demo-app/{path}")),
+            sandbox.contents(&format!("fresh-app/{path}"))
+        );
+    }
+}
+
+#[test]
 fn upgrade_without_the_workflow_writes_no_github_file() {
     let sandbox = Sandbox::with_committed_project("upgrade_missing_github")
         .without_file(GITATTRIBUTES_FILE)
@@ -9434,6 +9493,22 @@ fn upgrade_without_the_workflow_writes_no_github_file() {
             .join(WORKFLOW_FILE)
             .exists()
     );
+}
+
+#[test]
+fn upgrade_without_the_workflow_writes_no_setup_knave_file() {
+    let sandbox = Sandbox::with_committed_project("upgrade_setup_knave_without_workflow")
+        .without_file(&format!("demo-app/{READ_VERSION_SCRIPT}"))
+        .without_file(&format!("demo-app/{WORKFLOW_FILE}"));
+    sandbox
+        .compiler_in("demo-app", &["upgrade"])
+        .assert_exit_code(0);
+    for path in [READ_VERSION_SCRIPT, WORKFLOW_FILE] {
+        assert!(
+            !sandbox.directory.join("demo-app").join(path).exists(),
+            "{path}"
+        );
+    }
 }
 
 #[test]
@@ -9561,6 +9636,8 @@ fn upgrade_writes_no_skill_into_a_project_made_without_one() {
         sandbox.project_files("demo-app"),
         [
             ".gitattributes",
+            ".github/actions/setup-knave/action.yml",
+            ".github/actions/setup-knave/read-version.sh",
             ".github/workflows/knave.yml",
             ".gitignore",
             "project.knv",

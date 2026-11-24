@@ -3,6 +3,8 @@ source: tests/cli.rs
 expression: "Sandbox::without_version(&upgrade.assert_exit_code(0).stderr())"
 ---
 rewrote `.github/workflows/knave.yml`
+rewrote `.github/actions/setup-knave/action.yml`
+rewrote `.github/actions/setup-knave/read-version.sh`
 rewrote `.agents/skills/writing-knave/SKILL.md`
 rewrote `.claude/skills/writing-knave/SKILL.md`
 recorded Knave <version> in `project.knv`

@@ -36,16 +36,20 @@ impl<'a> ResultHeldParameters<'a> {
     }
 
     pub(super) fn of(&self, lambda: &TypedLambda) -> FxHashSet<BindingId> {
-        let scope = FunctionScope::of(self, lambda);
         let returned = ReturnedValues::new(self.program);
+        let closures = returned.closures(lambda);
+        if closures.is_empty() && !lambda.returns_closure() {
+            return FxHashSet::default();
+        }
+        let scope = FunctionScope::of(self, lambda);
         let mut held = Vec::new();
-        for closure in returned.closures(lambda) {
+        for closure in closures {
             Self::collect_held(closure, &mut held);
         }
-        for value in returned.values(lambda) {
-            if matches!(value.ty, Type::Function(..)) {
+        if lambda.returns_closure() {
+            returned.visit_values(lambda, |value| {
                 held.extend(self.held_through(value, &scope));
-            }
+            });
         }
         let parameters: FxHashSet<BindingId> =
             lambda.params.iter().map(|param| param.binding).collect();

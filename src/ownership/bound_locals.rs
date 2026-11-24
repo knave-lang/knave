@@ -10,6 +10,7 @@ use crate::types::{
 #[derive(Clone, Copy)]
 pub enum BoundLocal<'e> {
     Value(&'e TypedExpr),
+    LoopBinder(&'e TypedExpr),
     Within(&'e TypedExpr),
 }
 
@@ -92,7 +93,7 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     fn loop_binders(&mut self, body: &'e TypedLambda, arguments: &'e [TypedArgument]) {
         for (parameter, argument) in body.params.iter().zip(arguments) {
             self.locals
-                .insert(parameter.binding, BoundLocal::Value(&argument.value));
+                .insert(parameter.binding, BoundLocal::LoopBinder(&argument.value));
         }
         self.lets(&body.body);
     }

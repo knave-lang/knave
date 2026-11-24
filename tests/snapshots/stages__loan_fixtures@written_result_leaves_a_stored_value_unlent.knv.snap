@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/written_result_leaves_a_stored_value_unlent.knv
+---
+keep-other!
+  9:10 change `names`: no live loan
+main
+  17:29 borrow `t`: no live loan
+  17:40 borrow `u`: no live loan
+  17:18 change `ns`: `t` lent at 17:29, passed to the call; `u` lent at 17:40, passed to the call
+  18:10 change `t`: `u` lent at 17:40, held by `r`

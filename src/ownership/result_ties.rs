@@ -39,18 +39,31 @@ impl<'p> ResultTies<'p> {
         self.functions
             .borrow_mut()
             .entry(function)
-            .or_insert_with(|| self.function_ties(lambda))
+            .or_insert_with(|| self.function_ties(function, lambda))
             .clone()
     }
 
-    fn function_ties(&self, lambda: &TypedLambda) -> TemplateTies {
+    fn function_ties(&self, function: BindingId, lambda: &TypedLambda) -> TemplateTies {
+        if let Some(written) = self.written_result(function) {
+            let lent = self.signature_lent(lambda, written);
+            return Self::whole_ties(lambda, written, lent);
+        }
         let Some(result) = lambda.body.tail().map(|tail| &tail.ty) else {
             return TemplateTies::new(&[], &[]);
         };
         let mut lent = self.signature_lent(lambda, result);
-        if !Self::names_written_lifetimes(result) {
-            lent.extend(self.sharing_positions(lambda, result));
-        }
+        lent.extend(self.sharing_positions(lambda, result));
+        Self::whole_ties(lambda, result, lent)
+    }
+
+    fn written_result(&self, function: BindingId) -> Option<&'p Type> {
+        let Type::Function(_, _, result) = &self.definitions.definition(function)?.value.ty else {
+            return None;
+        };
+        Self::names_written_lifetimes(result).then_some(result.as_ref())
+    }
+
+    fn whole_ties(lambda: &TypedLambda, result: &Type, mut lent: Vec<usize>) -> TemplateTies {
         let tied = TiedParts::of_result(result);
         lent.retain(|position| !tied.ties_only_part_of(&lambda.params[*position].ty));
         TemplateTies::new(&lent, &[])

@@ -119,6 +119,9 @@ impl<'w, 'p, 'e> ArgumentWalk<'w, 'p, 'e> {
     ) -> Option<Option<&'e TypedExpr>> {
         match self.bound.of(value)? {
             BoundLocal::Value(bound) => Some(same_mode(self, bound)),
+            BoundLocal::LoopBinder(start) => {
+                Some(same_mode(self, start).filter(|found| !std::ptr::eq(*found, start)))
+            }
             BoundLocal::Within(scrutinee) => Some(self.held_in(scrutinee)),
         }
     }

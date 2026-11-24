@@ -75,7 +75,7 @@ impl RegionRecord<'_> {
             .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
         self.regions
             .record(ParameterRole::HeldByResult, lambda, self.held.of(lambda));
-        let kept = self.regions.kept_by_result(lambda);
+        let kept = self.regions.of_result(lambda).kept();
         self.regions.record(
             ParameterRole::LeftOutOfResult,
             lambda,

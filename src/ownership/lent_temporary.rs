@@ -1,6 +1,6 @@
 use super::call_result_sources::CallResultSources;
 use super::promoted_constants::PromotedConstants;
-use super::result_source::{PassedArgument, ResultSource};
+use super::result_source::ResultSource;
 use crate::types::{
     PositionTie, ReturnedValues, TypedBinder, TypedExpr, TypedExprKind, TypedProgram,
 };
@@ -25,10 +25,7 @@ impl<'p> LentTemporary<'p> {
         parameter: &TypedBinder,
         argument: &'e TypedExpr,
     ) -> Option<&'e TypedExpr> {
-        self.first_temporary([ResultSource::kept_by_closure(PassedArgument {
-            parameter: &parameter.ty,
-            argument,
-        })])
+        self.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])
     }
 
     fn lent_by<'e>(&self, argument: &'e TypedExpr) -> Option<&'e TypedExpr> {
@@ -84,9 +81,9 @@ impl<'p> LentTemporary<'p> {
         &self,
         sources: impl IntoIterator<Item = ResultSource<'e>>,
     ) -> Option<&'e TypedExpr> {
-        sources.into_iter().find_map(|source| match source.tie {
-            PositionTie::Lent => self.lent_by(source.argument),
-            PositionTie::Held | PositionTie::HeldBeneath => self.held_in(source.argument),
+        sources.into_iter().find_map(|source| match source.tie() {
+            PositionTie::Lent => self.lent_by(source.argument()),
+            PositionTie::Held | PositionTie::HeldBeneath => self.held_in(source.argument()),
         })
     }
 }

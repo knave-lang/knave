@@ -3830,6 +3830,17 @@ fn doc_write_prelude_gives_two_names_of_one_type_one_section() {
 }
 
 #[test]
+fn doc_write_prelude_gives_a_term_of_two_modules_to_the_first_embedded_one() {
+    let sandbox = Sandbox::admitted("doc_write_prelude_owner");
+    sandbox
+        .compiler(&["doc", "--write", "--prelude"])
+        .assert_silent_success();
+    let section = "## `hash-map`\n";
+    assert!(sandbox.contents("doc/prelude/types.md").contains(section));
+    assert!(!sandbox.contents("doc/prelude/map.md").contains(section));
+}
+
+#[test]
 fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
     let sandbox = Sandbox::admitted("doc_write_prelude");
     sandbox

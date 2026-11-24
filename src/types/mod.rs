@@ -284,6 +284,7 @@ mod unifier;
 mod unlowered_variant;
 mod user_trait;
 mod variable_linking;
+mod variant_arm_reference;
 mod variant_names;
 mod variant_payloads;
 mod variant_shape;

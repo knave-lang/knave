@@ -67,6 +67,7 @@ mod derived_trait;
 mod derives;
 mod derives_builder;
 mod display;
+mod enum_cases;
 mod enum_item;
 mod enum_table;
 mod enum_trait_help;
@@ -322,6 +323,7 @@ pub use declarations::Declarations;
 pub use definition_entry::DefinitionEntry;
 pub use definition_table::DefinitionTable;
 pub use display::TypeDisplay;
+pub use enum_cases::EnumCases;
 pub use enum_table::EnumTable;
 pub use enums::{EnumDefinition, VariantDefinition, VariantPayload};
 pub use field_getter_name::FieldGetterName;
@@ -367,6 +369,7 @@ pub use trait_rows_reach::LoweredRows;
 pub use traits::TraitTable;
 pub use ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type, TypeVar};
 pub use type_declarations::TypeDeclarations;
+pub use type_lifetimes::TypeLifetimes;
 pub use typed::{
     Borrow, ClosureType, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm,
     TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition,

@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use crate::core::BindingId;
-use crate::types::{GenericId, Lifetime, Type};
+use crate::types::{GenericId, Lifetime, Type, TypeLifetimes};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum TypeSource {
@@ -26,24 +26,29 @@ impl TiedParts {
     }
 
     fn sources(ty: &Type) -> FxHashSet<TypeSource> {
-        let mut sources = FxHashSet::default();
-        Self::collect(ty, &mut sources);
+        let lifetimes =
+            TypeLifetimes::of(ty)
+                .all()
+                .into_iter()
+                .filter_map(|lifetime| match lifetime {
+                    Lifetime::Written(binding) => Some(TypeSource::Lifetime(binding)),
+                    Lifetime::Elided => None,
+                });
+        let mut sources: FxHashSet<TypeSource> = lifetimes.collect();
+        Self::collect_generics(ty, &mut sources);
         sources
     }
 
-    fn collect(ty: &Type, sources: &mut FxHashSet<TypeSource>) {
+    fn collect_generics(ty: &Type, sources: &mut FxHashSet<TypeSource>) {
         match ty {
-            Type::Ref(Lifetime::Written(lifetime), _)
-            | Type::Mut(Lifetime::Written(lifetime), _) => {
-                sources.insert(TypeSource::Lifetime(*lifetime));
-            }
+            Type::Function(..) => {}
             Type::Generic(generic) => {
                 sources.insert(TypeSource::Generic(*generic));
             }
-            _ => {}
-        }
-        for part in ty.parts() {
-            Self::collect(part, sources);
+            _ => ty
+                .parts()
+                .into_iter()
+                .for_each(|part| Self::collect_generics(part, sources)),
         }
     }
 }
@@ -52,7 +57,7 @@ impl TiedParts {
 mod tests {
     use super::TiedParts;
     use crate::core::BindingId;
-    use crate::types::{Lifetime, Type};
+    use crate::types::{ClosureKind, Lifetime, Type};
 
     struct TiesFixture;
 
@@ -80,6 +85,18 @@ mod tests {
     fn a_result_of_every_part_ties_the_whole_parameter() {
         let parameter = TiesFixture::pair(TiesFixture::borrow(0), TiesFixture::borrow(1));
         let tied = TiedParts::of_result(&parameter);
+        assert!(!tied.ties_only_part_of(&parameter));
+    }
+
+    #[test]
+    fn a_lifetime_inside_a_function_type_is_no_source() {
+        let function = Type::Function(
+            ClosureKind::Fn,
+            vec![TiesFixture::borrow(0)],
+            Box::new(Type::unit()),
+        );
+        let parameter = TiesFixture::pair(function, TiesFixture::borrow(1));
+        let tied = TiedParts::of_result(&TiesFixture::borrow(1));
         assert!(!tied.ties_only_part_of(&parameter));
     }
 

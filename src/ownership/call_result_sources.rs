@@ -58,34 +58,23 @@ impl<'p> CallResultSources<'p> {
 
     fn function_ties(&self, called: &CalledFunction) -> TemplateTies {
         let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
-        let mut lent: Vec<usize> = called
-            .lambda
-            .params
+        let parameters = &called.lambda.params;
+        let mut lent: Vec<usize> = parameters
             .iter()
             .enumerate()
             .filter(|(_, parameter)| flows.contains(&parameter.binding))
             .map(|(position, _)| position)
             .collect();
-        lent.extend(self.signature_lent(called));
-        lent.retain(|position| !Self::ties_only_part(called.lambda, *position));
+        if let Some(result) = called.lambda.body.tail().map(|tail| &tail.ty) {
+            lent.extend(Self::signature_lent(called.lambda, result));
+            let tied = TiedParts::of_result(result);
+            lent.retain(|position| !tied.ties_only_part_of(&parameters[*position].ty));
+        }
         TemplateTies::new(&lent, &[])
     }
 
-    fn ties_only_part(lambda: &TypedLambda, position: usize) -> bool {
-        let Some(result) = lambda.body.tail().map(|tail| &tail.ty) else {
-            return false;
-        };
-        lambda
-            .params
-            .get(position)
-            .is_some_and(|parameter| TiedParts::of_result(result).ties_only_part_of(&parameter.ty))
-    }
-
-    fn signature_lent(&self, called: &CalledFunction) -> Vec<usize> {
-        let Some(result) = called.lambda.body.tail().map(|tail| &tail.ty) else {
-            return Vec::new();
-        };
-        let parameters = Self::lambda_parameters(called.lambda);
+    fn signature_lent(lambda: &TypedLambda, result: &Type) -> Vec<usize> {
+        let parameters = Self::lambda_parameters(lambda);
         TemplateTies::lent_positions(&parameters, result).unwrap_or_default()
     }
 }

@@ -23,7 +23,7 @@ When a project holds both files and the entry never uses the library root, `knav
 
 ```lisp
 ; src/lib.knv
-(export distance-squared)
+(export point distance-squared)
 
 (defstruct point
   :x f64
@@ -38,21 +38,21 @@ When a project holds both files and the entry never uses the library root, `knav
 
 ```rust
 #[derive(Clone, Copy, PartialEq)]
-struct Point {
-    x: f64,
-    y: f64,
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
 }
 
 pub fn distance_squared(a: Point, b: Point) -> f64 {
     square(a.x - b.x) + square(a.y - b.y)
 }
 
-fn square(n: f64) -> f64 {
+fn square<A: crate::rt::Number>(n: A) -> A {
     n * n
 }
 ```
 
-The Rust is a sketch from the emitted binaries of today: whether `square`, which no caller outside the library pins, emits over `f64` or as a generic function is what the prototype settles. Either is a valid `lib.rs`.
+`square` emits as a generic function over `crate::rt::Number`, as every function whose parameter nothing pins does in the prototype, and `distance_squared` calls it at `f64`.
 
 In a project with both files, `knave build` builds the entry's binary, then the library root as a library crate unless the entry's program loads it, so each item builds once and each error prints once. `knave run` in a library project prints that the library has no entry to run and exits 2.
 
@@ -76,10 +76,10 @@ The rules it would set:
 2. A library crate's emission starts from every runtime definition of the project's own modules that the library root loads. A listed library's items emit as they are reached, as in a binary.
 3. rustc builds the crate with `--crate-type lib`, and Cargo with a `[lib]` target and `cargo rustc --lib`, into `target/knave/<name>/library/`, with the same edition, profile and capped lints as a binary.
 4. Both routes leave the library at `target/knave/<name>/library/lib<crate>.rlib`, where `<crate>` is the project's name with each `-` written `_`. The Cargo route copies the rlib there from Cargo's target directory, as it copies a binary.
-5. `knave build -o <path>` in a library project writes the rlib to `<path>`.
-6. When the entry exists, `knave build` builds the entry, then the library root as a library crate unless the entry's program loads it, as `knave check` does under RFC 0083.
-7. A written `:entry` whose file is missing stays an error, even when the library root exists.
-8. With no entry file and no library root, `knave build` with no file prints `nothing to build: the project has no entry and no library root` and exits 0 when the project has a task tree. With no task tree either, it is an error that names the missing entry, the missing library root and the missing tasks, and exits 2.
+5. `knave build -o <path>` writes the rlib to `<path>` in a project that rule 1 builds as a library. In a project with both files, `-o <path>` names the binary, and the rlib goes to its default path.
+6. When the entry exists, `knave build` builds the entry, then the library root as a library crate unless the entry's program loads it, as `knave check` does under RFC 0083. When the entry's binary fails, `knave build` still builds the library crate, and exits with the code of the first failure, the entry's before the library's, as `knave check` does.
+7. A written `:entry` whose file is missing stays an error that exits 2, even when the library root exists.
+8. With no entry file, in a project whose entry the project file does not write, and no library root, `knave build` with no file prints `nothing to build: the project has no entry and no library root` and exits 0 when the project has a `tasks/` directory or an `exported-tasks` section. Without either, it is an error that names the missing entry, the missing library root and the missing tasks, and exits 2. A written `:lib` whose file is missing counts as no library root, as it does for `knave check` under RFC 0083.
 9. `knave run` with no file, in a project whose entry the project file does not write and that has no entry file, is a usage error that says the library, or the project when it has no library root, has no entry to run, exits 2, and builds nothing.
 10. `knave run <file>`, `knave build <file>`, `test`, `types`, `expand`, `emit`, `doc` and `check <file>` keep their behavior.
 11. A definition whose bound names a type variable that no parameter and no result holds is `L0407` at the definition, in a program and in a library alike, so `knave check` reports it before rustc does.
@@ -90,7 +90,7 @@ This RFC supersedes rule 7 of RFC 0083 for `knave build` and `knave run`.
 
 The project owner, 2026-11-24, D140: accepted the library crate from the library root, with rule 11. In a library project, `knave build` builds the library root as a Rust library crate, and `knave run` is a usage error. A definition whose bound names a type variable that no parameter and no result holds is `L0407` at the definition, in a program and in a library alike.
 
-The project owner, 2026-11-24, D143: a project with at least one program, an entry, a library root or a task tree, builds what it has, and a project with none fails. A task tree alone has nothing to build, so `knave build` exits 0 there, and `knave run` is a usage error.
+The project owner, 2026-11-24, D143: a project builds what it has when it has an entry, a library root, a `tasks/` directory or an `exported-tasks` section. Tasks alone have nothing to build, so `knave build` prints that the project has nothing to build and exits 0. With none of the four, `knave build` fails with an error that names the missing entry, the missing library root and the missing tasks, and exits 2. `knave run` with no entry is a usage error.
 
 ## Rejected options and why
 
@@ -111,7 +111,7 @@ An export whose parameter nothing pins emits as a generic function, `pub fn keep
 
 ## Rule
 
-[docs/language.md: Projects](../docs/language.md#projects): the rules on what `build` and `run` take as their file, where `build` writes its output, and the paragraph of RFC 0083 that says `knave build` and `knave run` still need the entry.
+[docs/language.md: Projects](../docs/language.md#projects): the rules on what `build` and `run` take as their file, where `build` writes its output, the paragraph of RFC 0083 that says `knave build` and `knave run` still need the entry, and the sentence "`build` and `test` do not read `tasks/`", which gains the case of tasks alone, where `build` has nothing to build and exits 0, and the case of a project with nothing to build, which fails.
 
 [docs/language.md: Formatting](../docs/language.md#formatting): the emitted Rust of a library crate is formatted as a binary's is.
 

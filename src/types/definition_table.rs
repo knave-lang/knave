@@ -49,12 +49,15 @@ impl<'p> DefinitionTable<'p> {
         })
     }
 
-    pub fn called_lambda(&self, callee: &TypedExpr) -> Option<&'p TypedLambda> {
-        let function = Self::called_global(callee)?;
-        self.definition(function)?.value.lambda_value()
+    pub fn called_definition(&self, callee: &TypedExpr) -> Option<&'p TypedDefinition> {
+        self.definition(Self::called_global(callee)?)
     }
 
-    pub fn called_global(callee: &TypedExpr) -> Option<BindingId> {
+    fn called_lambda(&self, callee: &TypedExpr) -> Option<&'p TypedLambda> {
+        self.called_definition(callee)?.value.lambda_value()
+    }
+
+    fn called_global(callee: &TypedExpr) -> Option<BindingId> {
         match callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(function)) => Some(function),
             _ => None,

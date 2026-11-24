@@ -1,0 +1,11 @@
+(defn label! (x)
+  (set! x 3)
+  (if (= x 3) "three" "other"))
+
+(defn greeter (name)
+  (fn () (println name)))
+
+(defn main ()
+  (local n 1)
+  (let (g (greeter (label! (+ n 0)))) (g))
+  (println n))

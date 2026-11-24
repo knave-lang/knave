@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_static_result_of_a_changed_copy.knv
+---
+error[L0514]: this argument is a copy, so changing it changes nothing
+  --> check/returned_closure_keeps_a_static_result_of_a_changed_copy.knv:10:28
+   |
+ 2 |   (set! x 3)
+   |   ---------- `label!` changes its parameter here
+...
+10 |   (let (g (greeter (label! (+ n 0)))) (g))
+   |                            ^^^^^^^ this is a copy, not a place
+   |
+   = help: bind it and pass the binding: `(let (value (+ n 0)) ...)`
+   = note: run `knave doc L0514` for an explanation

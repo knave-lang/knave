@@ -1,6 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use super::lambda_flows::{FunctionFlows, LambdaFlows};
+use super::left_out_parameters::LeftOutParameters;
 use super::region_rules::RegionRules;
 use super::result_borrows::ResultBorrows;
 use super::result_held_parameters::ResultHeldParameters;
@@ -15,6 +16,7 @@ pub struct RegionRecord<'a> {
     program: &'a TypedProgram,
     analysis: ResultBorrows<'a>,
     held: ResultHeldParameters<'a>,
+    left_out: LeftOutParameters<'a>,
     regions: Regions,
 }
 
@@ -28,6 +30,7 @@ impl RegionRecord<'_> {
             program,
             analysis: ResultBorrows::new(program, definitions),
             held: ResultHeldParameters::new(program, definitions),
+            left_out: LeftOutParameters::new(program),
             regions: Regions::default(),
         };
         for definition in Self::covered(program, reach) {
@@ -86,6 +89,12 @@ impl RegionRecord<'_> {
             .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
         self.regions
             .record(ParameterRole::HeldByResult, lambda, self.held.of(lambda));
+        let kept = self.regions.kept_by_result(lambda);
+        self.regions.record(
+            ParameterRole::LeftOutOfResult,
+            lambda,
+            self.left_out.of(lambda, &kept),
+        );
         self.regions
             .record(ParameterRole::Reassigned, lambda, reassigned_parameters);
         let stored = self.analysis.stores_of(function).flows.clone();

@@ -3,24 +3,20 @@ use rustc_hash::FxHashSet;
 use super::tied_parts::TiedParts;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, ParameterRole, Regions, TemplateBorrows, TemplateTies, Type, TypedExpr,
-    TypedLambda, TypedProgram,
+    DefinitionTable, ParameterRole, Regions, TemplateTies, Type, TypedExpr, TypedLambda,
+    TypedProgram,
 };
 
 pub struct ResultTies<'p, 'd> {
     program: &'p TypedProgram,
-    templates: &'p TemplateBorrows,
     definitions: &'d DefinitionTable<'p>,
-    regions: &'p Regions,
 }
 
 impl<'p, 'd> ResultTies<'p, 'd> {
     pub fn new(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> Self {
         Self {
             program,
-            templates: &program.template_borrows,
             definitions,
-            regions: &program.ownership.regions,
         }
     }
 
@@ -28,7 +24,8 @@ impl<'p, 'd> ResultTies<'p, 'd> {
         match self.definitions.called_lambda(callee) {
             Some(lambda) => Some(self.function_ties(lambda)),
             None => self
-                .templates
+                .program
+                .template_borrows
                 .read_template(callee, None, |_, ties| ties.cloned()),
         }
     }
@@ -45,7 +42,7 @@ impl<'p, 'd> ResultTies<'p, 'd> {
     }
 
     fn sharing_positions(&self, lambda: &TypedLambda, result: &Type) -> Vec<usize> {
-        let flows = self.regions.of(ParameterRole::FlowsToResult, lambda);
+        let flows = self.regions().of(ParameterRole::FlowsToResult, lambda);
         let sharing = self.sharing_while_borrowing(lambda, result);
         lambda
             .params
@@ -62,7 +59,7 @@ impl<'p, 'd> ResultTies<'p, 'd> {
 
     fn sharing_while_borrowing(&self, lambda: &TypedLambda, result: &Type) -> FxHashSet<BindingId> {
         if self.program.type_holds_borrow(result) {
-            let regions = self.regions.of_result(lambda);
+            let regions = self.regions().of_result(lambda);
             let store_only = regions.store_only_targets();
             let mut sharing = regions.sharing();
             sharing.retain(|binding| !store_only.contains(binding));
@@ -83,11 +80,15 @@ impl<'p, 'd> ResultTies<'p, 'd> {
     }
 
     fn lending_parameters<'l>(&self, lambda: &'l TypedLambda) -> Vec<(usize, &'l Type)> {
-        self.regions
+        self.regions()
             .of_result(lambda)
             .lending_positions()
             .into_iter()
             .map(|position| (position, &lambda.params[position].ty))
             .collect()
+    }
+
+    fn regions(&self) -> &'p Regions {
+        &self.program.ownership.regions
     }
 }

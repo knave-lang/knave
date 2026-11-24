@@ -57,7 +57,7 @@ impl TiedParts {
 mod tests {
     use super::TiedParts;
     use crate::core::BindingId;
-    use crate::types::{ClosureKind, Lifetime, Type};
+    use crate::types::{ClosureKind, GenericId, Lifetime, Type};
 
     struct TiesFixture;
 
@@ -67,6 +67,10 @@ mod tests {
         fn borrow(lifetime: u32) -> Type {
             let written = Lifetime::Written(BindingId::from_index(lifetime + 1));
             Type::Ref(written, Box::new(Type::str_ref()))
+        }
+
+        fn generic(index: usize) -> Type {
+            Type::Generic(GenericId::new(index))
         }
 
         fn pair(first: Type, second: Type) -> Type {
@@ -104,6 +108,25 @@ mod tests {
     fn a_parameter_of_one_lifetime_is_tied_whole() {
         let parameter = TiesFixture::pair(TiesFixture::borrow(0), TiesFixture::borrow(0));
         let tied = TiedParts::of_result(&TiesFixture::borrow(1));
+        assert!(!tied.ties_only_part_of(&parameter));
+    }
+
+    #[test]
+    fn an_elided_lifetime_is_no_source() {
+        let parameter = TiesFixture::pair(Type::str_ref(), TiesFixture::generic(0));
+        let tied = TiedParts::of_result(&TiesFixture::generic(0));
+        assert!(!tied.ties_only_part_of(&parameter));
+    }
+
+    #[test]
+    fn a_type_variable_inside_a_function_type_is_no_source() {
+        let function = Type::Function(
+            ClosureKind::Fn,
+            vec![TiesFixture::generic(0)],
+            Box::new(Type::unit()),
+        );
+        let parameter = TiesFixture::pair(function, TiesFixture::generic(1));
+        let tied = TiedParts::of_result(&TiesFixture::generic(1));
         assert!(!tied.ties_only_part_of(&parameter));
     }
 }

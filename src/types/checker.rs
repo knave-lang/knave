@@ -131,7 +131,7 @@ pub struct TypeChecker {
     pub(super) vector_bases: FxHashSet<Span>,
     pub(super) template_borrows: TemplateBorrows,
     template_clauses: TemplateClauses,
-    pub(super) recur_target: Option<super::infer::RecurTarget>,
+    pub(super) recur_target: Option<super::recur_target::RecurTarget>,
     pub(super) checking_function_body: bool,
     pub(super) try_target: Option<super::infer::TryTarget>,
     pub(super) changed_structs: FxHashSet<BindingId>,

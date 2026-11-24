@@ -1,0 +1,4 @@
+(defn spin (a b n)
+  (if (= a b) n (recur 1 "x" (+ n 1))))
+
+(defn main () (println (spin 1 2 0)))

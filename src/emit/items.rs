@@ -32,9 +32,10 @@ use crate::core::{BindingId, ModuleId};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    Bound, GenericId, GenericParam, Lifetime, ParameterRole, ReceiverKind, Scheme, StoredFlows,
-    Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod, VariantDefinition,
+    Bound, GenericId, GenericParam, Lifetime, ParameterRole, ReceiverKind, ResultRegions, Scheme,
+    StoredFlows, Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod,
+    VariantDefinition,
 };
 
 struct ImplementedTrait<'l> {
@@ -935,7 +936,7 @@ impl<'a> ItemEmitter<'a> {
             .copied()
             .filter(|binding| used.contains(binding))
             .collect();
-        let result_regions = regions.of_result(lambda.as_ref());
+        let result_regions = ResultRegions::of(regions, lambda.as_ref());
         let sharing = result_regions.sharing();
         let store_targets = result_regions.store_only_targets();
         let higher_ranked = regions.of(ParameterRole::HigherRanked, lambda.as_ref());
@@ -1232,10 +1233,7 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn lending_parameters(&self, lambda: &TypedLambda, parameters: &[Type]) -> Vec<Type> {
-        self.program
-            .ownership
-            .regions
-            .of_result(lambda)
+        ResultRegions::of(&self.program.ownership.regions, lambda)
             .lending_positions()
             .into_iter()
             .filter_map(|position| parameters.get(position).cloned())

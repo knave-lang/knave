@@ -5,8 +5,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::tied_parts::TiedParts;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, Lifetime, ParameterRole, Regions, TemplateTies, Type, TypeLifetimes,
-    TypedExpr, TypedLambda, TypedProgram,
+    DefinitionTable, Lifetime, ParameterRole, Regions, ResultRegions, TemplateTies, Type,
+    TypeLifetimes, TypedExpr, TypedLambda, TypedProgram,
 };
 
 pub struct ResultTies<'p> {
@@ -94,7 +94,7 @@ impl<'p> ResultTies<'p> {
 
     fn sharing_while_borrowing(&self, lambda: &TypedLambda, result: &Type) -> FxHashSet<BindingId> {
         if self.program.type_holds_borrow(result) {
-            let regions = self.regions().of_result(lambda);
+            let regions = ResultRegions::of(self.regions(), lambda);
             let store_only = regions.store_only_targets();
             let mut sharing = regions.sharing();
             sharing.retain(|binding| !store_only.contains(binding));
@@ -115,8 +115,7 @@ impl<'p> ResultTies<'p> {
     }
 
     fn lending_parameters<'l>(&self, lambda: &'l TypedLambda) -> Vec<(usize, &'l Type)> {
-        self.regions()
-            .of_result(lambda)
+        ResultRegions::of(self.regions(), lambda)
             .lending_positions()
             .into_iter()
             .map(|position| (position, &lambda.params[position].ty))

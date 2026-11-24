@@ -11955,9 +11955,17 @@ const UNUSED_BINDING_SHELF_LIBRARY: &str =
 const UNIMPLEMENTED_TRAIT_ERROR: &str = "error[L0404]";
 const UNREADABLE_SOURCE: &[u8] = b"\xff\xfe";
 const UNREADABLE_ENTRY: &str = "cannot read `src/main.knv`";
-const LINT_READS_OF_AN_UNREADABLE_ENTRY: usize = 2;
 const SHELF_ENTRY: &str = "(defn main () (println 1))\n";
 const SHELF_ENTRY_USING_LIBRARY: &str = "(use lib shelve)\n\n(defn main () (println (shelve 2)))\n";
+
+impl Sandbox {
+    fn with_unreadable_entry(self) -> Self {
+        fs::create_dir_all(self.directory.join("src")).expect("the sandbox accepts directories");
+        fs::write(self.directory.join("src/main.knv"), UNREADABLE_SOURCE)
+            .expect("the sandbox accepts a source file");
+        self
+    }
+}
 
 struct LibraryProject;
 
@@ -12054,13 +12062,12 @@ fn check_of_a_named_file_skips_the_library_project_root() {
 
 #[test]
 fn check_reads_a_library_project_root_that_is_the_entry_once() {
-    let sandbox = Sandbox::new("library_project_root_is_entry").with_file(
-        &Language::project_file_name(),
-        "(defproject shelf :lib \"src/main.knv\")\n",
-    );
-    fs::create_dir_all(sandbox.directory.join("src")).expect("the sandbox accepts directories");
-    fs::write(sandbox.directory.join("src/main.knv"), UNREADABLE_SOURCE)
-        .expect("the sandbox accepts a source file");
+    let sandbox = Sandbox::new("library_project_root_is_entry")
+        .with_file(
+            &Language::project_file_name(),
+            "(defproject shelf :lib \"src/main.knv\")\n",
+        )
+        .with_unreadable_entry();
     let check = sandbox.compiler(&["check"]);
     let check_errors = check.assert_exit_code(2).stderr();
     assert_eq!(
@@ -12071,9 +12078,24 @@ fn check_reads_a_library_project_root_that_is_the_entry_once() {
     let lint_errors = sandbox.compiler(&["lint"]).stderr();
     assert_eq!(
         lint_errors.matches(UNREADABLE_ENTRY).count(),
-        LINT_READS_OF_AN_UNREADABLE_ENTRY,
+        1,
         "{lint_errors}"
     );
+}
+
+#[test]
+fn lint_reads_an_unreadable_entry_once() {
+    let sandbox = Sandbox::new("lint_unreadable_entry")
+        .with_file(&Language::project_file_name(), SHELF_PROJECT)
+        .with_unreadable_entry();
+    for arguments in [&["lint"][..], &["lint", "src/main.knv"]] {
+        let lint_errors = sandbox.compiler(arguments).assert_exit_code(2).stderr();
+        assert_eq!(
+            lint_errors.matches(UNREADABLE_ENTRY).count(),
+            1,
+            "{lint_errors}"
+        );
+    }
 }
 
 const LENDING_PROJECT: &str = "(defproject lint :knave \"99.0.0\" (exported-tasks check where) (lints (unused-binding deny)))\n";

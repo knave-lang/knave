@@ -27,8 +27,6 @@ enum Scope {
 }
 
 impl ProjectPrograms {
-    const CURRENT_FOLDER: &'static str = ".";
-
     pub fn of_file(located: LocatedProgram) -> Self {
         Self {
             scope: Scope::File(Box::new(located)),
@@ -68,25 +66,37 @@ impl ProjectPrograms {
         project: LocatedProject,
         loaded: &mut LoadedPrograms,
     ) -> FxHashSet<PathBuf> {
-        Self::load_entry_and_library_root(terminal, &project, loaded);
+        let entry_and_library_root = Self::load_entry_and_library_root(terminal, &project, loaded);
         let project = Self::tests(terminal, project, loaded);
         let project = Self::tasks(terminal, project, loaded);
-        Self::unreached(terminal, &project, loaded)
+        UnreachedWalk::new(terminal, &project, entry_and_library_root).load(terminal, loaded)
     }
 
     fn load_entry_and_library_root(
         terminal: &mut Terminal,
         project: &LocatedProject,
         loaded: &mut LoadedPrograms,
-    ) {
+    ) -> FxHashSet<PathBuf> {
         let layout = project.entry_layout();
+        let mut tried = FxHashSet::default();
         if !layout.skips_entry() {
-            loaded.add(Self::entry(terminal, layout.entry()));
+            tried.extend(Self::load_canonical(terminal, layout.entry(), loaded));
         }
         let held = terminal.source_report().canonical_files_from(0);
         if let Some(library_root) = layout.library_root_outside(&held) {
-            loaded.add(Self::entry(terminal, library_root));
+            tried.extend(Self::load_canonical(terminal, library_root, loaded));
         }
+        tried
+    }
+
+    fn load_canonical(
+        terminal: &mut Terminal,
+        file: ProgramFile,
+        loaded: &mut LoadedPrograms,
+    ) -> Option<PathBuf> {
+        let canonical = ProgramFile::canonical(file.path());
+        loaded.add(Self::entry(terminal, file));
+        canonical
     }
 
     fn entry(terminal: &mut Terminal, file: ProgramFile) -> Result<ProjectProgram, ExitStatus> {
@@ -151,28 +161,45 @@ impl ProjectPrograms {
     fn holds(tried: &FxHashSet<PathBuf>, file: &ProgramFile) -> bool {
         ProgramFile::canonical(file.path()).is_some_and(|named| tried.contains(&named))
     }
+}
 
-    fn unreached(
-        terminal: &mut Terminal,
-        project: &LocatedProject,
-        loaded: &mut LoadedPrograms,
-    ) -> FxHashSet<PathBuf> {
+struct UnreachedWalk<'p> {
+    project: &'p LocatedProject,
+    tried: FxHashSet<PathBuf>,
+}
+
+impl<'p> UnreachedWalk<'p> {
+    const CURRENT_FOLDER: &'static str = ".";
+
+    fn new(
+        terminal: &Terminal,
+        project: &'p LocatedProject,
+        first_tried: FxHashSet<PathBuf>,
+    ) -> Self {
         let mut tried = terminal.source_report().canonical_files_from(0);
+        tried.extend(first_tried);
+        Self { project, tried }
+    }
+
+    fn load(mut self, terminal: &mut Terminal, loaded: &mut LoadedPrograms) -> FxHashSet<PathBuf> {
+        let project = self.project;
         let paths = match SourceFiles::under(project.root().to_path_buf(), project).paths() {
             Ok(paths) => paths,
             Err(status) => {
                 loaded.fail(status);
-                return tried;
+                return self.tried;
             }
         };
         for path in paths.into_iter().map(Self::without_current_folder) {
-            if ProgramFile::canonical(&path).is_some_and(|canonical| tried.insert(canonical)) {
+            if ProgramFile::canonical(&path).is_some_and(|canonical| self.tried.insert(canonical)) {
                 let first_source = terminal.source_report().sources().next_id().index();
-                loaded.add(Self::entry(terminal, project.placement().file_within(path)));
-                tried.extend(terminal.source_report().canonical_files_from(first_source));
+                let file = project.placement().file_within(path);
+                loaded.add(ProjectPrograms::entry(terminal, file));
+                self.tried
+                    .extend(terminal.source_report().canonical_files_from(first_source));
             }
         }
-        tried
+        self.tried
     }
 
     fn without_current_folder(path: PathBuf) -> PathBuf {

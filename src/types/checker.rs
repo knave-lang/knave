@@ -107,7 +107,7 @@ pub struct TypeChecker {
     pub(super) schemes: FxHashMap<BindingId, Scheme>,
     pub(super) component: FxHashMap<BindingId, Type>,
     pub(super) locals: FxHashMap<BindingId, Type>,
-    pub(super) variant_arm: FxHashMap<BindingId, VariantArmReference>,
+    pub(super) variant_arm: FxHashMap<BindingId, super::variant_arm_reference::VariantArmReference>,
     pub(super) unchecked: FxHashSet<BindingId>,
     entry_function: Option<BindingId>,
     pub(super) outcomes: DefinitionOutcomes,
@@ -151,12 +151,6 @@ pub struct TypeChecker {
     pub(super) string_view: Option<BindingId>,
     pub(super) checking: super::typed::CheckWork,
     pub(super) inferring: super::inferred_span::InferredSpan,
-}
-
-#[derive(Clone, Copy)]
-pub(super) struct VariantArmReference {
-    pub outer: Option<BindingId>,
-    pub variant: BindingId,
 }
 
 impl TypeChecker {

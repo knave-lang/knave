@@ -6,8 +6,8 @@ mod short_pattern;
 mod variant_target;
 
 use super::forms::{
-    Association, Body, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, Sequence,
-    TypeTextRequest, VariantConstruction,
+    Association, Body, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, InlineRust,
+    LiteralValue, Sequence, TypeTextRequest, VariableReference, VariantConstruction,
 };
 use super::result_span::ResultSpan;
 use super::variant_site::VariantSite;
@@ -18,7 +18,7 @@ use rustc_hash::FxHashMap;
 use super::assumed_collection_problems::AssumedCollectionProblems;
 use super::assumed_collections::CollectionAssumption;
 use super::borrowed_items::ArgumentSite;
-use super::checker::{TypeChecker, VariantArmReference};
+use super::checker::TypeChecker;
 use super::collection::{Collection, CollectionKind};
 use super::enums::VariantPayload;
 use super::expectation::Expectation;
@@ -30,16 +30,16 @@ use super::pending::DecidedBorrows;
 use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
 use super::selfless_method::SelflessMethod;
+use super::synthetic_template::SyntheticTemplate;
 use super::ty::{Bound, Type};
 use super::typed::{
     Borrow, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm, TypedBinder,
     TypedBodyItem, TypedControl, TypedConversion, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
     TypedMatch, TypedPattern, TypedPatternKind, TypedStructExpr,
 };
-use super::unifier::LiteralKind;
+use super::variant_arm_reference::VariantArmReference;
 use super::{BoxedPayload, PayloadPosition, variant_names::VariantNames};
 use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
-use super::{synthetic_template::SyntheticTemplate, templates::TemplateName};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, BorrowTrait, Control, EqualityTrait, Expr, ExprKind,
     FieldLabel, HashTrait, KeyedPath, Lambda, Leaf, Literal, MapOperation, OrderTrait, Pattern,
@@ -47,7 +47,6 @@ use crate::core::{
     TypeExpr, TypeExprKind, VariantInfo,
 };
 use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName};
-use crate::reader::NumberValue;
 use crate::source::Span;
 use shared_variables::SharedVariables;
 use short_pattern::ShortPattern;
@@ -174,16 +173,12 @@ impl TypeChecker {
     }
 
     fn infer_leaf(&mut self, leaf: &Leaf, span: Span) -> Result<TypedExpr, Diagnostic> {
-        let inferred = match leaf {
-            Leaf::Literal(literal) => Ok((
-                TypedExprKind::Leaf(TypedLeaf::Literal(literal.clone())),
-                self.literal_type(literal),
-            )),
-            Leaf::Var(binding) => self.infer_variable(*binding, span),
+        match leaf {
+            Leaf::Literal(literal) => LiteralValue::new(literal, span).type_against(self, None),
+            Leaf::Var(binding) => VariableReference::new(*binding, span).type_against(self, None),
             Leaf::Quote(_) => Err(TypeProblems::quote_at_runtime(span)),
-            Leaf::Rust(template) => self.infer_inline_rust(template, span),
-        };
-        Self::typed(inferred, span)
+            Leaf::Rust(template) => InlineRust::new(template, span).type_against(self, None),
+        }
     }
 
     fn infer_control(&mut self, control: &Control, span: Span) -> Result<TypedExpr, Diagnostic> {
@@ -614,7 +609,7 @@ impl TypeChecker {
         expected: &Type,
         span: Span,
     ) -> Result<TypedPatternKind, Diagnostic> {
-        let literal_type = self.literal_type(literal);
+        let literal_type = LiteralValue::new(literal, span).literal_type(self);
         let matched = self.unifier.resolve(matched);
         if matches!(literal, Literal::String(_)) && Self::is_string_position(&matched) {
             return Ok(TypedPatternKind::Literal(literal.clone(), matched));
@@ -875,61 +870,6 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         inferred.map(|(kind, ty)| TypedExpr { kind, ty, span })
-    }
-
-    fn literal_type(&mut self, literal: &Literal) -> Type {
-        match literal {
-            Literal::String(_) => Type::str_ref(),
-            Literal::Bool(_) => Type::Primitive(PrimitiveType::Bool),
-            Literal::Number(number) => match number.value() {
-                NumberValue::Integer(_) => self.unifier.fresh_literal(LiteralKind::Integer),
-                NumberValue::Float(_) => self.unifier.fresh_literal(LiteralKind::Float),
-            },
-        }
-    }
-
-    fn infer_variable(
-        &mut self,
-        binding: BindingId,
-        span: Span,
-    ) -> Result<(TypedExprKind, Type), Diagnostic> {
-        if let Some(reference) = self.variant_arm.get(&binding).copied() {
-            return match reference.outer {
-                Some(outer) => self.infer_variable(outer, span),
-                None => {
-                    let name = self.bindings.get(binding).name().to_string();
-                    let variant = self.bindings.get(reference.variant).name().to_string();
-                    Err(TypeProblems::variant_arm_value(&name, &variant, span))
-                }
-            };
-        }
-        let name = self.bindings.get(binding).name().to_string();
-        match self.bindings.get(binding).kind() {
-            BindingKind::Local => Ok((
-                TypedExprKind::Leaf(TypedLeaf::Local(binding)),
-                self.locals[&binding].clone(),
-            )),
-            BindingKind::Global(_) => self.infer_global(binding, &name, span),
-            _ => Err(TypeProblems::compile_time_only(&name, span)),
-        }
-    }
-
-    fn infer_global(
-        &mut self,
-        binding: BindingId,
-        name: &str,
-        span: Span,
-    ) -> Result<(TypedExprKind, Type), Diagnostic> {
-        if self.unchecked.contains(&binding) {
-            return Err(TypeProblems::compile_time_only(name, span));
-        }
-        if let Some(method) = self.checking_facts.selfless_methods.get(binding) {
-            return Err(self.selfless_method_call(binding, method, name, span));
-        }
-        Ok((
-            TypedExprKind::Leaf(TypedLeaf::Global(binding)),
-            self.global_type(binding, span),
-        ))
     }
 
     fn selfless_method_call(
@@ -2795,19 +2735,6 @@ impl TypeChecker {
             _ => Err(FieldOwnerProblems::ambiguous(&label.name, label.span)),
         }
     }
-
-    fn infer_inline_rust(
-        &mut self,
-        template: &Rc<RustTemplate>,
-        span: Span,
-    ) -> Result<(TypedExprKind, Type), Diagnostic> {
-        let scheme = self.written_schemes().lower_template(&template.type_expr)?;
-        let name = TemplateName::Inline(&template.template);
-        let rust_types = &self.declarations.types().rust_types;
-        self.template_borrows.register(name, &scheme, rust_types);
-        let ty = self.instantiation().instantiate(&scheme, span);
-        Ok((TypedExprKind::Leaf(TypedLeaf::Rust(template.clone())), ty))
-    }
 }
 
 #[cfg(test)]
@@ -2820,6 +2747,7 @@ mod tests {
     use crate::core::{BindingArena, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::source::{SourceId, Span};
     use crate::types::definition_outcomes::DefinitionOutcomes;
+    use crate::types::forms::{ExpressionForm, VariableReference};
     use crate::types::{ClosureKind, Type, TypeVar};
 
     #[test]
@@ -2881,7 +2809,9 @@ mod tests {
                 None,
             ));
             self.checker.unchecked.insert(binding);
-            self.checker.infer_variable(binding, self.span).is_err()
+            VariableReference::new(binding, self.span)
+                .type_against(&mut self.checker, None)
+                .is_err()
         }
     }
 

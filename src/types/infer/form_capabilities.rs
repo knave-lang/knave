@@ -1,18 +1,23 @@
 use std::rc::Rc;
 
-use crate::core::{BindingId, Expr, TypeExpr, VariantInfo};
+use crate::core::{BindingId, BindingKind, Expr, TypeExpr, VariantInfo};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, ChildTyping, CollectionShapes, ExpectedChildTyping, FieldMoves, LocalScope,
-    MacroOrigins, MapKeys, Obligations, OperandTyping, PlaceReads, StructBases, TypeFitting,
-    TypeTextRecords, Unknowns, VariantSites,
+    AnnotationLowering, BindingNames, ChildTyping, CollectionShapes, ExpectedChildTyping,
+    FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, MacroOrigins, MapKeys, Obligations,
+    OperandTyping, PlaceReads, SelflessCall, StructBases, TemplateSchemes, TypeFitting,
+    TypeTextRecords, Unknowns, VariantArms, VariantSites,
 };
-use crate::types::ty::Type;
+use crate::types::selfless_method::SelflessMethod;
+use crate::types::templates::TemplateName;
+use crate::types::ty::{Scheme, Type};
 use crate::types::typed::TypedExpr;
+use crate::types::unifier::LiteralKind;
+use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
 
 impl ChildTyping for TypeChecker {
@@ -114,6 +119,10 @@ impl LocalScope for TypeChecker {
     fn bind_local(&mut self, binding: BindingId, ty: Type) {
         self.locals.insert(binding, ty);
     }
+
+    fn local_type(&self, binding: BindingId) -> Type {
+        self.locals[&binding].clone()
+    }
 }
 
 impl CollectionShapes for TypeChecker {
@@ -141,5 +150,61 @@ impl StructBases for TypeChecker {
 impl FieldMoves for TypeChecker {
     fn moved_base(&mut self, base: TypedExpr) -> TypedExpr {
         self.moved_field_base(base)
+    }
+}
+
+impl LiteralUnknowns for TypeChecker {
+    fn fresh_literal(&mut self, kind: LiteralKind) -> Type {
+        self.unifier.fresh_literal(kind)
+    }
+}
+
+impl TemplateSchemes for TypeChecker {
+    fn lower_template(&mut self, type_expr: &TypeExpr) -> Result<Scheme, Diagnostic> {
+        self.written_schemes().lower_template(type_expr)
+    }
+
+    fn register_inline(&mut self, text: &Rc<str>, scheme: &Scheme) {
+        let rust_types = &self.declarations.types().rust_types;
+        self.template_borrows
+            .register(TemplateName::Inline(text), scheme, rust_types);
+    }
+
+    fn instantiate(&mut self, scheme: &Scheme, span: Span) -> Type {
+        self.instantiation().instantiate(scheme, span)
+    }
+}
+
+impl BindingNames for TypeChecker {
+    fn binding_name(&self, binding: BindingId) -> String {
+        self.bindings.get(binding).name().to_string()
+    }
+
+    fn binding_kind(&self, binding: BindingId) -> BindingKind {
+        self.bindings.get(binding).kind()
+    }
+}
+
+impl VariantArms for TypeChecker {
+    fn variant_arm(&self, binding: BindingId) -> Option<VariantArmReference> {
+        self.variant_arm.get(&binding).copied()
+    }
+}
+
+impl GlobalReferences for TypeChecker {
+    fn is_unchecked(&self, binding: BindingId) -> bool {
+        self.unchecked.contains(&binding)
+    }
+
+    fn selfless_method(&self, binding: BindingId) -> Option<SelflessMethod> {
+        self.checking_facts.selfless_methods.get(binding)
+    }
+
+    fn selfless_method_problem(&self, call: SelflessCall<'_>) -> Diagnostic {
+        self.selfless_method_call(call.binding, call.method, call.name, call.span)
+    }
+
+    fn global_type(&mut self, binding: BindingId, span: Span) -> Type {
+        TypeChecker::global_type(self, binding, span)
     }
 }

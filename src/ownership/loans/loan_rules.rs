@@ -1,13 +1,13 @@
 use super::type_memo::TypeMemo;
 use crate::ownership::result_ties::ResultTies;
 use crate::types::{
-    BorrowingTypes, CopyRules, DefinitionTable, TemplateTies, Type, TypedExpr, TypedExprKind,
-    TypedProgram, TypedStructExpr,
+    BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedExprKind, TypedProgram,
+    TypedStructExpr,
 };
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
-    definitions: DefinitionTable<'p>,
+    ties: ResultTies<'p>,
     copy: CopyRules<'p>,
     moved: TypeMemo,
     borrowing: TypeMemo,
@@ -17,7 +17,7 @@ impl<'p> LoanRules<'p> {
     pub fn of(program: &'p TypedProgram) -> Self {
         Self {
             program,
-            definitions: DefinitionTable::of(program),
+            ties: ResultTies::new(program),
             copy: CopyRules::new(&program.declarations, &program.generics),
             moved: TypeMemo::default(),
             borrowing: TypeMemo::default(),
@@ -29,7 +29,7 @@ impl<'p> LoanRules<'p> {
     }
 
     pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        ResultTies::new(self.program, &self.definitions).of(callee)
+        self.ties.of(callee)
     }
 
     pub fn reads_through_a_stored_reference(&self, read: &TypedExpr) -> bool {

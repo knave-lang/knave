@@ -1,0 +1,7 @@
+(defn greeter (name)
+  (fn () (println name)))
+
+(defn main ()
+  (let (g (greeter (loop (n 0)
+                     (let (r (as-str (str "zz"))) r))))
+    (g)))

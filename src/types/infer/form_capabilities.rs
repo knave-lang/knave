@@ -9,17 +9,19 @@ use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
     AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionShapes,
-    ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes,
-    MacroOrigins, MapKeys, Obligations, OperandTyping, PlaceReads, RecurTargets,
-    SchemeInstantiation, StructBases, TemplateSchemes, TypeFitting, TypeTextRecords, Unknowns,
-    VariantArms, VariantSites,
+    ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralKinds, LiteralUnknowns, LocalScope,
+    LocalTypes, MacroOrigins, MapBorrows, MapKeys, Obligations, OperandTyping, PlaceReads,
+    RecurTargets, ReferentCollections, SchemeInstantiation, SliceShapes, StructBases,
+    SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification,
+    Unknowns, VariantArms, VariantSites,
 };
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
+use crate::types::synthetic_call::SyntheticCall;
 use crate::types::templates::TemplateName;
-use crate::types::ty::{Scheme, Type};
+use crate::types::ty::{Scheme, Type, TypeVar};
 use crate::types::typed::{TypedArgument, TypedExpr};
-use crate::types::unifier::LiteralKind;
+use crate::types::unifier::{LiteralKind, UnifyError};
 use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
 
@@ -251,5 +253,54 @@ impl ArgumentTyping for TypeChecker {
         let mut typed_arguments = self.infer_arguments(callee, parameters, arguments, &shared)?;
         self.pass_shared_arguments(callee, &shared, &mut typed_arguments)?;
         Ok(typed_arguments)
+    }
+}
+
+impl SyntheticCalls for TypeChecker {
+    fn type_synthetic_call(&mut self, call: SyntheticCall<'_>) -> Result<TypedExpr, Diagnostic> {
+        self.synthetic_call_with_value(
+            call.template,
+            call.parameters,
+            call.result,
+            call.value,
+            call.arguments,
+            call.span,
+        )
+    }
+}
+
+impl ReferentCollections for TypeChecker {
+    fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
+        Collection::of_referent(ty, &self.declarations.types().rust_types)
+    }
+}
+
+impl SliceShapes for TypeChecker {
+    fn slice_of(&self, element: Type) -> Type {
+        self.prelude_types().slice_of(element)
+    }
+}
+
+impl LiteralKinds for TypeChecker {
+    fn literal_kind(&self, var: TypeVar) -> Option<LiteralKind> {
+        self.unifier.literal_kind(var)
+    }
+}
+
+impl TypeUnification for TypeChecker {
+    fn unify(&mut self, left: &Type, right: &Type, span: Span) -> Result<(), UnifyError> {
+        self.unifier.unify(left, right, span)
+    }
+}
+
+impl TypeDisplays for TypeChecker {
+    fn show(&self, ty: &Type) -> String {
+        self.display().show(ty)
+    }
+}
+
+impl MapBorrows for TypeChecker {
+    fn check_borrow(&mut self, map: &Collection, query: &Type, span: Span) {
+        TypeChecker::check_borrow(self, map, query, span);
     }
 }

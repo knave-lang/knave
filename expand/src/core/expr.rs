@@ -389,6 +389,14 @@ pub struct KeyedPath {
 }
 
 impl KeyedPath {
+    pub fn keys_and_item(&self) -> Vec<Expr> {
+        self.keys
+            .iter()
+            .chain(std::iter::once(self.item.as_ref()))
+            .cloned()
+            .collect()
+    }
+
     fn children(&self) -> Vec<&Expr> {
         std::iter::once(self.value.as_ref())
             .chain(&self.keys)

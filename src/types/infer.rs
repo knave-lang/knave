@@ -7,8 +7,8 @@ mod variant_target;
 
 use super::forms::{
     ArgumentTyping, Association, Body, Borrowing, Conditional, Dereference, ExpressionForm,
-    IfOperands, InlineRust, LiteralValue, Recurrence, Sequence, TypeTextRequest, VariableReference,
-    VariantConstruction,
+    IfOperands, InlineRust, LiteralValue, MapWrite, Recurrence, Sequence, TypeTextRequest,
+    VariableReference, VariantConstruction, VectorWrite, WriteCollection,
 };
 use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
@@ -2239,106 +2239,11 @@ impl TypeChecker {
         if self.is_open_collection(&value, keys.len()) {
             return self.infer_open_set_at(value, keys, item, span);
         }
-        let collection = self.set_at_collection(&value, keys.len())?;
+        let collection = WriteCollection::new(&value, keys.len()).resolve(self)?;
         if collection.is_map() {
-            return self.infer_set_at_map(value, collection, keys, item, span);
+            return MapWrite::new(path, span).type_with(self, value, collection);
         }
-        self.infer_set_at_vector(value, collection, keys, item, span)
-    }
-
-    fn set_at_collection(
-        &mut self,
-        value: &TypedExpr,
-        depth: usize,
-    ) -> Result<Collection, Diagnostic> {
-        let resolved = self.unifier.resolve(&value.ty);
-        let collection = match resolved {
-            Type::Var(var) if self.unifier.literal_kind(var).is_none() => {
-                self.unknown_vector(&value.ty, depth, value.span)
-            }
-            _ => Collection::of_referent(&resolved, &self.declarations.types().rust_types),
-        };
-        collection.ok_or_else(|| {
-            TypeProblems::mismatch(
-                "a collection",
-                &self.display().show(&resolved),
-                value.span,
-                MismatchContext::Plain,
-            )
-        })
-    }
-
-    fn unknown_vector(&mut self, unknown: &Type, depth: usize, span: Span) -> Option<Collection> {
-        let element = self.unifier.fresh();
-        let vector = self.prelude_types().nested_vector_of(depth, &element);
-        self.unifier.unify(unknown, &vector, span).ok()?;
-        Collection::of(&vector, &self.declarations.types().rust_types)
-    }
-
-    fn infer_set_at_vector(
-        &mut self,
-        value: TypedExpr,
-        collection: Collection,
-        keys: &[Expr],
-        item: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let depth = keys.len();
-        let item_type = self.unifier.fresh();
-        let target = self.set_at_target(depth, &item_type);
-        self.unification()
-            .expect(Expectation::plain(&target), collection.ty(), value.span)?;
-        let mut parameters = vec![Type::mutable(target)];
-        parameters.extend((0..depth).map(|_| Collection::INDEX));
-        parameters.push(item_type);
-        let template = SyntheticTemplate::set_at(depth);
-        let mut arguments = Vec::with_capacity(keys.len() + 1);
-        arguments.extend(keys.iter().cloned());
-        arguments.push(item.clone());
-        self.synthetic_call_with_value(&template, parameters, Type::unit(), value, &arguments, span)
-    }
-
-    fn set_at_target(&self, depth: usize, item: &Type) -> Type {
-        match depth.checked_sub(1) {
-            Some(row_depth) => self
-                .prelude_types()
-                .slice_of(self.prelude_types().nested_vector_of(row_depth, item)),
-            None => item.clone(),
-        }
-    }
-
-    fn infer_set_at_map(
-        &mut self,
-        value: TypedExpr,
-        collection: Collection,
-        keys: &[Expr],
-        item: &Expr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        self.check_map_key(&collection, value.span);
-        if keys.len() != 1 {
-            return Err(TypeProblems::wrong_argument_count(1, keys.len(), span));
-        }
-        let query_type = self.unifier.fresh();
-        let parameters = vec![
-            Type::mutable(collection.ty().clone()),
-            Type::shared(query_type.clone()),
-            collection.value().clone(),
-        ];
-        let mut arguments = Vec::with_capacity(keys.len() + 1);
-        arguments.extend(keys.iter().cloned());
-        arguments.push(item.clone());
-        let call = self.synthetic_call_with_value(
-            "*{0}.get_mut({1}).unwrap() = {2}",
-            parameters,
-            Type::unit(),
-            value,
-            &arguments,
-            span,
-        )?;
-        let query = self.unifier.resolve(&query_type);
-        self.check_borrow(&collection, &query, keys[0].span());
-        Ok(call)
+        VectorWrite::new(path, span).type_with(self, value, collection)
     }
 
     fn synthetic_call_with_value(

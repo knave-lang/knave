@@ -1,8 +1,8 @@
 use super::recorded_ties::RecordedTies;
-use super::result_source::ResultSource;
+use super::result_source::{PassedArgument, ResultSource};
 use crate::types::{
-    CalledFunction, DefinitionTable, ParameterRole, PositionTie, Regions, TemplateTies, Type,
-    TypedExpr, TypedExprKind, TypedProgram,
+    CalledFunction, DefinitionTable, ParameterRole, Regions, TemplateTies, Type, TypedExpr,
+    TypedExprKind, TypedProgram,
 };
 
 pub struct CallResultSources<'p> {
@@ -48,11 +48,15 @@ impl<'p> CallResultSources<'p> {
             .zip(arguments)
             .enumerate()
             .filter_map(|(position, (parameter, argument))| {
-                let tie = ties.tie_at(position)?;
-                Some(ResultSource {
-                    tie: self.kept_as(tie, parameter, &argument.value),
+                let passed = PassedArgument {
+                    parameter,
                     argument: &argument.value,
-                })
+                };
+                Some(ResultSource::kept_by_call(
+                    ties.tie_at(position)?,
+                    passed,
+                    self.program,
+                ))
             })
             .collect();
         Some(sources)
@@ -65,15 +69,6 @@ impl<'p> CallResultSources<'p> {
             .iter()
             .map(|parameter| parameter.ty.clone())
             .collect()
-    }
-
-    fn kept_as(&self, tie: PositionTie, parameter: &Type, argument: &TypedExpr) -> PositionTie {
-        let lends_itself =
-            parameter.is_reference() && !self.program.type_holds_borrow(argument.ty.referent());
-        match tie {
-            PositionTie::Lent if !lends_itself => PositionTie::Held,
-            tie => tie,
-        }
     }
 
     fn function_ties(&self, called: &CalledFunction) -> TemplateTies {

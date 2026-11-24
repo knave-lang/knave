@@ -11950,19 +11950,26 @@ fn check_without_an_entry_or_tasks_stays_an_error() {
 const SHELF_PROJECT: &str = "(defproject shelf)\n";
 const SHELF_LIBRARY: &str = "(export shelve)\n\n(defn shelve (count) (* 2 count))\n";
 const MISTYPED_SHELF_LIBRARY: &str = "(export shelve)\n\n(defn shelve (count) (+ count \"x\"))\n";
+const UNCLOSED_SHELF_LIBRARY: &str = "(export shelve)\n\n(defn shelve (count)\n";
 const UNUSED_BINDING_SHELF_LIBRARY: &str =
     "(export shelve)\n\n(defn shelve (count) (let (unused 1) (* 2 count)))\n";
 const UNIMPLEMENTED_TRAIT_ERROR: &str = "error[L0404]";
 const UNREADABLE_SOURCE: &[u8] = b"\xff\xfe";
 const UNREADABLE_ENTRY: &str = "cannot read `src/main.knv`";
 const SHELF_ENTRY: &str = "(defn main () (println 1))\n";
+const MISTYPED_SHELF_ENTRY: &str = "(defn main () (println (+ 1 \"x\")))\n";
 const SHELF_ENTRY_USING_LIBRARY: &str = "(use lib shelve)\n\n(defn main () (println (shelve 2)))\n";
 
 impl Sandbox {
     fn with_unreadable_entry(self) -> Self {
-        fs::create_dir_all(self.directory.join("src")).expect("the sandbox accepts directories");
-        fs::write(self.directory.join("src/main.knv"), UNREADABLE_SOURCE)
-            .expect("the sandbox accepts a source file");
+        self.with_unreadable_file("src/main.knv")
+    }
+
+    fn with_unreadable_file(self, path: &str) -> Self {
+        let file = self.directory.join(path);
+        fs::create_dir_all(file.parent().expect("a file has a folder"))
+            .expect("the sandbox accepts directories");
+        fs::write(file, UNREADABLE_SOURCE).expect("the sandbox accepts a source file");
         self
     }
 }
@@ -12096,6 +12103,30 @@ fn lint_reads_an_unreadable_entry_once() {
             "{lint_errors}"
         );
     }
+}
+
+#[test]
+fn lint_with_a_written_entry_that_names_no_file_exits_as_check_does() {
+    for library in [MISTYPED_SHELF_LIBRARY, UNCLOSED_SHELF_LIBRARY] {
+        let sandbox = Sandbox::new("lint_missing_written_entry")
+            .with_file(
+                &Language::project_file_name(),
+                "(defproject shelf :entry \"src/app.knv\")\n",
+            )
+            .with_file("src/lib.knv", library);
+        sandbox.compiler(&["check"]).assert_exit_code(2);
+        sandbox.compiler(&["lint"]).assert_exit_code(2);
+    }
+}
+
+#[test]
+fn lint_exits_with_the_first_failing_program_as_check_does() {
+    let sandbox = Sandbox::new("lint_first_failing_program")
+        .with_file(&Language::project_file_name(), SHELF_PROJECT)
+        .with_file("src/main.knv", MISTYPED_SHELF_ENTRY)
+        .with_unreadable_file("src/lib.knv");
+    sandbox.compiler(&["check"]).assert_exit_code(1);
+    sandbox.compiler(&["lint"]).assert_exit_code(1);
 }
 
 const LENDING_PROJECT: &str = "(defproject lint :knave \"99.0.0\" (exported-tasks check where) (lints (unused-binding deny)))\n";

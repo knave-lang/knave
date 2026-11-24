@@ -1,6 +1,6 @@
 # RFC 0083: The project's files decide what check and lint cover
 
-**Status:** Accepted. Its rule 7 is superseded by 0085 for `knave build` and `knave run`.
+**Status:** Accepted. Its rule 7 is superseded by 0085 for `knave build` and `knave run`. Where its rules 2 and 3 treat a written `:lib` whose file is missing as no library root, they are superseded by 0085's rule 12, which makes it an error.
 **Date:** 2026-11-23
 
 ## Problem

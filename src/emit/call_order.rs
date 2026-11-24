@@ -1,5 +1,5 @@
-use crate::core::{BindingId, ParsedTemplate, Piece, ReferenceKind};
-use crate::types::{Borrow, TypedArgument, TypedExprKind};
+use crate::core::{ParsedTemplate, Piece};
+use crate::types::{ChangedRoot, TypedArgument};
 
 pub struct CallOrder<'a> {
     template: &'a str,
@@ -37,7 +37,9 @@ impl<'a> CallOrder<'a> {
         self.arguments
             .iter()
             .enumerate()
-            .filter_map(|(position, argument)| Some((position, Self::lent_mut(argument)?)))
+            .filter_map(|(position, argument)| {
+                Some((position, ChangedRoot::of_argument(argument)?))
+            })
             .filter(|(position, root)| {
                 self.arguments
                     .iter()
@@ -45,14 +47,6 @@ impl<'a> CallOrder<'a> {
                     .any(|argument| argument.value.mentions_local(*root))
             })
             .map(|(position, _)| position)
-    }
-
-    fn lent_mut(argument: &TypedArgument) -> Option<BindingId> {
-        match (&argument.value.kind, argument.borrow) {
-            (TypedExprKind::Borrow(ReferenceKind::Mutable, place), _) => place.place_root(),
-            (_, Borrow::Mutable | Borrow::Reborrow) => argument.value.place_root(),
-            _ => None,
-        }
     }
 
     fn is_autoref_place(pieces: &[Piece], position: usize) -> bool {

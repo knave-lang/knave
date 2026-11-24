@@ -12,7 +12,7 @@ use crate::types::{
 pub struct ResultTies<'p> {
     program: &'p TypedProgram,
     definitions: DefinitionTable<'p>,
-    functions: RefCell<FxHashMap<BindingId, TemplateTies>>,
+    ties_by_function: RefCell<FxHashMap<BindingId, TemplateTies>>,
 }
 
 impl<'p> ResultTies<'p> {
@@ -20,7 +20,7 @@ impl<'p> ResultTies<'p> {
         Self {
             program,
             definitions: DefinitionTable::of(program),
-            functions: RefCell::default(),
+            ties_by_function: RefCell::default(),
         }
     }
 
@@ -36,11 +36,14 @@ impl<'p> ResultTies<'p> {
     }
 
     fn remembered_ties(&self, function: BindingId, lambda: &TypedLambda) -> TemplateTies {
-        self.functions
+        if let Some(known) = self.ties_by_function.borrow().get(&function) {
+            return known.clone();
+        }
+        let ties = self.function_ties(function, lambda);
+        self.ties_by_function
             .borrow_mut()
-            .entry(function)
-            .or_insert_with(|| self.function_ties(function, lambda))
-            .clone()
+            .insert(function, ties.clone());
+        ties
     }
 
     fn function_ties(&self, function: BindingId, lambda: &TypedLambda) -> TemplateTies {

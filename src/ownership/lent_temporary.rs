@@ -50,24 +50,13 @@ impl<'p> LentTemporary<'p> {
         if let Some(sources) = self.sources.of(value) {
             return self.first_temporary(sources);
         }
-        if Self::chooses_its_value(value) {
-            return ReturnedValues::new(self.program)
-                .of_value(value)
-                .into_iter()
-                .find_map(|chosen| self.held_in(chosen));
+        if let Some(chosen) = ReturnedValues::new(self.program).chosen_values(value) {
+            return chosen.into_iter().find_map(|value| self.held_in(value));
         }
         value
             .children()
             .into_iter()
             .find_map(|child| self.held_in(child))
-    }
-
-    fn chooses_its_value(value: &TypedExpr) -> bool {
-        match &value.kind {
-            TypedExprKind::Control(_) => true,
-            TypedExprKind::Call(callee, _) => matches!(callee.kind, TypedExprKind::Fn(_)),
-            _ => false,
-        }
     }
 
     fn borrowed_through<'e>(&self, reference: &'e TypedExpr) -> Option<&'e TypedExpr> {

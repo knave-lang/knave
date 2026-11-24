@@ -1,0 +1,4 @@
+(defn main ()
+  (local m (sorted-map (str "a") 1))
+  (set! (at m (len m)) 2)
+  (println (len m)))

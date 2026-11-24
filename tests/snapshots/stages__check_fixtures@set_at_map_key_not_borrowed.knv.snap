@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/set_at_map_key_not_borrowed.knv
+---
+error[L0404]: `string` does not implement `(borrow int)`
+ --> check/set_at_map_key_not_borrowed.knv:3:15
+  |
+3 |   (set! (at m (len m)) 2)
+  |               ^^^^^^^ this needs `(borrow int)`
+  |
+  = note: `borrow` is implemented for: bool, char, (ref str), string, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, duration, instant, (with string str), (with (ref str) str)
+  = note: run `knave doc L0404` for an explanation

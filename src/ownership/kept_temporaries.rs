@@ -116,7 +116,7 @@ impl<'p> KeptTemporaries<'p> {
         if !lambda.returns_closure() {
             return;
         }
-        let kept = self.regions.kept_by_result(lambda);
+        let kept = self.regions.of_result(lambda).kept();
         for (parameter, argument) in lambda.params.iter().zip(call.called.arguments) {
             if !kept.contains(&parameter.binding) {
                 continue;

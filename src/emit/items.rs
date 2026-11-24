@@ -935,8 +935,9 @@ impl<'a> ItemEmitter<'a> {
             .copied()
             .filter(|binding| used.contains(binding))
             .collect();
-        let sharing = regions.sharing_the_result(lambda.as_ref());
-        let store_targets = regions.store_only_targets(lambda.as_ref());
+        let result_regions = regions.of_result(lambda.as_ref());
+        let sharing = result_regions.sharing();
+        let store_targets = result_regions.store_only_targets();
         let higher_ranked = regions.of(ParameterRole::HigherRanked, lambda.as_ref());
         let capture_plan = self.capture_plan(lambda, &types, &definition.value.ty, &scope);
         let named_lending: Vec<BindingId> = match capture_plan {
@@ -1234,7 +1235,8 @@ impl<'a> ItemEmitter<'a> {
         self.program
             .ownership
             .regions
-            .lending_positions(lambda)
+            .of_result(lambda)
+            .lending_positions()
             .into_iter()
             .filter_map(|position| parameters.get(position).cloned())
             .collect()

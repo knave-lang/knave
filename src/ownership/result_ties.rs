@@ -62,8 +62,9 @@ impl<'p, 'd> ResultTies<'p, 'd> {
 
     fn sharing_while_borrowing(&self, lambda: &TypedLambda, result: &Type) -> FxHashSet<BindingId> {
         if self.program.type_holds_borrow(result) {
-            let store_only = self.regions.store_only_targets(lambda);
-            let mut sharing = self.regions.sharing_the_result(lambda);
+            let regions = self.regions.of_result(lambda);
+            let store_only = regions.store_only_targets();
+            let mut sharing = regions.sharing();
             sharing.retain(|binding| !store_only.contains(binding));
             sharing
         } else {
@@ -83,7 +84,8 @@ impl<'p, 'd> ResultTies<'p, 'd> {
 
     fn lending_parameters<'l>(&self, lambda: &'l TypedLambda) -> Vec<(usize, &'l Type)> {
         self.regions
-            .lending_positions(lambda)
+            .of_result(lambda)
+            .lending_positions()
             .into_iter()
             .map(|position| (position, &lambda.params[position].ty))
             .collect()

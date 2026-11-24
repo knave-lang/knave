@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_borrows_a_loop_binder_that_owns_a_local.knv
+---
+error[L0510]: cannot return a borrow of a local value
+ --> check/returned_closure_borrows_a_loop_binder_that_owns_a_local.knv:6:34
+  |
+6 |                      (loop (s t) (as-str s)))))
+  |                             -    ^^^^^^^^^^ this borrows a local value
+  |                             |
+  |                             this parameter owns its value, which is dropped when the function returns
+  |
+  = help: return an owned value with `(clone ...)`, or capture the value instead of passing it
+  = note: run `knave doc L0510` for an explanation

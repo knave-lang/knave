@@ -1,0 +1,13 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(struct user (name string))
+
+(defn mk-user ()
+  (new user (name (str "a"))))
+
+(defn name-of (u) (:name u))
+
+(defn main ()
+  (let (g (greeter (name-of (mk-user))))
+    (g)))

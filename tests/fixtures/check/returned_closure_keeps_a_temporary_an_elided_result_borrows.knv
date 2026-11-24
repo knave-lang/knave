@@ -1,0 +1,9 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn label (s)
+  (if (> (len s) 2) "long" "short"))
+
+(defn main ()
+  (let (g (greeter (label (str "abc"))))
+    (g)))

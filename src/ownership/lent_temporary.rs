@@ -2,14 +2,9 @@ use rustc_hash::FxHashSet;
 
 use super::promoted_constants::PromotedConstants;
 use crate::types::{
-    CalledFunction, DefinitionTable, ParameterRole, Regions, Type, TypedBinder, TypedExpr,
-    TypedExprKind, TypedProgram,
+    CalledFunction, DefinitionTable, ParameterRole, Regions, Type, TypedArgument, TypedBinder,
+    TypedExpr, TypedExprKind, TypedProgram,
 };
-
-enum ResultSources {
-    Known(FxHashSet<usize>),
-    ByType,
-}
 
 pub struct LentTemporary<'p> {
     program: &'p TypedProgram,
@@ -67,6 +62,9 @@ impl<'p> LentTemporary<'p> {
         if !self.program.type_holds_borrow(&value.ty) {
             return None;
         }
+        if let Some(sources) = self.result_sources(value) {
+            return self.first_temporary(sources);
+        }
         value
             .children()
             .into_iter()
@@ -77,40 +75,91 @@ impl<'p> LentTemporary<'p> {
         if let TypedExprKind::Borrow(..) = reference.kind {
             return self.lent_by(reference);
         }
-        let TypedExprKind::Call(callee, arguments) = &reference.kind else {
-            return None;
-        };
-        let Type::Function(_, parameters, _) = &callee.ty else {
-            return None;
-        };
-        let sources = self.result_sources(reference);
-        parameters
-            .iter()
-            .zip(arguments)
-            .enumerate()
-            .filter(|(position, (parameter, _))| match &sources {
-                ResultSources::Known(positions) => positions.contains(position),
-                ResultSources::ByType => self.program.lends_borrow(parameter),
-            })
-            .find_map(|(_, (parameter, argument))| self.kept_at(parameter, &argument.value))
+        self.first_temporary(self.result_sources(reference)?)
     }
 
-    fn result_sources(&self, call: &TypedExpr) -> ResultSources {
+    fn first_temporary<'e>(&self, sources: Vec<(Type, &'e TypedExpr)>) -> Option<&'e TypedExpr> {
+        sources
+            .into_iter()
+            .find_map(|(parameter, argument)| self.kept_at(&parameter, argument))
+    }
+
+    fn result_sources<'e>(&self, call: &'e TypedExpr) -> Option<Vec<(Type, &'e TypedExpr)>> {
+        let TypedExprKind::Call(callee, arguments) = &call.kind else {
+            return None;
+        };
         match self.definitions.called_function(call) {
-            Some(called) => ResultSources::Known(self.flowing_positions(&called)),
-            None => ResultSources::ByType,
+            Some(called) => Some(self.function_sources(&called, arguments)),
+            None => self.template_sources(callee, arguments),
         }
     }
 
-    fn flowing_positions(&self, called: &CalledFunction) -> FxHashSet<usize> {
-        let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
+    fn function_sources<'e>(
+        &self,
+        called: &CalledFunction,
+        arguments: &'e [TypedArgument],
+    ) -> Vec<(Type, &'e TypedExpr)> {
+        let flowing = self.flowing_positions(called);
         called
             .lambda
             .params
             .iter()
+            .zip(arguments)
             .enumerate()
-            .filter(|(_, parameter)| flows.contains(&parameter.binding))
-            .map(|(position, _)| position)
+            .filter(|(position, _)| flowing.contains(position))
+            .map(|(_, (parameter, argument))| (parameter.ty.clone(), &argument.value))
             .collect()
+    }
+
+    fn template_sources<'e>(
+        &self,
+        callee: &TypedExpr,
+        arguments: &'e [TypedArgument],
+    ) -> Option<Vec<(Type, &'e TypedExpr)>> {
+        let Type::Function(_, parameters, _) = &callee.ty else {
+            return None;
+        };
+        let receiver = parameters
+            .iter()
+            .zip(arguments)
+            .find(|(parameter, _)| self.program.lends_borrow(parameter))
+            .map(|(parameter, argument)| (parameter.clone(), &argument.value));
+        Some(receiver.into_iter().collect())
+    }
+
+    fn flowing_positions(&self, called: &CalledFunction) -> FxHashSet<usize> {
+        let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
+        let result = called.lambda.body.tail().map(|tail| &tail.ty);
+        let returned_generic = |parameter: &TypedBinder| {
+            matches!(parameter.ty, Type::Generic(_)) && Some(&parameter.ty) == result
+        };
+        let flowing: FxHashSet<usize> = called
+            .lambda
+            .params
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| {
+                flows.contains(&parameter.binding) || returned_generic(parameter)
+            })
+            .map(|(position, _)| position)
+            .collect();
+        if flowing.is_empty() {
+            return self.elided_position(called);
+        }
+        flowing
+    }
+
+    fn elided_position(&self, called: &CalledFunction) -> FxHashSet<usize> {
+        let mut lending = called
+            .lambda
+            .params
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| self.program.lends_borrow(&parameter.ty))
+            .map(|(position, _)| position);
+        match (lending.next(), lending.next()) {
+            (Some(only), None) => FxHashSet::from_iter([only]),
+            _ => FxHashSet::default(),
+        }
     }
 }

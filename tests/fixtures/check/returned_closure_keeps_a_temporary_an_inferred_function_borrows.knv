@@ -1,0 +1,7 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn s-of (s) (as-str s))
+
+(defn main ()
+  (let (g (greeter (s-of (str "x")))) (g)))

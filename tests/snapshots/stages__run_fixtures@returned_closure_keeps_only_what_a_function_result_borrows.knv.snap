@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_keeps_only_what_a_function_result_borrows.knv
+---
+picked
+hi ana

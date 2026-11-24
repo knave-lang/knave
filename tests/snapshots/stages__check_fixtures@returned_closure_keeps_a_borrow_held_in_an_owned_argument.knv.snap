@@ -7,7 +7,7 @@ error[L0520]: the result of `mk` keeps a borrow of a temporary
  --> check/returned_closure_keeps_a_borrow_held_in_an_owned_argument.knv:6:28
   |
 1 | (defn mk (names)
-  |           ----- the returned closure keeps this borrow of `names`
+  |           ----- the returned closure keeps the borrow that `names` holds
 ...
 6 |   (let (g (mk (vec (as-str (str "a")))))
   |                            ^^^^^^^^^ this temporary is dropped at the end of the statement

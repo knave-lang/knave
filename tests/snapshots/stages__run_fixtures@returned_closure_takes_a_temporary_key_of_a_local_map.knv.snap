@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_a_temporary_key_of_a_local_map.knv
+---
+hi b

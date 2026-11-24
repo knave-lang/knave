@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_temporary_an_elided_result_borrows.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_a_temporary_an_elided_result_borrows.knv:8:27
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+8 |   (let (g (greeter (label (str "abc"))))
+  |                           ^^^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

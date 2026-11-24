@@ -21,14 +21,12 @@ impl LonePreludeModule {
     pub(super) fn expanded(path: &ModulePath) -> Self {
         let mut sources = SourceMap::default();
         let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
-        let module =
-            Self::expanding(&mut sources, module_sources, path).unwrap_or_else(|problems| {
-                panic!(
-                    "{path} expands without problems, but it reports:\n{}",
-                    DiagnosticRenderer::plain(&sources).render_all(&problems)
-                )
-            });
-        Self { sources, ..module }
+        Self::expanding(&mut sources, module_sources, path).unwrap_or_else(|problems| {
+            panic!(
+                "{path} expands without problems, but it reports:\n{}",
+                DiagnosticRenderer::plain(&sources).render_all(&problems)
+            )
+        })
     }
 
     fn expanding(
@@ -36,6 +34,19 @@ impl LonePreludeModule {
         module_sources: ModuleSources,
         path: &ModulePath,
     ) -> Result<Self, Diagnostics> {
+        let (tables, module) = Self::expansion(sources, module_sources, path)?;
+        Ok(Self {
+            tables,
+            module,
+            sources: std::mem::take(sources),
+        })
+    }
+
+    fn expansion(
+        sources: &mut SourceMap,
+        module_sources: ModuleSources,
+        path: &ModulePath,
+    ) -> Result<(ExpansionTables, ModuleId), Diagnostics> {
         let entry = sources.add(Self::ENTRY, "");
         let mut expander = Expander::new(sources, module_sources);
         let loaded = expander.load_module(path, Span::new(entry, 0..0));
@@ -48,11 +59,7 @@ impl LonePreludeModule {
                 return Err(problems);
             }
         };
-        problems.into_result(Self {
-            tables: std::mem::take(&mut expander.tables),
-            module,
-            sources: SourceMap::default(),
-        })
+        problems.into_result((std::mem::take(&mut expander.tables), module))
     }
 
     pub(super) fn quoted_call(&self, site: Span) -> String {

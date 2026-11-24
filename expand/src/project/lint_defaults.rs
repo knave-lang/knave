@@ -10,7 +10,7 @@ pub(crate) struct LintDefaults {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum LintDefaultProblem {
+pub(crate) enum LintDefaultProblem {
     Malformed(Span),
     Repeated(Span, String),
     UnknownLint(Span, String),
@@ -18,7 +18,7 @@ pub enum LintDefaultProblem {
 }
 
 impl LintDefaultProblem {
-    pub fn site(&self) -> Span {
+    pub(crate) fn site(&self) -> Span {
         match self {
             Self::Malformed(site)
             | Self::Repeated(site, _)
@@ -27,7 +27,7 @@ impl LintDefaultProblem {
         }
     }
 
-    pub fn fault(&self) -> String {
+    pub(crate) fn fault(&self) -> String {
         match self {
             Self::Malformed(_) => "needs one lint name and one level name".to_string(),
             Self::Repeated(_, lint) => format!("gives `{lint}` a second default level"),

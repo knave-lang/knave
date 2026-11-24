@@ -492,10 +492,6 @@ impl TypedProgram {
         }
     }
 
-    pub fn lends_borrow(&self, ty: &Type) -> bool {
-        ty.is_reference() || self.type_holds_borrow(ty)
-    }
-
     pub fn type_holds_borrow(&self, ty: &Type) -> bool {
         self.type_holds_borrow_with(ty, &mut FxHashSet::default())
     }

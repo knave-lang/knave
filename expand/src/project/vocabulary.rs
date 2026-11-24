@@ -2,15 +2,17 @@ use std::rc::Rc;
 
 use super::dependency_section::DependencySection;
 use super::level_words::LevelWords;
-use super::lint_level::LintLevel;
+use super::lint_defaults::LintDefaultProblem;
+use super::lint_vocabulary::LintVocabulary;
 use super::section::Section;
 use super::section_names::SectionNames;
+use crate::reader::Form;
 
 #[derive(Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ProjectVocabulary {
     head: String,
     sections: SectionNames,
-    levels: LevelWords,
+    lints: LintVocabulary,
 }
 
 impl ProjectVocabulary {
@@ -18,8 +20,13 @@ impl ProjectVocabulary {
         Self {
             head,
             sections,
-            levels,
+            lints: LintVocabulary::new(levels),
         }
+    }
+
+    pub(crate) fn with_lint_defaults(self, notes: &[Form]) -> Result<Self, LintDefaultProblem> {
+        let lints = self.lints.with_defaults(notes)?;
+        Ok(Self { lints, ..self })
     }
 
     pub fn head(&self) -> &str {
@@ -38,12 +45,8 @@ impl ProjectVocabulary {
         }
     }
 
-    pub(super) fn level_named(&self, word: &str) -> Option<LintLevel> {
-        self.levels.level_named(word)
-    }
-
-    pub(super) fn level_words(&self) -> Vec<Rc<str>> {
-        self.levels.words()
+    pub fn lints(&self) -> &LintVocabulary {
+        &self.lints
     }
 
     pub(super) fn section_named(&self, name: &str) -> Option<Section> {

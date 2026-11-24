@@ -1,13 +1,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use knave::cli::{ModuleAlone, TrialStages};
+use knave::cli::{EmbeddedPrelude, ModuleAlone, TrialStages};
 use knave::core::ModulePath;
 use knave::diagnostic::{DiagnosticCode, DiagnosticRenderer, Diagnostics};
 use knave::expand::{Expander, Program};
 use knave::language::Language;
 use knave::lint::{
-    LintDefaults, LintedProgram, Linter, NeedlessTypeLint, ProgramPosition, ProgramRun, RuleProgram,
+    LintedProgram, Linter, NeedlessTypeLint, ProgramPosition, ProgramRun, RuleProgram,
 };
 use knave::modules::ModuleSources;
 use knave::project::LintLevel;
@@ -58,7 +58,7 @@ impl LintFixture {
     }
 
     fn needless_types(&mut self, program: &mut Program, typed: TypedProgram) -> Diagnostics {
-        let level = LintDefaults::level_of(
+        let level = EmbeddedPrelude::project_vocabulary().lints().level_of(
             &DiagnosticCode::NEEDLESS_TYPE,
             self.written_needless_type_level(),
         );

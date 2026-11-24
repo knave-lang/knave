@@ -13,7 +13,6 @@ mod definition_reach;
 mod form_reader;
 mod function_declaration;
 mod library_declarations;
-mod lint_defaults;
 mod linted_module;
 mod linted_modules;
 mod linted_program;
@@ -48,7 +47,6 @@ mod spanned_forms;
 mod trial_face;
 
 pub use agreed_warnings::AgreedWarnings;
-pub use lint_defaults::LintDefaults;
 pub use linted_program::LintedProgram;
 pub use linter::Linter;
 pub use needless_type_lint::NeedlessTypeLint;

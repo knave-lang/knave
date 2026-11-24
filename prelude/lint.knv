@@ -1,9 +1,9 @@
 (use prelude/macros document module template)
 
-(use code bool-not concat empty? first len list list? nth
-          number-sub prepend rest same-binding? string
-          string-strip-prefix string? symbol-name symbol?
-          value-eq warn)
+(use code add-module-note bool-not concat empty? first len
+          list list? nth number-sub prepend rest
+          same-binding? string string-strip-prefix string?
+          symbol-name symbol? value-eq warn)
 
 (use prelude/internal/code introducing-macro)
 (use prelude/internal/links link-names)
@@ -15,6 +15,13 @@
   "Holds the lint rules that `knave lint` runs.")
 
 (export check-module check-rule kept-definition? rule-names)
+
+(def lint-default
+  (macro (form)
+    (add-module-note (quote lint-defaults) (rest form))
+    (quote (do))))
+
+(lint-default needless-type allow)
 
 (document (unused-binding table)
   "Reports a local binding that nothing reads: a name of a `let` or a `local`, or a parameter of a `fn` applied where it is written, as `loop` writes one.

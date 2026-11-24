@@ -74,7 +74,6 @@ mod problem_mark;
 mod problem_report;
 mod problems;
 mod program_entry;
-mod project_file_module;
 mod recorded_inputs;
 mod recovered_errors;
 mod recur_check;

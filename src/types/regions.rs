@@ -48,6 +48,16 @@ impl Regions {
         .collect()
     }
 
+    pub fn lending_positions(&self, lambda: &impl Parameterized) -> Vec<usize> {
+        let left_out = self.of(ParameterRole::LeftOutOfResult, lambda);
+        lambda
+            .parameter_bindings()
+            .enumerate()
+            .filter(|(_, binding)| !left_out.contains(binding))
+            .map(|(position, _)| position)
+            .collect()
+    }
+
     pub fn stored(&self, lambda: &impl Parameterized) -> StoredFlows {
         StoredFlows {
             values: self.of(ParameterRole::StoredValue, lambda),
@@ -105,5 +115,22 @@ mod tests {
             regions.kept_by_result(&lambda),
             FxHashSet::from_iter([shared, held])
         );
+    }
+
+    #[test]
+    fn a_parameter_the_result_leaves_out_is_not_a_lending_position() {
+        let left_out = BindingId::from_index(2);
+        let lambda = Parameters(vec![
+            BindingId::from_index(1),
+            left_out,
+            BindingId::from_index(3),
+        ]);
+        let mut regions = Regions::default();
+        regions.record(
+            ParameterRole::LeftOutOfResult,
+            &lambda,
+            FxHashSet::from_iter([left_out]),
+        );
+        assert_eq!(regions.lending_positions(&lambda), vec![0, 2]);
     }
 }

@@ -313,6 +313,10 @@ mod tests {
             (defn wrap (items other) (println (len other)) (sizer items))
             (defn counter (items) (let (n (len items)) (fn () n)))
             (defn wrapc (items) (counter items))
+            (defn ping (items other n)
+              (if (> n 0) (pong other items (- n 1)) (fn () 0)))
+            (defn pong (items other n)
+              (if (> n 0) (ping other items (- n 1)) (fn () (len items))))
             (defn looped! (items)
               (push! items 1)
               (loop (it (iter items))
@@ -436,6 +440,14 @@ mod tests {
     #[test]
     fn a_borrow_passed_to_a_returned_call_that_holds_nothing_is_not_held() {
         assert!(HeldFixture::new().held_names("wrapc").is_empty());
+    }
+
+    #[test]
+    fn a_callee_reached_while_it_is_open_holds_every_borrowed_argument() {
+        assert_eq!(
+            HeldFixture::new().held_names("ping"),
+            vec!["items", "other"]
+        );
     }
 
     #[test]

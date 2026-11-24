@@ -64,6 +64,7 @@ mod stored_definitions;
 mod subtree;
 mod tail_calls;
 mod text;
+mod tied_parts;
 mod trait_slices;
 mod uncoerced_parameters;
 mod update_bases;

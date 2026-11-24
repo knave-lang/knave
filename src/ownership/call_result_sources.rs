@@ -1,5 +1,6 @@
 use super::recorded_ties::RecordedTies;
 use super::result_source::ResultSource;
+use super::tied_parts::TiedParts;
 use crate::types::{
     CalledFunction, DefinitionTable, ParameterRole, Regions, TemplateTies, Type, TypedExpr,
     TypedExprKind, TypedLambda, TypedProgram,
@@ -66,7 +67,18 @@ impl<'p> CallResultSources<'p> {
             .map(|(position, _)| position)
             .collect();
         lent.extend(self.signature_lent(called));
+        lent.retain(|position| !Self::ties_only_part(called.lambda, *position));
         TemplateTies::new(&lent, &[])
+    }
+
+    fn ties_only_part(lambda: &TypedLambda, position: usize) -> bool {
+        let Some(result) = lambda.body.tail().map(|tail| &tail.ty) else {
+            return false;
+        };
+        lambda
+            .params
+            .get(position)
+            .is_some_and(|parameter| TiedParts::of_result(result).ties_only_part_of(&parameter.ty))
     }
 
     fn signature_lent(&self, called: &CalledFunction) -> Vec<usize> {

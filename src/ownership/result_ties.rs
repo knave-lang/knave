@@ -1,10 +1,14 @@
+use rustc_hash::FxHashSet;
+
 use super::tied_parts::TiedParts;
+use crate::core::BindingId;
 use crate::types::{
     DefinitionTable, ParameterRole, Regions, TemplateBorrows, TemplateTies, Type, TypedExpr,
     TypedLambda, TypedProgram,
 };
 
 pub struct ResultTies<'p, 'd> {
+    program: &'p TypedProgram,
     templates: &'p TemplateBorrows,
     definitions: &'d DefinitionTable<'p>,
     regions: &'p Regions,
@@ -13,6 +17,7 @@ pub struct ResultTies<'p, 'd> {
 impl<'p, 'd> ResultTies<'p, 'd> {
     pub fn new(program: &'p TypedProgram, definitions: &'d DefinitionTable<'p>) -> Self {
         Self {
+            program,
             templates: &program.template_borrows,
             definitions,
             regions: &program.ownership.regions,
@@ -29,20 +34,41 @@ impl<'p, 'd> ResultTies<'p, 'd> {
     }
 
     fn function_ties(&self, lambda: &TypedLambda) -> TemplateTies {
+        let Some(result) = lambda.body.tail().map(|tail| &tail.ty) else {
+            return TemplateTies::new(&[], &[]);
+        };
+        let mut lent = self.sharing_positions(lambda, result);
+        lent.extend(self.signature_lent(lambda, result));
+        let tied = TiedParts::of_result(result);
+        lent.retain(|position| !tied.ties_only_part_of(&lambda.params[*position].ty));
+        TemplateTies::new(&lent, &[])
+    }
+
+    fn sharing_positions(&self, lambda: &TypedLambda, result: &Type) -> Vec<usize> {
         let flows = self.regions.of(ParameterRole::FlowsToResult, lambda);
-        let parameters = &lambda.params;
-        let mut lent: Vec<usize> = parameters
+        let sharing = self.sharing_while_borrowing(lambda, result);
+        lambda
+            .params
             .iter()
             .enumerate()
-            .filter(|(_, parameter)| flows.contains(&parameter.binding))
+            .filter(|(_, parameter)| {
+                flows.contains(&parameter.binding)
+                    || (sharing.contains(&parameter.binding)
+                        && self.program.type_holds_borrow(&parameter.ty))
+            })
             .map(|(position, _)| position)
-            .collect();
-        if let Some(result) = lambda.body.tail().map(|tail| &tail.ty) {
-            lent.extend(self.signature_lent(lambda, result));
-            let tied = TiedParts::of_result(result);
-            lent.retain(|position| !tied.ties_only_part_of(&parameters[*position].ty));
+            .collect()
+    }
+
+    fn sharing_while_borrowing(&self, lambda: &TypedLambda, result: &Type) -> FxHashSet<BindingId> {
+        if self.program.type_holds_borrow(result) {
+            let store_only = self.regions.store_only_targets(lambda);
+            let mut sharing = self.regions.sharing_the_result(lambda);
+            sharing.retain(|binding| !store_only.contains(binding));
+            sharing
+        } else {
+            FxHashSet::default()
         }
-        TemplateTies::new(&lent, &[])
     }
 
     fn signature_lent(&self, lambda: &TypedLambda, result: &Type) -> Vec<usize> {

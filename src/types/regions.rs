@@ -48,6 +48,26 @@ impl Regions {
         .collect()
     }
 
+    pub fn sharing_the_result(&self, lambda: &impl Parameterized) -> FxHashSet<BindingId> {
+        [
+            ParameterRole::FlowsToResult,
+            ParameterRole::StoredValue,
+            ParameterRole::StoredTarget,
+            ParameterRole::Reassigned,
+        ]
+        .into_iter()
+        .flat_map(|role| self.of(role, lambda))
+        .collect()
+    }
+
+    pub fn store_only_targets(&self, lambda: &impl Parameterized) -> FxHashSet<BindingId> {
+        let flows = self.of(ParameterRole::FlowsToResult, lambda);
+        self.of(ParameterRole::StoredTarget, lambda)
+            .difference(&flows)
+            .copied()
+            .collect()
+    }
+
     pub fn lending_positions(&self, lambda: &impl Parameterized) -> Vec<usize> {
         let left_out = self.of(ParameterRole::LeftOutOfResult, lambda);
         lambda

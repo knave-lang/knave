@@ -1,0 +1,10 @@
+(defn store-and-first! (names name)
+  (push! names name)
+  (at names 0))
+
+(defn main ()
+  (local ns (vec "x"))
+  (local t (str "a"))
+  (local r (store-and-first! ns (as-str t)))
+  (push! t (char "b"))
+  (println r))

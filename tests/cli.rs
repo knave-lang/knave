@@ -9105,6 +9105,19 @@ fn new_writes_a_workflow_that_fails_without_a_recorded_version() {
 }
 
 #[test]
+fn new_writes_a_workflow_that_fails_without_a_project_file() {
+    let sandbox = Sandbox::new("new_workflow_without_project_file");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let sandbox = sandbox.without_file("demo-app/project.knv");
+    assert_eq!(
+        sandbox.run_version_step("demo-app"),
+        (false, String::new(), MISSING_VERSION_ERROR.to_string())
+    );
+}
+
+#[test]
 fn new_writes_a_workflow_that_fails_on_a_version_two_spaces_from_its_key() {
     let sandbox = Sandbox::new("new_workflow_spaced_version");
     sandbox

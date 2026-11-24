@@ -1,6 +1,6 @@
 # RFC 0073: the lint exit code and the `lints` section
 
-**Status:** Accepted. The `lints` section is built, and `docs/language.md` (Projects, Lints) states it.
+**Status:** Accepted. The `lints` section is built, and `docs/language.md` (Projects, Lints) states it. Superseded by [RFC 0084](0084-folder-modules-and-lint-defaults.md) for its rule that `knave lint` alone reports a threshold its rule never reads.
 **Date:** 2026-11-13
 
 ## Problem

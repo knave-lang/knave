@@ -1,4 +1,4 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, ModuleId};
 use crate::types::{
@@ -10,6 +10,7 @@ pub struct ReachSearch<'p, 'd> {
     program: &'p TypedProgram,
     definitions: &'d DefinitionTable<'p>,
     reach: ProgramReach,
+    visited: FxHashSet<BindingId>,
 }
 
 impl<'p, 'd> ReachSearch<'p, 'd> {
@@ -22,6 +23,7 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
                 type_modules: Self::type_modules(program),
                 ..ProgramReach::default()
             },
+            visited: FxHashSet::default(),
         };
         if let Some(main) = search.reach.main {
             search.visit_definition(main);
@@ -102,14 +104,21 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
         if matches!(
             definition.value.kind,
             TypedExprKind::Leaf(TypedLeaf::Rust(_))
-        ) || self.reach.reached.contains(&binding)
+        ) || !self.mark_reached(binding)
         {
             return;
         }
-        self.reach.reached.push(binding);
         self.visit_type(&definition.scheme.body, module);
         self.visit_params(&definition.scheme.params, module);
         self.visit_expr(&definition.value, module);
+    }
+
+    fn mark_reached(&mut self, binding: BindingId) -> bool {
+        let first = self.visited.insert(binding);
+        if first {
+            self.reach.reached.push(binding);
+        }
+        first
     }
 
     fn visit_params(&mut self, params: &[GenericParam], module: ModuleId) {
@@ -181,10 +190,9 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
             return;
         };
         self.note_use(binding, owner, from);
-        if self.reach.reached.contains(&binding) {
+        if !self.mark_reached(binding) {
             return;
         }
-        self.reach.reached.push(binding);
         let types = &self.program.declarations.types();
         let payloads: Vec<Type> = types
             .enums()
@@ -201,10 +209,9 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
             return;
         };
         self.note_use(binding, owner, from);
-        if self.reach.reached.contains(&binding) {
+        if !self.mark_reached(binding) {
             return;
         }
-        self.reach.reached.push(binding);
         let types = &self.program.declarations.types();
         let fields: Vec<Type> = types
             .structs()

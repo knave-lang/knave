@@ -25,8 +25,18 @@ impl RustType {
 
     #[cfg(test)]
     pub(in crate::types) fn hash_map() -> Self {
-        let template = ParsedTemplate::parse(Self::HASH_MAP_TEMPLATE)
-            .unwrap_or_else(|_| panic!("the hash map template parses"));
+        Self::spelled(Self::HASH_MAP_TEMPLATE)
+    }
+
+    #[cfg(test)]
+    pub(in crate::types) fn vector() -> Self {
+        Self::spelled(Self::VECTOR_TEMPLATE)
+    }
+
+    #[cfg(test)]
+    fn spelled(text: &str) -> Self {
+        let template =
+            ParsedTemplate::parse(text).unwrap_or_else(|_| panic!("a collection template parses"));
         Self {
             template: Rc::new(template),
             clauses: Vec::new(),

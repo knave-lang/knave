@@ -7,12 +7,12 @@ use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, BindingNames, ChildTyping, CollectionShapes, ExpectedChildTyping,
-    FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, MacroOrigins, MapKeys, Obligations,
-    OperandTyping, PlaceReads, SelflessCall, StructBases, TemplateSchemes, TypeFitting,
+    AnnotationLowering, Bindings, ChildTyping, CollectionShapes, ExpectedChildTyping, FieldMoves,
+    GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations,
+    OperandTyping, PlaceReads, SchemeInstantiation, StructBases, TemplateSchemes, TypeFitting,
     TypeTextRecords, Unknowns, VariantArms, VariantSites,
 };
-use crate::types::selfless_method::SelflessMethod;
+use crate::types::problems::TypeProblems;
 use crate::types::templates::TemplateName;
 use crate::types::ty::{Scheme, Type};
 use crate::types::typed::TypedExpr;
@@ -119,7 +119,9 @@ impl LocalScope for TypeChecker {
     fn bind_local(&mut self, binding: BindingId, ty: Type) {
         self.locals.insert(binding, ty);
     }
+}
 
+impl LocalTypes for TypeChecker {
     fn local_type(&self, binding: BindingId) -> Type {
         self.locals[&binding].clone()
     }
@@ -169,13 +171,15 @@ impl TemplateSchemes for TypeChecker {
         self.template_borrows
             .register(TemplateName::Inline(text), scheme, rust_types);
     }
+}
 
+impl SchemeInstantiation for TypeChecker {
     fn instantiate(&mut self, scheme: &Scheme, span: Span) -> Type {
         self.instantiation().instantiate(scheme, span)
     }
 }
 
-impl BindingNames for TypeChecker {
+impl Bindings for TypeChecker {
     fn binding_name(&self, binding: BindingId) -> String {
         self.bindings.get(binding).name().to_string()
     }
@@ -196,12 +200,27 @@ impl GlobalReferences for TypeChecker {
         self.unchecked.contains(&binding)
     }
 
-    fn selfless_method(&self, binding: BindingId) -> Option<SelflessMethod> {
-        self.checking_facts.selfless_methods.get(binding)
-    }
-
-    fn selfless_method_problem(&self, call: SelflessCall<'_>) -> Diagnostic {
-        self.selfless_method_call(call.binding, call.method, call.name, call.span)
+    fn selfless_method_problem(
+        &self,
+        binding: BindingId,
+        name: &str,
+        span: Span,
+    ) -> Option<Diagnostic> {
+        let method = self.checking_facts.selfless_methods.get(binding)?;
+        let scheme = self
+            .schemes
+            .get(&binding)
+            .expect("a trait method has a scheme before any call");
+        let replacement = self
+            .display()
+            .scheme_with_receiver(scheme, method.trait_binding());
+        Some(TypeProblems::selfless_method_call(
+            self.bindings.get(method.trait_binding()).name(),
+            name,
+            &replacement,
+            span,
+            method.signature(),
+        ))
     }
 
     fn global_type(&mut self, binding: BindingId, span: Span) -> Type {

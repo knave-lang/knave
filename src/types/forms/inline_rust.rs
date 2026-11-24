@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{ExpressionForm, TemplateSchemes};
+use super::{ExpressionForm, SchemeInstantiation, TemplateSchemes};
 use crate::core::RustTemplate;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -18,7 +18,7 @@ impl<'e> InlineRust<'e> {
     }
 }
 
-impl<C: TemplateSchemes> ExpressionForm<C> for InlineRust<'_> {
+impl<C: TemplateSchemes + SchemeInstantiation> ExpressionForm<C> for InlineRust<'_> {
     fn type_against(
         &self,
         context: &mut C,
@@ -43,7 +43,7 @@ mod tests {
     use crate::diagnostic::Diagnostic;
     use crate::source::Span;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{ExpressionForm, TemplateSchemes};
+    use crate::types::forms::{ExpressionForm, SchemeInstantiation, TemplateSchemes};
     use crate::types::ty::{Scheme, Type};
 
     #[derive(Default)]
@@ -84,7 +84,9 @@ mod tests {
         fn register_inline(&mut self, text: &Rc<str>, _scheme: &Scheme) {
             self.registered.push(text.clone());
         }
+    }
 
+    impl SchemeInstantiation for TemplateFixture {
         fn instantiate(&mut self, _scheme: &Scheme, _span: Span) -> Type {
             Self::instantiated()
         }

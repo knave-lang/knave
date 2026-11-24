@@ -29,7 +29,6 @@ use super::parameter_call_request::ParameterCallRequest;
 use super::pending::DecidedBorrows;
 use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
-use super::selfless_method::SelflessMethod;
 use super::synthetic_template::SyntheticTemplate;
 use super::ty::{Bound, Type};
 use super::typed::{
@@ -870,29 +869,6 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         inferred.map(|(kind, ty)| TypedExpr { kind, ty, span })
-    }
-
-    fn selfless_method_call(
-        &self,
-        binding: BindingId,
-        method: SelflessMethod,
-        name: &str,
-        span: Span,
-    ) -> Diagnostic {
-        let scheme = self
-            .schemes
-            .get(&binding)
-            .expect("a trait method has a scheme before any call");
-        let replacement = self
-            .display()
-            .scheme_with_receiver(scheme, method.trait_binding());
-        TypeProblems::selfless_method_call(
-            self.bindings.get(method.trait_binding()).name(),
-            name,
-            &replacement,
-            span,
-            method.signature(),
-        )
     }
 
     pub(super) fn global_type(&mut self, binding: BindingId, span: Span) -> Type {

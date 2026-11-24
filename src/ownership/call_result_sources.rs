@@ -1,7 +1,8 @@
+use super::recorded_ties::RecordedTies;
 use super::result_source::ResultSource;
 use crate::types::{
-    CalledFunction, DefinitionTable, ParameterRole, Pipelines, Regions, Scheme, TemplateAuthor,
-    TemplateTies, Type, TypedArgument, TypedExpr, TypedExprKind, TypedProgram,
+    CalledFunction, DefinitionTable, ParameterRole, Regions, TemplateTies, Type, TypedArgument,
+    TypedExpr, TypedExprKind, TypedProgram,
 };
 
 pub struct CallResultSources<'p> {
@@ -29,10 +30,7 @@ impl<'p> CallResultSources<'p> {
         };
         let ties = match self.definitions.called_function(call) {
             Some(called) => self.function_ties(&called),
-            None => self
-                .program
-                .template_borrows
-                .read_template(callee, None, |_, ties| ties.cloned())?,
+            None => RecordedTies::new(self.program).of(callee)?,
         };
         Some(Self::tied(&ties, arguments))
     }
@@ -52,7 +50,7 @@ impl<'p> CallResultSources<'p> {
 
     fn function_ties(&self, called: &CalledFunction) -> TemplateTies {
         let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
-        let recorded: Vec<usize> = called
+        let mut lent: Vec<usize> = called
             .lambda
             .params
             .iter()
@@ -60,37 +58,20 @@ impl<'p> CallResultSources<'p> {
             .filter(|(_, parameter)| flows.contains(&parameter.binding))
             .map(|(position, _)| position)
             .collect();
-        let recorded = TemplateTies::new(&recorded, &[]);
-        match self.signature_ties(called) {
-            Some(signature) => {
-                TemplateTies::widened(Some(signature), Some(recorded)).unwrap_or_default()
-            }
-            None => recorded,
-        }
+        lent.extend(self.signature_lent(called));
+        TemplateTies::new(&lent, &[])
     }
 
-    fn signature_ties(&self, called: &CalledFunction) -> Option<TemplateTies> {
-        let declared = &self.definitions.definition(called.function)?.scheme;
-        let Type::Function(kind, _, declared_result) = &declared.body else {
-            return None;
+    fn signature_lent(&self, called: &CalledFunction) -> Vec<usize> {
+        let Some(result) = called.lambda.body.tail().map(|tail| &tail.ty) else {
+            return Vec::new();
         };
-        let result = called
-            .lambda
-            .body
-            .tail()
-            .map_or(declared_result.as_ref(), |tail| &tail.ty);
-        let parameters = called
+        let parameters: Vec<Type> = called
             .lambda
             .params
             .iter()
             .map(|parameter| parameter.ty.clone())
             .collect();
-        let moded = Scheme {
-            lifetimes: declared.lifetimes.clone(),
-            params: declared.params.clone(),
-            body: Type::Function(*kind, parameters, Box::new(result.clone())),
-        };
-        let pipelines = Pipelines::new(self.program.declarations.types().rust_types());
-        TemplateTies::of(&moded, pipelines, TemplateAuthor::User)
+        TemplateTies::lent_positions(&parameters, result)
     }
 }

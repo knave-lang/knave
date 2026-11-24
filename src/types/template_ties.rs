@@ -97,6 +97,10 @@ impl TemplateTies {
             .collect()
     }
 
+    pub fn lent_positions(parameters: &[Type], result: &Type) -> Vec<usize> {
+        Self::lifetime_ties(parameters, result).unwrap_or_default()
+    }
+
     fn lifetime_ties(parameters: &[Type], result: &Type) -> Option<Vec<usize>> {
         let mut tied = BTreeSet::new();
         for output in TypeLifetimes::of(result).all() {

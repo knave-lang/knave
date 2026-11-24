@@ -1,0 +1,9 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn fst-eq (a b) (if (= a b) a a))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (fst-eq (as-str s) (as-str (str "x")))))
+    (g)))

@@ -60,8 +60,7 @@ impl<'p> EntryLayout<'p> {
 
     fn library_root(&self) -> Option<ProgramFile> {
         let library_root = self.root.join(&self.modules.library_root);
-        library_root
-            .is_file()
-            .then(|| self.placement.file_within(library_root))
+        let file = self.placement.file_within(library_root);
+        (file.path().is_file() && !self.is_entry(&file)).then_some(file)
     }
 }

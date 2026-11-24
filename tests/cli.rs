@@ -11940,6 +11940,9 @@ const MISTYPED_SHELF_LIBRARY: &str = "(export shelve)\n\n(defn shelve (count) (+
 const UNUSED_BINDING_SHELF_LIBRARY: &str =
     "(export shelve)\n\n(defn shelve (count) (let (unused 1) (* 2 count)))\n";
 const UNIMPLEMENTED_TRAIT_ERROR: &str = "error[L0404]";
+const UNREADABLE_SOURCE: &[u8] = b"\xff\xfe";
+const UNREADABLE_ENTRY: &str = "cannot read `src/main.knv`";
+const LINT_READS_OF_AN_UNREADABLE_ENTRY: usize = 2;
 const SHELF_ENTRY: &str = "(defn main () (println 1))\n";
 const SHELF_ENTRY_USING_LIBRARY: &str = "(use lib shelve)\n\n(defn main () (println (shelve 2)))\n";
 
@@ -12034,6 +12037,30 @@ fn check_of_a_named_file_skips_the_library_project_root() {
         .with_file("src/main.knv", SHELF_ENTRY)
         .compiler(&["check", "src/main.knv"])
         .assert_exit_code(0);
+}
+
+#[test]
+fn check_reads_a_library_project_root_that_is_the_entry_once() {
+    let sandbox = Sandbox::new("library_project_root_is_entry").with_file(
+        &Language::project_file_name(),
+        "(defproject shelf :lib \"src/main.knv\")\n",
+    );
+    fs::create_dir_all(sandbox.directory.join("src")).expect("the sandbox accepts directories");
+    fs::write(sandbox.directory.join("src/main.knv"), UNREADABLE_SOURCE)
+        .expect("the sandbox accepts a source file");
+    let check = sandbox.compiler(&["check"]);
+    let check_errors = check.assert_exit_code(2).stderr();
+    assert_eq!(
+        check_errors.matches(UNREADABLE_ENTRY).count(),
+        1,
+        "{check_errors}"
+    );
+    let lint_errors = sandbox.compiler(&["lint"]).stderr();
+    assert_eq!(
+        lint_errors.matches(UNREADABLE_ENTRY).count(),
+        LINT_READS_OF_AN_UNREADABLE_ENTRY,
+        "{lint_errors}"
+    );
 }
 
 const LENDING_PROJECT: &str = "(defproject lint :knave \"99.0.0\" (exported-tasks check where) (lints (unused-binding deny)))\n";

@@ -3,8 +3,8 @@ use rustc_hash::FxHashSet;
 use super::tied_parts::TiedParts;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, ParameterRole, Regions, TemplateTies, Type, TypedExpr, TypedLambda,
-    TypedProgram,
+    DefinitionTable, Lifetime, ParameterRole, Regions, TemplateTies, Type, TypeLifetimes,
+    TypedExpr, TypedLambda, TypedProgram,
 };
 
 pub struct ResultTies<'p, 'd> {
@@ -34,11 +34,20 @@ impl<'p, 'd> ResultTies<'p, 'd> {
         let Some(result) = lambda.body.tail().map(|tail| &tail.ty) else {
             return TemplateTies::new(&[], &[]);
         };
-        let mut lent = self.sharing_positions(lambda, result);
-        lent.extend(self.signature_lent(lambda, result));
+        let mut lent = self.signature_lent(lambda, result);
+        if !Self::names_written_lifetimes(result) {
+            lent.extend(self.sharing_positions(lambda, result));
+        }
         let tied = TiedParts::of_result(result);
         lent.retain(|position| !tied.ties_only_part_of(&lambda.params[*position].ty));
         TemplateTies::new(&lent, &[])
+    }
+
+    fn names_written_lifetimes(result: &Type) -> bool {
+        TypeLifetimes::of(result)
+            .all()
+            .into_iter()
+            .any(|lifetime| matches!(lifetime, Lifetime::Written(_)))
     }
 
     fn sharing_positions(&self, lambda: &TypedLambda, result: &Type) -> Vec<usize> {

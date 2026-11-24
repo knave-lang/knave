@@ -275,11 +275,11 @@ mod tests {
                 LocatedProject::enter_from(self.root(), &mut terminal, FetchingStore::default())
                     .expect("the project reads")
                     .expect("the folder is a project");
-            let (programs, failure) = ProjectPrograms::of_project(project)
+            let results = ProjectPrograms::of_project(project)
                 .load(&mut terminal)
-                .into_parts();
-            assert!(failure.is_none());
-            programs.len()
+                .into_results();
+            assert!(results.iter().all(Result::is_ok));
+            results.len()
         }
 
         fn root(&self) -> &Path {

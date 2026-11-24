@@ -3,23 +3,19 @@ use super::project_program::ProjectProgram;
 
 #[derive(Default)]
 pub struct LoadedPrograms {
-    programs: Vec<ProjectProgram>,
-    failure: Option<ExitStatus>,
+    results: Vec<Result<ProjectProgram, ExitStatus>>,
 }
 
 impl LoadedPrograms {
     pub fn add(&mut self, loaded: Result<ProjectProgram, ExitStatus>) {
-        match loaded {
-            Ok(program) => self.programs.push(program),
-            Err(status) => self.fail(status),
-        }
+        self.results.push(loaded);
     }
 
     pub fn fail(&mut self, status: ExitStatus) {
-        self.failure = Some(status);
+        self.add(Err(status));
     }
 
-    pub fn into_parts(self) -> (Vec<ProjectProgram>, Option<ExitStatus>) {
-        (self.programs, self.failure)
+    pub fn into_results(self) -> Vec<Result<ProjectProgram, ExitStatus>> {
+        self.results
     }
 }

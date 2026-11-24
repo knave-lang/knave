@@ -27,28 +27,33 @@ struct CheckedProgram {
 
 impl LintedPrograms {
     pub fn checked(terminal: &mut Terminal, loaded: LoadedPrograms) -> Self {
-        let (programs, mut failure) = loaded.into_parts();
-        let mut files = Vec::new();
-        let mut checked = Vec::new();
-        for ProjectProgram { file, program } in programs {
-            match terminal.checking().check_keeping_warnings(&program) {
-                Ok(mut typed) => {
-                    let warnings = std::mem::take(&mut typed.warnings);
-                    files.push(file);
-                    checked.push(CheckedProgram {
-                        program,
-                        typed,
-                        warnings,
-                    });
-                }
-                Err(status) => failure = Some(status),
+        let mut linted = Self {
+            files: Vec::new(),
+            checked: Vec::new(),
+            failure: None,
+        };
+        for result in loaded.into_results() {
+            if let Err(status) = result.and_then(|program| linted.add_checked(terminal, program)) {
+                linted.failure.get_or_insert(status);
             }
         }
-        Self {
-            files,
-            checked,
-            failure,
-        }
+        linted
+    }
+
+    fn add_checked(
+        &mut self,
+        terminal: &mut Terminal,
+        ProjectProgram { file, program }: ProjectProgram,
+    ) -> Result<(), ExitStatus> {
+        let mut typed = terminal.checking().check_keeping_warnings(&program)?;
+        let warnings = std::mem::take(&mut typed.warnings);
+        self.files.push(file);
+        self.checked.push(CheckedProgram {
+            program,
+            typed,
+            warnings,
+        });
+        Ok(())
     }
 
     pub fn failure(&self) -> Option<ExitStatus> {

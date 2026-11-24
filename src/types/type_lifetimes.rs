@@ -24,4 +24,37 @@ impl<'t> TypeLifetimes<'t> {
             )
             .collect()
     }
+
+    pub fn names_written(&self) -> bool {
+        self.all()
+            .into_iter()
+            .any(|lifetime| matches!(lifetime, Lifetime::Written(_)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TypeLifetimes;
+    use crate::core::{BindingId, PrimitiveType};
+    use crate::types::{Lifetime, Type};
+
+    struct LifetimesFixture;
+
+    impl LifetimesFixture {
+        fn reference(lifetime: Lifetime) -> Type {
+            Type::Ref(lifetime, Box::new(Type::Primitive(PrimitiveType::Str)))
+        }
+    }
+
+    #[test]
+    fn a_reference_with_a_written_lifetime_names_it() {
+        let written = LifetimesFixture::reference(Lifetime::Written(BindingId::from_index(1)));
+        assert!(TypeLifetimes::of(&written).names_written());
+    }
+
+    #[test]
+    fn an_elided_reference_names_no_written_lifetime() {
+        let elided = LifetimesFixture::reference(Lifetime::Elided);
+        assert!(!TypeLifetimes::of(&elided).names_written());
+    }
 }

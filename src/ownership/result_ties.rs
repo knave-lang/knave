@@ -5,8 +5,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::tied_parts::TiedParts;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, Lifetime, ParameterRole, Regions, ResultRegions, TemplateTies, Type,
-    TypeLifetimes, TypedDefinition, TypedExpr, TypedLambda, TypedProgram,
+    DefinitionTable, ParameterRole, Regions, ResultRegions, TemplateTies, Type, TypeLifetimes,
+    TypedDefinition, TypedExpr, TypedLambda, TypedProgram,
 };
 
 pub struct ResultTies<'p> {
@@ -34,7 +34,10 @@ impl<'p> ResultTies<'p> {
         }
     }
 
-    fn called_function(&self, callee: &TypedExpr) -> Option<(&'p TypedDefinition, &'p TypedLambda)> {
+    fn called_function(
+        &self,
+        callee: &TypedExpr,
+    ) -> Option<(&'p TypedDefinition, &'p TypedLambda)> {
         let definition = self.definitions.called_definition(callee)?;
         Some((definition, definition.value.lambda_value()?))
     }
@@ -67,20 +70,15 @@ impl<'p> ResultTies<'p> {
         let Type::Function(_, _, result) = &definition.value.ty else {
             return None;
         };
-        Self::names_written_lifetimes(result).then_some(result.as_ref())
+        TypeLifetimes::of(result)
+            .names_written()
+            .then_some(result.as_ref())
     }
 
     fn whole_ties(lambda: &TypedLambda, result: &Type, mut lent: Vec<usize>) -> TemplateTies {
         let tied = TiedParts::of_result(result);
         lent.retain(|position| !tied.ties_only_part_of(&lambda.params[*position].ty));
         TemplateTies::new(&lent, &[])
-    }
-
-    fn names_written_lifetimes(result: &Type) -> bool {
-        TypeLifetimes::of(result)
-            .all()
-            .into_iter()
-            .any(|lifetime| matches!(lifetime, Lifetime::Written(_)))
     }
 
     fn sharing_positions(&self, lambda: &TypedLambda, result: &Type) -> Vec<usize> {

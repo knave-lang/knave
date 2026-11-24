@@ -1,0 +1,6 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (greet (greeter (at (vec (str "a") (str "b")) 0)))
+    (greet)))

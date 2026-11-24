@@ -31,7 +31,7 @@ impl<'p> KeptTemporaries<'p> {
             program,
             definitions,
             regions,
-            temporaries: StatementTemporary::new(program),
+            temporaries: StatementTemporary::new(program, definitions, regions),
             problems: Vec::new(),
         }
     }
@@ -116,25 +116,20 @@ impl<'p> KeptTemporaries<'p> {
         }
         let kept = self.regions.kept_by_result(lambda);
         for (parameter, argument) in lambda.params.iter().zip(call.called.arguments) {
-            if kept.contains(&parameter.binding) && parameter.ty.is_reference() {
-                self.temporary_argument(&call, parameter, &argument.value);
+            if !kept.contains(&parameter.binding) {
+                continue;
+            }
+            if let Some(temporary) = self.temporaries.kept_in(parameter, &argument.value) {
+                self.report(&call, parameter, temporary);
             }
         }
     }
 
-    fn temporary_argument(
-        &mut self,
-        call: &OutlivingCall,
-        parameter: &TypedBinder,
-        argument: &TypedExpr,
-    ) {
-        if self.temporaries.of(argument).is_none() {
-            return;
-        }
+    fn report(&mut self, call: &OutlivingCall, parameter: &TypedBinder, temporary: &TypedExpr) {
         let bindings = &self.program.bindings;
         self.problems
             .push(KeptTemporaryProblems::kept_temporary(&KeptTemporary {
-                argument: argument.span,
+                argument: temporary.span,
                 callee: bindings.get(call.called.function).name(),
                 parameter: bindings.get(parameter.binding).name(),
                 parameter_span: parameter.span,

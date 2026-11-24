@@ -1,0 +1,6 @@
+(defn keep (x)
+  (let (y x) (fn () (println y))))
+
+(defn main ()
+  (let (kept (keep (as-str (str "ana"))))
+    (kept)))

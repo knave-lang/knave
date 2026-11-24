@@ -6,9 +6,11 @@ mod short_pattern;
 mod variant_target;
 
 use super::forms::{
-    Association, Body, Borrowing, Conditional, Dereference, ExpressionForm, IfOperands, InlineRust,
-    LiteralValue, Sequence, TypeTextRequest, VariableReference, VariantConstruction,
+    ArgumentTyping, Association, Body, Borrowing, Conditional, Dereference, ExpressionForm,
+    IfOperands, InlineRust, LiteralValue, Recurrence, Sequence, TypeTextRequest, VariableReference,
+    VariantConstruction,
 };
+use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
 use super::variant_site::VariantSite;
 use std::rc::Rc;
@@ -74,12 +76,6 @@ struct BareNamePattern<'a> {
 }
 
 #[derive(Clone)]
-pub(super) struct RecurTarget {
-    parameters: Vec<Type>,
-    result: Type,
-}
-
-#[derive(Clone)]
 pub(super) struct TryTarget {
     returns: Type,
 }
@@ -129,7 +125,7 @@ impl TypeChecker {
 
     fn infer_nested(&mut self, kind: &ExprKind, span: Span) -> Result<TypedExpr, Diagnostic> {
         match kind {
-            ExprKind::Recur(arguments) => self.infer_recur(arguments, span),
+            ExprKind::Recur(arguments) => Recurrence::new(arguments, span).type_against(self, None),
             ExprKind::Try(value) => self.infer_try(value, span),
             ExprKind::Infer(operand) => {
                 TypeTextRequest::new(operand, span).type_against(self, None)
@@ -1097,11 +1093,7 @@ impl TypeChecker {
         parameters: &[Type],
         arguments: &[Expr],
     ) -> Result<(TypedExpr, Vec<TypedArgument>), Diagnostic> {
-        let shared =
-            SharedVariables::of(parameters, &self.unifier, &self.declarations.traits().table);
-        let mut typed_arguments =
-            self.infer_arguments(Some(&callee), parameters, arguments, &shared)?;
-        self.pass_shared_arguments(Some(&callee), &shared, &mut typed_arguments)?;
+        let typed_arguments = self.type_arguments(Some(&callee), parameters, arguments)?;
         Ok((callee, typed_arguments))
     }
 
@@ -1193,26 +1185,6 @@ impl TypeChecker {
                 .expect(Expectation::plain(expected), result, span)?;
         }
         Ok(())
-    }
-
-    fn infer_recur(&mut self, arguments: &[Expr], span: Span) -> Result<TypedExpr, Diagnostic> {
-        let target = self
-            .recur_target
-            .clone()
-            .expect("expansion checks that `recur` is inside a function");
-        let shared = SharedVariables::of(
-            &target.parameters,
-            &self.unifier,
-            &self.declarations.traits().table,
-        );
-        let mut typed_arguments =
-            self.infer_arguments(None, &target.parameters, arguments, &shared)?;
-        self.pass_shared_arguments(None, &shared, &mut typed_arguments)?;
-        Ok(TypedExpr {
-            kind: TypedExprKind::Recur(typed_arguments),
-            ty: target.result,
-            span,
-        })
     }
 
     fn infer_try(&mut self, value: &Expr, span: Span) -> Result<TypedExpr, Diagnostic> {

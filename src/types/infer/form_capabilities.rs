@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use super::shared_variables::SharedVariables;
 use crate::core::{BindingId, BindingKind, Expr, TypeExpr, VariantInfo};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -7,15 +8,17 @@ use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, Bindings, ChildTyping, CollectionShapes, ExpectedChildTyping, FieldMoves,
-    GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations,
-    OperandTyping, PlaceReads, SchemeInstantiation, StructBases, TemplateSchemes, TypeFitting,
-    TypeTextRecords, Unknowns, VariantArms, VariantSites,
+    AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionShapes,
+    ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes,
+    MacroOrigins, MapKeys, Obligations, OperandTyping, PlaceReads, RecurTargets,
+    SchemeInstantiation, StructBases, TemplateSchemes, TypeFitting, TypeTextRecords, Unknowns,
+    VariantArms, VariantSites,
 };
 use crate::types::problems::TypeProblems;
+use crate::types::recur_target::RecurTarget;
 use crate::types::templates::TemplateName;
 use crate::types::ty::{Scheme, Type};
-use crate::types::typed::TypedExpr;
+use crate::types::typed::{TypedArgument, TypedExpr};
 use crate::types::unifier::LiteralKind;
 use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
@@ -225,5 +228,28 @@ impl GlobalReferences for TypeChecker {
 
     fn global_type(&mut self, binding: BindingId, span: Span) -> Type {
         TypeChecker::global_type(self, binding, span)
+    }
+}
+
+impl RecurTargets for TypeChecker {
+    fn recur_target(&self) -> RecurTarget {
+        self.recur_target
+            .clone()
+            .expect("expansion checks that `recur` is inside a function")
+    }
+}
+
+impl ArgumentTyping for TypeChecker {
+    fn type_arguments(
+        &mut self,
+        callee: Option<&TypedExpr>,
+        parameters: &[Type],
+        arguments: &[Expr],
+    ) -> Result<Vec<TypedArgument>, Diagnostic> {
+        let shared =
+            SharedVariables::of(parameters, &self.unifier, &self.declarations.traits().table);
+        let mut typed_arguments = self.infer_arguments(callee, parameters, arguments, &shared)?;
+        self.pass_shared_arguments(callee, &shared, &mut typed_arguments)?;
+        Ok(typed_arguments)
     }
 }

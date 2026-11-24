@@ -1,5 +1,6 @@
 use super::bound_locals::{BoundLocal, BoundLocals};
 use super::call_result_sources::CallResultSources;
+use super::kept_temporary_problems::KeptValue;
 use super::promoted_constants::PromotedConstants;
 use super::result_source::ResultSource;
 use crate::types::{
@@ -25,13 +26,25 @@ impl<'p> LentTemporary<'p> {
         &self,
         parameter: &TypedBinder,
         argument: &'e TypedExpr,
-    ) -> Option<&'e TypedExpr> {
+    ) -> Option<LentValue<'e>> {
         let walk = ArgumentWalk {
             lent: self,
             bound: BoundLocals::in_argument(argument),
         };
-        walk.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])
+        let value =
+            walk.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])?;
+        let kind = if walk.bound.owns(value) {
+            KeptValue::BlockLocal
+        } else {
+            KeptValue::Temporary
+        };
+        Some(LentValue { value, kind })
     }
+}
+
+pub struct LentValue<'e> {
+    pub value: &'e TypedExpr,
+    pub kind: KeptValue,
 }
 
 struct ArgumentWalk<'w, 'p, 'e> {

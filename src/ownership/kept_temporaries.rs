@@ -1,3 +1,4 @@
+use super::call_result_sources::CallResultSources;
 use super::kept_temporary_problems::{KeptBorrow, KeptTemporary, KeptTemporaryProblems, KeptUntil};
 use super::lent_temporary::LentTemporary;
 use crate::diagnostic::Diagnostic;
@@ -31,7 +32,10 @@ impl<'p> KeptTemporaries<'p> {
             program,
             definitions,
             regions,
-            temporaries: LentTemporary::new(program, definitions, regions),
+            temporaries: LentTemporary::new(
+                program,
+                CallResultSources::new(program, definitions, regions),
+            ),
             problems: Vec::new(),
         }
     }

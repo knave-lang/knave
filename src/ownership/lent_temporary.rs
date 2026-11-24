@@ -1,10 +1,7 @@
 use super::call_result_sources::CallResultSources;
 use super::promoted_constants::PromotedConstants;
 use super::result_source::ResultSource;
-use crate::types::{
-    DefinitionTable, PositionTie, Regions, Type, TypedBinder, TypedExpr, TypedExprKind,
-    TypedProgram,
-};
+use crate::types::{PositionTie, Type, TypedBinder, TypedExpr, TypedExprKind, TypedProgram};
 
 pub struct LentTemporary<'p> {
     program: &'p TypedProgram,
@@ -13,14 +10,10 @@ pub struct LentTemporary<'p> {
 }
 
 impl<'p> LentTemporary<'p> {
-    pub fn new(
-        program: &'p TypedProgram,
-        definitions: &'p DefinitionTable<'p>,
-        regions: &'p Regions,
-    ) -> Self {
+    pub fn new(program: &'p TypedProgram, sources: CallResultSources<'p>) -> Self {
         Self {
             program,
-            sources: CallResultSources::new(program, definitions, regions),
+            sources,
             constants: PromotedConstants::new(program),
         }
     }

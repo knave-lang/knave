@@ -14,7 +14,7 @@ runs:
           ~/.cargo/bin/knave
           ~/.cargo/.crates.toml
           ~/.cargo/.crates2.json
-        key: knave-${{ env.KNAVE_VERSION }}-${{ runner.os }}
+        key: knave-${{ env.KNAVE_VERSION }}-${{ runner.os }}-${{ runner.arch }}
     - name: Install Knave
       run: cargo install knave --version "$KNAVE_VERSION" --locked
       shell: bash

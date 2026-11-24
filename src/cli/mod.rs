@@ -65,7 +65,7 @@ mod fmt;
 mod form_block;
 mod front_end_stack;
 mod git_setup;
-mod github_workflow;
+mod github_checks;
 mod input_helper;
 mod inspection_command;
 mod interruptible_formatting;

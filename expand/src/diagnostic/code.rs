@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct DiagnosticCode(Cow<'static, str>);
 
 macro_rules! diagnostic_codes {

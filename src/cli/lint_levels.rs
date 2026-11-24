@@ -1,8 +1,8 @@
 use rustc_hash::FxHashMap;
 
+use super::embedded_prelude::EmbeddedPrelude;
 use super::lint_setting::LintSetting;
 use crate::diagnostic::{CodeStage, Diagnostic, DiagnosticCode};
-use crate::lint::LintDefaults;
 use crate::project::{LintLevel, LintTable};
 
 #[derive(Clone, Default)]
@@ -33,7 +33,9 @@ impl LintLevels {
     }
 
     pub(super) fn level_of(&self, code: &DiagnosticCode) -> Option<LintLevel> {
-        LintDefaults::level_of(code, self.levels.get(code).copied())
+        EmbeddedPrelude::project_vocabulary()
+            .lints()
+            .level_of(code, self.levels.get(code).copied())
     }
 }
 
@@ -42,5 +44,38 @@ impl FromIterator<(DiagnosticCode, LintLevel)> for LintLevels {
         Self {
             levels: levels.into_iter().collect(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LintLevels;
+    use crate::diagnostic::DiagnosticCode;
+    use crate::project::LintLevel;
+
+    #[test]
+    fn an_unwritten_lint_takes_the_vocabulary_default() {
+        let levels = LintLevels::default();
+        assert_eq!(
+            levels.level_of(&DiagnosticCode::NEEDLESS_TYPE),
+            Some(LintLevel::Allow)
+        );
+    }
+
+    #[test]
+    fn a_written_level_wins_over_the_vocabulary_default() {
+        let levels: LintLevels = [(DiagnosticCode::NEEDLESS_TYPE, LintLevel::Deny)]
+            .into_iter()
+            .collect();
+        assert_eq!(
+            levels.level_of(&DiagnosticCode::NEEDLESS_TYPE),
+            Some(LintLevel::Deny)
+        );
+    }
+
+    #[test]
+    fn a_lint_with_no_default_and_no_written_level_has_none() {
+        let levels = LintLevels::default();
+        assert_eq!(levels.level_of(&DiagnosticCode::UNUSED_BINDING), None);
     }
 }

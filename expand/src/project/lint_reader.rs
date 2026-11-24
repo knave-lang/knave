@@ -128,9 +128,9 @@ impl<'p> LintReader<'p> {
     }
 
     fn level_named(&mut self, word: &str, span: Span) -> Option<LintLevel> {
-        let level = self.vocabulary.level_named(word);
+        let level = self.vocabulary.lints().level_named(word);
         if level.is_none() {
-            let levels = self.vocabulary.level_words();
+            let levels = self.vocabulary.lints().level_words();
             self.problems
                 .push(LintLevelProblems::unknown_level(word, span, &levels));
         }
@@ -138,9 +138,9 @@ impl<'p> LintReader<'p> {
     }
 
     fn report_level_not_a_symbol(&mut self, part: &Form) {
-        let written =
-            Self::string_of(part).filter(|word| self.vocabulary.level_named(word).is_some());
-        let levels = self.vocabulary.level_words();
+        let written = Self::string_of(part)
+            .filter(|word| self.vocabulary.lints().level_named(word).is_some());
+        let levels = self.vocabulary.lints().level_words();
         self.problems.push(LintLevelProblems::level_not_a_symbol(
             part.span(),
             written,
@@ -149,7 +149,7 @@ impl<'p> LintReader<'p> {
     }
 
     fn without_level(&mut self, entry: &Form) {
-        let levels = self.vocabulary.level_words();
+        let levels = self.vocabulary.lints().level_words();
         self.problems
             .push(LintLevelProblems::without_level(entry.span(), &levels));
     }

@@ -1,3 +1,5 @@
+use rustc_hash::FxHashSet;
+
 use super::problems::EmitProblems;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
@@ -8,18 +10,19 @@ use crate::types::{
 pub struct UnlentParameters<'a> {
     program: &'a TypedProgram,
     lambda: &'a TypedLambda,
-    unlent: Vec<BindingId>,
+    unlent: FxHashSet<BindingId>,
 }
 
 impl<'a> UnlentParameters<'a> {
     pub fn of(program: &'a TypedProgram, lambda: &'a TypedLambda) -> Self {
-        let mut parameters = Self {
+        Self {
             program,
             lambda,
-            unlent: Vec::new(),
-        };
-        parameters.unlent = parameters.unlent_parameters();
-        parameters
+            unlent: program
+                .ownership
+                .regions
+                .of(ParameterRole::LeftOutOfResult, lambda),
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -53,20 +56,6 @@ impl<'a> UnlentParameters<'a> {
 
     fn infers_mut(param: &TypedBinder) -> bool {
         !param.annotated
-    }
-
-    fn unlent_parameters(&self) -> Vec<BindingId> {
-        let left_out = self
-            .program
-            .ownership
-            .regions
-            .of(ParameterRole::LeftOutOfResult, self.lambda);
-        self.lambda
-            .params
-            .iter()
-            .map(|param| param.binding)
-            .filter(|binding| left_out.contains(binding))
-            .collect()
     }
 
     fn changes(&self, param: &TypedBinder) -> bool {

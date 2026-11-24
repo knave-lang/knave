@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/helper_result_lends_its_argument.knv
+---
+first-of
+  1:24 borrow `v`: no live loan
+main
+  5:22 borrow `v`: no live loan
+  6:10 change `v`: `v` lent at 5:22, held by `r`

@@ -1,12 +1,8 @@
 seed-1 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`
 seed-100 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
-seed-102 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`
-seed-11 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`, E0502 in `main`, E0502 in `main`
 seed-120 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
-seed-122 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`
 seed-124 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-125 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0505 in `main`
-seed-136 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`
 seed-138 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0308 in `larger-make`, E0308 in `larger-make`, E0502 in `main`, E0502 in `main`, E0499 in `main`, E0502 in `main`, E0502 in `main`, E0499 in `main`
 seed-139 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`
 seed-141 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`
@@ -16,25 +12,19 @@ seed-16 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `mai
 seed-165 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0499 in `main`, E0499 in `main`, E0502 in `main`
 seed-167 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-168 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`
-seed-177 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`, E0499 in `main`, E0502 in `main`
 seed-179 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
-seed-189 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`
-seed-192 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`
 seed-196 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-198 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`
 seed-2 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`
 seed-23 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-32 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-35 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0499 in `main`, E0499 in `main`
-seed-38 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`, E0502 in `main`
 seed-43 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-46 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0499 in `main`, E0499 in `main`, E0505 in `main`
 seed-48 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
-seed-55 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`, E0502 in `main`
 seed-56 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-66 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`
 seed-68 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`, E0502 in `main`
-seed-78 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`
 seed-8 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`
 seed-80 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`, E0502 in `main`, E0505 in `main`
 seed-84 CheckAcceptsRustcRejects: check accepts and rustc rejects: E0502 in `main`, E0502 in `main`

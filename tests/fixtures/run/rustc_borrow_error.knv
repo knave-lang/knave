@@ -2,10 +2,12 @@
   :name string
   :age i64)
 
-(defn name-of (p) (:name p))
+(def name-text
+  (rust "{0}.name.as_str()"
+    (fn ((ref person)) str)))
 
 (defn dangling-name ()
   (local someone (->person (str "Grace") 85))
-  (name-of someone))
+  (name-text (ref someone)))
 
 (defn main () (println (dangling-name)))

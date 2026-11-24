@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/helper_result_borrow_changed.knv
+---
+error[L0518]: `v` changes while `r` still borrows it
+ --> check/helper_result_borrow_changed.knv:6:10
+  |
+5 |   (local r (first-of v))
+  |                      - `r` borrows `v` here
+6 |   (push! v 4)
+  |          ^ `v` changes here
+7 |   (println r))
+  |            - `r` is used here, after the change
+  |
+  = help: finish using `r` before changing `v`, or copy what you need out of `v` first
+  = note: run `knave doc L0518` for an explanation

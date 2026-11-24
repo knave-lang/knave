@@ -1,0 +1,26 @@
+(type second
+  (where ('a 'b)
+    (fn ((pair (ref 'a str) (ref 'b str)))
+      (ref 'b str))))
+
+(defn second (p)
+  (let-match ((pair a b) p) b))
+
+(type both
+  (where ('a 'b)
+    (fn ((pair (ref 'a str) (ref 'b str)))
+      (pair (ref 'a str) (ref 'b str)))))
+
+(defn both (p) p)
+
+(defn main ()
+  (local x (str "a"))
+  (local y (str "b"))
+  (local part
+    (second (pair (as-str x) (as-str y))))
+  (local whole
+    (both (pair (as-str x) (as-str y))))
+  (set! x (str "c"))
+  (println part)
+  (let-match ((pair first _) whole)
+    (println first)))

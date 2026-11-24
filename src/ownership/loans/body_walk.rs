@@ -370,11 +370,12 @@ mod tests {
     }
 
     #[test]
-    fn a_helper_with_a_written_borrowed_parameter_lends_nothing_yet() {
+    fn a_helper_result_borrowed_from_a_written_borrowed_parameter_holds_its_loan() {
         let source = LoanSource::new(
             "(defn head ((v (ref (vec i64)))) (at v 0))\n\n(defn main ()\n  (local v (vec 1 2))\n  (local r (head (ref v)))\n  (push! v 4)\n  (println r))",
         );
-        assert!(source.line_of("6:10 change").ends_with("no live loan"));
+        let line = source.line_of("6:10 change");
+        assert!(line.ends_with("`v` lent at 5:23, held by `r`"), "{line}");
     }
 
     #[test]
@@ -510,9 +511,18 @@ mod tests {
     }
 
     #[test]
-    fn a_helper_result_holds_no_loan() {
+    fn a_helper_result_holds_the_loan_of_the_argument_it_borrows_from() {
         let source = LoanSource::new(
             "(defn first-of (v) (at v 0))\n\n(defn main ()\n  (local v (vec 1 2))\n  (local r (first-of v))\n  (push! v 4)\n  (println r))",
+        );
+        let line = source.line_of("6:10 change");
+        assert!(line.ends_with("`v` lent at 5:22, held by `r`"), "{line}");
+    }
+
+    #[test]
+    fn a_helper_result_that_borrows_no_parameter_holds_no_loan() {
+        let source = LoanSource::new(
+            "(defn size-of (v) (len v))\n\n(defn main ()\n  (local v (vec 1 2))\n  (local n (size-of v))\n  (push! v 4)\n  (println n))",
         );
         assert!(source.line_of("6:10 change").ends_with("no live loan"));
     }

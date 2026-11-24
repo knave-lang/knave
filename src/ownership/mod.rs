@@ -23,6 +23,7 @@ mod lambda_parameters;
 #[cfg(test)]
 mod lambda_source;
 mod lent_borrows;
+mod lent_temporary;
 mod loans;
 mod local_borrows;
 mod modes;
@@ -53,7 +54,6 @@ mod rewrite;
 mod shrunk_parameters;
 mod slices;
 mod slots;
-mod statement_temporary;
 mod stored;
 mod stored_definitions;
 mod subtree;

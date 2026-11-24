@@ -1,0 +1,12 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn pick-first (a b)
+  (println (len b))
+  a)
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (pick-first (as-str s)
+                               (as-str (str "x")))))
+    (g)))

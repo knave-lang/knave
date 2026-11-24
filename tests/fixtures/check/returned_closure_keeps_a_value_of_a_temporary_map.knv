@@ -1,0 +1,7 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (g (greeter (unwrap (get (hash-map (str "a") (str "b"))
+                                (str "a")))))
+    (g)))

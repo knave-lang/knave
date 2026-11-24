@@ -1,6 +1,7 @@
 use rustc_hash::FxHashMap;
 
 use super::built_parts::BuiltParts;
+use super::changed_locals::ChangedLocals;
 use crate::core::BindingId;
 use crate::types::{
     TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
@@ -17,6 +18,7 @@ pub enum BoundLocal<'e> {
 
 pub struct BoundLocals<'b, 'p, 'e> {
     parts: &'b BuiltParts<'p>,
+    changed: ChangedLocals,
     locals: FxHashMap<BindingId, BoundLocal<'e>>,
 }
 
@@ -24,6 +26,7 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     pub fn in_argument(argument: &'e TypedExpr, parts: &'b BuiltParts<'p>) -> Self {
         let mut bound = Self {
             parts,
+            changed: ChangedLocals::in_value(argument),
             locals: FxHashMap::default(),
         };
         bound.collect(argument);
@@ -113,7 +116,7 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
 
     fn loop_binders(&mut self, body: &'e TypedLambda, arguments: &'e [TypedArgument]) {
         for (parameter, argument) in body.params.iter().zip(arguments) {
-            self.locals.insert(
+            self.bind_local(
                 parameter.binding,
                 BoundLocal::LoopBinder(parameter, &argument.value),
             );
@@ -124,8 +127,17 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     fn lets(&mut self, block: &'e TypedBlock) {
         for item in &block.items {
             if let TypedBodyItem::Let(binder, value) = item {
-                self.locals.insert(binder.binding, BoundLocal::Value(value));
+                self.bind_local(binder.binding, BoundLocal::Value(value));
             }
         }
+    }
+
+    fn bind_local(&mut self, binding: BindingId, local: BoundLocal<'e>) {
+        let local = if self.changed.contains(binding) {
+            BoundLocal::Unresolved
+        } else {
+            local
+        };
+        self.locals.insert(binding, local);
     }
 }

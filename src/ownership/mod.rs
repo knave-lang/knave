@@ -7,6 +7,7 @@ mod built_parts;
 mod call_result_sources;
 mod callers;
 mod captured_move;
+mod changed_locals;
 mod changes;
 mod checks;
 mod constant_values;

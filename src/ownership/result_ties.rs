@@ -56,14 +56,14 @@ impl<'p> ResultTies<'p> {
     fn function_ties(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> TemplateTies {
         if let Some(written) = Self::written_result(definition) {
             let lent = self.signature_lent(lambda, written);
-            return Self::whole_ties(lambda, written, lent);
+            return Self::without_partial_ties(lambda, written, lent);
         }
         let Some(result) = lambda.body.tail().map(|tail| &tail.ty) else {
             return TemplateTies::new(&[], &[]);
         };
         let mut lent = self.signature_lent(lambda, result);
         lent.extend(self.sharing_positions(lambda, result));
-        Self::whole_ties(lambda, result, lent)
+        Self::without_partial_ties(lambda, result, lent)
     }
 
     fn written_result(definition: &TypedDefinition) -> Option<&Type> {
@@ -75,7 +75,11 @@ impl<'p> ResultTies<'p> {
             .then_some(result.as_ref())
     }
 
-    fn whole_ties(lambda: &TypedLambda, result: &Type, mut lent: Vec<usize>) -> TemplateTies {
+    fn without_partial_ties(
+        lambda: &TypedLambda,
+        result: &Type,
+        mut lent: Vec<usize>,
+    ) -> TemplateTies {
         let tied = TiedParts::of_result(result);
         lent.retain(|position| !tied.ties_only_part_of(&lambda.params[*position].ty));
         TemplateTies::new(&lent, &[])

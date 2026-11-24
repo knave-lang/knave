@@ -2,7 +2,7 @@ use clap::Args;
 
 use super::agent_skill::AgentSkill;
 use super::git_setup::GitSetup;
-use super::github_workflow::GithubWorkflow;
+use super::github_checks::GithubChecks;
 use super::project_component::ProjectComponent;
 
 #[derive(Args, Default)]
@@ -31,7 +31,7 @@ impl NewComponents {
     fn offered(&self) -> [(bool, Box<dyn ProjectComponent>); 3] {
         [
             (self.skip_git, Box::new(GitSetup)),
-            (self.skip_github, Box::new(GithubWorkflow)),
+            (self.skip_github, Box::new(GithubChecks)),
             (self.skip_agent_skill, Box::new(AgentSkill)),
         ]
     }

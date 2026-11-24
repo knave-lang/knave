@@ -1,0 +1,6 @@
+(defn keeper (o)
+  (fn () (println (unwrap o))))
+
+(defn main ()
+  (let (g (keeper (loop (o (some (as-str (str "zz")))) o)))
+    (g)))

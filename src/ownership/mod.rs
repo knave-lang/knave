@@ -2,6 +2,7 @@ mod aliased_changes;
 mod aliases;
 mod borrowing_lambdas;
 mod bound_field_moves;
+mod bound_locals;
 mod call_result_sources;
 mod callers;
 mod captured_move;

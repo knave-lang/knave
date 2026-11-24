@@ -1,0 +1,8 @@
+(defn keeper (o)
+  (fn () (println (unwrap o))))
+
+(defn main ()
+  (let (g (keeper (match (some (as-str (str "zz")))
+                    ((some x) (some x))
+                    (none none))))
+    (g)))

@@ -1,3 +1,4 @@
+use super::bound_locals::{BoundLocal, BoundLocals};
 use super::call_result_sources::CallResultSources;
 use super::promoted_constants::PromotedConstants;
 use super::result_source::ResultSource;
@@ -25,32 +26,51 @@ impl<'p> LentTemporary<'p> {
         parameter: &TypedBinder,
         argument: &'e TypedExpr,
     ) -> Option<&'e TypedExpr> {
-        self.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])
+        let walk = ArgumentWalk {
+            lent: self,
+            bound: BoundLocals::in_argument(argument),
+        };
+        walk.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])
     }
+}
 
-    fn lent_by<'e>(&self, argument: &'e TypedExpr) -> Option<&'e TypedExpr> {
+struct ArgumentWalk<'w, 'p, 'e> {
+    lent: &'w LentTemporary<'p>,
+    bound: BoundLocals<'e>,
+}
+
+type Follow<'w, 'p, 'e> = fn(&ArgumentWalk<'w, 'p, 'e>, &'e TypedExpr) -> Option<&'e TypedExpr>;
+
+impl<'w, 'p, 'e> ArgumentWalk<'w, 'p, 'e> {
+    fn lent_by(&self, argument: &'e TypedExpr) -> Option<&'e TypedExpr> {
         let value = match &argument.kind {
             TypedExprKind::Borrow(_, value) => value,
             _ => argument,
         };
+        if let Some(found) = self.through_bound(value, Self::lent_by) {
+            return found;
+        }
         if value.ty.is_reference() {
             return self.borrowed_through(value);
         }
-        let owns_its_value = !value.is_place() && !self.constants.is_promoted(value);
+        let owns_its_value = !value.is_place() && !self.lent.constants.is_promoted(value);
         owns_its_value.then_some(value)
     }
 
-    fn held_in<'e>(&self, value: &'e TypedExpr) -> Option<&'e TypedExpr> {
+    fn held_in(&self, value: &'e TypedExpr) -> Option<&'e TypedExpr> {
         if value.ty.is_reference() {
             return self.borrowed_through(value);
         }
-        if !self.program.type_holds_borrow(&value.ty) {
+        if !self.lent.program.type_holds_borrow(&value.ty) {
             return None;
         }
-        if let Some(sources) = self.sources.of(value) {
+        if let Some(found) = self.through_bound(value, Self::held_in) {
+            return found;
+        }
+        if let Some(sources) = self.lent.sources.of(value) {
             return self.first_temporary(sources);
         }
-        if let Some(chosen) = ReturnedValues::new(self.program).chosen_values(value) {
+        if let Some(chosen) = self.chosen_values(value) {
             return chosen.into_iter().find_map(|value| self.held_in(value));
         }
         value
@@ -59,14 +79,35 @@ impl<'p> LentTemporary<'p> {
             .find_map(|child| self.held_in(child))
     }
 
-    fn borrowed_through<'e>(&self, reference: &'e TypedExpr) -> Option<&'e TypedExpr> {
+    fn borrowed_through(&self, reference: &'e TypedExpr) -> Option<&'e TypedExpr> {
+        if let Some(found) = self.through_bound(reference, Self::lent_by) {
+            return found;
+        }
         if let TypedExprKind::Borrow(..) = reference.kind {
             return self.lent_by(reference);
         }
-        self.first_temporary(self.sources.of(reference)?)
+        if let Some(chosen) = self.chosen_values(reference) {
+            return chosen.into_iter().find_map(|value| self.lent_by(value));
+        }
+        self.first_temporary(self.lent.sources.of(reference)?)
     }
 
-    fn first_temporary<'e>(
+    fn through_bound(
+        &self,
+        value: &'e TypedExpr,
+        same_mode: Follow<'w, 'p, 'e>,
+    ) -> Option<Option<&'e TypedExpr>> {
+        match self.bound.of(value)? {
+            BoundLocal::Value(bound) => Some(same_mode(self, bound)),
+            BoundLocal::Within(scrutinee) => Some(self.held_in(scrutinee)),
+        }
+    }
+
+    fn chosen_values(&self, value: &'e TypedExpr) -> Option<Vec<&'e TypedExpr>> {
+        ReturnedValues::new(self.lent.program).chosen_values(value)
+    }
+
+    fn first_temporary(
         &self,
         sources: impl IntoIterator<Item = ResultSource<'e>>,
     ) -> Option<&'e TypedExpr> {

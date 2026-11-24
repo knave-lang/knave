@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_temporary_a_loop_reference_points_into.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_a_temporary_a_loop_reference_points_into.knv:5:37
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+5 |   (let (g (greeter (loop (r (as-str (str "zz"))) r)))
+  |                                     ^^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

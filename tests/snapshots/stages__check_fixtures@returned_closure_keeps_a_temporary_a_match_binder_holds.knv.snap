@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_temporary_a_match_binder_holds.knv
+---
+error[L0520]: the result of `keeper` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_a_temporary_a_match_binder_holds.knv:5:40
+  |
+1 | (defn keeper (o)
+  |               - the returned closure keeps the borrow that `o` holds
+...
+5 |   (let (g (keeper (match (some (as-str (str "zz")))
+  |                                        ^^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

@@ -1,0 +1,6 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (greet (greeter (ref (str "ana"))))
+    (greet)))

@@ -12,7 +12,12 @@ use crate::types::{
 pub(super) struct ResultHeldParameters<'a> {
     program: &'a TypedProgram,
     definitions: &'a DefinitionTable<'a>,
-    open_callees: RefCell<Vec<BindingId>>,
+    callees: RefCell<FxHashMap<BindingId, CalleeHeld>>,
+}
+
+enum CalleeHeld {
+    Open,
+    Held(FxHashSet<BindingId>),
 }
 
 struct FunctionScope<'l> {
@@ -26,7 +31,7 @@ impl<'a> ResultHeldParameters<'a> {
         Self {
             program,
             definitions,
-            open_callees: RefCell::default(),
+            callees: RefCell::default(),
         }
     }
 
@@ -72,12 +77,7 @@ impl<'a> ResultHeldParameters<'a> {
             .definition(function)?
             .value
             .lambda_value()?;
-        if self.open_callees.borrow().contains(&function) {
-            return None;
-        }
-        self.open_callees.borrow_mut().push(function);
-        let held = self.of(lambda);
-        self.open_callees.borrow_mut().pop();
+        let held = self.callee_held(function, lambda)?;
         let held_arguments = lambda
             .params
             .iter()
@@ -86,6 +86,25 @@ impl<'a> ResultHeldParameters<'a> {
             .map(|(_, argument)| &argument.value)
             .collect();
         Some(held_arguments)
+    }
+
+    fn callee_held(
+        &self,
+        function: BindingId,
+        lambda: &TypedLambda,
+    ) -> Option<FxHashSet<BindingId>> {
+        if let Some(known) = self.callees.borrow().get(&function) {
+            return match known {
+                CalleeHeld::Open => None,
+                CalleeHeld::Held(held) => Some(held.clone()),
+            };
+        }
+        self.callees.borrow_mut().insert(function, CalleeHeld::Open);
+        let held = self.of(lambda);
+        self.callees
+            .borrow_mut()
+            .insert(function, CalleeHeld::Held(held.clone()));
+        Some(held)
     }
 
     fn collect_held(expr: &TypedExpr, held: &mut Vec<BindingId>) {

@@ -1,7 +1,9 @@
 use super::call_result_sources::CallResultSources;
 use super::promoted_constants::PromotedConstants;
 use super::result_source::{PassedArgument, ResultSource};
-use crate::types::{PositionTie, TypedBinder, TypedExpr, TypedExprKind, TypedProgram};
+use crate::types::{
+    PositionTie, ReturnedValues, TypedBinder, TypedExpr, TypedExprKind, TypedProgram,
+};
 
 pub struct LentTemporary<'p> {
     program: &'p TypedProgram,
@@ -51,10 +53,24 @@ impl<'p> LentTemporary<'p> {
         if let Some(sources) = self.sources.of(value) {
             return self.first_temporary(sources);
         }
+        if Self::chooses_its_value(value) {
+            return ReturnedValues::new(self.program)
+                .of_value(value)
+                .into_iter()
+                .find_map(|chosen| self.held_in(chosen));
+        }
         value
             .children()
             .into_iter()
             .find_map(|child| self.held_in(child))
+    }
+
+    fn chooses_its_value(value: &TypedExpr) -> bool {
+        match &value.kind {
+            TypedExprKind::Control(_) => true,
+            TypedExprKind::Call(callee, _) => matches!(callee.kind, TypedExprKind::Fn(_)),
+            _ => false,
+        }
     }
 
     fn borrowed_through<'e>(&self, reference: &'e TypedExpr) -> Option<&'e TypedExpr> {

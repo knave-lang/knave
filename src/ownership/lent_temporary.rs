@@ -1,7 +1,7 @@
 use super::call_result_sources::CallResultSources;
 use super::promoted_constants::PromotedConstants;
-use super::result_source::ResultSource;
-use crate::types::{PositionTie, Type, TypedBinder, TypedExpr, TypedExprKind, TypedProgram};
+use super::result_source::{PassedArgument, ResultSource};
+use crate::types::{PositionTie, TypedBinder, TypedExpr, TypedExprKind, TypedProgram};
 
 pub struct LentTemporary<'p> {
     program: &'p TypedProgram,
@@ -23,15 +23,10 @@ impl<'p> LentTemporary<'p> {
         parameter: &TypedBinder,
         argument: &'e TypedExpr,
     ) -> Option<&'e TypedExpr> {
-        self.lent_at(&parameter.ty, argument)
-    }
-
-    fn lent_at<'e>(&self, parameter: &Type, argument: &'e TypedExpr) -> Option<&'e TypedExpr> {
-        if parameter.is_reference() {
-            self.lent_by(argument)
-        } else {
-            self.held_in(argument)
-        }
+        self.first_temporary([ResultSource::kept_by_closure(PassedArgument {
+            parameter: &parameter.ty,
+            argument,
+        })])
     }
 
     fn lent_by<'e>(&self, argument: &'e TypedExpr) -> Option<&'e TypedExpr> {
@@ -69,7 +64,10 @@ impl<'p> LentTemporary<'p> {
         self.first_temporary(self.sources.of(reference)?)
     }
 
-    fn first_temporary<'e>(&self, sources: Vec<ResultSource<'e>>) -> Option<&'e TypedExpr> {
+    fn first_temporary<'e>(
+        &self,
+        sources: impl IntoIterator<Item = ResultSource<'e>>,
+    ) -> Option<&'e TypedExpr> {
         sources.into_iter().find_map(|source| match source.tie {
             PositionTie::Lent => self.lent_by(source.argument),
             PositionTie::Held | PositionTie::HeldBeneath => self.held_in(source.argument),

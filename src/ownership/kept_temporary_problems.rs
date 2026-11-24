@@ -1,10 +1,21 @@
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
+use crate::types::Type;
 
 #[derive(Clone, Copy)]
-pub enum ParameterMode {
-    Borrowed,
-    Owned,
+pub enum KeptBorrow {
+    OfParameter,
+    HeldByParameter,
+}
+
+impl KeptBorrow {
+    pub fn of(parameter: &Type) -> Self {
+        if parameter.is_reference() {
+            Self::OfParameter
+        } else {
+            Self::HeldByParameter
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -18,7 +29,7 @@ pub struct KeptTemporary<'n> {
     pub callee: &'n str,
     pub parameter: &'n str,
     pub parameter_span: Span,
-    pub parameter_mode: ParameterMode,
+    pub kept_borrow: KeptBorrow,
     pub kept_until: KeptUntil,
 }
 
@@ -36,7 +47,7 @@ impl KeptTemporaryProblems {
             callee,
             parameter,
             parameter_span,
-            parameter_mode,
+            kept_borrow,
             kept_until,
         } = kept;
         let wording = Self::wording(*kept_until);
@@ -47,17 +58,17 @@ impl KeptTemporaryProblems {
         )
         .with_label(Label::new(
             *parameter_span,
-            Self::kept_borrow(*parameter_mode, parameter),
+            Self::kept_borrow_label(*kept_borrow, parameter),
         ))
         .with_help(wording.help)
     }
 
-    fn kept_borrow(mode: ParameterMode, parameter: &str) -> String {
-        match mode {
-            ParameterMode::Borrowed => {
+    fn kept_borrow_label(kept: KeptBorrow, parameter: &str) -> String {
+        match kept {
+            KeptBorrow::OfParameter => {
                 format!("the returned closure keeps this borrow of `{parameter}`")
             }
-            ParameterMode::Owned => {
+            KeptBorrow::HeldByParameter => {
                 format!("the returned closure keeps the borrow that `{parameter}` holds")
             }
         }

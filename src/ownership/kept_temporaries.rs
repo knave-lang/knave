@@ -1,6 +1,4 @@
-use super::kept_temporary_problems::{
-    KeptTemporary, KeptTemporaryProblems, KeptUntil, ParameterMode,
-};
+use super::kept_temporary_problems::{KeptBorrow, KeptTemporary, KeptTemporaryProblems, KeptUntil};
 use super::lent_temporary::LentTemporary;
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
@@ -135,11 +133,7 @@ impl<'p> KeptTemporaries<'p> {
                 callee: bindings.get(call.called.function).name(),
                 parameter: bindings.get(parameter.binding).name(),
                 parameter_span: parameter.span,
-                parameter_mode: if parameter.ty.is_reference() {
-                    ParameterMode::Borrowed
-                } else {
-                    ParameterMode::Owned
-                },
+                kept_borrow: KeptBorrow::of(&parameter.ty),
                 kept_until: call.kept_until,
             }));
     }

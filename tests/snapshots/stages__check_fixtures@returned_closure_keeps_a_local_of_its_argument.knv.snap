@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_local_of_its_argument.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+ --> check/returned_closure_keeps_a_local_of_its_argument.knv:5:28
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+5 |   (let (g (greeter (let (x (str "zz")) (as-str x))))
+  |                            ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

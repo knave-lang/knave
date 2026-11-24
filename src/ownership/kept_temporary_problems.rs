@@ -19,6 +19,12 @@ impl KeptBorrow {
 }
 
 #[derive(Clone, Copy)]
+pub enum KeptValue {
+    Temporary,
+    BlockLocal,
+}
+
+#[derive(Clone, Copy)]
 pub enum KeptUntil {
     StatementEnd,
     FunctionReturn,
@@ -31,11 +37,17 @@ pub struct KeptTemporary<'n> {
     pub parameter_span: Span,
     pub kept_borrow: KeptBorrow,
     pub kept_until: KeptUntil,
+    pub kept_value: KeptValue,
 }
 
 struct KeptWording {
     dropped: &'static str,
     help: &'static str,
+}
+
+struct KeptValueWording {
+    noun: &'static str,
+    dropped: &'static str,
 }
 
 pub struct KeptTemporaryProblems;
@@ -49,18 +61,36 @@ impl KeptTemporaryProblems {
             parameter_span,
             kept_borrow,
             kept_until,
+            kept_value,
         } = kept;
         let wording = Self::wording(*kept_until);
+        let kept_value = Self::kept_value_wording(*kept_value, &wording);
         Diagnostic::error(
             DiagnosticCode::KEPT_TEMPORARY_ARGUMENT,
-            format!("the result of `{callee}` keeps a borrow of a temporary"),
-            Label::new(*argument, wording.dropped),
+            format!(
+                "the result of `{callee}` keeps a borrow of {}",
+                kept_value.noun
+            ),
+            Label::new(*argument, kept_value.dropped),
         )
         .with_label(Label::new(
             *parameter_span,
             Self::kept_borrow_label(*kept_borrow, parameter),
         ))
         .with_help(wording.help)
+    }
+
+    fn kept_value_wording(kept: KeptValue, wording: &KeptWording) -> KeptValueWording {
+        match kept {
+            KeptValue::Temporary => KeptValueWording {
+                noun: "a temporary",
+                dropped: wording.dropped,
+            },
+            KeptValue::BlockLocal => KeptValueWording {
+                noun: "a local of its argument",
+                dropped: "this value is dropped at the end of its block, while the result still borrows it",
+            },
+        }
     }
 
     fn kept_borrow_label(kept: KeptBorrow, parameter: &str) -> String {

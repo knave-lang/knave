@@ -1,6 +1,6 @@
 use super::call_result_sources::CallResultSources;
 use super::kept_temporary_problems::{KeptBorrow, KeptTemporary, KeptTemporaryProblems, KeptUntil};
-use super::lent_temporary::LentTemporary;
+use super::lent_temporary::{LentTemporary, LentValue};
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
 use crate::types::{
@@ -123,22 +123,23 @@ impl<'p> KeptTemporaries<'p> {
             if !kept.contains(&parameter.binding) {
                 continue;
             }
-            if let Some(temporary) = self.temporaries.lent_in(parameter, &argument.value) {
-                self.report(&call, parameter, temporary);
+            if let Some(lent) = self.temporaries.lent_in(parameter, &argument.value) {
+                self.report(&call, parameter, lent);
             }
         }
     }
 
-    fn report(&mut self, call: &OutlivingCall, parameter: &TypedBinder, temporary: &TypedExpr) {
+    fn report(&mut self, call: &OutlivingCall, parameter: &TypedBinder, lent: LentValue) {
         let bindings = &self.program.bindings;
         self.problems
             .push(KeptTemporaryProblems::kept_temporary(&KeptTemporary {
-                argument: temporary.span,
+                argument: lent.value.span,
                 callee: bindings.get(call.called.function).name(),
                 parameter: bindings.get(parameter.binding).name(),
                 parameter_span: parameter.span,
                 kept_borrow: KeptBorrow::of(&parameter.ty),
                 kept_until: call.kept_until,
+                kept_value: lent.kind,
             }));
     }
 }

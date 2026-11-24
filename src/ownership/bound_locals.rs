@@ -32,6 +32,12 @@ impl<'e> BoundLocals<'e> {
         }
     }
 
+    pub fn owns(&self, value: &TypedExpr) -> bool {
+        self.locals
+            .values()
+            .any(|local| matches!(local, BoundLocal::Value(bound) if std::ptr::eq(*bound, value)))
+    }
+
     fn collect(&mut self, expr: &'e TypedExpr) {
         self.bind(expr);
         for child in expr.children() {

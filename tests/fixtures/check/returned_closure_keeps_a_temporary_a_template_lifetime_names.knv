@@ -1,0 +1,14 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(def second-of
+  (rust "{1}"
+    (where (('a))
+      (fn ((ref str) (ref 'a str))
+        (ref 'a str)))))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (second-of (as-str s)
+                              (as-str (str "x")))))
+    (g)))

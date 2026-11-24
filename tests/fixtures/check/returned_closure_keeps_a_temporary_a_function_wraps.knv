@@ -1,0 +1,10 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn wrap (a n)
+  (println n)
+  (some a))
+
+(defn main ()
+  (let (g (greeter (unwrap (wrap (as-str (str "x")) 1))))
+    (g)))

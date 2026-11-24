@@ -6,7 +6,7 @@ use super::tied_parts::TiedParts;
 use crate::core::BindingId;
 use crate::types::{
     DefinitionTable, Lifetime, ParameterRole, Regions, ResultRegions, TemplateTies, Type,
-    TypeLifetimes, TypedExpr, TypedLambda, TypedProgram,
+    TypeLifetimes, TypedDefinition, TypedExpr, TypedLambda, TypedProgram,
 };
 
 pub struct ResultTies<'p> {
@@ -25,9 +25,8 @@ impl<'p> ResultTies<'p> {
     }
 
     pub fn of(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        let function = DefinitionTable::called_global(callee);
-        match function.zip(self.definitions.called_lambda(callee)) {
-            Some((function, lambda)) => Some(self.remembered_ties(function, lambda)),
+        match self.called_function(callee) {
+            Some((definition, lambda)) => Some(self.remembered_ties(definition, lambda)),
             None => self
                 .program
                 .template_borrows
@@ -35,19 +34,24 @@ impl<'p> ResultTies<'p> {
         }
     }
 
-    fn remembered_ties(&self, function: BindingId, lambda: &TypedLambda) -> TemplateTies {
-        if let Some(known) = self.ties_by_function.borrow().get(&function) {
+    fn called_function(&self, callee: &TypedExpr) -> Option<(&'p TypedDefinition, &'p TypedLambda)> {
+        let definition = self.definitions.called_definition(callee)?;
+        Some((definition, definition.value.lambda_value()?))
+    }
+
+    fn remembered_ties(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> TemplateTies {
+        if let Some(known) = self.ties_by_function.borrow().get(&definition.binding) {
             return known.clone();
         }
-        let ties = self.function_ties(function, lambda);
+        let ties = self.function_ties(definition, lambda);
         self.ties_by_function
             .borrow_mut()
-            .insert(function, ties.clone());
+            .insert(definition.binding, ties.clone());
         ties
     }
 
-    fn function_ties(&self, function: BindingId, lambda: &TypedLambda) -> TemplateTies {
-        if let Some(written) = self.written_result(function) {
+    fn function_ties(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> TemplateTies {
+        if let Some(written) = Self::written_result(definition) {
             let lent = self.signature_lent(lambda, written);
             return Self::whole_ties(lambda, written, lent);
         }
@@ -59,8 +63,8 @@ impl<'p> ResultTies<'p> {
         Self::whole_ties(lambda, result, lent)
     }
 
-    fn written_result(&self, function: BindingId) -> Option<&'p Type> {
-        let Type::Function(_, _, result) = &self.definitions.definition(function)?.value.ty else {
+    fn written_result(definition: &TypedDefinition) -> Option<&Type> {
+        let Type::Function(_, _, result) = &definition.value.ty else {
             return None;
         };
         Self::names_written_lifetimes(result).then_some(result.as_ref())

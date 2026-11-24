@@ -67,9 +67,9 @@ impl ProjectInspection {
         terminal: &Terminal,
         project: Option<&LocatedProject>,
     ) -> Option<ProgramFile> {
-        let entries = project?.entry_layout();
+        let layout = project?.entry_layout();
         let checked = terminal.source_report().canonical_files_from(0);
-        entries.library_root_outside(&checked)
+        layout.library_root_outside(&checked)
     }
 
     fn inspect_tasks(

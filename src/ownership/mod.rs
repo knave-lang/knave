@@ -257,7 +257,7 @@ impl OwnershipChecker {
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));
         let definitions = DefinitionTable::of(program);
-        KeptTemporaries::new(program, &definitions, &program.ownership.regions)
+        KeptTemporaries::new(program, &definitions)
             .check()
             .into_iter()
             .for_each(|diagnostic| diagnostics.push(diagnostic));

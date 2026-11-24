@@ -1,23 +1,17 @@
 use super::recorded_ties::RecordedTies;
 use super::result_source::ResultSource;
-use crate::types::{DefinitionTable, Regions, TypedExpr, TypedExprKind, TypedProgram};
+use crate::types::{DefinitionTable, TypedExpr, TypedExprKind, TypedProgram};
 
 pub struct CallResultSources<'p> {
     program: &'p TypedProgram,
-    definitions: &'p DefinitionTable<'p>,
-    regions: &'p Regions,
+    ties: RecordedTies<'p, 'p>,
 }
 
 impl<'p> CallResultSources<'p> {
-    pub fn new(
-        program: &'p TypedProgram,
-        definitions: &'p DefinitionTable<'p>,
-        regions: &'p Regions,
-    ) -> Self {
+    pub fn new(program: &'p TypedProgram, definitions: &'p DefinitionTable<'p>) -> Self {
         Self {
             program,
-            definitions,
-            regions,
+            ties: RecordedTies::new(program, definitions),
         }
     }
 
@@ -25,7 +19,7 @@ impl<'p> CallResultSources<'p> {
         let TypedExprKind::Call(callee, arguments) = &call.kind else {
             return None;
         };
-        let ties = RecordedTies::new(self.program, self.definitions, self.regions).of(callee)?;
+        let ties = self.ties.of(callee)?;
         let sources = arguments
             .iter()
             .enumerate()

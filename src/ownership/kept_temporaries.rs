@@ -24,18 +24,14 @@ struct OutlivingCall<'p> {
 }
 
 impl<'p> KeptTemporaries<'p> {
-    pub fn new(
-        program: &'p TypedProgram,
-        definitions: &'p DefinitionTable<'p>,
-        regions: &'p Regions,
-    ) -> Self {
+    pub fn new(program: &'p TypedProgram, definitions: &'p DefinitionTable<'p>) -> Self {
         Self {
             program,
             definitions,
-            regions,
+            regions: &program.ownership.regions,
             temporaries: LentTemporary::new(
                 program,
-                CallResultSources::new(program, definitions, regions),
+                CallResultSources::new(program, definitions),
                 BuiltParts::new(program, definitions),
             ),
             problems: Vec::new(),

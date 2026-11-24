@@ -1,4 +1,4 @@
-use super::{ExpressionForm, SelflessCall, VariableTyping};
+use super::{ExpressionForm, VariableTyping};
 use crate::core::{BindingId, BindingKind};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
@@ -41,13 +41,8 @@ impl VariableReference {
         if context.is_unchecked(self.binding) {
             return Err(TypeProblems::compile_time_only(name, self.span));
         }
-        if let Some(method) = context.selfless_method(self.binding) {
-            return Err(context.selfless_method_problem(SelflessCall {
-                binding: self.binding,
-                method,
-                name,
-                span: self.span,
-            }));
+        if let Some(problem) = context.selfless_method_problem(self.binding, name, self.span) {
+            return Err(problem);
         }
         Ok(self.typed(
             TypedLeaf::Global(self.binding),
@@ -90,17 +85,14 @@ mod tests {
     use rustc_hash::FxHashMap;
 
     use super::VariableReference;
-    use crate::core::{
-        BindingId, BindingKind, ModuleId, PrimitiveType, TraitMethod, TypeExpr, TypeExprKind,
-    };
+    use crate::core::{BindingId, BindingKind, ModuleId, PrimitiveType};
     use crate::diagnostic::Diagnostic;
     use crate::source::Span;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{
-        BindingNames, ExpressionForm, GlobalReferences, LocalScope, SelflessCall, VariantArms,
+        Bindings, ExpressionForm, GlobalReferences, LocalTypes, VariantArms,
     };
     use crate::types::problems::TypeProblems;
-    use crate::types::selfless_method::SelflessMethod;
     use crate::types::ty::Type;
     use crate::types::typed::TypedExpr;
     use crate::types::variant_arm_reference::VariantArmReference;
@@ -155,23 +147,9 @@ mod tests {
         fn type_of(&mut self) -> Option<Type> {
             self.reference().ok().map(|typed| typed.ty)
         }
-
-        fn selfless_method() -> SelflessMethod {
-            let signature = TypeExpr::new(
-                TypeExprKind::Primitive(PrimitiveType::I64),
-                FormFixtures::span(),
-            );
-            let method = TraitMethod {
-                binding: Self::VARIABLE,
-                signature,
-                default: None,
-            };
-            SelflessMethod::of(&method, Self::VARIANT, Self::OUTER)
-                .unwrap_or_else(|| panic!("a signature without self is selfless"))
-        }
     }
 
-    impl BindingNames for VariableFixture {
+    impl Bindings for VariableFixture {
         fn binding_name(&self, _binding: BindingId) -> String {
             "name".to_string()
         }
@@ -187,9 +165,7 @@ mod tests {
         }
     }
 
-    impl LocalScope for VariableFixture {
-        fn bind_local(&mut self, _binding: BindingId, _ty: Type) {}
-
+    impl LocalTypes for VariableFixture {
         fn local_type(&self, _binding: BindingId) -> Type {
             Self::local_type()
         }
@@ -200,12 +176,13 @@ mod tests {
             self.unchecked
         }
 
-        fn selfless_method(&self, _binding: BindingId) -> Option<SelflessMethod> {
-            self.selfless.then(Self::selfless_method)
-        }
-
-        fn selfless_method_problem(&self, call: SelflessCall<'_>) -> Diagnostic {
-            TypeProblems::quote_at_runtime(call.span)
+        fn selfless_method_problem(
+            &self,
+            _binding: BindingId,
+            _name: &str,
+            span: Span,
+        ) -> Option<Diagnostic> {
+            self.selfless.then(|| TypeProblems::quote_at_runtime(span))
         }
 
         fn global_type(&mut self, _binding: BindingId, _span: Span) -> Type {

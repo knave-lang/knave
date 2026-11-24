@@ -1,8 +1,8 @@
-use super::{BindingNames, GlobalReferences, LocalScope, VariantArms};
+use super::{Bindings, GlobalReferences, LocalTypes, VariantArms};
 
 pub(in crate::types) trait VariableTyping:
-    BindingNames + VariantArms + LocalScope + GlobalReferences
+    Bindings + VariantArms + LocalTypes + GlobalReferences
 {
 }
 
-impl<C> VariableTyping for C where C: BindingNames + VariantArms + LocalScope + GlobalReferences {}
+impl<C> VariableTyping for C where C: Bindings + VariantArms + LocalTypes + GlobalReferences {}

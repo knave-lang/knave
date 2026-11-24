@@ -123,8 +123,4 @@ impl LocalScope for BodyFixture {
     fn bind_local(&mut self, binding: BindingId, ty: Type) {
         self.bound.push((binding, ty));
     }
-
-    fn local_type(&self, _binding: BindingId) -> Type {
-        Type::bool()
-    }
 }

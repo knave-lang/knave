@@ -48,14 +48,6 @@ impl<'p> CallResultSources<'p> {
         Some(sources)
     }
 
-    fn lambda_parameters(lambda: &TypedLambda) -> Vec<&Type> {
-        lambda
-            .params
-            .iter()
-            .map(|parameter| &parameter.ty)
-            .collect()
-    }
-
     fn function_ties(&self, called: &CalledFunction) -> TemplateTies {
         let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
         let parameters = &called.lambda.params;
@@ -66,15 +58,31 @@ impl<'p> CallResultSources<'p> {
             .map(|(position, _)| position)
             .collect();
         if let Some(result) = called.lambda.body.tail().map(|tail| &tail.ty) {
-            lent.extend(Self::signature_lent(called.lambda, result));
+            lent.extend(self.signature_lent(called.lambda, result));
             let tied = TiedParts::of_result(result);
             lent.retain(|position| !tied.ties_only_part_of(&parameters[*position].ty));
         }
         TemplateTies::new(&lent, &[])
     }
 
-    fn signature_lent(lambda: &TypedLambda, result: &Type) -> Vec<usize> {
-        let parameters = Self::lambda_parameters(lambda);
-        TemplateTies::lent_positions(&parameters, result).unwrap_or_default()
+    fn signature_lent(&self, lambda: &TypedLambda, result: &Type) -> Vec<usize> {
+        let lending = self.lending_parameters(lambda);
+        let types: Vec<&Type> = lending.iter().map(|(_, ty)| *ty).collect();
+        TemplateTies::lent_positions(&types, result)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|index| lending[index].0)
+            .collect()
+    }
+
+    fn lending_parameters<'l>(&self, lambda: &'l TypedLambda) -> Vec<(usize, &'l Type)> {
+        let left_out = self.regions.of(ParameterRole::LeftOutOfResult, lambda);
+        lambda
+            .params
+            .iter()
+            .enumerate()
+            .filter(|(_, parameter)| !left_out.contains(&parameter.binding))
+            .map(|(position, parameter)| (position, &parameter.ty))
+            .collect()
     }
 }

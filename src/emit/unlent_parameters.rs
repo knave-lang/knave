@@ -1,7 +1,9 @@
 use super::problems::EmitProblems;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
-use crate::types::{CopyRules, ParameterCopy, TypedBinder, TypedLambda, TypedProgram};
+use crate::types::{
+    CopyRules, ParameterCopy, ParameterRole, TypedBinder, TypedLambda, TypedProgram,
+};
 
 pub struct UnlentParameters<'a> {
     program: &'a TypedProgram,
@@ -54,29 +56,17 @@ impl<'a> UnlentParameters<'a> {
     }
 
     fn unlent_parameters(&self) -> Vec<BindingId> {
-        let candidates: Vec<&TypedBinder> = self
-            .lambda
+        let left_out = self
+            .program
+            .ownership
+            .regions
+            .of(ParameterRole::LeftOutOfResult, self.lambda);
+        self.lambda
             .params
             .iter()
-            .filter(|param| self.may_leave_out(param))
-            .collect();
-        if candidates.is_empty() {
-            return Vec::new();
-        }
-        let kept = self.program.ownership.regions.kept_by_result(self.lambda);
-        candidates
-            .into_iter()
             .map(|param| param.binding)
-            .filter(|binding| !kept.contains(binding))
+            .filter(|binding| left_out.contains(binding))
             .collect()
-    }
-
-    fn may_leave_out(&self, param: &TypedBinder) -> bool {
-        if self.changes(param) {
-            self.result_cannot_hold(param)
-        } else {
-            self.lambda.returns_closure() && self.program.type_holds_borrow(&param.ty)
-        }
     }
 
     fn changes(&self, param: &TypedBinder) -> bool {
@@ -84,10 +74,6 @@ impl<'a> UnlentParameters<'a> {
             .ownership
             .parameter_modes
             .changes(param.binding)
-    }
-
-    fn result_cannot_hold(&self, param: &TypedBinder) -> bool {
-        self.lambda.returns_closure() || self.copy_rules().is_copy(param.ty.referent())
     }
 
     fn copy_rules(&self) -> CopyRules<'_> {

@@ -28,7 +28,7 @@ impl LonePreludeModule {
         })
     }
 
-    pub(super) fn expanding(
+    fn expanding(
         sources: &mut SourceMap,
         module_sources: ModuleSources,
         path: &ModulePath,
@@ -63,5 +63,52 @@ impl LonePreludeModule {
             .filter(|binding| binding.kind() == BindingKind::Macro(self.module))
             .map(|binding| binding.name().to_string())
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::LonePreludeModule;
+    use crate::core::ModulePath;
+    use crate::diagnostic::{DiagnosticCode, Diagnostics};
+    use crate::modules::ModuleSources;
+    use crate::source::SourceMap;
+
+    struct LonePreludeFixture;
+
+    impl LonePreludeFixture {
+        const BROKEN: &str = "../tests/fixtures/expand/broken_project_file";
+
+        fn expanding(module: &str) -> Result<LonePreludeModule, Diagnostics> {
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(Self::BROKEN);
+            let module_sources = ModuleSources::new(root.clone(), root);
+            let mut sources = SourceMap::default();
+            LonePreludeModule::expanding(&mut sources, module_sources, &ModulePath::new(module))
+        }
+
+        fn codes(failure: Result<LonePreludeModule, Diagnostics>) -> Vec<DiagnosticCode> {
+            let Err(problems) = failure else {
+                return Vec::new();
+            };
+            problems
+                .in_source_order()
+                .into_iter()
+                .filter_map(|problem| problem.code().cloned())
+                .collect()
+        }
+    }
+
+    #[test]
+    fn a_lone_prelude_module_with_an_error_fails() {
+        let codes = LonePreludeFixture::codes(LonePreludeFixture::expanding("project-file"));
+        assert_eq!(codes, [DiagnosticCode::UNBOUND_NAME]);
+    }
+
+    #[test]
+    fn a_lone_prelude_module_that_cannot_load_fails() {
+        let codes = LonePreludeFixture::codes(LonePreludeFixture::expanding("absent"));
+        assert_eq!(codes, [DiagnosticCode::UNKNOWN_MODULE]);
     }
 }

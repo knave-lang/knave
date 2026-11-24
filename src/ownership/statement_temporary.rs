@@ -85,7 +85,7 @@ impl<'p> StatementTemporary<'p> {
             .enumerate()
             .filter(|(position, (parameter, _))| match &flowing {
                 Some(flowing) => flowing.contains(position),
-                None => self.lends_borrow(parameter),
+                None => self.program.lends_borrow(parameter),
             })
             .find_map(|(_, (parameter, argument))| self.kept_at(parameter, &argument.value))
     }
@@ -105,9 +105,5 @@ impl<'p> StatementTemporary<'p> {
             .map(|(position, _)| position)
             .collect();
         Some(positions)
-    }
-
-    fn lends_borrow(&self, parameter: &Type) -> bool {
-        parameter.is_reference() || self.program.type_holds_borrow(parameter)
     }
 }

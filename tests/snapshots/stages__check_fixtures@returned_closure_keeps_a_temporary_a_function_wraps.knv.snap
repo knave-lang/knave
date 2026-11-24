@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_temporary_a_function_wraps.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a temporary
+ --> check/returned_closure_keeps_a_temporary_a_function_wraps.knv:9:42
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+9 |   (let (g (greeter (unwrap (wrap (as-str (str "x")) 1))))
+  |                                          ^^^^^^^^^ this temporary is dropped at the end of the statement
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation

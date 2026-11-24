@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, ModuleId};
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct ProgramReach {
     pub main: Option<BindingId>,
     pub reached: Vec<BindingId>,

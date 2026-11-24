@@ -153,7 +153,7 @@ impl OwnershipChecker {
     pub fn record_regions(program: &mut TypedProgram) {
         let definitions = DefinitionTable::of(program);
         let reaches = ReachSearch::of_main_and_user_definitions(program, &definitions);
-        let regions = RegionRecord::of(program, &definitions, &reaches.user_definitions);
+        let regions = RegionRecord::of(program, &definitions, &reaches.from_user_definitions);
         program.ownership.reach = reaches.main;
         program.ownership.regions = regions;
     }

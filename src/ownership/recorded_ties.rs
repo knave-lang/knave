@@ -56,13 +56,10 @@ impl<'p, 'd> RecordedTies<'p, 'd> {
     }
 
     fn lending_parameters<'l>(&self, lambda: &'l TypedLambda) -> Vec<(usize, &'l Type)> {
-        let left_out = self.regions.of(ParameterRole::LeftOutOfResult, lambda);
-        lambda
-            .params
-            .iter()
-            .enumerate()
-            .filter(|(_, parameter)| !left_out.contains(&parameter.binding))
-            .map(|(position, parameter)| (position, &parameter.ty))
+        self.regions
+            .lending_positions(lambda)
+            .into_iter()
+            .map(|position| (position, &lambda.params[position].ty))
             .collect()
     }
 }

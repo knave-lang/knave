@@ -1246,13 +1246,12 @@ impl<'a> ItemEmitter<'a> {
     }
 
     fn lending_parameters(&self, lambda: &TypedLambda, parameters: &[Type]) -> Vec<Type> {
-        let unlent = self.unlent(lambda);
-        lambda
-            .params
-            .iter()
-            .zip(parameters)
-            .filter(|(param, _)| unlent.lends(param.binding))
-            .map(|(_, parameter)| parameter.clone())
+        self.program
+            .ownership
+            .regions
+            .lending_positions(lambda)
+            .into_iter()
+            .filter_map(|position| parameters.get(position).cloned())
             .collect()
     }
 

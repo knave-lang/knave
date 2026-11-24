@@ -32,6 +32,7 @@ mod role_problem;
 mod section;
 mod section_names;
 mod vocabulary;
+mod written_entries;
 
 use std::path::PathBuf;
 
@@ -55,6 +56,7 @@ pub use reader::ProjectReader;
 pub use release_version::ReleaseVersion;
 pub use section::Section;
 pub use vocabulary::ProjectVocabulary;
+pub(crate) use written_entries::WrittenEntries;
 
 use crate::source::Span;
 

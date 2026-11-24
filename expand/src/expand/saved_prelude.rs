@@ -20,9 +20,7 @@ impl SavedPrelude {
         ProjectFileModule::expanded()
             .vocabulary()
             .with_lint_defaults(&lint.notes(LintDefaults::NOTE))
-            .unwrap_or_else(|problem| {
-                panic!("{} {}", lint.quoted_call(problem.site()), problem.fault())
-            })
+            .unwrap_or_else(|problem| panic!("{}", problem.message(&lint)))
     }
 
     pub fn state(saved: &'static [u8]) -> Result<PreludeState, UnreadablePrelude> {

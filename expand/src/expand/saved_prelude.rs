@@ -16,14 +16,12 @@ impl SavedPrelude {
     }
 
     fn vocabulary_with_defaults() -> ProjectVocabulary {
+        let lint = LonePreludeModule::expanded(&ModulePath::new(ModuleSources::LINT));
         ProjectFileModule::expanded()
             .vocabulary()
-            .with_lint_defaults(
-                &LonePreludeModule::expanded(&ModulePath::new(ModuleSources::LINT))
-                    .notes(LintDefaults::NOTE),
-            )
+            .with_lint_defaults(&lint.notes(LintDefaults::NOTE))
             .unwrap_or_else(|problem| {
-                panic!("prelude/lint states a lint default wrongly: {problem:?}")
+                panic!("{} {}", lint.quoted_call(problem.site()), problem.fault())
             })
     }
 

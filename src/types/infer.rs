@@ -1077,24 +1077,13 @@ impl TypeChecker {
         if boxed.is_none() {
             self.expect_call_result(expected, &result, span)?;
         }
-        let (callee, typed_arguments) =
-            self.infer_call_arguments(callee, &parameters, arguments)?;
+        let typed_arguments = self.type_arguments(Some(&callee), &parameters, arguments)?;
         let call = TypedExpr {
             kind: TypedExprKind::Call(Box::new(callee), typed_arguments),
             ty: result,
             span,
         };
         self.finish_call(call, boxed, expected, span)
-    }
-
-    fn infer_call_arguments(
-        &mut self,
-        callee: TypedExpr,
-        parameters: &[Type],
-        arguments: &[Expr],
-    ) -> Result<(TypedExpr, Vec<TypedArgument>), Diagnostic> {
-        let typed_arguments = self.type_arguments(Some(&callee), parameters, arguments)?;
-        Ok((callee, typed_arguments))
     }
 
     fn finish_call(

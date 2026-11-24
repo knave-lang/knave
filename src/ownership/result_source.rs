@@ -28,8 +28,7 @@ impl<'e> ResultSource<'e> {
         passed: PassedArgument<'_, 'e>,
         program: &TypedProgram,
     ) -> Self {
-        let lends_itself = passed.parameter.is_reference()
-            && !program.type_holds_borrow(passed.argument.ty.referent());
+        let lends_itself = !program.type_holds_borrow(passed.argument.ty.referent());
         let tie = match tie {
             PositionTie::Lent if !lends_itself => PositionTie::Held,
             tie => tie,

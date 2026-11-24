@@ -9,7 +9,7 @@ use crate::types::{
 
 pub struct Reaches {
     pub main: ProgramReach,
-    pub user_definitions: ProgramReach,
+    pub from_user_definitions: FxHashSet<BindingId>,
 }
 
 pub struct ReachSearch<'p, 'd> {
@@ -25,13 +25,13 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
         definitions: &'d DefinitionTable<'p>,
     ) -> Reaches {
         let mut search = Self::from_main(program, definitions);
-        let main = search.reach.clone();
+        let main = std::mem::take(&mut search.reach);
         for root in Self::user_definitions(program) {
             search.visit_definition(root);
         }
         Reaches {
             main,
-            user_definitions: search.reach,
+            from_user_definitions: search.visited,
         }
     }
 
@@ -347,6 +347,6 @@ mod tests {
         let sum = fixture.definition("sum");
         let reaches = fixture.reaches();
         assert!(!reaches.main.reached.contains(&sum));
-        assert!(reaches.user_definitions.reached.contains(&sum));
+        assert!(reaches.from_user_definitions.contains(&sum));
     }
 }

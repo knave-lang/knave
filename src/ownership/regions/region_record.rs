@@ -6,10 +6,9 @@ use super::region_rules::RegionRules;
 use super::result_borrows::ResultBorrows;
 use super::result_held_parameters::ResultHeldParameters;
 use crate::core::BindingId;
-use crate::modules::ModuleSources;
 use crate::types::{
-    DefinitionTable, ParameterRole, ProgramReach, RecordedClosures, Regions, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedLambda, TypedProgram,
+    DefinitionTable, ParameterRole, RecordedClosures, Regions, TypedDefinition, TypedExpr,
+    TypedExprKind, TypedLambda, TypedProgram,
 };
 
 pub struct RegionRecord<'a> {
@@ -24,7 +23,7 @@ impl RegionRecord<'_> {
     pub fn of(
         program: &TypedProgram,
         definitions: &DefinitionTable<'_>,
-        reach: &ProgramReach,
+        covered: &FxHashSet<BindingId>,
     ) -> Regions {
         let mut record = RegionRecord {
             program,
@@ -33,26 +32,13 @@ impl RegionRecord<'_> {
             left_out: LeftOutParameters::new(program),
             regions: Regions::default(),
         };
-        for definition in Self::covered(program, reach) {
+        for definition in covered
+            .iter()
+            .filter_map(|binding| definitions.definition(*binding))
+        {
             record.definition(definition);
         }
         record.regions
-    }
-
-    fn covered<'p>(program: &'p TypedProgram, reach: &ProgramReach) -> Vec<&'p TypedDefinition> {
-        let reached: FxHashSet<BindingId> = reach.reached.iter().copied().collect();
-        let reached = &reached;
-        program
-            .modules
-            .iter()
-            .flat_map(|module| {
-                let user = !ModuleSources::is_prelude(&module.path);
-                module
-                    .definitions
-                    .iter()
-                    .filter(move |definition| user || reached.contains(&definition.binding))
-            })
-            .collect()
     }
 
     fn definition(&mut self, definition: &TypedDefinition) {

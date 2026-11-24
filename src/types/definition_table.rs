@@ -2,7 +2,9 @@ use rustc_hash::FxHashMap;
 
 use super::called_function::CalledFunction;
 use super::definition_entry::DefinitionEntry;
-use super::typed::{TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram};
+use super::typed::{
+    TypedDefinition, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
+};
 use crate::core::BindingId;
 
 pub struct DefinitionTable<'p> {
@@ -40,14 +42,22 @@ impl<'p> DefinitionTable<'p> {
         let TypedExprKind::Call(callee, arguments) = &call.kind else {
             return None;
         };
-        let TypedExprKind::Leaf(TypedLeaf::Global(function)) = callee.kind else {
-            return None;
-        };
-        let lambda = self.definition(function)?.value.lambda_value()?;
         Some(CalledFunction {
-            function,
-            lambda,
+            function: Self::called_global(callee)?,
+            lambda: self.called_lambda(callee)?,
             arguments,
         })
+    }
+
+    pub fn called_lambda(&self, callee: &TypedExpr) -> Option<&'p TypedLambda> {
+        let function = Self::called_global(callee)?;
+        self.definition(function)?.value.lambda_value()
+    }
+
+    fn called_global(callee: &TypedExpr) -> Option<BindingId> {
+        match callee.kind {
+            TypedExprKind::Leaf(TypedLeaf::Global(function)) => Some(function),
+            _ => None,
+        }
     }
 }

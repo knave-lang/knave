@@ -6,7 +6,8 @@ use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
 use crate::types::{
     DefinitionTable, Regions, ReturnedValues, TypedArgument, TypedBinder, TypedBlock,
-    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
+    TypedProgram,
 };
 
 pub struct KeptTemporaries<'p> {
@@ -60,23 +61,27 @@ impl<'p> KeptTemporaries<'p> {
                 self.block(&body.body);
             }
             TypedExprKind::Recur(arguments) => self.bound_arguments(arguments),
-            TypedExprKind::Fn(lambda) => {
-                self.block(&lambda.body);
-                if let Some(tail) = lambda.body.tail() {
-                    self.outliving(tail, KeptUntil::FunctionReturn);
-                }
-            }
+            TypedExprKind::Fn(lambda) => self.lambda(lambda),
             TypedExprKind::Control(TypedControl::Block(block)) => self.block(block),
-            TypedExprKind::Control(TypedControl::Match(matched)) => {
-                self.walk(&matched.value);
-                for arm in &matched.arms {
-                    self.block(&arm.body);
-                }
-            }
+            TypedExprKind::Control(TypedControl::Match(matched)) => self.matched(matched),
             _ => expr
                 .children()
                 .into_iter()
                 .for_each(|child| self.walk(child)),
+        }
+    }
+
+    fn lambda(&mut self, lambda: &'p TypedLambda) {
+        self.block(&lambda.body);
+        if let Some(tail) = lambda.body.tail() {
+            self.outliving(tail, KeptUntil::FunctionReturn);
+        }
+    }
+
+    fn matched(&mut self, matched: &'p TypedMatch) {
+        self.walk(&matched.value);
+        for arm in &matched.arms {
+            self.block(&arm.body);
         }
     }
 

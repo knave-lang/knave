@@ -2,9 +2,14 @@ use rustc_hash::FxHashSet;
 
 use super::promoted_constants::PromotedConstants;
 use crate::types::{
-    DefinitionTable, ParameterRole, Regions, Type, TypedBinder, TypedExpr, TypedExprKind,
-    TypedProgram,
+    CalledFunction, DefinitionTable, ParameterRole, Regions, Type, TypedBinder, TypedExpr,
+    TypedExprKind, TypedProgram,
 };
+
+enum ResultSources {
+    Known(FxHashSet<usize>),
+    ByType,
+}
 
 pub struct StatementTemporary<'p> {
     program: &'p TypedProgram,
@@ -78,32 +83,34 @@ impl<'p> StatementTemporary<'p> {
         let Type::Function(_, parameters, _) = &callee.ty else {
             return None;
         };
-        let flowing = self.flowing_positions(reference);
+        let sources = self.result_sources(reference);
         parameters
             .iter()
             .zip(arguments)
             .enumerate()
-            .filter(|(position, (parameter, _))| match &flowing {
-                Some(flowing) => flowing.contains(position),
-                None => self.program.lends_borrow(parameter),
+            .filter(|(position, (parameter, _))| match &sources {
+                ResultSources::Known(positions) => positions.contains(position),
+                ResultSources::ByType => self.program.lends_borrow(parameter),
             })
             .find_map(|(_, (parameter, argument))| self.kept_at(parameter, &argument.value))
     }
 
-    fn flowing_positions(&self, call: &TypedExpr) -> Option<FxHashSet<usize>> {
-        let called = self.definitions.called_function(call)?;
-        let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
-        if flows.is_empty() {
-            return None;
+    fn result_sources(&self, call: &TypedExpr) -> ResultSources {
+        match self.definitions.called_function(call) {
+            Some(called) => ResultSources::Known(self.flowing_positions(&called)),
+            None => ResultSources::ByType,
         }
-        let positions = called
+    }
+
+    fn flowing_positions(&self, called: &CalledFunction) -> FxHashSet<usize> {
+        let flows = self.regions.of(ParameterRole::FlowsToResult, called.lambda);
+        called
             .lambda
             .params
             .iter()
             .enumerate()
             .filter(|(_, parameter)| flows.contains(&parameter.binding))
             .map(|(position, _)| position)
-            .collect();
-        Some(positions)
+            .collect()
     }
 }

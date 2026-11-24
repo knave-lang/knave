@@ -1,6 +1,6 @@
 # RFC 0082: Knave owns its files
 
-**Status:** Accepted
+**Status:** Accepted. [RFC 0086](0086-setup-knave-action.md) adds the setup action to the files Knave owns.
 **Date:** 2026-11-22
 
 ## Problem

@@ -1,9 +1,7 @@
 use super::problems::EmitProblems;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
-use crate::types::{
-    CopyRules, LendingTypes, ParameterCopy, TypedBinder, TypedLambda, TypedProgram,
-};
+use crate::types::{CopyRules, ParameterCopy, TypedBinder, TypedLambda, TypedProgram};
 
 pub struct UnlentParameters<'a> {
     program: &'a TypedProgram,
@@ -31,7 +29,7 @@ impl<'a> UnlentParameters<'a> {
     }
 
     pub fn lends_borrow_of(&self, param: &TypedBinder) -> bool {
-        self.lends(param.binding) && LendingTypes::of(self.program).lends_borrow(&param.ty)
+        self.lends(param.binding) && self.program.type_holds_borrow(&param.ty)
     }
 
     pub fn uncapturable(&self) -> Option<BindingId> {
@@ -77,7 +75,7 @@ impl<'a> UnlentParameters<'a> {
         if self.changes(param) {
             self.result_cannot_hold(param)
         } else {
-            self.lambda.returns_closure() && LendingTypes::of(self.program).lends_borrow(&param.ty)
+            self.lambda.returns_closure() && self.program.type_holds_borrow(&param.ty)
         }
     }
 

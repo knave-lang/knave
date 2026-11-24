@@ -36,6 +36,9 @@ const SETUP_KNAVE_ACTION: &str = ".github/actions/setup-knave/action.yml";
 const READ_VERSION_SCRIPT: &str = ".github/actions/setup-knave/read-version.sh";
 const SETUP_KNAVE_FOLDER: &str = "demo-app/.github/actions/setup-knave";
 const ACTIONS_FOLDER: &str = "demo-app/.github/actions";
+const SETUP_KNAVE_SCRIPT_NAME: &str = "read-version.sh";
+const SETUP_KNAVE_SCRIPT_RUN: &str = "bash \"$GITHUB_ACTION_PATH/read-version.sh\"";
+const SETUP_KNAVE_INSTALL: &str = "cargo install knave --version \"$KNAVE_VERSION\" --locked";
 const SETUP_KNAVE_STEP: &str = "      - uses: ./.github/actions/setup-knave\n";
 const EVERY_OWNED_FILE: [&str; 5] = [
     ".agents/skills/writing-knave/SKILL.md",
@@ -9012,6 +9015,27 @@ fn new_writes_a_setup_knave_action_that_the_workflow_uses() {
             "{path}"
         );
     }
+}
+
+#[test]
+fn new_writes_a_setup_knave_action_that_runs_its_script_and_installs_knave() {
+    let sandbox = Sandbox::new("new_setup_knave_steps");
+    sandbox
+        .compiler(&["new", "demo-app"])
+        .assert_silent_success();
+    let action = sandbox.contents(&format!("demo-app/{SETUP_KNAVE_ACTION}"));
+    for step in [SETUP_KNAVE_SCRIPT_RUN, SETUP_KNAVE_INSTALL] {
+        assert!(action.contains(step), "{action}");
+    }
+    let action_folder = Path::new(SETUP_KNAVE_ACTION)
+        .parent()
+        .expect("the action lies in a folder");
+    let script = sandbox
+        .directory
+        .join("demo-app")
+        .join(action_folder)
+        .join(SETUP_KNAVE_SCRIPT_NAME);
+    assert!(script.exists(), "{}", script.display());
 }
 
 #[test]

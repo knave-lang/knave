@@ -28,14 +28,6 @@ pub struct VariantDefinition {
 }
 
 impl VariantDefinition {
-    pub fn field_type(&self, field: usize) -> Option<&Type> {
-        match &self.payload {
-            VariantPayload::Positional(types) => types.get(field),
-            VariantPayload::Named(fields) => fields.get(field).map(|(_, ty)| ty),
-            VariantPayload::None => None,
-        }
-    }
-
     pub fn arity(&self) -> usize {
         self.pattern_fields().count()
     }

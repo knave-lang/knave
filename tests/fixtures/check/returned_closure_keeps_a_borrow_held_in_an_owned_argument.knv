@@ -1,0 +1,7 @@
+(defn mk (names)
+  (let (v names)
+    (fn () (println (len v)))))
+
+(defn main ()
+  (let (g (mk (vec (as-str (str "a")))))
+    (g)))

@@ -1,3 +1,4 @@
+use super::built_parts::BuiltParts;
 use super::call_result_sources::CallResultSources;
 use super::kept_temporary_problems::{KeptBorrow, KeptTemporary, KeptTemporaryProblems, KeptUntil};
 use super::lent_temporary::{LentTemporary, LentValue};
@@ -35,6 +36,7 @@ impl<'p> KeptTemporaries<'p> {
             temporaries: LentTemporary::new(
                 program,
                 CallResultSources::new(program, definitions, regions),
+                BuiltParts::new(program, definitions),
             ),
             problems: Vec::new(),
         }

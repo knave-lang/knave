@@ -1,9 +1,10 @@
 use rustc_hash::FxHashMap;
 
+use super::built_parts::BuiltParts;
 use crate::core::BindingId;
 use crate::types::{
     TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedMatch,
+    TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
 };
 
 #[derive(Clone, Copy)]
@@ -12,13 +13,15 @@ pub enum BoundLocal<'e> {
     Within(&'e TypedExpr),
 }
 
-pub struct BoundLocals<'e> {
+pub struct BoundLocals<'b, 'p, 'e> {
+    parts: &'b BuiltParts<'p>,
     locals: FxHashMap<BindingId, BoundLocal<'e>>,
 }
 
-impl<'e> BoundLocals<'e> {
-    pub fn in_argument(argument: &'e TypedExpr) -> Self {
+impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
+    pub fn in_argument(argument: &'e TypedExpr, parts: &'b BuiltParts<'p>) -> Self {
         let mut bound = Self {
+            parts,
             locals: FxHashMap::default(),
         };
         bound.collect(argument);
@@ -60,11 +63,29 @@ impl<'e> BoundLocals<'e> {
 
     fn arms(&mut self, matched: &'e TypedMatch) {
         for arm in &matched.arms {
-            for binder in arm.pattern.binders() {
-                self.locals
-                    .insert(binder.binding, BoundLocal::Within(&matched.value));
-            }
+            self.pattern(&arm.pattern, &matched.value);
             self.lets(&arm.body);
+        }
+    }
+
+    fn pattern(&mut self, pattern: &'e TypedPattern, scrutinee: &'e TypedExpr) {
+        match &pattern.kind {
+            TypedPatternKind::Bind(binder) => {
+                self.locals
+                    .insert(binder.binding, BoundLocal::Within(scrutinee));
+            }
+            TypedPatternKind::Variant(variant, parts) => {
+                for (position, part) in parts.iter().enumerate() {
+                    let built = self.parts.part(scrutinee, *variant, position);
+                    self.pattern(part, built.unwrap_or(scrutinee));
+                }
+            }
+            TypedPatternKind::Struct(_, parts) => {
+                for part in parts {
+                    self.pattern(part, scrutinee);
+                }
+            }
+            TypedPatternKind::Wildcard | TypedPatternKind::Literal(..) => {}
         }
     }
 

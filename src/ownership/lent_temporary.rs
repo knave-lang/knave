@@ -1,4 +1,5 @@
 use super::bound_locals::{BoundLocal, BoundLocals};
+use super::built_parts::BuiltParts;
 use super::call_result_sources::CallResultSources;
 use super::kept_temporary_problems::KeptValue;
 use super::promoted_constants::PromotedConstants;
@@ -10,14 +11,20 @@ use crate::types::{
 pub struct LentTemporary<'p> {
     program: &'p TypedProgram,
     sources: CallResultSources<'p>,
+    parts: BuiltParts<'p>,
     constants: PromotedConstants<'p>,
 }
 
 impl<'p> LentTemporary<'p> {
-    pub fn new(program: &'p TypedProgram, sources: CallResultSources<'p>) -> Self {
+    pub fn new(
+        program: &'p TypedProgram,
+        sources: CallResultSources<'p>,
+        parts: BuiltParts<'p>,
+    ) -> Self {
         Self {
             program,
             sources,
+            parts,
             constants: PromotedConstants::new(program),
         }
     }
@@ -29,7 +36,7 @@ impl<'p> LentTemporary<'p> {
     ) -> Option<LentValue<'e>> {
         let walk = ArgumentWalk {
             lent: self,
-            bound: BoundLocals::in_argument(argument),
+            bound: BoundLocals::in_argument(argument, &self.parts),
         };
         let value =
             walk.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])?;
@@ -49,7 +56,7 @@ pub struct LentValue<'e> {
 
 struct ArgumentWalk<'w, 'p, 'e> {
     lent: &'w LentTemporary<'p>,
-    bound: BoundLocals<'e>,
+    bound: BoundLocals<'w, 'p, 'e>,
 }
 
 type Follow<'w, 'p, 'e> = fn(&ArgumentWalk<'w, 'p, 'e>, &'e TypedExpr) -> Option<&'e TypedExpr>;

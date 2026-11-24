@@ -1,14 +1,9 @@
 use super::recorded_ties::RecordedTies;
-use super::result_source::{PassedArgument, ResultSource};
+use super::result_source::ResultSource;
 use crate::types::{
     CalledFunction, DefinitionTable, ParameterRole, Regions, TemplateTies, Type, TypedExpr,
     TypedExprKind, TypedLambda, TypedProgram,
 };
-
-struct CalleeTies<'t> {
-    ties: TemplateTies,
-    parameters: Vec<&'t Type>,
-}
 
 pub struct CallResultSources<'p> {
     program: &'p TypedProgram,
@@ -30,51 +25,26 @@ impl<'p> CallResultSources<'p> {
     }
 
     pub fn of<'e>(&self, call: &'e TypedExpr) -> Option<Vec<ResultSource<'e>>> {
-        let TypedExprKind::Call(_, arguments) = &call.kind else {
+        let TypedExprKind::Call(callee, arguments) = &call.kind else {
             return None;
         };
-        let signature = self.callee_signature(call)?;
-        let sources = signature
-            .parameters
+        let ties = match self.definitions.called_function(call) {
+            Some(called) => self.function_ties(&called),
+            None => RecordedTies::new(self.program).of(callee)?,
+        };
+        let sources = arguments
             .iter()
-            .zip(arguments)
             .enumerate()
-            .filter_map(|(position, (parameter, argument))| {
-                let passed = PassedArgument {
-                    parameter,
-                    argument: &argument.value,
-                };
+            .filter_map(|(position, argument)| {
+                let tie = ties.tie_at(position)?;
                 Some(ResultSource::kept_by_call(
-                    signature.ties.tie_at(position)?,
-                    passed,
+                    tie,
+                    &argument.value,
                     self.program,
                 ))
             })
             .collect();
         Some(sources)
-    }
-
-    fn callee_signature<'t>(&'t self, call: &'t TypedExpr) -> Option<CalleeTies<'t>> {
-        match self.definitions.called_function(call) {
-            Some(called) => Some(CalleeTies {
-                ties: self.function_ties(&called),
-                parameters: Self::lambda_parameters(called.lambda),
-            }),
-            None => self.template_signature(call),
-        }
-    }
-
-    fn template_signature<'t>(&self, call: &'t TypedExpr) -> Option<CalleeTies<'t>> {
-        let TypedExprKind::Call(callee, _) = &call.kind else {
-            return None;
-        };
-        let Type::Function(_, parameters, _) = &callee.ty else {
-            return None;
-        };
-        Some(CalleeTies {
-            ties: RecordedTies::new(self.program).of(callee)?,
-            parameters: parameters.iter().collect(),
-        })
     }
 
     fn lambda_parameters(lambda: &TypedLambda) -> Vec<&Type> {

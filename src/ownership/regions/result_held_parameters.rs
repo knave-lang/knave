@@ -366,10 +366,31 @@ mod tests {
               (fn () (match cs ((some c) (count c)) (none 0))))
             (defn main ())";
 
+        const DOUBLING_DEPTH: usize = 24;
+
         fn new() -> Self {
-            let mut program = TypedSource::expand(Self::COUNTERS).typed();
+            Self::of_source(Self::COUNTERS)
+        }
+
+        fn of_source(source: &str) -> Self {
+            let mut program = TypedSource::expand(source).typed();
             OwnershipChecker::check(&mut program).expect("the fixture checks");
             Self { program }
+        }
+
+        fn doubling_chain() -> String {
+            let last = Self::DOUBLING_DEPTH;
+            let links: String = (0..last)
+                .map(|level| {
+                    let next = level + 1;
+                    format!(
+                        "(defn f{level} (items c) (if c (f{next} items c) (f{next} items (not c))))\n"
+                    )
+                })
+                .collect();
+            format!(
+                "(defn f{last} (items c) (fn () (len items)))\n{links}(defn main () (let (v (vec 1) g (f0 v true)) (println (g))))"
+            )
         }
 
         fn held_names(&self, function: &str) -> Vec<&str> {
@@ -415,6 +436,12 @@ mod tests {
     #[test]
     fn a_borrow_passed_to_a_returned_call_that_holds_nothing_is_not_held() {
         assert!(HeldFixture::new().held_names("wrapc").is_empty());
+    }
+
+    #[test]
+    fn a_chain_that_calls_each_callee_twice_asks_each_callee_once() {
+        let chain = HeldFixture::of_source(&HeldFixture::doubling_chain());
+        assert_eq!(chain.held_names("f0"), vec!["items"]);
     }
 
     #[test]

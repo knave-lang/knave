@@ -2,7 +2,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::parameter_role::ParameterRole;
 use super::parameterized::Parameterized;
-use super::result_regions::ResultRegions;
 use super::stored_flows::StoredFlows;
 use crate::core::BindingId;
 
@@ -37,10 +36,6 @@ impl Regions {
             .parameter_bindings()
             .filter(|binding| recorded.contains(binding))
             .collect()
-    }
-
-    pub fn of_result<'r, L: Parameterized>(&'r self, lambda: &'r L) -> ResultRegions<'r, L> {
-        ResultRegions::new(self, lambda)
     }
 
     pub fn stored(&self, lambda: &impl Parameterized) -> StoredFlows {

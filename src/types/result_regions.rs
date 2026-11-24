@@ -11,7 +11,7 @@ pub struct ResultRegions<'r, L> {
 }
 
 impl<'r, L: Parameterized> ResultRegions<'r, L> {
-    pub(super) fn new(regions: &'r Regions, lambda: &'r L) -> Self {
+    pub fn of(regions: &'r Regions, lambda: &'r L) -> Self {
         Self { regions, lambda }
     }
 
@@ -62,7 +62,7 @@ impl<'r, L: Parameterized> ResultRegions<'r, L> {
 mod tests {
     use rustc_hash::FxHashSet;
 
-    use super::{ParameterRole, Parameterized, Regions};
+    use super::{ParameterRole, Parameterized, Regions, ResultRegions};
     use crate::core::BindingId;
 
     struct Parameters(Vec<BindingId>);
@@ -90,7 +90,7 @@ mod tests {
             FxHashSet::from_iter([held]),
         );
         assert_eq!(
-            regions.of_result(&lambda).kept(),
+            ResultRegions::of(&regions, &lambda).kept(),
             FxHashSet::from_iter([shared, held])
         );
     }
@@ -109,6 +109,9 @@ mod tests {
             &lambda,
             FxHashSet::from_iter([left_out]),
         );
-        assert_eq!(regions.of_result(&lambda).lending_positions(), vec![0, 2]);
+        assert_eq!(
+            ResultRegions::of(&regions, &lambda).lending_positions(),
+            vec![0, 2]
+        );
     }
 }

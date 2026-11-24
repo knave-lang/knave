@@ -7,8 +7,8 @@ use super::result_borrows::ResultBorrows;
 use super::result_held_parameters::ResultHeldParameters;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, ParameterRole, RecordedClosures, Regions, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedLambda, TypedProgram,
+    DefinitionTable, ParameterRole, RecordedClosures, Regions, ResultRegions, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedLambda, TypedProgram,
 };
 
 pub struct RegionRecord<'a> {
@@ -75,7 +75,7 @@ impl RegionRecord<'_> {
             .record(ParameterRole::FlowsThroughSharedArguments, lambda, shared);
         self.regions
             .record(ParameterRole::HeldByResult, lambda, self.held.of(lambda));
-        let kept = self.regions.of_result(lambda).kept();
+        let kept = ResultRegions::of(&self.regions, lambda).kept();
         self.regions.record(
             ParameterRole::LeftOutOfResult,
             lambda,

@@ -5,9 +5,9 @@ use super::lent_temporary::{LentTemporary, LentValue};
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
 use crate::types::{
-    CalledFunction, DefinitionTable, Regions, ReturnedValues, TypedArgument, TypedBinder,
-    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedMatch,
-    TypedProgram,
+    CalledFunction, DefinitionTable, Regions, ResultRegions, ReturnedValues, TypedArgument,
+    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
+    TypedMatch, TypedProgram,
 };
 
 pub struct KeptTemporaries<'p> {
@@ -116,7 +116,7 @@ impl<'p> KeptTemporaries<'p> {
         if !lambda.returns_closure() {
             return;
         }
-        let kept = self.regions.of_result(lambda).kept();
+        let kept = ResultRegions::of(self.regions, lambda).kept();
         for (parameter, argument) in lambda.params.iter().zip(call.called.arguments) {
             if !kept.contains(&parameter.binding) {
                 continue;

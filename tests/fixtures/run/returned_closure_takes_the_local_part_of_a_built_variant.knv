@@ -1,0 +1,11 @@
+(enum (parts a b) (two a b))
+
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (s (str "a")
+        g (greeter (match (parts/two (as-str (str "zz"))
+                                     (as-str s))
+                     ((parts/two a b) b))))
+    (g)))

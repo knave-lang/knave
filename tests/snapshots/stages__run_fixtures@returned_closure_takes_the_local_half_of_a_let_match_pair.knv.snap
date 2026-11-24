@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_the_local_half_of_a_let_match_pair.knv
+---
+hi a

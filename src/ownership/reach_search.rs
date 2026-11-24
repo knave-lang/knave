@@ -16,6 +16,7 @@ pub struct ReachSearch<'p, 'd> {
     program: &'p TypedProgram,
     definitions: &'d DefinitionTable<'p>,
     reach: ProgramReach,
+    type_modules: FxHashMap<BindingId, ModuleId>,
     visited: FxHashSet<BindingId>,
 }
 
@@ -25,10 +26,11 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
         definitions: &'d DefinitionTable<'p>,
     ) -> Reaches {
         let mut search = Self::from_main(program, definitions);
-        let main = std::mem::take(&mut search.reach);
+        let mut main = std::mem::take(&mut search.reach);
         for root in Self::user_definitions(program) {
             search.visit_definition(root);
         }
+        main.type_modules = search.type_modules;
         Reaches {
             main,
             from_user_definitions: search.visited,
@@ -41,9 +43,9 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
             definitions,
             reach: ProgramReach {
                 main: Self::find_main(program),
-                type_modules: Self::type_modules(program),
                 ..ProgramReach::default()
             },
+            type_modules: Self::type_modules(program),
             visited: FxHashSet::default(),
         };
         if let Some(main) = search.reach.main {
@@ -217,7 +219,7 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
     }
 
     fn reach_enum(&mut self, binding: BindingId, from: ModuleId) {
-        let Some(owner) = self.reach.type_modules.get(&binding).copied() else {
+        let Some(owner) = self.type_modules.get(&binding).copied() else {
             return;
         };
         self.note_use(binding, owner, from);
@@ -236,7 +238,7 @@ impl<'p, 'd> ReachSearch<'p, 'd> {
     }
 
     fn reach_struct(&mut self, binding: BindingId, from: ModuleId) {
-        let Some(owner) = self.reach.type_modules.get(&binding).copied() else {
+        let Some(owner) = self.type_modules.get(&binding).copied() else {
             return;
         };
         self.note_use(binding, owner, from);

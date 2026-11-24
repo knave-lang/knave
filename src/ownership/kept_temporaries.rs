@@ -1,5 +1,4 @@
 use super::kept_temporary_problems::{KeptTemporary, KeptTemporaryProblems, KeptUntil};
-use super::promoted_constants::PromotedConstants;
 use super::statement_temporary::StatementTemporary;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
@@ -14,7 +13,7 @@ pub struct KeptTemporaries<'p> {
     program: &'p TypedProgram,
     definitions: &'p DefinitionTable<'p>,
     regions: &'p Regions,
-    constants: PromotedConstants<'p>,
+    temporaries: StatementTemporary<'p>,
     problems: Vec<Diagnostic>,
 }
 
@@ -34,7 +33,7 @@ impl<'p> KeptTemporaries<'p> {
             program,
             definitions,
             regions,
-            constants: PromotedConstants::new(program),
+            temporaries: StatementTemporary::new(program),
             problems: Vec::new(),
         }
     }
@@ -143,7 +142,7 @@ impl<'p> KeptTemporaries<'p> {
         parameter: &TypedBinder,
         argument: &TypedExpr,
     ) {
-        if StatementTemporary::of(argument, self.constants).is_none() {
+        if self.temporaries.of(argument).is_none() {
             return;
         }
         let bindings = &self.program.bindings;

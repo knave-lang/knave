@@ -1,17 +1,17 @@
-use super::recorded_ties::RecordedTies;
 use super::result_source::ResultSource;
+use super::result_ties::ResultTies;
 use crate::types::{DefinitionTable, TypedExpr, TypedExprKind, TypedProgram};
 
 pub struct CallResultSources<'p> {
     program: &'p TypedProgram,
-    ties: RecordedTies<'p, 'p>,
+    ties: ResultTies<'p, 'p>,
 }
 
 impl<'p> CallResultSources<'p> {
     pub fn new(program: &'p TypedProgram, definitions: &'p DefinitionTable<'p>) -> Self {
         Self {
             program,
-            ties: RecordedTies::new(program, definitions),
+            ties: ResultTies::new(program, definitions),
         }
     }
 

@@ -291,6 +291,7 @@ mod trait_method_info;
 mod trait_reach;
 mod trait_rows_reach;
 mod traits;
+mod try_error_conversion;
 mod ty;
 mod type_declaration_collector;
 mod type_declarations;

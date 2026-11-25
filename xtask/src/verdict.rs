@@ -17,6 +17,13 @@ impl Verdict {
         }
     }
 
+    pub fn text(checks: &[&dyn Check]) -> String {
+        checks
+            .iter()
+            .map(|check| format!("{}\n", Self::judged(*check).1))
+            .collect()
+    }
+
     fn announce_one(check: &dyn Check) -> bool {
         let (passes, line) = Self::judged(check);
         println!("{line}");
@@ -70,6 +77,16 @@ mod tests {
         assert_eq!(
             Verdict::judged(&FixedCheck { passes: false }),
             (false, "error: the summary\nthe details".to_string())
+        );
+    }
+
+    #[test]
+    fn the_text_holds_one_judgment_per_check() {
+        let passing = FixedCheck { passes: true };
+        let failing = FixedCheck { passes: false };
+        assert_eq!(
+            Verdict::text(&[&passing, &failing]),
+            "ok: the summary\nerror: the summary\nthe details\n"
         );
     }
 }

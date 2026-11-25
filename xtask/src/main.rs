@@ -1,5 +1,6 @@
 mod agree;
 mod badge;
+mod base_revision;
 mod bench;
 mod cargo;
 mod census;
@@ -51,6 +52,7 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand};
 
 use agree::AgreeTask;
+use base_revision::BaseRevision;
 use bench::BenchTask;
 use crap_forecast_task::CrapForecastTask;
 use design::DesignRules;
@@ -80,10 +82,12 @@ enum Task {
         about = "Run the tests with coverage, then check the coverage floor, the CRAP limit, the README badge and the emitted Rust's lints"
     )]
     Coverage(CoverageTask),
-    #[command(about = "Check that no Rust file over the production line limit grew since the base")]
+    #[command(
+        about = "Check that no Rust file over the production line limit is new or grew since the base, unless a `Rise-Accepted:` trailer names its limit and subject"
+    )]
     FileSizes(RatchetTask),
     #[command(
-        about = "Check that no type, function or module over a design rule's limit grew since the base"
+        about = "Check that no type, function or module over a design rule's limit is new or grew since the base, unless a `Rise-Accepted:` trailer names its limit and subject"
     )]
     DesignRules(RatchetTask),
     #[command(
@@ -113,12 +117,8 @@ enum Task {
 
 #[derive(Args)]
 struct RatchetTask {
-    #[arg(
-        long,
-        default_value = "origin/main",
-        help = "Measure against the merge base with this revision, and refuse a subject over a limit that is new or grew, unless a `Rise-Accepted:` trailer names its limit and subject"
-    )]
-    base: String,
+    #[command(flatten)]
+    base: BaseRevision,
 }
 
 #[derive(Args)]
@@ -147,7 +147,7 @@ impl RatchetTask {
     }
 
     fn gate(&self, workspace_root: &Path) -> RatchetGate {
-        RatchetGate::new(workspace_root, &self.base)
+        RatchetGate::new(workspace_root, self.base.revision())
     }
 }
 
@@ -206,7 +206,7 @@ mod tests {
 
     use clap::Parser;
 
-    use super::{CoveragePart, CoverageTask, Task, Tasks};
+    use super::{BaseRevision, CoveragePart, CoverageTask, Task, Tasks};
     use crate::test_shard::TestShard;
 
     struct CommandLine;
@@ -246,8 +246,14 @@ mod tests {
             Task::FileSizes(sizes) => sizes.base,
             _ => panic!("the command line names another task"),
         };
-        assert_eq!(base(&["xtask", "file-sizes"]), "origin/main");
-        assert_eq!(base(&["xtask", "file-sizes", "--base", "HEAD^1"]), "HEAD^1");
+        assert_eq!(
+            base(&["xtask", "file-sizes"]),
+            BaseRevision::named("origin/main")
+        );
+        assert_eq!(
+            base(&["xtask", "file-sizes", "--base", "HEAD^1"]),
+            BaseRevision::named("HEAD^1")
+        );
     }
 
     #[test]
@@ -259,10 +265,13 @@ mod tests {
             Task::DesignRules(rules) => rules.base,
             _ => panic!("the command line names another task"),
         };
-        assert_eq!(base(&["xtask", "design-rules"]), "origin/main");
+        assert_eq!(
+            base(&["xtask", "design-rules"]),
+            BaseRevision::named("origin/main")
+        );
         assert_eq!(
             base(&["xtask", "design-rules", "--base", "HEAD^1"]),
-            "HEAD^1"
+            BaseRevision::named("HEAD^1")
         );
     }
 

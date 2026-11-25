@@ -188,28 +188,34 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **To get the forecast, follow these steps:**
 
-1. Dispatch the workflow on the branch with a tag that no other run uses:
+1. Dispatch the workflow on the branch:
 
    ```sh
-   branch=$(git branch --show-current)
-   tag=forecast-$(date +%s)
-   gh workflow run crap-forecast.yml --ref "$branch" -f tag="$tag"
+   gh workflow run crap-forecast.yml --ref "$(git branch --show-current)"
    ```
 
    If a test outside the forecast's selection covers a changed function, add `-f also='<cargo test arguments>'`, such as `-f also='--test stages emit_fixtures'`. For several sets of arguments, put one set per line, such as `-f also="$(printf '%s\n' '--test stages emit_fixtures' '--lib emit::')"`.
 
-2. Find the run's ID with `gh run list --workflow crap-forecast.yml --branch "$branch" --limit 20 --json databaseId,displayTitle --jq ".[] | select(.displayTitle | endswith(\" $tag\")) | .databaseId"`. If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the tag to the project owner.
-3. Run `gh run watch <run id> --interval 60 --exit-status` as a background shell command. The command exits when the run ends.
-4. Download the verdict with `gh run download <run id> --name crap-forecast --dir target/scratch/crap-forecast-<run id>`.
-5. Read `verdict.txt` in that directory. The run's summary page shows the same verdict.
+2. Read the run's ID from the end of the run URL that `gh workflow run` prints.
+3. Run `gh run watch <run id> --interval 60 --exit-status` as a background shell command. The command exits when the run ends. It exits nonzero when the forecast fails or stops, and steps 4 to 6 still apply.
+4. Download the forecast with `gh run download <run id> --name crap-forecast --dir target/scratch/crap-forecast-<run id>`.
+5. Read `verdict.txt` in that directory. If `verdict.txt` is missing, the forecast stopped before its verdict. `output.txt` beside it names the commit the forecast judged and each `also` set it ran, then holds the forecast's output. The run's summary page shows both files.
 6. If the verdict names a function, do what its line says.
 
-**If `gh run watch` reports the run cancelled, a newer run on the branch replaced it.** Watch the newer run.
+**Make no other GitHub call until `gh run watch` exits:** the watch spends the budget of one call a minute.
 
-**If the forecast stopped before its verdict, read the failure with `gh run view <run id> --log-failed`.** The forecast stopped in each of these cases:
+**If `gh workflow run` cannot find the workflow at the ref, merge `origin/main` into the branch, push, and dispatch again.**
 
-- The download finds no `crap-forecast` artifact.
-- `verdict.txt` says the forecast stopped.
+**If `gh workflow run` prints no run URL, find the run's ID with `gh run list --workflow crap-forecast.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`.** If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the branch to the project owner.
+
+**If `gh run watch` reports the run cancelled, a newer run on the branch replaced it.** Find the newer run with `gh run list --workflow crap-forecast.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`, then watch it from step 3.
+
+**If the forecast stopped before its verdict, read why at the end of `output.txt`.** If `output.txt` does not say why, read the failure with `gh run view <run id> --log-failed`. The forecast stops in each of these cases:
+
+- A selected test failed, or the coverage tool failed.
+- The forecast ran longer than its 40-minute limit.
+
+**If the download finds no `crap-forecast` artifact, read the failure with `gh run view <run id> --log-failed`.**
 
 **If the workflow refused the default branch, dispatch it on the pull request's head branch.**
 

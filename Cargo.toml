@@ -45,6 +45,7 @@ libc = "0.2.191"
 knave-expand = { workspace = true }
 
 [dev-dependencies]
+globset = "0.4"
 insta = { version = "1", features = ["glob"] }
 knave-agree = { path = "xtask/agree" }
 

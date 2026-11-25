@@ -5,6 +5,7 @@ use std::process::ExitCode;
 use crate::census::Census;
 use crate::checks::Check;
 use crate::failure::TaskFailure;
+use crate::fork_point::ForkPoint;
 use crate::git::Git;
 use crate::ratchet::{Comparison, Counts, Measurement, Ratchet};
 use crate::revision_tree::RevisionTree;
@@ -13,14 +14,14 @@ use crate::verdict::Verdict;
 
 pub struct RatchetGate {
     root: PathBuf,
-    fork_point: String,
+    fork_point: ForkPoint,
 }
 
 impl RatchetGate {
-    pub fn new(root: &Path, fork_point: &str) -> Self {
+    pub fn new(root: &Path, fork_point: ForkPoint) -> Self {
         Self {
             root: root.to_path_buf(),
-            fork_point: fork_point.to_string(),
+            fork_point,
         }
     }
 
@@ -43,8 +44,8 @@ impl RatchetGate {
         let git = Git::new(&self.root);
         Ok(BaseComparison {
             head_root: &self.root,
-            approvals: RiseApprovals::since(&git, &self.fork_point)?,
-            tree: RevisionTree::extract(&self.root, &self.fork_point)?,
+            approvals: RiseApprovals::since(&git, self.fork_point.as_str())?,
+            tree: RevisionTree::extract(&self.root, self.fork_point.as_str())?,
         })
     }
 }
@@ -90,6 +91,7 @@ mod tests {
     use super::{BaseComparison, RatchetGate};
     use crate::census::Census;
     use crate::failure::TaskFailure;
+    use crate::fork_point::ForkPoint;
     use crate::git::Git;
     use crate::production_lines::ProductionLineCensus;
     use crate::ratchet::{Counts, Limit, Measurement};
@@ -143,10 +145,9 @@ mod tests {
         }
 
         fn details(&self) -> Vec<String> {
-            let fork_point = Git::new(self.repository.root())
-                .merge_base(Self::BASE)
+            let fork_point = ForkPoint::resolve(&Git::new(self.repository.root()), Self::BASE)
                 .expect("the branch forks from the base");
-            RatchetGate::new(self.repository.root(), &fork_point)
+            RatchetGate::new(self.repository.root(), fork_point)
                 .checks(&[&CountsFile])
                 .expect("the gate measures")
                 .iter()

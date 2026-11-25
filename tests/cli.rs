@@ -16,7 +16,7 @@ use knave::language::Language;
 use knave::source::SourceMap;
 use serde_json::{Map, Value, json};
 
-use heavy_run::{HeavyTestRun, LocalEnvironment, Narrowing};
+use heavy_run::{FilterRule, HeavyTestRun, Narrowing, RunEnvironment, TestArguments};
 
 const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
 const NEW_PROJECT_CHECKS: [&[&str]; 3] = [&["fmt", "--check"], &["lint"], &["test"]];
@@ -367,8 +367,8 @@ impl Sandbox {
     const GIT_CEILING_VARIABLE: &str = "GIT_CEILING_DIRECTORIES";
     const BUILD_PARENT: &str = "target";
 
-    fn new(test_name: &str) -> Self {
-        HeavyTestRun::of(&TestFilters::from_arguments()).enforce();
+    fn admitted(test_name: &str) -> Self {
+        HeavyTestRun::of(&CliFilters::from_process()).enforce();
         let directory = std::env::temp_dir().join(format!(
             "{}-cli-{}-{test_name}",
             Language::NAME,
@@ -489,7 +489,7 @@ exit 101
     }
 
     fn with_outdated_project(test_name: &str, skipped: &[&str]) -> Self {
-        let sandbox = Self::new(test_name);
+        let sandbox = Self::admitted(test_name);
         let arguments = [&["new", "demo-app"], skipped].concat();
         sandbox.compiler(&arguments).assert_silent_success();
         let written_files: Vec<String> = EVERY_OWNED_FILE
@@ -508,7 +508,7 @@ exit 101
     }
 
     fn with_committed_project(test_name: &str) -> Self {
-        let sandbox = Self::new(test_name);
+        let sandbox = Self::admitted(test_name);
         sandbox
             .compiler(&["new", "demo-app"])
             .assert_silent_success();
@@ -523,7 +523,7 @@ exit 101
     }
 
     fn with_recorded_version(test_name: &str, version: &str) -> Self {
-        let sandbox = Self::new(test_name);
+        let sandbox = Self::admitted(test_name);
         sandbox
             .compiler(&["new", "demo-app"])
             .assert_silent_success();
@@ -534,7 +534,7 @@ exit 101
     }
 
     fn with_library_project(test_name: &str, library_project: &str) -> Self {
-        Self::new(test_name)
+        Self::admitted(test_name)
             .with_file(
                 &format!("app/{}", Language::project_file_name()),
                 "(defproject app (libraries (lib1 :path \"../lib1\")))\n",
@@ -580,14 +580,14 @@ exit 101
     }
 
     fn with_documented_project(test_name: &str) -> Self {
-        Self::new(test_name)
+        Self::admitted(test_name)
             .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
             .with_file("src/main.knv", DOCUMENTED_MAIN)
             .with_file("src/geometry/area.knv", DOCUMENTED_AREA)
     }
 
     fn with_unmatched_links(test_name: &str) -> Self {
-        Self::new(test_name)
+        Self::admitted(test_name)
             .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
             .with_file("src/a.knv", UNMATCHED_LINKS)
     }
@@ -836,7 +836,7 @@ exit 101
 
     fn with_loose_crate_programs(test_name: &str) -> Self {
         let answer = "(def answer\n  (rust \"answer::answer()\" (fn () i64)))\n\n";
-        Self::new(test_name)
+        Self::admitted(test_name)
             .with_fixture_tree("crates")
             .with_file(
                 "app/scratch/answer.knv",
@@ -1606,14 +1606,14 @@ impl Outcome {
 
 #[test]
 fn help_lists_every_command() {
-    let sandbox = Sandbox::new("help");
+    let sandbox = Sandbox::admitted("help");
     let help = sandbox.compiler(&["--help"]);
     insta::assert_snapshot!(help.assert_exit_code(0).stdout());
 }
 
 #[test]
 fn no_command_runs_piped_inputs_as_repl_does() {
-    let sandbox = Sandbox::new("no_command");
+    let sandbox = Sandbox::admitted("no_command");
     let bare = sandbox.compiler_reading(PROMPT_DEFINITIONS, &[]);
     let repl = sandbox.compiler_reading(PROMPT_DEFINITIONS, &["repl"]);
     assert_eq!(bare.transcript(), repl.transcript());
@@ -1621,7 +1621,7 @@ fn no_command_runs_piped_inputs_as_repl_does() {
 
 #[test]
 fn no_command_takes_the_global_color_argument() {
-    let sandbox = Sandbox::new("no_command_color");
+    let sandbox = Sandbox::admitted("no_command_color");
     let bare = sandbox.compiler_reading(PROMPT_DEFINITIONS, &["--color", "never"]);
     let repl = sandbox.compiler_reading(PROMPT_DEFINITIONS, &["repl"]);
     assert_eq!(bare.transcript(), repl.transcript());
@@ -1629,7 +1629,7 @@ fn no_command_takes_the_global_color_argument() {
 
 #[test]
 fn counters_flag_prints_one_json_object_after_the_command() {
-    let sandbox = Sandbox::new("counters").with_file("arithmetic.knv", ARITHMETIC);
+    let sandbox = Sandbox::admitted("counters").with_file("arithmetic.knv", ARITHMETIC);
     let plain = sandbox.compiler(&["emit", "arithmetic.knv"]);
     let counted = sandbox.compiler(&["--counters", "emit", "arithmetic.knv"]);
     assert_eq!(counted.assert_exit_code(0).stdout(), plain.stdout());
@@ -1651,14 +1651,14 @@ fn counters_flag_prints_one_json_object_after_the_command() {
 
 #[test]
 fn counters_flag_stays_out_of_the_help() {
-    let sandbox = Sandbox::new("counters-help");
+    let sandbox = Sandbox::admitted("counters-help");
     let help = sandbox.compiler(&["--help"]);
     assert!(!help.assert_exit_code(0).stdout().contains("--counters"));
 }
 
 #[test]
 fn counters_flag_counts_a_program_small_enough_to_count_by_hand() {
-    let sandbox = Sandbox::new("counters-by-hand")
+    let sandbox = Sandbox::admitted("counters-by-hand")
         .with_file("empty.knv", EMPTY_MAIN)
         .with_file("branch.knv", ONE_BRANCH);
     let empty = sandbox.compiler(&["--counters", "emit", "empty.knv"]);
@@ -1678,7 +1678,7 @@ fn counters_flag_counts_a_program_small_enough_to_count_by_hand() {
 
 #[test]
 fn counters_flag_prints_no_build_work_when_rustfmt_fails() {
-    let sandbox = Sandbox::new("counters-unformatted")
+    let sandbox = Sandbox::admitted("counters-unformatted")
         .with_file("branch.knv", ONE_BRANCH)
         .with_executable("tools/rustfmt", FAILING_RUSTFMT);
     let emit = sandbox.compiler_with_path("tools", &["--counters", "emit", "branch.knv"]);
@@ -1695,7 +1695,7 @@ fn counters_flag_prints_no_build_work_when_rustfmt_fails() {
 
 #[test]
 fn counters_flag_prints_the_work_of_each_stage_that_ran() {
-    let sandbox = Sandbox::new("counters-stages").with_file("arithmetic.knv", ARITHMETIC);
+    let sandbox = Sandbox::admitted("counters-stages").with_file("arithmetic.knv", ARITHMETIC);
     let emit = ["--counters", "emit", "arithmetic.knv"];
     let emitted = sandbox.compiler(&emit).assert_exit_code(0).stage_work();
     for key in STAGE_WORK_KEYS {
@@ -1717,13 +1717,13 @@ fn counters_flag_prints_the_work_of_each_stage_that_ran() {
 
 #[test]
 fn unknown_command_is_a_usage_error() {
-    let sandbox = Sandbox::new("unknown_command");
+    let sandbox = Sandbox::admitted("unknown_command");
     sandbox.compiler(&["compile"]).assert_exit_code(2);
 }
 
 #[test]
 fn unreadable_file_is_a_usage_error() {
-    let sandbox = Sandbox::new("unreadable_file");
+    let sandbox = Sandbox::admitted("unreadable_file");
     let check = sandbox.compiler(&["check", "missing.knv"]);
     assert!(
         check
@@ -1735,7 +1735,7 @@ fn unreadable_file_is_a_usage_error() {
 
 #[test]
 fn fmt_rewrites_a_file_in_place_and_prints_nothing() {
-    let sandbox = Sandbox::new("fmt_rewrites").with_file("twice.knv", UNFORMATTED);
+    let sandbox = Sandbox::admitted("fmt_rewrites").with_file("twice.knv", UNFORMATTED);
     let formatted = sandbox.compiler(&["fmt", "twice.knv"]);
     formatted.assert_silent_success();
     assert_eq!(
@@ -1746,7 +1746,7 @@ fn fmt_rewrites_a_file_in_place_and_prints_nothing() {
 
 #[test]
 fn fmt_check_prints_each_file_that_would_change_and_writes_nothing() {
-    let sandbox = Sandbox::new("fmt_check_changes")
+    let sandbox = Sandbox::admitted("fmt_check_changes")
         .with_file("twice.knv", UNFORMATTED)
         .with_file("done.knv", FORMATTED);
     let check = sandbox.compiler(&["fmt", "--check", "twice.knv", "done.knv"]);
@@ -1759,7 +1759,7 @@ fn fmt_check_prints_each_file_that_would_change_and_writes_nothing() {
 
 #[test]
 fn fmt_check_lists_a_file_whose_docstring_code_is_not_laid_out() {
-    let sandbox = Sandbox::new("fmt_check_docstring_code").with_file(
+    let sandbox = Sandbox::admitted("fmt_check_docstring_code").with_file(
         "twice.knv",
         "(defn twice (x)\n  \"Doubles.\n\n  (twice   3)\n  => 6\"\n  (* 2 x))\n",
     );
@@ -1770,7 +1770,7 @@ fn fmt_check_lists_a_file_whose_docstring_code_is_not_laid_out() {
 
 #[test]
 fn fmt_check_warns_of_docstring_code_that_does_not_read_and_still_exits_0() {
-    let sandbox = Sandbox::new("fmt_check_unreadable_docstring_code").with_file(
+    let sandbox = Sandbox::admitted("fmt_check_unreadable_docstring_code").with_file(
         "twice.knv",
         "(defn twice (x)\n  \"Doubles.\n\n  (twice   3\n  => 6\"\n  (* 2 x))\n",
     );
@@ -1781,7 +1781,7 @@ fn fmt_check_warns_of_docstring_code_that_does_not_read_and_still_exits_0() {
 
 #[test]
 fn fmt_check_exits_0_when_every_file_is_formatted() {
-    let sandbox = Sandbox::new("fmt_check_formatted").with_file("done.knv", FORMATTED);
+    let sandbox = Sandbox::admitted("fmt_check_formatted").with_file("done.knv", FORMATTED);
     let check = sandbox.compiler(&["fmt", "--check", "done.knv"]);
     check.assert_silent_success();
     assert_eq!(check.stdout(), "");
@@ -1789,7 +1789,7 @@ fn fmt_check_exits_0_when_every_file_is_formatted() {
 
 #[test]
 fn fmt_reads_standard_input_and_writes_the_formatted_text() {
-    let sandbox = Sandbox::new("fmt_standard_input");
+    let sandbox = Sandbox::admitted("fmt_standard_input");
     let formatted = sandbox.compiler_reading(UNFORMATTED, &["fmt", "-"]);
     formatted.assert_silent_success();
     assert_eq!(formatted.stdout(), FORMATTED);
@@ -1819,7 +1819,7 @@ fn fmt_refuses_an_older_compiler_before_it_writes_another_project() {
         "(defproject first :description \"{}\")\n",
         "a description long enough that fmt lays out one key per line"
     );
-    let sandbox = Sandbox::new("fmt_older_second_project")
+    let sandbox = Sandbox::admitted("fmt_older_second_project")
         .with_file("first/project.knv", &unformatted_project)
         .with_file(
             "second/project.knv",
@@ -1840,7 +1840,7 @@ fn fmt_refuses_an_older_compiler_before_it_writes_another_project() {
 #[test]
 fn fmt_of_standard_input_reads_shapes_from_modules_beside_its_stdin_path() {
     let sandbox =
-        Sandbox::new("fmt_standard_input_shapes").with_file("shapes/loops.knv", LOOP_SHAPE);
+        Sandbox::admitted("fmt_standard_input_shapes").with_file("shapes/loops.knv", LOOP_SHAPE);
     let formatted = sandbox.compiler_reading(
         LOOP_CALL,
         &["fmt", "--stdin-path", "programs/main.knv", "-"],
@@ -1851,7 +1851,7 @@ fn fmt_of_standard_input_reads_shapes_from_modules_beside_its_stdin_path() {
 
 #[test]
 fn fmt_lays_out_a_test_file_by_a_shape_in_the_project_source() {
-    let sandbox = Sandbox::new("fmt_test_file_shapes")
+    let sandbox = Sandbox::admitted("fmt_test_file_shapes")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/shapes/loops.knv", LOOP_SHAPE)
         .with_file("tests/loops-test.knv", LOOP_CALL);
@@ -1863,7 +1863,7 @@ fn fmt_lays_out_a_test_file_by_a_shape_in_the_project_source() {
 
 #[test]
 fn fmt_lays_out_a_task_file_by_a_shape_in_the_project_source() {
-    let sandbox = Sandbox::new("fmt_task_file_shapes")
+    let sandbox = Sandbox::admitted("fmt_task_file_shapes")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/shapes/loops.knv", LOOP_SHAPE)
         .with_file("tasks/demo/loops.knv", LOOP_CALL);
@@ -1875,7 +1875,7 @@ fn fmt_lays_out_a_task_file_by_a_shape_in_the_project_source() {
 
 #[test]
 fn fmt_lays_out_a_call_by_a_shape_in_a_library_of_the_project() {
-    let sandbox = Sandbox::new("fmt_library_shapes")
+    let sandbox = Sandbox::admitted("fmt_library_shapes")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (looping :path \"../looping\")))\n",
@@ -1895,7 +1895,7 @@ fn fmt_lays_out_a_call_by_a_shape_in_a_library_of_the_project() {
 
 #[test]
 fn fmt_lays_out_a_call_by_a_shape_in_a_fetched_git_library() {
-    let sandbox = Sandbox::new("fmt_git_library_shapes")
+    let sandbox = Sandbox::admitted("fmt_git_library_shapes")
         .with_file(
             &format!("looping/{}", Language::project_file_name()),
             "(defproject looping)\n",
@@ -1916,7 +1916,7 @@ fn fmt_lays_out_a_call_by_a_shape_in_a_fetched_git_library() {
 
 #[test]
 fn fmt_never_fetches_a_git_library_the_cache_lacks() {
-    let (sandbox, commit) = Sandbox::new("fmt_git_unfetched").with_git_library(None);
+    let (sandbox, commit) = Sandbox::admitted("fmt_git_unfetched").with_git_library(None);
     let fmt = sandbox.compiler_in("git-app", &["fmt", "src/main.knv"]);
     insta::assert_snapshot!(fmt.assert_exit_code(0).stderr());
     let checkout = sandbox
@@ -1933,7 +1933,7 @@ fn fmt_with_a_git_library_at_an_unreachable_host_finishes_at_once() {
     let project = format!(
         "(defproject app (libraries (grid :git \"{UNREACHABLE_REPOSITORY}\" :rev \"{MISSING_COMMIT}\")))\n"
     );
-    let sandbox = Sandbox::new("fmt_git_unreachable")
+    let sandbox = Sandbox::admitted("fmt_git_unreachable")
         .with_file(&Language::project_file_name(), &project)
         .with_file("src/main.knv", LOOP_CALL);
     let started = Instant::now();
@@ -1944,7 +1944,7 @@ fn fmt_with_a_git_library_at_an_unreachable_host_finishes_at_once() {
 
 #[test]
 fn fmt_in_a_project_skips_a_module_that_the_compiler_cannot_reach() {
-    let sandbox = Sandbox::new("fmt_project_parent_shapes")
+    let sandbox = Sandbox::admitted("fmt_project_parent_shapes")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("shapes/loops.knv", LOOP_SHAPE)
         .with_file("scripts/loops.knv", LOOP_CALL);
@@ -1956,7 +1956,7 @@ fn fmt_in_a_project_skips_a_module_that_the_compiler_cannot_reach() {
 
 #[test]
 fn fmt_lays_out_by_a_library_that_hides_a_local_module() {
-    let sandbox = Sandbox::new("fmt_library_hides_local")
+    let sandbox = Sandbox::admitted("fmt_library_hides_local")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (looping :path \"../looping\")))\n",
@@ -1977,7 +1977,7 @@ fn fmt_lays_out_by_a_library_that_hides_a_local_module() {
 
 #[test]
 fn fmt_in_a_project_whose_libraries_cannot_load_warns_and_lays_out_by_the_directory_search() {
-    let sandbox = Sandbox::new("fmt_unloadable_project")
+    let sandbox = Sandbox::admitted("fmt_unloadable_project")
         .with_file(
             &Language::project_file_name(),
             "(defproject app (libraries (missing :path \"../missing\")))\n",
@@ -1992,7 +1992,7 @@ fn fmt_in_a_project_whose_libraries_cannot_load_warns_and_lays_out_by_the_direct
 
 #[test]
 fn fmt_prints_an_unknown_project_key_as_a_warning() {
-    let sandbox = Sandbox::new("fmt_unknown_project_key_warning")
+    let sandbox = Sandbox::admitted("fmt_unknown_project_key_warning")
         .with_file(&Language::project_file_name(), PROJECT_WITH_UNKNOWN_KEY)
         .with_file("src/main.knv", FORMATTED);
     let fmt = sandbox.compiler(&["fmt", "src/main.knv"]);
@@ -2003,7 +2003,7 @@ fn fmt_prints_an_unknown_project_key_as_a_warning() {
 
 #[test]
 fn fmt_reports_an_unclosed_project_file_it_formats_once() {
-    let sandbox = Sandbox::new("fmt_unclosed_project_file_once")
+    let sandbox = Sandbox::admitted("fmt_unclosed_project_file_once")
         .with_file(&Language::project_file_name(), "(defproject app\n")
         .with_file("src/main.knv", FORMATTED);
     let fmt = sandbox.compiler(&["fmt", "."]);
@@ -2019,7 +2019,7 @@ fn fmt_reports_an_unclosed_project_file_it_formats_once() {
 
 #[test]
 fn fmt_reports_why_a_project_does_not_load_before_the_load_warning() {
-    let sandbox = Sandbox::new("fmt_project_reason_first")
+    let sandbox = Sandbox::admitted("fmt_project_reason_first")
         .with_file(&Language::project_file_name(), "(defproject app\n")
         .with_file("app.knv", FORMATTED);
     let fmt = sandbox.compiler(&["fmt", "--check", "."]);
@@ -2036,7 +2036,7 @@ fn fmt_reports_why_a_project_does_not_load_before_the_load_warning() {
 #[test]
 fn fmt_reports_an_unreadable_project_file_it_formats_once() {
     let sandbox =
-        Sandbox::new("fmt_unreadable_project_file_once").with_file("src/main.knv", FORMATTED);
+        Sandbox::admitted("fmt_unreadable_project_file_once").with_file("src/main.knv", FORMATTED);
     fs::write(
         sandbox.directory.join(Language::project_file_name()),
         b"(defproject app)\n\xff\n",
@@ -2049,7 +2049,7 @@ fn fmt_reports_an_unreadable_project_file_it_formats_once() {
 
 #[test]
 fn fmt_reports_an_unclosed_library_project_file_it_formats_once() {
-    let sandbox = Sandbox::new("fmt_unclosed_library_project_file_once")
+    let sandbox = Sandbox::admitted("fmt_unclosed_library_project_file_once")
         .with_file(
             &Language::project_file_name(),
             "(defproject app (libraries (shapes :path \"shapes\")))\n",
@@ -2070,7 +2070,7 @@ fn fmt_reports_an_unclosed_library_project_file_it_formats_once() {
 
 #[test]
 fn fmt_of_a_project_file_that_reads_keeps_its_load_warning() {
-    let sandbox = Sandbox::new("fmt_formatted_project_file_load_warning")
+    let sandbox = Sandbox::admitted("fmt_formatted_project_file_load_warning")
         .with_file(&Language::project_file_name(), PROJECT_WITH_UNKNOWN_KEY)
         .with_file("src/main.knv", FORMATTED);
     let fmt = sandbox.compiler(&["fmt", "."]);
@@ -2080,7 +2080,7 @@ fn fmt_of_a_project_file_that_reads_keeps_its_load_warning() {
 
 #[test]
 fn fmt_formats_every_source_file_under_a_directory() {
-    let sandbox = Sandbox::new("fmt_directory")
+    let sandbox = Sandbox::admitted("fmt_directory")
         .with_file("project/twice.knv", UNFORMATTED)
         .with_file("project/nested/limit.knv", UNFORMATTED)
         .with_file("project/notes.txt", UNFORMATTED);
@@ -2099,7 +2099,7 @@ fn fmt_formats_every_source_file_under_a_directory() {
 
 #[test]
 fn fmt_check_of_standard_input_that_would_change_prints_its_name_and_exits_1() {
-    let sandbox = Sandbox::new("fmt_check_standard_input_changes");
+    let sandbox = Sandbox::admitted("fmt_check_standard_input_changes");
     let check = sandbox.compiler_reading(UNFORMATTED, &["fmt", "--check", "-"]);
     check.assert_exit_code(1);
     assert_eq!(check.stdout(), "<stdin>\n");
@@ -2107,7 +2107,7 @@ fn fmt_check_of_standard_input_that_would_change_prints_its_name_and_exits_1() {
 
 #[test]
 fn fmt_check_of_formatted_standard_input_prints_nothing() {
-    let sandbox = Sandbox::new("fmt_check_standard_input_formatted");
+    let sandbox = Sandbox::admitted("fmt_check_standard_input_formatted");
     let check = sandbox.compiler_reading(FORMATTED, &["fmt", "--check", "-"]);
     check.assert_silent_success();
     assert_eq!(check.stdout(), "");
@@ -2116,7 +2116,7 @@ fn fmt_check_of_formatted_standard_input_prints_nothing() {
 #[test]
 fn fmt_exits_2_when_an_unreadable_file_follows_a_reader_error() {
     let sandbox =
-        Sandbox::new("fmt_unreadable_after_reader_error").with_file("unclosed.knv", UNCLOSED);
+        Sandbox::admitted("fmt_unreadable_after_reader_error").with_file("unclosed.knv", UNCLOSED);
     sandbox
         .compiler(&["fmt", "unclosed.knv", "missing.knv"])
         .assert_exit_code(2);
@@ -2124,7 +2124,7 @@ fn fmt_exits_2_when_an_unreadable_file_follows_a_reader_error() {
 
 #[test]
 fn fmt_skips_a_symlinked_directory() {
-    let sandbox = Sandbox::new("fmt_symlinked_directory")
+    let sandbox = Sandbox::admitted("fmt_symlinked_directory")
         .with_file("project/twice.knv", UNFORMATTED)
         .with_file("elsewhere/limit.knv", UNFORMATTED);
     std::os::unix::fs::symlink(
@@ -2146,7 +2146,7 @@ fn fmt_skips_a_symlinked_directory() {
 
 #[test]
 fn fmt_skips_hidden_directories_and_the_project_build_directory() {
-    let sandbox = Sandbox::new("fmt_skipped_directories")
+    let sandbox = Sandbox::admitted("fmt_skipped_directories")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("twice.knv", UNFORMATTED)
         .with_file(".direnv/limit.knv", UNFORMATTED)
@@ -2169,7 +2169,7 @@ fn fmt_skips_hidden_directories_and_the_project_build_directory() {
 
 #[test]
 fn fmt_in_a_project_walks_a_target_directory_below_the_root() {
-    let sandbox = Sandbox::new("fmt_project_inner_target")
+    let sandbox = Sandbox::admitted("fmt_project_inner_target")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/target/limit.knv", UNFORMATTED);
     sandbox.compiler(&["fmt", "src"]).assert_silent_success();
@@ -2178,7 +2178,7 @@ fn fmt_in_a_project_walks_a_target_directory_below_the_root() {
 
 #[test]
 fn fmt_outside_a_project_skips_only_the_target_directory_of_its_walk() {
-    let sandbox = Sandbox::new("fmt_skipped_walk_target")
+    let sandbox = Sandbox::admitted("fmt_skipped_walk_target")
         .with_file("loose/target/limit.knv", UNFORMATTED)
         .with_file("loose/src/target/limit.knv", UNFORMATTED);
     sandbox.compiler(&["fmt", "loose"]).assert_silent_success();
@@ -2193,7 +2193,7 @@ fn fmt_outside_a_project_skips_only_the_target_directory_of_its_walk() {
 
 #[test]
 fn fmt_reports_a_reader_error_and_leaves_the_file_as_it_was() {
-    let sandbox = Sandbox::new("fmt_reader_error")
+    let sandbox = Sandbox::admitted("fmt_reader_error")
         .with_file("unclosed.knv", UNCLOSED)
         .with_file("twice.knv", UNFORMATTED);
     let formatted = sandbox.compiler(&["fmt", "unclosed.knv", "twice.knv"]);
@@ -2214,7 +2214,7 @@ fn fmt_reports_a_reader_error_and_leaves_the_file_as_it_was() {
 
 #[test]
 fn fmt_of_a_missing_file_is_a_usage_error() {
-    let sandbox = Sandbox::new("fmt_missing_file");
+    let sandbox = Sandbox::admitted("fmt_missing_file");
     let formatted = sandbox.compiler(&["fmt", "missing.knv"]);
     assert!(
         formatted
@@ -2226,13 +2226,13 @@ fn fmt_of_a_missing_file_is_a_usage_error() {
 
 #[test]
 fn fmt_without_a_path_outside_a_project_is_a_usage_error() {
-    let fmt = Sandbox::new("fmt_without_path").compiler(&["fmt"]);
+    let fmt = Sandbox::admitted("fmt_without_path").compiler(&["fmt"]);
     insta::assert_snapshot!(fmt.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn fmt_of_standard_input_with_another_path_is_a_usage_error() {
-    let sandbox = Sandbox::new("fmt_standard_input_and_path").with_file("done.knv", FORMATTED);
+    let sandbox = Sandbox::admitted("fmt_standard_input_and_path").with_file("done.knv", FORMATTED);
     let formatted = sandbox.compiler_reading(FORMATTED, &["fmt", "-", "done.knv"]);
     assert!(
         formatted
@@ -2244,7 +2244,7 @@ fn fmt_of_standard_input_with_another_path_is_a_usage_error() {
 
 #[test]
 fn fmt_of_unread_standard_input_with_another_path_is_a_usage_error() {
-    let sandbox = Sandbox::new("fmt_unread_standard_input").with_file("done.knv", FORMATTED);
+    let sandbox = Sandbox::admitted("fmt_unread_standard_input").with_file("done.knv", FORMATTED);
     let unread = vec![b' '; Sandbox::PIPE_OVERFLOWING_INPUT_BYTES];
     let formatted = sandbox.compiler_reading(unread, &["fmt", "-", "done.knv"]);
     assert!(
@@ -2269,7 +2269,7 @@ fn any_other_failure_to_give_a_child_its_input_stays_an_error() {
 
 #[test]
 fn fmt_with_a_stdin_path_but_no_standard_input_is_a_usage_error() {
-    let sandbox = Sandbox::new("fmt_stdin_path_alone").with_file("done.knv", FORMATTED);
+    let sandbox = Sandbox::admitted("fmt_stdin_path_alone").with_file("done.knv", FORMATTED);
     sandbox
         .compiler(&["fmt", "--stdin-path", "done.knv", "done.knv"])
         .assert_exit_code(2);
@@ -2277,7 +2277,7 @@ fn fmt_with_a_stdin_path_but_no_standard_input_is_a_usage_error() {
 
 #[test]
 fn check_prints_the_warnings_of_a_valid_program() {
-    let sandbox = Sandbox::new("check_warns").with_file("pick.knv", UNREACHABLE_ARM);
+    let sandbox = Sandbox::admitted("check_warns").with_file("pick.knv", UNREACHABLE_ARM);
     let check = sandbox.compiler(&["check", "pick.knv"]);
     let stderr = check.assert_exit_code(0).stderr();
     assert!(stderr.starts_with("warning[L0803]: "), "{stderr}");
@@ -2285,7 +2285,7 @@ fn check_prints_the_warnings_of_a_valid_program() {
 
 #[test]
 fn check_is_silent_on_a_valid_program() {
-    let sandbox = Sandbox::new("check_valid").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("check_valid").with_file("greeting.knv", GREETING);
     let check = sandbox.compiler(&["check", "greeting.knv"]);
     check.assert_exit_code(0);
     assert_eq!(
@@ -2296,7 +2296,7 @@ fn check_is_silent_on_a_valid_program() {
 
 #[test]
 fn lint_prints_an_unread_binding_and_exits_one() {
-    let sandbox = Sandbox::new("lint_warning").with_file("unused.knv", UNUSED_BINDING);
+    let sandbox = Sandbox::admitted("lint_warning").with_file("unused.knv", UNUSED_BINDING);
     let lint = sandbox.compiler(&["lint", "unused.knv"]);
     lint.assert_exit_code(1);
     assert_eq!(lint.stdout(), "");
@@ -2310,7 +2310,7 @@ fn lint_prints_an_unread_binding_and_exits_one() {
 
 #[test]
 fn lint_of_a_program_with_no_warning_exits_zero() {
-    let sandbox = Sandbox::new("lint_clean").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("lint_clean").with_file("greeting.knv", GREETING);
     let lint = sandbox.compiler(&["lint", "greeting.knv"]);
     lint.assert_exit_code(0);
     assert_eq!(lint.stderr(), "");
@@ -2318,7 +2318,8 @@ fn lint_of_a_program_with_no_warning_exits_zero() {
 
 #[test]
 fn lint_of_a_program_whose_only_warning_is_no_lint_exits_zero() {
-    let sandbox = Sandbox::new("lint_no_lint_warning").with_file("shows.knv", SECOND_TRAIT_PATH);
+    let sandbox =
+        Sandbox::admitted("lint_no_lint_warning").with_file("shows.knv", SECOND_TRAIT_PATH);
     let lint = sandbox.compiler(&["lint", "shows.knv"]);
     let stderr = lint.assert_exit_code(0).stderr();
     assert!(stderr.starts_with("warning[L0217]: "), "{stderr}");
@@ -2327,8 +2328,8 @@ fn lint_of_a_program_whose_only_warning_is_no_lint_exits_zero() {
 
 #[test]
 fn lint_exits_one_on_an_unreachable_definition() {
-    let sandbox =
-        Sandbox::new("lint_unreachable_definition").with_file("helper.knv", UNREACHABLE_DEFINITION);
+    let sandbox = Sandbox::admitted("lint_unreachable_definition")
+        .with_file("helper.knv", UNREACHABLE_DEFINITION);
     let stderr = sandbox
         .compiler(&["lint", "helper.knv"])
         .assert_exit_code(1)
@@ -2338,7 +2339,7 @@ fn lint_exits_one_on_an_unreachable_definition() {
 
 #[test]
 fn lint_exits_one_on_an_unused_import() {
-    let sandbox = Sandbox::new("lint_unused_import")
+    let sandbox = Sandbox::admitted("lint_unused_import")
         .with_file(
             "format.knv",
             "(export pad-left shout)\n\n(defn pad-left (s) s)\n\n(defn shout (s) s)\n",
@@ -2472,7 +2473,8 @@ fn lint_of_a_task_file_lints_it_with_the_task_program() {
 
 #[test]
 fn lint_of_a_directory_outside_a_project_is_a_usage_error() {
-    let sandbox = Sandbox::new("lint_directory_outside").with_file("loose/a.knv", "(def a 1)\n");
+    let sandbox =
+        Sandbox::admitted("lint_directory_outside").with_file("loose/a.knv", "(def a 1)\n");
     let lint = sandbox
         .compiler(&["lint", "loose"])
         .assert_exit_code(2)
@@ -2482,7 +2484,7 @@ fn lint_of_a_directory_outside_a_project_is_a_usage_error() {
 
 #[test]
 fn lint_of_a_starter_test_file_prints_nothing() {
-    let sandbox = Sandbox::new("lint_starter_test_file");
+    let sandbox = Sandbox::admitted("lint_starter_test_file");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -2706,7 +2708,7 @@ fn lint_of_an_unreadable_file_prints_its_error_once() {
 #[test]
 fn lint_warns_on_each_of_two_files_with_one_stem() {
     let helper = "(type helper (fn (int) int))\n\n(defn helper (x) (* 2 x))\n\n(defn main () (println (helper 4)))\n";
-    let sandbox = Sandbox::new("lint_same_stem")
+    let sandbox = Sandbox::admitted("lint_same_stem")
         .with_file(
             &Language::project_file_name(),
             "(defproject stems (lints (needless-type warn)))\n",
@@ -2731,7 +2733,7 @@ fn doc_write_writes_no_page_through_a_link_to_the_source_root() {
 
 #[test]
 fn lint_keys_a_declaration_by_its_file_in_every_program() {
-    let sandbox = Sandbox::new("lint_one_key_per_file")
+    let sandbox = Sandbox::admitted("lint_one_key_per_file")
         .with_file(
             &Language::project_file_name(),
             "(defproject twofalse (lints (needless-type deny)))\n",
@@ -2756,7 +2758,7 @@ impl WholeProject {
     const UNUSED_AT: &str = "warning[L0801]: `unused` is never read\n --> ";
 
     fn lint_gaps(name: &str) -> Sandbox {
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .with_file(
                 &Language::project_file_name(),
                 "(defproject gaps (lints (needless-type deny)))\n",
@@ -2791,7 +2793,7 @@ impl WholeProject {
     }
 
     fn shared_module(name: &str) -> Sandbox {
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .with_file(&Language::project_file_name(), "(defproject shared)\n")
             .with_file(
                 "src/shapes.knv",
@@ -2830,7 +2832,7 @@ impl NeedlessTypeProject {
     }
 
     fn with_project_file(name: &str, project_file: &str) -> Sandbox {
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .with_file(&Language::project_file_name(), project_file)
             .with_file("src/main.knv", Self::TWICE)
     }
@@ -2838,7 +2840,7 @@ impl NeedlessTypeProject {
 
 #[test]
 fn lint_exits_one_on_an_unreachable_arm() {
-    let sandbox = Sandbox::new("lint_unreachable_arm").with_file("pick.knv", UNREACHABLE_ARM);
+    let sandbox = Sandbox::admitted("lint_unreachable_arm").with_file("pick.knv", UNREACHABLE_ARM);
     let stderr = sandbox
         .compiler(&["lint", "pick.knv"])
         .assert_exit_code(1)
@@ -2848,7 +2850,7 @@ fn lint_exits_one_on_an_unreachable_arm() {
 
 #[test]
 fn lint_exits_one_on_a_missing_bang() {
-    let sandbox = Sandbox::new("lint_missing_bang").with_file("clamp.knv", MISSING_BANG);
+    let sandbox = Sandbox::admitted("lint_missing_bang").with_file("clamp.knv", MISSING_BANG);
     let stderr = sandbox
         .compiler(&["lint", "clamp.knv"])
         .assert_exit_code(1)
@@ -2858,7 +2860,7 @@ fn lint_exits_one_on_a_missing_bang() {
 
 #[test]
 fn check_exits_zero_on_a_missing_bang() {
-    let sandbox = Sandbox::new("check_missing_bang").with_file("clamp.knv", MISSING_BANG);
+    let sandbox = Sandbox::admitted("check_missing_bang").with_file("clamp.knv", MISSING_BANG);
     let stderr = sandbox
         .compiler(&["check", "clamp.knv"])
         .assert_exit_code(0)
@@ -2868,7 +2870,7 @@ fn check_exits_zero_on_a_missing_bang() {
 
 #[test]
 fn lint_exits_one_on_a_lint_that_the_task_tree_prints() {
-    let sandbox = Sandbox::new("lint_task_lint")
+    let sandbox = Sandbox::admitted("lint_task_lint")
         .with_file(&Language::project_file_name(), "(defproject chores)\n")
         .with_file("src/main.knv", "(defn main () (println 1))\n")
         .with_file("tasks/chores.knv", TASK_WITH_A_PLACEHOLDER_LINK);
@@ -2879,7 +2881,7 @@ fn lint_exits_one_on_a_lint_that_the_task_tree_prints() {
 
 #[test]
 fn check_exits_zero_on_a_lint_that_the_task_tree_prints() {
-    let sandbox = Sandbox::new("check_task_lint")
+    let sandbox = Sandbox::admitted("check_task_lint")
         .with_file(&Language::project_file_name(), "(defproject chores)\n")
         .with_file("src/main.knv", "(defn main () (println 1))\n")
         .with_file("tasks/chores.knv", TASK_WITH_A_PLACEHOLDER_LINK);
@@ -2899,7 +2901,7 @@ impl LintsFixture {
             Some(level) => format!("(defproject demo (lints ({lint} {level})))\n"),
             None => DOCUMENTED_PROJECT.to_string(),
         };
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .with_file(&Language::project_file_name(), &project_file)
             .with_file("src/main.knv", main)
     }
@@ -2935,7 +2937,7 @@ impl LintsFixture {
     }
 
     fn doc_write(level: &str) -> (Option<i32>, String) {
-        let sandbox = Sandbox::new(&format!("lints_doc_write_{level}"))
+        let sandbox = Sandbox::admitted(&format!("lints_doc_write_{level}"))
             .with_file(
                 &Language::project_file_name(),
                 &format!("(defproject demo (lints (unmatched-link {level})))\n"),
@@ -2958,7 +2960,7 @@ fn repl_accepts_a_definition_with_a_lint_of_no_level_and_prints_it() {
 
 #[test]
 fn repl_warns_at_a_macro_from_an_earlier_input_that_hides_a_kernel_type() {
-    let sandbox = Sandbox::new("repl_kernel_type_macro");
+    let sandbox = Sandbox::admitted("repl_kernel_type_macro");
     let repl = sandbox.compiler_reading(
         "(defmacro make-byte () (template (defstruct u8 :n bool)))\n(make-byte)\n",
         &["repl"],
@@ -2968,7 +2970,7 @@ fn repl_warns_at_a_macro_from_an_earlier_input_that_hides_a_kernel_type() {
 
 #[test]
 fn repl_warns_at_a_binder_passed_into_a_macro_from_an_earlier_input() {
-    let sandbox = Sandbox::new("repl_kernel_type_passed_in");
+    let sandbox = Sandbox::admitted("repl_kernel_type_passed_in");
     let repl = sandbox.compiler_reading(
         "(defmacro define-macro (name body) (template (defmacro (unquote name) () (unquote body))))\n\
          (define-macro make-byte (template (defstruct u8 :n bool)))\n\
@@ -2980,7 +2982,7 @@ fn repl_warns_at_a_binder_passed_into_a_macro_from_an_earlier_input() {
 
 #[test]
 fn repl_warns_at_a_binder_the_app_passes_to_a_library_generator_in_an_earlier_input() {
-    let sandbox = Sandbox::new("repl_kernel_type_generator").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("repl_kernel_type_generator").with_fixture_tree("libraries");
     let repl = sandbox.compiler_reading_in(
         "money-generate-with-app",
         "(use money generate-with)\n(generate-with make-float float)\n(make-float)\n",
@@ -3094,7 +3096,7 @@ fn doc_write_prints_no_allowed_unmatched_link() {
 
 #[test]
 fn lint_ignores_the_lints_section_of_a_library() {
-    let sandbox = Sandbox::new("lints_library_section")
+    let sandbox = Sandbox::admitted("lints_library_section")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (helping :path \"../helping\")))\n",
@@ -3116,7 +3118,7 @@ fn lint_ignores_the_lints_section_of_a_library() {
 
 #[test]
 fn lint_exits_as_check_does_on_a_program_with_an_error() {
-    let sandbox = Sandbox::new("lint_error").with_file("area.knv", AREA_OF_A_STRING);
+    let sandbox = Sandbox::admitted("lint_error").with_file("area.knv", AREA_OF_A_STRING);
     let lint = sandbox.compiler(&["lint", "area.knv"]);
     let check = sandbox.compiler(&["check", "area.knv"]);
     assert_eq!(
@@ -3128,7 +3130,7 @@ fn lint_exits_as_check_does_on_a_program_with_an_error() {
 
 #[test]
 fn lint_exits_as_check_does_on_a_project_whose_task_has_an_error() {
-    let sandbox = Sandbox::new("lint_task_error")
+    let sandbox = Sandbox::admitted("lint_task_error")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/main.knv", UNUSED_BINDING)
         .with_file("tasks/serve.knv", "(deftask serve () (+ 1 \"2\"))\n");
@@ -3140,7 +3142,7 @@ fn lint_exits_as_check_does_on_a_project_whose_task_has_an_error() {
 
 #[test]
 fn lint_keeps_its_rules_when_a_project_holds_a_prelude_directory() {
-    let sandbox = Sandbox::new("lint_prelude_directory")
+    let sandbox = Sandbox::admitted("lint_prelude_directory")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/main.knv", UNUSED_BINDING)
         .with_file("prelude/lint.knv", "(export rule-names check-rule)\n(def rule-names (quote ()))\n(def check-rule (fn (rule table) (do)))\n");
@@ -3155,7 +3157,7 @@ fn lint_keeps_its_rules_when_a_project_holds_a_prelude_directory() {
 
 #[test]
 fn lint_prints_the_check_warnings_and_the_lint_warnings_apart() {
-    let sandbox = Sandbox::new("lint_check_warnings")
+    let sandbox = Sandbox::admitted("lint_check_warnings")
         .with_file("pick.knv", UNREACHABLE_ARM_AND_UNUSED_BINDING);
     let lint = sandbox.compiler(&["lint", "pick.knv"]);
     insta::assert_snapshot!(lint.transcript());
@@ -3163,7 +3165,7 @@ fn lint_prints_the_check_warnings_and_the_lint_warnings_apart() {
 
 #[test]
 fn lint_reports_no_binding_of_a_library() {
-    let sandbox = Sandbox::new("lint_library")
+    let sandbox = Sandbox::admitted("lint_library")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (helping :path \"../helping\")))\n",
@@ -3191,7 +3193,8 @@ fn lint_reports_no_binding_of_a_library() {
 
 #[test]
 fn check_ignores_a_byte_order_mark() {
-    let sandbox = Sandbox::new("check_byte_order_mark").with_file("marked.knv", MARKED_PROGRAM);
+    let sandbox =
+        Sandbox::admitted("check_byte_order_mark").with_file("marked.knv", MARKED_PROGRAM);
     sandbox
         .compiler(&["check", "marked.knv"])
         .assert_exit_code(0);
@@ -3199,21 +3202,21 @@ fn check_ignores_a_byte_order_mark() {
 
 #[test]
 fn types_prints_each_function() {
-    let sandbox = Sandbox::new("types").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("types").with_file("greeting.knv", GREETING);
     let types = sandbox.compiler(&["types", "greeting.knv"]);
     insta::assert_snapshot!(types.assert_exit_code(0).stdout());
 }
 
 #[test]
 fn types_prints_inferred_struct_derives() {
-    let sandbox = Sandbox::new("types_structs").with_file("structs.knv", STRUCTS);
+    let sandbox = Sandbox::admitted("types_structs").with_file("structs.knv", STRUCTS);
     let types = sandbox.compiler(&["types", "structs.knv"]);
     insta::assert_snapshot!(types.assert_exit_code(0).stdout());
 }
 
 #[test]
 fn signatures_is_an_unknown_command() {
-    let sandbox = Sandbox::new("signatures_unknown").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("signatures_unknown").with_file("greeting.knv", GREETING);
     let signatures = sandbox.compiler(&["signatures", "greeting.knv"]);
     let stderr = signatures.assert_exit_code(2).stderr();
     assert_eq!(
@@ -3224,7 +3227,7 @@ fn signatures_is_an_unknown_command() {
 
 #[test]
 fn doc_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("doc_closed_pipe");
+    let sandbox = Sandbox::admitted("doc_closed_pipe");
     sandbox
         .compiler_writing_to_a_closed_pipe(&["doc", "if"])
         .assert_silent_success();
@@ -3233,7 +3236,7 @@ fn doc_ends_quietly_when_its_reader_closes() {
 #[test]
 #[cfg(target_os = "linux")]
 fn doc_reports_a_standard_output_it_cannot_write() {
-    let sandbox = Sandbox::new("doc_unwritable");
+    let sandbox = Sandbox::admitted("doc_unwritable");
     let doc = sandbox.compiler_writing_to_a_full_device(&["doc", "if"]);
     assert!(
         doc.assert_exit_code(2)
@@ -3246,28 +3249,29 @@ fn doc_reports_a_standard_output_it_cannot_write() {
 
 #[test]
 fn doc_keeps_its_exit_code_when_its_error_reader_closes() {
-    let sandbox = Sandbox::new("doc_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("doc_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
     let arguments = ["doc", "--file", "unbound.knv", "main"];
     sandbox.assert_exit_code_with_a_closed_error_pipe(&arguments, 1);
 }
 
 #[test]
 fn check_keeps_its_exit_code_when_its_error_reader_closes() {
-    let sandbox = Sandbox::new("check_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox =
+        Sandbox::admitted("check_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
     let arguments = ["check", "unbound.knv"];
     sandbox.assert_exit_code_with_a_closed_error_pipe(&arguments, 1);
 }
 
 #[test]
 fn run_keeps_its_exit_code_when_its_error_reader_closes() {
-    let sandbox = Sandbox::new("run_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("run_closed_error_pipe").with_file("unbound.knv", UNBOUND_NAME);
     let arguments = ["run", "unbound.knv"];
     sandbox.assert_exit_code_with_a_closed_error_pipe(&arguments, 1);
 }
 
 #[test]
 fn emit_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("emit_closed_pipe").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("emit_closed_pipe").with_file("greeting.knv", GREETING);
     sandbox
         .compiler_writing_to_a_closed_pipe(&["emit", "greeting.knv"])
         .assert_silent_success();
@@ -3275,7 +3279,7 @@ fn emit_ends_quietly_when_its_reader_closes() {
 
 #[test]
 fn expand_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("expand_closed_pipe").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("expand_closed_pipe").with_file("greeting.knv", GREETING);
     sandbox
         .compiler_writing_to_a_closed_pipe(&["expand", "greeting.knv"])
         .assert_silent_success();
@@ -3283,7 +3287,7 @@ fn expand_ends_quietly_when_its_reader_closes() {
 
 #[test]
 fn types_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("types_closed_pipe").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("types_closed_pipe").with_file("greeting.knv", GREETING);
     sandbox
         .compiler_writing_to_a_closed_pipe(&["types", "greeting.knv"])
         .assert_silent_success();
@@ -3291,7 +3295,7 @@ fn types_ends_quietly_when_its_reader_closes() {
 
 #[test]
 fn doc_prints_the_page_of_a_prelude_term() {
-    let sandbox = Sandbox::new("doc_prelude");
+    let sandbox = Sandbox::admitted("doc_prelude");
     let doc = sandbox.compiler(&["doc", "defn"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3301,7 +3305,7 @@ fn doc_prints_the_page_of_a_prelude_term() {
 
 #[test]
 fn doc_prints_the_header_that_documents_a_prelude_term() {
-    let sandbox = Sandbox::new("doc_document_header");
+    let sandbox = Sandbox::admitted("doc_document_header");
     let doc = sandbox.compiler(&["doc", "str"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3311,7 +3315,7 @@ fn doc_prints_the_header_that_documents_a_prelude_term() {
 
 #[test]
 fn doc_prints_the_page_of_a_kernel_form() {
-    let sandbox = Sandbox::new("doc_kernel_form");
+    let sandbox = Sandbox::admitted("doc_kernel_form");
     let doc = sandbox.compiler(&["doc", "match"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3321,7 +3325,7 @@ fn doc_prints_the_page_of_a_kernel_form() {
 
 #[test]
 fn doc_prints_the_page_of_a_kernel_type() {
-    let sandbox = Sandbox::new("doc_kernel_type");
+    let sandbox = Sandbox::admitted("doc_kernel_type");
     let doc = sandbox.compiler(&["doc", "int"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3331,7 +3335,7 @@ fn doc_prints_the_page_of_a_kernel_type() {
 
 #[test]
 fn doc_of_f64_prints_the_page_of_float() {
-    let sandbox = Sandbox::new("doc_float_other_name");
+    let sandbox = Sandbox::admitted("doc_float_other_name");
     let other = sandbox.compiler(&["doc", "f64"]);
     let shown = sandbox.compiler(&["doc", "float"]);
     assert_eq!(
@@ -3343,7 +3347,7 @@ fn doc_of_f64_prints_the_page_of_float() {
 
 #[test]
 fn types_prints_a_written_f64_as_float() {
-    let sandbox = Sandbox::new("types_float_name").with_file(
+    let sandbox = Sandbox::admitted("types_float_name").with_file(
         "rates.knv",
         "(type adjust (fn (f64) float))\n(defn adjust (value) value)\n(defn main () (do))\n",
     );
@@ -3356,7 +3360,7 @@ fn types_prints_a_written_f64_as_float() {
 
 #[test]
 fn doc_of_another_name_of_a_kernel_type_prints_its_page() {
-    let sandbox = Sandbox::new("doc_kernel_type_other_name");
+    let sandbox = Sandbox::admitted("doc_kernel_type_other_name");
     let other = sandbox.compiler(&["doc", "i64"]);
     let shown = sandbox.compiler(&["doc", "int"]);
     assert_eq!(
@@ -3367,14 +3371,14 @@ fn doc_of_another_name_of_a_kernel_type_prints_its_page() {
 
 #[test]
 fn doc_prints_the_page_of_a_kernel_constant() {
-    let sandbox = Sandbox::new("doc_kernel_constant");
+    let sandbox = Sandbox::admitted("doc_kernel_constant");
     let doc = sandbox.compiler(&["doc", "true"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), TRUE_PAGE);
 }
 
 #[test]
 fn doc_prints_the_call_form_of_template() {
-    let sandbox = Sandbox::new("doc_template");
+    let sandbox = Sandbox::admitted("doc_template");
     let doc = sandbox.compiler(&["doc", "template"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3384,7 +3388,7 @@ fn doc_prints_the_call_form_of_template() {
 
 #[test]
 fn doc_prints_the_explanation_of_a_diagnostic_code() {
-    let sandbox = Sandbox::new("doc_code_explanation");
+    let sandbox = Sandbox::admitted("doc_code_explanation");
     let doc = sandbox.compiler(&["doc", "L0501"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("L0501: use after move"));
@@ -3393,7 +3397,7 @@ fn doc_prints_the_explanation_of_a_diagnostic_code() {
 
 #[test]
 fn doc_looks_up_a_code_name_as_a_term() {
-    let sandbox = Sandbox::new("doc_code_name");
+    let sandbox = Sandbox::admitted("doc_code_name");
     let doc = sandbox.compiler(&["doc", "--color", "never", "use-after-move"]);
     assert!(
         doc.assert_exit_code(1)
@@ -3404,7 +3408,7 @@ fn doc_looks_up_a_code_name_as_a_term() {
 
 #[test]
 fn doc_looks_up_an_unknown_code_as_a_term() {
-    let sandbox = Sandbox::new("doc_unknown_code");
+    let sandbox = Sandbox::admitted("doc_unknown_code");
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0999"]);
     assert!(
         doc.assert_exit_code(1)
@@ -3415,7 +3419,7 @@ fn doc_looks_up_an_unknown_code_as_a_term() {
 
 #[test]
 fn doc_explains_the_code_of_a_lint_rule_by_the_rule_s_docstring() {
-    let sandbox = Sandbox::new("doc_rule_code");
+    let sandbox = Sandbox::admitted("doc_rule_code");
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0801"]);
     let page = doc.assert_exit_code(0).stdout();
     assert!(
@@ -3426,7 +3430,7 @@ fn doc_explains_the_code_of_a_lint_rule_by_the_rule_s_docstring() {
 
 #[test]
 fn doc_explains_a_lint_code_by_the_docstring_where_its_wording_lives() {
-    let sandbox = Sandbox::new("doc_link_code");
+    let sandbox = Sandbox::admitted("doc_link_code");
     let doc = sandbox.compiler(&["doc", "--color", "never", "L0802"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("L0802: unmatched link"));
@@ -3435,7 +3439,7 @@ fn doc_explains_a_lint_code_by_the_docstring_where_its_wording_lives() {
 
 #[test]
 fn doc_explains_a_lint_of_the_compiler_by_its_code_page() {
-    let sandbox = Sandbox::new("doc_compiler_lint_code");
+    let sandbox = Sandbox::admitted("doc_compiler_lint_code");
     let doc = sandbox.compiler(&["doc", "L0803"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("L0803: unreachable arm"));
@@ -3444,7 +3448,7 @@ fn doc_explains_a_lint_of_the_compiler_by_its_code_page() {
 
 #[test]
 fn doc_finds_a_lint_rule_by_its_name() {
-    let sandbox = Sandbox::new("doc_rule_name");
+    let sandbox = Sandbox::admitted("doc_rule_name");
     let doc = sandbox.compiler(&["doc", "--color", "never", "unused-binding"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("(unused-binding table)"));
@@ -3452,7 +3456,7 @@ fn doc_finds_a_lint_rule_by_its_name() {
 
 #[test]
 fn doc_explains_each_lint_rule_s_code_and_finds_it_by_its_name() {
-    let sandbox = Sandbox::new("doc_parameter_rule");
+    let sandbox = Sandbox::admitted("doc_parameter_rule");
     let code_page = sandbox.compiler(&["doc", "--color", "never", "L0806"]);
     let page = code_page.assert_exit_code(0).stdout();
     assert!(page.starts_with("L0806: unused parameter\n\nReports a function parameter"));
@@ -3463,7 +3467,7 @@ fn doc_explains_each_lint_rule_s_code_and_finds_it_by_its_name() {
 
 #[test]
 fn doc_types_finds_a_lint_rule_by_its_name() {
-    let sandbox = Sandbox::new("doc_types_rule_name");
+    let sandbox = Sandbox::admitted("doc_types_rule_name");
     let doc = sandbox.compiler(&["doc", "--color", "never", "--types", "unused-binding"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some("(unused-binding table)"));
@@ -3471,7 +3475,7 @@ fn doc_types_finds_a_lint_rule_by_its_name() {
 
 #[test]
 fn doc_looks_up_the_name_of_a_lint_of_the_compiler_as_a_term() {
-    let sandbox = Sandbox::new("doc_compiler_lint_name");
+    let sandbox = Sandbox::admitted("doc_compiler_lint_name");
     let doc = sandbox.compiler(&["doc", "--color", "never", "unreachable-arm"]);
     assert!(
         doc.assert_exit_code(1)
@@ -3482,7 +3486,7 @@ fn doc_looks_up_the_name_of_a_lint_of_the_compiler_as_a_term() {
 
 #[test]
 fn doc_prefers_a_program_s_own_name_to_a_lint_rule() {
-    let sandbox = Sandbox::new("doc_rule_name_taken").with_file(
+    let sandbox = Sandbox::admitted("doc_rule_name_taken").with_file(
         "shelf.knv",
         "(defn unused-binding ()\n  \"Counts the shelves.\"\n  3)\n",
     );
@@ -3502,7 +3506,7 @@ fn doc_prefers_a_program_s_own_name_to_a_lint_rule() {
 
 #[test]
 fn doc_reads_the_lint_rules_of_the_compiler_s_own_prelude() {
-    let sandbox = Sandbox::new("doc_rule_of_project_prelude")
+    let sandbox = Sandbox::admitted("doc_rule_of_project_prelude")
         .with_file(&Language::project_file_name(), "(defproject shelf)\n")
         .with_file("src/main.knv", "(defn main () (println 1))\n")
         .with_file("prelude/lint.knv", PROJECT_LINT_RULES);
@@ -3522,7 +3526,7 @@ fn doc_reads_the_lint_rules_of_the_compiler_s_own_prelude() {
 
 #[test]
 fn doc_takes_a_term_that_starts_with_a_hyphen() {
-    let sandbox = Sandbox::new("doc_hyphen");
+    let sandbox = Sandbox::admitted("doc_hyphen");
     let doc = sandbox.compiler(&["doc", "->"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some(THREADING_HEADER));
@@ -3530,7 +3534,7 @@ fn doc_takes_a_term_that_starts_with_a_hyphen() {
 
 #[test]
 fn doc_apropos_lists_the_prelude_names_that_hold_the_text() {
-    let sandbox = Sandbox::new("doc_apropos");
+    let sandbox = Sandbox::admitted("doc_apropos");
     let doc = sandbox.compiler(&["doc", "(apropos sort)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3540,7 +3544,7 @@ fn doc_apropos_lists_the_prelude_names_that_hold_the_text() {
 
 #[test]
 fn doc_apropos_ignores_case() {
-    let sandbox = Sandbox::new("doc_apropos_case");
+    let sandbox = Sandbox::admitted("doc_apropos_case");
     let doc = sandbox.compiler(&["doc", "(apropos SORT)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3550,7 +3554,7 @@ fn doc_apropos_ignores_case() {
 
 #[test]
 fn doc_apropos_without_a_match_points_to_find_doc() {
-    let sandbox = Sandbox::new("doc_apropos_none");
+    let sandbox = Sandbox::admitted("doc_apropos_none");
     let doc = sandbox.compiler(&["doc", "(apropos zzqx)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3560,7 +3564,7 @@ fn doc_apropos_without_a_match_points_to_find_doc() {
 
 #[test]
 fn doc_find_doc_without_a_match_succeeds() {
-    let sandbox = Sandbox::new("doc_find_doc_none");
+    let sandbox = Sandbox::admitted("doc_find_doc_none");
     let doc = sandbox.compiler(&["doc", "(find-doc zzqx)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3570,7 +3574,7 @@ fn doc_find_doc_without_a_match_succeeds() {
 
 #[test]
 fn doc_finds_the_page_of_assert_imported_from_prelude_test() {
-    let sandbox = Sandbox::new("doc_imported_assert").with_file("main.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("doc_imported_assert").with_file("main.knv", PADDING_TESTS);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "assert"]);
     let page = doc.assert_exit_code(0).stdout();
     assert!(
@@ -3580,7 +3584,7 @@ fn doc_finds_the_page_of_assert_imported_from_prelude_test() {
 
 #[test]
 fn doc_find_doc_finds_a_term_through_the_body_of_its_docstring() {
-    let sandbox = Sandbox::new("doc_find_doc_body").with_file("main.knv", DOCUMENTED_TWICE);
+    let sandbox = Sandbox::admitted("doc_find_doc_body").with_file("main.knv", DOCUMENTED_TWICE);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(find-doc widgets)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3590,7 +3594,7 @@ fn doc_find_doc_finds_a_term_through_the_body_of_its_docstring() {
 
 #[test]
 fn doc_takes_a_search_text_that_starts_with_hyphens() {
-    let sandbox = Sandbox::new("doc_search_hyphens");
+    let sandbox = Sandbox::admitted("doc_search_hyphens");
     let doc = sandbox.compiler(&["doc", "(find-doc --zzqx)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -3600,7 +3604,7 @@ fn doc_takes_a_search_text_that_starts_with_hyphens() {
 
 #[test]
 fn doc_dir_lists_the_exports_of_a_module() {
-    let sandbox = Sandbox::new("doc_dir_module")
+    let sandbox = Sandbox::admitted("doc_dir_module")
         .with_file("geometry.knv", GEOMETRY)
         .with_file("main.knv", GEOMETRY_ENTRY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(dir geometry)"]);
@@ -3609,7 +3613,7 @@ fn doc_dir_lists_the_exports_of_a_module() {
 
 #[test]
 fn doc_dir_lists_the_names_of_the_entry_module() {
-    let sandbox = Sandbox::new("doc_dir_entry").with_file("main.knv", DOCUMENTED_TWICE);
+    let sandbox = Sandbox::admitted("doc_dir_entry").with_file("main.knv", DOCUMENTED_TWICE);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(dir)"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), "(dir)\n\nmain twice\n");
 }
@@ -3715,7 +3719,7 @@ fn doc_write_lays_out_the_code_blocks_of_a_page() {
 
 #[test]
 fn fmt_reads_a_bare_arrow_as_prose_and_a_tilde_block_as_a_fence() {
-    let sandbox = Sandbox::new("fmt_bare_arrow_tilde_fence")
+    let sandbox = Sandbox::admitted("fmt_bare_arrow_tilde_fence")
         .with_file("pick.knv", BARE_ARROW_AND_TILDE_FENCE);
     sandbox.compiler(&["fmt", "pick.knv"]).assert_exit_code(0);
     assert_eq!(
@@ -3726,7 +3730,7 @@ fn fmt_reads_a_bare_arrow_as_prose_and_a_tilde_block_as_a_fence() {
 
 #[test]
 fn test_reads_a_bare_arrow_as_prose_and_a_tilde_block_as_a_fence() {
-    let sandbox = Sandbox::new("test_bare_arrow_tilde_fence")
+    let sandbox = Sandbox::admitted("test_bare_arrow_tilde_fence")
         .with_file("pick.knv", BARE_ARROW_AND_TILDE_FENCE);
     sandbox.compiler(&["test", "pick.knv"]).assert_exit_code(0);
 }
@@ -3812,7 +3816,7 @@ fn doc_write_shows_no_type_for_a_macro_or_a_struct() {
 
 #[test]
 fn doc_write_prelude_gives_two_names_of_one_type_one_section() {
-    let sandbox = Sandbox::new("doc_write_prelude_int");
+    let sandbox = Sandbox::admitted("doc_write_prelude_int");
     sandbox
         .compiler(&["doc", "--write", "--prelude"])
         .assert_silent_success();
@@ -3827,7 +3831,7 @@ fn doc_write_prelude_gives_two_names_of_one_type_one_section() {
 
 #[test]
 fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
-    let sandbox = Sandbox::new("doc_write_prelude");
+    let sandbox = Sandbox::admitted("doc_write_prelude");
     sandbox
         .compiler(&["doc", "--write", "--prelude"])
         .assert_silent_success();
@@ -3866,7 +3870,7 @@ fn doc_write_prelude_writes_a_page_per_public_prelude_module() {
 
 #[test]
 fn doc_write_links_a_reexport_to_the_module_that_defines_it() {
-    let sandbox = Sandbox::new("doc_write_reexport_home")
+    let sandbox = Sandbox::admitted("doc_write_reexport_home")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/a.knv", "(use b size)\n\n(export size)\n")
         .with_file(
@@ -3884,7 +3888,7 @@ fn doc_write_links_a_reexport_to_the_module_that_defines_it() {
 
 #[test]
 fn doc_write_keeps_the_defining_module_of_a_name_a_later_module_reexports() {
-    let sandbox = Sandbox::new("doc_write_first_defining_home")
+    let sandbox = Sandbox::admitted("doc_write_first_defining_home")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/a.knv", "(use c size)\n\n(export size)\n")
         .with_file(
@@ -3902,7 +3906,7 @@ fn doc_write_keeps_the_defining_module_of_a_name_a_later_module_reexports() {
 
 #[test]
 fn doc_write_links_a_bracketed_name_that_ends_a_line() {
-    let sandbox = Sandbox::new("doc_write_line_end_link")
+    let sandbox = Sandbox::admitted("doc_write_line_end_link")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file(
             "src/a.knv",
@@ -3931,7 +3935,7 @@ fn doc_write_warns_at_a_bracketed_name_that_matches_no_term() {
 
 #[test]
 fn doc_write_reads_a_project_whose_entry_sits_at_its_root() {
-    let sandbox = Sandbox::new("doc_write_root_entry")
+    let sandbox = Sandbox::admitted("doc_write_root_entry")
         .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
         .with_file("main.knv", ROOT_ENTRY);
     sandbox
@@ -3942,7 +3946,7 @@ fn doc_write_reads_a_project_whose_entry_sits_at_its_root() {
 
 #[test]
 fn doc_write_leaves_out_the_tasks_and_tests_folders() {
-    let sandbox = Sandbox::new("doc_write_tasks_and_tests")
+    let sandbox = Sandbox::admitted("doc_write_tasks_and_tests")
         .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
         .with_file("main.knv", ROOT_ENTRY)
         .with_file("tasks/build.knv", HELPER_TASK)
@@ -3955,7 +3959,7 @@ fn doc_write_leaves_out_the_tasks_and_tests_folders() {
 
 #[test]
 fn doc_write_leaves_out_a_library_inside_the_project() {
-    let sandbox = Sandbox::new("doc_write_inner_library")
+    let sandbox = Sandbox::admitted("doc_write_inner_library")
         .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
         .with_file("main.knv", ROOT_ENTRY)
         .with_file("vendor/hints/project.knv", "(defproject hints)\n")
@@ -4018,7 +4022,7 @@ fn doc_write_refuses_a_file_that_cannot_be_a_module() {
 
 #[test]
 fn doc_write_refuses_a_file_that_takes_a_library_module() {
-    let sandbox = Sandbox::new("doc_write_library_module")
+    let sandbox = Sandbox::admitted("doc_write_library_module")
         .with_fixture_tree("libraries")
         .with_file(
             "tested-app/src/hints.knv",
@@ -4044,7 +4048,7 @@ fn doc_write_refuses_a_file_that_takes_a_compiler_module() {
 
 #[test]
 fn doc_write_gives_each_page_the_type_of_its_own_name() {
-    let sandbox = Sandbox::new("doc_write_same_name")
+    let sandbox = Sandbox::admitted("doc_write_same_name")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file(
             "src/a.knv",
@@ -4071,7 +4075,7 @@ fn doc_write_gives_each_page_the_type_of_its_own_name() {
 
 #[test]
 fn doc_write_shows_the_type_a_module_gives_its_own_name() {
-    let sandbox = Sandbox::new("doc_write_own_type")
+    let sandbox = Sandbox::admitted("doc_write_own_type")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file(
             "src/main.knv",
@@ -4093,7 +4097,7 @@ fn doc_write_shows_the_type_a_module_gives_its_own_name() {
 
 #[test]
 fn doc_write_errors_writes_the_index_and_a_page_per_code() {
-    let sandbox = Sandbox::new("doc_write_errors");
+    let sandbox = Sandbox::admitted("doc_write_errors");
     sandbox
         .compiler(&["doc", "--write", "--errors"])
         .assert_silent_success();
@@ -4111,7 +4115,7 @@ fn doc_write_errors_writes_the_index_and_a_page_per_code() {
 
 #[test]
 fn doc_write_errors_writes_a_lint_rule_s_docstring_as_its_code_page() {
-    let sandbox = Sandbox::new("doc_write_errors_rule");
+    let sandbox = Sandbox::admitted("doc_write_errors_rule");
     sandbox
         .compiler(&["doc", "--write", "--errors"])
         .assert_silent_success();
@@ -4126,7 +4130,7 @@ fn doc_write_errors_writes_a_lint_rule_s_docstring_as_its_code_page() {
 
 #[test]
 fn doc_write_errors_beside_the_prelude_writes_both() {
-    let sandbox = Sandbox::new("doc_write_errors_prelude");
+    let sandbox = Sandbox::admitted("doc_write_errors_prelude");
     sandbox
         .compiler(&["doc", "--write", "--prelude", "--errors"])
         .assert_silent_success();
@@ -4137,7 +4141,7 @@ fn doc_write_errors_beside_the_prelude_writes_both() {
 
 #[test]
 fn doc_write_reference_writes_the_index_and_each_page() {
-    let sandbox = Sandbox::new("doc_write_reference");
+    let sandbox = Sandbox::admitted("doc_write_reference");
     sandbox
         .compiler(&["doc", "--write", "--reference", "--output", "pages"])
         .assert_silent_success();
@@ -4160,7 +4164,7 @@ fn doc_write_reference_writes_the_index_and_each_page() {
 
 #[test]
 fn doc_write_reference_writes_the_index_as_reference_md() {
-    let sandbox = Sandbox::new("doc_write_reference_index");
+    let sandbox = Sandbox::admitted("doc_write_reference_index");
     sandbox
         .compiler(&["doc", "--write", "--reference", "--output", "pages"])
         .assert_silent_success();
@@ -4175,7 +4179,7 @@ fn doc_write_reference_writes_the_index_as_reference_md() {
 
 #[test]
 fn doc_write_reference_beside_the_prelude_and_errors_writes_all_three() {
-    let sandbox = Sandbox::new("doc_write_reference_prelude_errors");
+    let sandbox = Sandbox::admitted("doc_write_reference_prelude_errors");
     sandbox
         .compiler(&[
             "doc",
@@ -4203,7 +4207,7 @@ fn doc_write_reference_beside_the_prelude_and_errors_writes_all_three() {
 
 #[test]
 fn doc_write_prelude_ignores_a_broken_project_file() {
-    let sandbox = Sandbox::new("doc_write_prelude_broken_project")
+    let sandbox = Sandbox::admitted("doc_write_prelude_broken_project")
         .with_file(&Language::project_file_name(), "(defproject\n")
         .with_file("src/notes.knv", "");
     sandbox
@@ -4214,7 +4218,7 @@ fn doc_write_prelude_ignores_a_broken_project_file() {
 
 #[test]
 fn doc_write_types_a_module_from_the_whole_program_when_its_own_check_fails() {
-    let sandbox = Sandbox::new("doc_write_whole_program_type")
+    let sandbox = Sandbox::admitted("doc_write_whole_program_type")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/lib.knv", "(export nothing)\n\n(def nothing none)\n")
         .with_file("src/other.knv", "(export nobody)\n\n(def nobody none)\n")
@@ -4239,7 +4243,7 @@ fn doc_write_types_a_module_from_the_whole_program_when_its_own_check_fails() {
 
 #[test]
 fn doc_write_refuses_a_fallback_type_that_only_a_module_outside_the_entry_program_fixes() {
-    let sandbox = Sandbox::new("doc_write_fallback_outside_entry")
+    let sandbox = Sandbox::admitted("doc_write_fallback_outside_entry")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/lib.knv", "(export nothing)\n(def nothing none)\n")
         .with_file(
@@ -4259,7 +4263,7 @@ fn doc_write_refuses_a_fallback_type_that_only_a_module_outside_the_entry_progra
 
 #[test]
 fn doc_write_refuses_a_module_the_entry_program_does_not_load() {
-    let sandbox = Sandbox::new("doc_write_unloaded_fallback")
+    let sandbox = Sandbox::admitted("doc_write_unloaded_fallback")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/unused.knv", "(export nothing)\n(def nothing none)\n")
         .with_file("src/main.knv", "(defn main () (println \"hi\"))\n");
@@ -4272,7 +4276,7 @@ fn doc_write_refuses_a_module_the_entry_program_does_not_load() {
 
 #[test]
 fn doc_write_falls_back_for_a_module_whose_exports_have_no_type() {
-    let sandbox = Sandbox::new("doc_write_untyped_fallback")
+    let sandbox = Sandbox::admitted("doc_write_untyped_fallback")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file(
             "src/lib.knv",
@@ -4294,7 +4298,7 @@ fn doc_write_falls_back_for_a_module_whose_exports_have_no_type() {
 
 #[test]
 fn doc_write_reports_the_error_that_fails_the_entry_program() {
-    let sandbox = Sandbox::new("doc_write_failing_entry_program")
+    let sandbox = Sandbox::admitted("doc_write_failing_entry_program")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/lib.knv", "(export nothing)\n(def nothing none)\n")
         .with_file(
@@ -4310,7 +4314,7 @@ fn doc_write_reports_the_error_that_fails_the_entry_program() {
 
 #[test]
 fn doc_write_reports_an_entry_it_cannot_read() {
-    let sandbox = Sandbox::new("doc_write_unreadable_entry")
+    let sandbox = Sandbox::admitted("doc_write_unreadable_entry")
         .with_file(&Language::project_file_name(), DOCUMENTED_PROJECT)
         .with_file("src/lib.knv", "(export nothing)\n(def nothing none)\n")
         .with_file("src/main.knv/notes.txt", "");
@@ -4323,13 +4327,13 @@ fn doc_write_reports_an_entry_it_cannot_read() {
 
 #[test]
 fn doc_write_outside_a_project_is_a_usage_error() {
-    let sandbox = Sandbox::new("doc_write_no_project");
+    let sandbox = Sandbox::admitted("doc_write_no_project");
     sandbox.compiler(&["doc", "--write"]).assert_exit_code(2);
 }
 
 #[test]
 fn doc_write_takes_no_term() {
-    let sandbox = Sandbox::new("doc_write_term");
+    let sandbox = Sandbox::admitted("doc_write_term");
     let write = sandbox.compiler(&["doc", "--write", "defn"]);
     assert_eq!(
         write.assert_exit_code(2).stderr().lines().next(),
@@ -4339,7 +4343,7 @@ fn doc_write_takes_no_term() {
 
 #[test]
 fn doc_takes_the_thread_last_term() {
-    let sandbox = Sandbox::new("doc_thread_last");
+    let sandbox = Sandbox::admitted("doc_thread_last");
     let doc = sandbox.compiler(&["doc", "->>"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some(THREAD_LAST_HEADER));
@@ -4347,7 +4351,7 @@ fn doc_takes_the_thread_last_term() {
 
 #[test]
 fn doc_takes_the_minus_term() {
-    let sandbox = Sandbox::new("doc_minus");
+    let sandbox = Sandbox::admitted("doc_minus");
     let doc = sandbox.compiler(&["doc", "-"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some(MINUS_HEADER));
@@ -4355,14 +4359,15 @@ fn doc_takes_the_minus_term() {
 
 #[test]
 fn doc_takes_a_program_term_that_starts_with_two_hyphens_after_the_separator() {
-    let sandbox = Sandbox::new("doc_separated_program_term").with_file("main.knv", FLAG_NAMED_DEF);
+    let sandbox =
+        Sandbox::admitted("doc_separated_program_term").with_file("main.knv", FLAG_NAMED_DEF);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "--", "--verbose"]);
     assert_eq!(doc.assert_exit_code(0).stdout(), FLAG_NAMED_DEF_PAGE);
 }
 
 #[test]
 fn doc_takes_a_prelude_term_after_the_separator() {
-    let sandbox = Sandbox::new("doc_separated_prelude_term");
+    let sandbox = Sandbox::admitted("doc_separated_prelude_term");
     let doc = sandbox.compiler(&["doc", "--", "defn"]);
     let page = doc.assert_exit_code(0).stdout();
     assert_eq!(page.lines().next(), Some(DEFN_HEADER));
@@ -4370,7 +4375,7 @@ fn doc_takes_a_prelude_term_after_the_separator() {
 
 #[test]
 fn doc_reports_a_term_before_and_after_the_separator() {
-    let sandbox = Sandbox::new("doc_term_on_both_sides");
+    let sandbox = Sandbox::admitted("doc_term_on_both_sides");
     sandbox
         .compiler(&["doc", "defn", "--", "if"])
         .assert_exit_code(2);
@@ -4378,7 +4383,7 @@ fn doc_reports_a_term_before_and_after_the_separator() {
 
 #[test]
 fn doc_reports_an_unknown_flag_before_the_term() {
-    let sandbox = Sandbox::new("doc_unknown_flag_before_term");
+    let sandbox = Sandbox::admitted("doc_unknown_flag_before_term");
     let doc = sandbox.compiler(&["doc", "--typo", "twice"]);
     let stderr = doc.assert_exit_code(2).stderr();
     assert_eq!(stderr.lines().next(), Some(UNKNOWN_FLAG_ERROR));
@@ -4387,7 +4392,7 @@ fn doc_reports_an_unknown_flag_before_the_term() {
 
 #[test]
 fn doc_reports_an_unknown_flag_in_place_of_the_term() {
-    let sandbox = Sandbox::new("doc_unknown_flag_as_term");
+    let sandbox = Sandbox::admitted("doc_unknown_flag_as_term");
     let doc = sandbox.compiler(&["doc", "--typo"]);
     let stderr = doc.assert_exit_code(2).stderr();
     assert_eq!(stderr.lines().next(), Some(UNKNOWN_FLAG_ERROR));
@@ -4395,7 +4400,7 @@ fn doc_reports_an_unknown_flag_in_place_of_the_term() {
 
 #[test]
 fn doc_reports_a_second_term() {
-    let sandbox = Sandbox::new("doc_second_term");
+    let sandbox = Sandbox::admitted("doc_second_term");
     let doc = sandbox.compiler(&["doc", "defn", "defmacro"]);
     let stderr = doc.assert_exit_code(2).stderr();
     assert_eq!(
@@ -4406,7 +4411,7 @@ fn doc_reports_a_second_term() {
 
 #[test]
 fn doc_prints_the_page_of_an_imported_term() {
-    let sandbox = Sandbox::new("doc_imported")
+    let sandbox = Sandbox::admitted("doc_imported")
         .with_file("geometry.knv", GEOMETRY)
         .with_file("main.knv", GEOMETRY_ENTRY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "area"]);
@@ -4418,7 +4423,7 @@ fn doc_prints_the_page_of_an_imported_term() {
 
 #[test]
 fn doc_prints_the_page_of_an_imported_module() {
-    let sandbox = Sandbox::new("doc_module")
+    let sandbox = Sandbox::admitted("doc_module")
         .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
         .with_file("main.knv", GEOMETRY_ENTRY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(module geometry)"]);
@@ -4427,7 +4432,7 @@ fn doc_prints_the_page_of_an_imported_module() {
 
 #[test]
 fn doc_prints_the_page_of_a_prelude_module() {
-    let sandbox = Sandbox::new("doc_prelude_module");
+    let sandbox = Sandbox::admitted("doc_prelude_module");
     let doc = sandbox.compiler(&["doc", "(module prelude/vec)"]);
     let page = doc.assert_exit_code(0).stdout();
     let lines: Vec<&str> = page.lines().take(6).collect();
@@ -4446,7 +4451,7 @@ fn doc_prints_the_page_of_a_prelude_module() {
 
 #[test]
 fn doc_prints_a_module_page_without_a_type_line() {
-    let sandbox = Sandbox::new("doc_module_types")
+    let sandbox = Sandbox::admitted("doc_module_types")
         .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
         .with_file("main.knv", GEOMETRY_ENTRY);
     let doc = sandbox.compiler(&["doc", "--types", "--file", "main.knv", "(module geometry)"]);
@@ -4455,7 +4460,7 @@ fn doc_prints_a_module_page_without_a_type_line() {
 
 #[test]
 fn doc_lists_the_exports_of_the_entry_module() {
-    let sandbox = Sandbox::new("doc_entry_module").with_file("main.knv", DOCUMENTED_ENTRY);
+    let sandbox = Sandbox::admitted("doc_entry_module").with_file("main.knv", DOCUMENTED_ENTRY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(module main)"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -4465,7 +4470,7 @@ fn doc_lists_the_exports_of_the_entry_module() {
 
 #[test]
 fn doc_keeps_the_page_of_a_binding_named_like_a_module() {
-    let sandbox = Sandbox::new("doc_module_binding")
+    let sandbox = Sandbox::admitted("doc_module_binding")
         .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
         .with_file("main.knv", SHADOWING_GEOMETRY_ENTRY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "geometry"]);
@@ -4477,7 +4482,7 @@ fn doc_keeps_the_page_of_a_binding_named_like_a_module() {
 
 #[test]
 fn doc_reports_an_unknown_module_at_its_path_in_the_term() {
-    let sandbox = Sandbox::new("doc_unknown_module");
+    let sandbox = Sandbox::admitted("doc_unknown_module");
     let doc = sandbox.compiler(&["doc", "(module nowhere)"]);
     assert!(
         doc.assert_exit_code(1)
@@ -4488,7 +4493,7 @@ fn doc_reports_an_unknown_module_at_its_path_in_the_term() {
 
 #[test]
 fn doc_finds_a_module_when_the_program_binds_the_name_module() {
-    let sandbox = Sandbox::new("doc_module_bound_head")
+    let sandbox = Sandbox::admitted("doc_module_bound_head")
         .with_file("geometry.knv", DOCUMENTED_GEOMETRY)
         .with_file("main.knv", MODULE_BINDING_ENTRY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "(module geometry)"]);
@@ -4498,7 +4503,7 @@ fn doc_finds_a_module_when_the_program_binds_the_name_module() {
 #[test]
 fn doc_reports_a_term_that_is_no_name_or_module_as_a_program_error() {
     for term in ["(f x)", "5"] {
-        let sandbox = Sandbox::new("doc_malformed_term");
+        let sandbox = Sandbox::admitted("doc_malformed_term");
         let doc = sandbox.compiler(&["doc", term]);
         assert!(
             doc.assert_exit_code(1).stderr().starts_with(
@@ -4511,7 +4516,7 @@ fn doc_reports_a_term_that_is_no_name_or_module_as_a_program_error() {
 
 #[test]
 fn doc_prints_the_page_of_an_undocumented_term() {
-    let sandbox = Sandbox::new("doc_undocumented").with_file("main.knv", UNDOCUMENTED_ENTRY);
+    let sandbox = Sandbox::admitted("doc_undocumented").with_file("main.knv", UNDOCUMENTED_ENTRY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "twice"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -4521,14 +4526,14 @@ fn doc_prints_the_page_of_an_undocumented_term() {
 
 #[test]
 fn doc_suggests_a_close_name_for_an_unknown_term() {
-    let sandbox = Sandbox::new("doc_unknown");
+    let sandbox = Sandbox::admitted("doc_unknown");
     let doc = sandbox.compiler(&["doc", "defm"]);
     insta::assert_snapshot!(doc.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn doc_rejects_a_term_that_is_not_one_term() {
-    let sandbox = Sandbox::new("doc_not_one_name");
+    let sandbox = Sandbox::admitted("doc_not_one_name");
     let doc = sandbox.compiler(&["doc", "x y"]);
     assert_eq!(
         doc.assert_exit_code(2).stderr(),
@@ -4538,14 +4543,14 @@ fn doc_rejects_a_term_that_is_not_one_term() {
 
 #[test]
 fn doc_rejects_a_term_that_does_not_read() {
-    let sandbox = Sandbox::new("doc_unreadable_term");
+    let sandbox = Sandbox::admitted("doc_unreadable_term");
     let doc = sandbox.compiler(&["doc", "("]);
     assert!(doc.assert_exit_code(2).stderr().starts_with("error[L0101]"));
 }
 
 #[test]
 fn doc_reports_an_unreadable_file_as_a_usage_error() {
-    let sandbox = Sandbox::new("doc_unreadable_file");
+    let sandbox = Sandbox::admitted("doc_unreadable_file");
     let doc = sandbox.compiler(&["doc", "--file", "missing.knv", "defn"]);
     assert!(
         doc.assert_exit_code(2)
@@ -4556,7 +4561,7 @@ fn doc_reports_an_unreadable_file_as_a_usage_error() {
 
 #[test]
 fn doc_rejects_a_term_that_is_not_one_term_before_reading_the_file() {
-    let sandbox = Sandbox::new("doc_term_before_file");
+    let sandbox = Sandbox::admitted("doc_term_before_file");
     let doc = sandbox.compiler(&["doc", "--file", "missing.knv", "x y"]);
     assert_eq!(
         doc.assert_exit_code(2).stderr(),
@@ -4566,7 +4571,7 @@ fn doc_rejects_a_term_that_is_not_one_term_before_reading_the_file() {
 
 #[test]
 fn doc_rejects_a_shadowing_page_body_that_returns_no_string() {
-    let sandbox = Sandbox::new("doc_shadowed").with_file("main.knv", SHADOWING_PAGE_BODY);
+    let sandbox = Sandbox::admitted("doc_shadowed").with_file("main.knv", SHADOWING_PAGE_BODY);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "main"]);
     assert_eq!(
         doc.assert_exit_code(1).stderr(),
@@ -4576,7 +4581,7 @@ fn doc_rejects_a_shadowing_page_body_that_returns_no_string() {
 
 #[test]
 fn doc_rejects_a_shadowing_header_that_returns_no_string() {
-    let sandbox = Sandbox::new("doc_shadowed_header").with_file("main.knv", SHADOWING_HEADER);
+    let sandbox = Sandbox::admitted("doc_shadowed_header").with_file("main.knv", SHADOWING_HEADER);
     let doc = sandbox.compiler(&["doc", "--file", "main.knv", "main"]);
     assert_eq!(
         doc.assert_exit_code(1).stderr(),
@@ -4586,7 +4591,7 @@ fn doc_rejects_a_shadowing_header_that_returns_no_string() {
 
 #[test]
 fn doc_types_prints_the_inferred_type_above_the_page() {
-    let sandbox = Sandbox::new("doc_types").with_file("prog.knv", TYPED_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "twice"]),
         format!("{TWICE_TYPE}\n\n{TWICE_PAGE}")
@@ -4595,7 +4600,7 @@ fn doc_types_prints_the_inferred_type_above_the_page() {
 
 #[test]
 fn doc_types_takes_the_flag_after_the_term() {
-    let sandbox = Sandbox::new("doc_types_after_term").with_file("prog.knv", TYPED_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types_after_term").with_file("prog.knv", TYPED_PROGRAM);
     let doc = sandbox.compiler(&["doc", "twice", "--file", "prog.knv", "--types"]);
     assert_eq!(
         doc.assert_exit_code(0).stdout(),
@@ -4605,7 +4610,7 @@ fn doc_types_takes_the_flag_after_the_term() {
 
 #[test]
 fn doc_types_prints_the_generic_type_of_an_uncalled_function() {
-    let sandbox = Sandbox::new("doc_types_generic").with_file("prog.knv", TYPED_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types_generic").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "same"]),
         "(type same (where (a) (fn (a) a)))\n\n(defn same (x))\n\nNo documentation.\n"
@@ -4614,7 +4619,7 @@ fn doc_types_prints_the_generic_type_of_an_uncalled_function() {
 
 #[test]
 fn doc_types_prints_no_type_for_a_macro() {
-    let sandbox = Sandbox::new("doc_types_macro");
+    let sandbox = Sandbox::admitted("doc_types_macro");
     assert_eq!(
         sandbox.typed_page(&["when"]),
         "(when test body ...)\n\nRuns the body when the test is true.\n\nIt returns unit when the test is false. The body must return unit, and so\ndoes the call.\n\n(let (total 0)\n  (when (> 2 1) (set! total 5))\n  (= total 5))\n=> true\n\n(let (total 0)\n  (when (> 1 2) (set! total 9))\n  (= total 0))\n=> true\n"
@@ -4623,13 +4628,13 @@ fn doc_types_prints_no_type_for_a_macro() {
 
 #[test]
 fn doc_types_prints_no_type_for_a_kernel_form() {
-    let sandbox = Sandbox::new("doc_types_kernel_form");
+    let sandbox = Sandbox::admitted("doc_types_kernel_form");
     assert_eq!(sandbox.typed_page(&["if"]), IF_PAGE);
 }
 
 #[test]
 fn doc_types_prints_the_type_of_a_prelude_function() {
-    let sandbox = Sandbox::new("doc_types_prelude");
+    let sandbox = Sandbox::admitted("doc_types_prelude");
     assert_eq!(
         sandbox.typed_page(&["sum"]),
         "(type sum (where ((n number)) (fn ((iterator n)) n)))\n\n(defn sum (values))\n\nAdds the items of an iterator from left to right.\n\nAn empty iterator gives 0. An overflow panics in a debug build, as `+`\ndoes. A vector passes and yields copies of its numbers. `(iter items)` is an\nerror, as its items are borrows, and so is a map.\n\n(sum (vec 1 2 3))\n=> 6\n\n(-> (range 0 0) sum)\n=> 0\n"
@@ -4638,7 +4643,7 @@ fn doc_types_prints_the_type_of_a_prelude_function() {
 
 #[test]
 fn check_reports_an_unused_broken_definition_in_a_user_prelude_directory() {
-    let sandbox = Sandbox::new("user_prelude_directory")
+    let sandbox = Sandbox::admitted("user_prelude_directory")
         .with_file("prog.knv", USES_PRELUDE_DIRECTORY)
         .with_file("prelude/extra.knv", BROKEN_PRELUDE_DIRECTORY_MODULE);
     let check = sandbox.compiler(&["check", "prog.knv"]);
@@ -4648,7 +4653,8 @@ fn check_reports_an_unused_broken_definition_in_a_user_prelude_directory() {
 
 #[test]
 fn run_finds_main_in_an_entry_named_prelude() {
-    let sandbox = Sandbox::new("entry_named_prelude").with_file("prelude.knv", MAIN_IN_PRELUDE);
+    let sandbox =
+        Sandbox::admitted("entry_named_prelude").with_file("prelude.knv", MAIN_IN_PRELUDE);
     let run = sandbox.compiler(&["run", "prelude.knv"]);
     run.assert_exit_code(0);
     assert_eq!(run.stdout(), "hi\n");
@@ -4656,7 +4662,7 @@ fn run_finds_main_in_an_entry_named_prelude() {
 
 #[test]
 fn doc_types_prints_no_type_for_a_struct() {
-    let sandbox = Sandbox::new("doc_types_struct").with_file("prog.knv", TYPED_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types_struct").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
         "(defstruct point)\n\nNo documentation.\n"
@@ -4665,7 +4671,7 @@ fn doc_types_prints_no_type_for_a_struct() {
 
 #[test]
 fn doc_types_prints_the_type_of_a_struct_constructor() {
-    let sandbox = Sandbox::new("doc_types_constructor").with_file("prog.knv", TYPED_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types_constructor").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "->point"]),
         "(type ->point (fn (int int) point))\n\n(defstruct point)\n\nNo documentation.\n"
@@ -4674,7 +4680,7 @@ fn doc_types_prints_the_type_of_a_struct_constructor() {
 
 #[test]
 fn doc_types_prints_the_type_of_a_function_with_keyword_parameters() {
-    let sandbox = Sandbox::new("doc_types_keyword").with_file("prog.knv", TYPED_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types_keyword").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "area"]),
         "(type area (fn (int int) int))\n\n(defn area (:width i64 :height i64))\n\nNo documentation.\n"
@@ -4683,7 +4689,7 @@ fn doc_types_prints_the_type_of_a_function_with_keyword_parameters() {
 
 #[test]
 fn doc_types_prints_the_type_of_a_plain_definition() {
-    let sandbox = Sandbox::new("doc_types_plain").with_file("prog.knv", TYPED_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types_plain").with_file("prog.knv", TYPED_PROGRAM);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "limit"]),
         "(type limit int)\n\n(def limit)\n\nNo documentation.\n"
@@ -4692,14 +4698,14 @@ fn doc_types_prints_the_type_of_a_plain_definition() {
 
 #[test]
 fn doc_types_prints_no_type_for_a_value_that_no_definition_binds() {
-    let sandbox = Sandbox::new("doc_types_literal");
+    let sandbox = Sandbox::admitted("doc_types_literal");
     assert_eq!(sandbox.typed_page(&["true"]), TRUE_PAGE);
 }
 
 #[test]
 fn doc_types_prints_no_type_above_a_grouped_struct_page_beside_a_value() {
     let sandbox =
-        Sandbox::new("doc_types_same_header").with_file("prog.knv", MACRO_STRUCT_BESIDE_A_DEF);
+        Sandbox::admitted("doc_types_same_header").with_file("prog.knv", MACRO_STRUCT_BESIDE_A_DEF);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
         "(defstruct point)\n\nA documented struct.\n"
@@ -4708,7 +4714,7 @@ fn doc_types_prints_no_type_above_a_grouped_struct_page_beside_a_value() {
 
 #[test]
 fn doc_types_prints_no_type_above_a_documented_struct_beside_a_function() {
-    let sandbox = Sandbox::new("doc_types_documented_struct")
+    let sandbox = Sandbox::admitted("doc_types_documented_struct")
         .with_file("prog.knv", DOCUMENTED_STRUCT_BESIDE_A_FUNCTION);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
@@ -4718,7 +4724,7 @@ fn doc_types_prints_no_type_above_a_documented_struct_beside_a_function() {
 
 #[test]
 fn doc_types_prints_the_type_of_a_documented_function_beside_a_struct() {
-    let sandbox = Sandbox::new("doc_types_documented_function")
+    let sandbox = Sandbox::admitted("doc_types_documented_function")
         .with_file("prog.knv", DOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
@@ -4728,7 +4734,7 @@ fn doc_types_prints_the_type_of_a_documented_function_beside_a_struct() {
 
 #[test]
 fn doc_types_prints_the_type_of_an_undocumented_function_beside_a_struct() {
-    let sandbox = Sandbox::new("doc_types_undocumented_function")
+    let sandbox = Sandbox::admitted("doc_types_undocumented_function")
         .with_file("prog.knv", UNDOCUMENTED_FUNCTION_BESIDE_A_STRUCT);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
@@ -4738,7 +4744,7 @@ fn doc_types_prints_the_type_of_an_undocumented_function_beside_a_struct() {
 
 #[test]
 fn doc_types_prints_the_type_of_an_undocumented_def_beside_a_struct() {
-    let sandbox = Sandbox::new("doc_types_undocumented_def")
+    let sandbox = Sandbox::admitted("doc_types_undocumented_def")
         .with_file("prog.knv", UNDOCUMENTED_DEF_BESIDE_A_STRUCT);
     assert_eq!(
         sandbox.typed_page(&["--file", "prog.knv", "point"]),
@@ -4749,7 +4755,7 @@ fn doc_types_prints_the_type_of_an_undocumented_def_beside_a_struct() {
 #[test]
 fn doc_types_prints_the_page_alone_when_another_definition_fails_to_type_check() {
     let sandbox =
-        Sandbox::new("doc_types_other_fails").with_file("prog.knv", OTHER_DEFINITION_FAILS);
+        Sandbox::admitted("doc_types_other_fails").with_file("prog.knv", OTHER_DEFINITION_FAILS);
     let doc = sandbox.typed_lookup(&["--file", "prog.knv", "twice"]);
     assert!(doc.assert_exit_code(1).stderr().starts_with("error[L0401]"));
     assert_eq!(doc.stdout(), TWICE_PAGE);
@@ -4757,7 +4763,8 @@ fn doc_types_prints_the_page_alone_when_another_definition_fails_to_type_check()
 
 #[test]
 fn doc_types_prints_the_page_alone_when_its_own_definition_fails_to_type_check() {
-    let sandbox = Sandbox::new("doc_types_own_fails").with_file("prog.knv", OWN_DEFINITION_FAILS);
+    let sandbox =
+        Sandbox::admitted("doc_types_own_fails").with_file("prog.knv", OWN_DEFINITION_FAILS);
     let doc = sandbox.typed_lookup(&["--file", "prog.knv", "twice"]);
     assert!(doc.assert_exit_code(1).stderr().starts_with("error[L0404]"));
     assert_eq!(doc.stdout(), TWICE_PAGE);
@@ -4765,7 +4772,7 @@ fn doc_types_prints_the_page_alone_when_its_own_definition_fails_to_type_check()
 
 #[test]
 fn doc_types_prints_the_type_of_an_imported_term() {
-    let sandbox = Sandbox::new("doc_types_imported")
+    let sandbox = Sandbox::admitted("doc_types_imported")
         .with_file("lib/numbers.knv", NUMBERS)
         .with_file("main.knv", NUMBERS_ENTRY);
     assert_eq!(
@@ -4776,7 +4783,7 @@ fn doc_types_prints_the_type_of_an_imported_term() {
 
 #[test]
 fn doc_types_prints_the_type_of_the_definition_that_shadows_a_prelude_name() {
-    let sandbox = Sandbox::new("doc_types_shadowing").with_file("main.knv", SHADOWING_SUM);
+    let sandbox = Sandbox::admitted("doc_types_shadowing").with_file("main.knv", SHADOWING_SUM);
     assert_eq!(
         sandbox.typed_page(&["--file", "main.knv", "sum"]),
         "(type sum (fn (int int) int))\n\n(defn sum (left right))\n\nNo documentation.\n"
@@ -4785,7 +4792,7 @@ fn doc_types_prints_the_type_of_the_definition_that_shadows_a_prelude_name() {
 
 #[test]
 fn doc_types_leaves_a_page_in_the_program_untyped() {
-    let sandbox = Sandbox::new("doc_types_in_program").with_file("prog.knv", PAGE_PROGRAM);
+    let sandbox = Sandbox::admitted("doc_types_in_program").with_file("prog.knv", PAGE_PROGRAM);
     let expanded = sandbox.compiler(&["expand", "prog.knv"]);
     assert!(
         expanded
@@ -4801,7 +4808,7 @@ fn doc_types_leaves_a_page_in_the_program_untyped() {
 
 #[test]
 fn emit_qualifies_a_struct_named_in_a_bound() {
-    let sandbox = Sandbox::new("bound_import")
+    let sandbox = Sandbox::admitted("bound_import")
         .with_file("bound.knv", BOUND_ENTRY)
         .with_file("other/person.knv", BOUND_MODULE);
     let emitted = sandbox.compiler(&["emit", "bound.knv"]);
@@ -4812,7 +4819,7 @@ fn emit_qualifies_a_struct_named_in_a_bound() {
 
 #[test]
 fn emit_waiving_ownership_refusals_writes_the_rust_of_a_refused_move() {
-    let sandbox = Sandbox::new("emit_unowned_move").with_file("moved.knv", MOVED_VECTOR);
+    let sandbox = Sandbox::admitted("emit_unowned_move").with_file("moved.knv", MOVED_VECTOR);
     sandbox
         .compiler(&["check", "moved.knv"])
         .assert_exit_code(1);
@@ -4824,20 +4831,20 @@ fn emit_waiving_ownership_refusals_writes_the_rust_of_a_refused_move() {
 
 #[test]
 fn emit_waiving_ownership_refusals_still_reports_a_type_error() {
-    let sandbox = Sandbox::new("emit_unowned_mistyped").with_file("sum.knv", MISTYPED_SUM);
+    let sandbox = Sandbox::admitted("emit_unowned_mistyped").with_file("sum.knv", MISTYPED_SUM);
     let emitted = sandbox.compiler(&["emit", "--waive-ownership-refusals", "sum.knv"]);
     assert!(emitted.assert_exit_code(1).stdout().is_empty());
 }
 
 #[test]
 fn emit_help_hides_the_flag_that_waives_ownership_refusals() {
-    let help = Sandbox::new("emit_help_hidden").compiler(&["emit", "--help"]);
+    let help = Sandbox::admitted("emit_help_hidden").compiler(&["emit", "--help"]);
     assert!(!help.assert_exit_code(0).stdout().contains("ownership"));
 }
 
 #[test]
 fn check_printing_loans_lists_the_loans_live_at_each_change() {
-    let sandbox = Sandbox::new("check_loans").with_file("held.knv", HELD_ACROSS_PUSH);
+    let sandbox = Sandbox::admitted("check_loans").with_file("held.knv", HELD_ACROSS_PUSH);
     let checked = sandbox.compiler(&["check", "--print-loans", "held.knv"]);
     assert_eq!(
         checked.assert_exit_code(0).stdout(),
@@ -4847,14 +4854,14 @@ fn check_printing_loans_lists_the_loans_live_at_each_change() {
 
 #[test]
 fn check_printing_loans_still_reports_a_type_error() {
-    let sandbox = Sandbox::new("check_loans_mistyped").with_file("sum.knv", MISTYPED_SUM);
+    let sandbox = Sandbox::admitted("check_loans_mistyped").with_file("sum.knv", MISTYPED_SUM);
     let checked = sandbox.compiler(&["check", "--print-loans", "sum.knv"]);
     assert!(checked.assert_exit_code(1).stdout().is_empty());
 }
 
 #[test]
 fn check_printing_text_lists_each_text_slot_decision() {
-    let sandbox = Sandbox::new("check_text").with_file("names.knv", LITERAL_NAMES);
+    let sandbox = Sandbox::admitted("check_text").with_file("names.knv", LITERAL_NAMES);
     let checked = sandbox.compiler(&["check", "--print-text", "names.knv"]);
     assert_eq!(
         checked.assert_exit_code(0).stdout(),
@@ -4864,14 +4871,14 @@ fn check_printing_text_lists_each_text_slot_decision() {
 
 #[test]
 fn check_printing_text_still_reports_a_type_error() {
-    let sandbox = Sandbox::new("check_text_mistyped").with_file("sum.knv", MISTYPED_SUM);
+    let sandbox = Sandbox::admitted("check_text_mistyped").with_file("sum.knv", MISTYPED_SUM);
     let checked = sandbox.compiler(&["check", "--print-text", "sum.knv"]);
     assert!(checked.assert_exit_code(1).stdout().is_empty());
 }
 
 #[test]
 fn check_refuses_printing_text_and_loans_together() {
-    let sandbox = Sandbox::new("check_text_and_loans").with_file("names.knv", LITERAL_NAMES);
+    let sandbox = Sandbox::admitted("check_text_and_loans").with_file("names.knv", LITERAL_NAMES);
     sandbox
         .compiler(&["check", "--print-text", "--print-loans", "names.knv"])
         .assert_exit_code(2);
@@ -4879,26 +4886,26 @@ fn check_refuses_printing_text_and_loans_together() {
 
 #[test]
 fn check_help_hides_the_flag_that_prints_text() {
-    let help = Sandbox::new("check_help_hides_text").compiler(&["check", "--help"]);
+    let help = Sandbox::admitted("check_help_hides_text").compiler(&["check", "--help"]);
     assert!(!help.assert_exit_code(0).stdout().contains("text"));
 }
 
 #[test]
 fn check_help_hides_the_flag_that_prints_loans() {
-    let help = Sandbox::new("check_help_hidden").compiler(&["check", "--help"]);
+    let help = Sandbox::admitted("check_help_hidden").compiler(&["check", "--help"]);
     assert!(!help.assert_exit_code(0).stdout().contains("loans"));
 }
 
 #[test]
 fn run_keeps_a_trait_method_vector_parameter_as_written() {
-    let sandbox = Sandbox::new("trait_vector").with_file("mileage.knv", TRAIT_SHARED_VECTOR);
+    let sandbox = Sandbox::admitted("trait_vector").with_file("mileage.knv", TRAIT_SHARED_VECTOR);
     let run = sandbox.compiler(&["run", "mileage.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "1210\n");
 }
 
 #[test]
 fn a_failed_main_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
-    let sandbox = Sandbox::new("dead_pipe_main_error").with_file("failure.knv", FAILED_MAIN);
+    let sandbox = Sandbox::admitted("dead_pipe_main_error").with_file("failure.knv", FAILED_MAIN);
     sandbox
         .compiler_with_a_closed_standard_error(&["run", "failure.knv"])
         .assert_no_panic();
@@ -4906,7 +4913,7 @@ fn a_failed_main_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
 
 #[test]
 fn eprintln_in_a_result_main_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
-    let sandbox = Sandbox::new("dead_pipe_eprintln").with_file("report.knv", REPORTING_MAIN);
+    let sandbox = Sandbox::admitted("dead_pipe_eprintln").with_file("report.knv", REPORTING_MAIN);
     sandbox
         .compiler_with_a_closed_standard_error(&["run", "report.knv"])
         .assert_no_panic();
@@ -4914,7 +4921,8 @@ fn eprintln_in_a_result_main_stops_without_a_panic_when_standard_error_is_a_dead
 
 #[test]
 fn eprintln_alone_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
-    let sandbox = Sandbox::new("dead_pipe_error_only").with_file("report.knv", ERROR_ONLY_MAIN);
+    let sandbox =
+        Sandbox::admitted("dead_pipe_error_only").with_file("report.knv", ERROR_ONLY_MAIN);
     sandbox
         .compiler_with_a_closed_standard_error(&["run", "report.knv"])
         .assert_no_panic();
@@ -4922,7 +4930,8 @@ fn eprintln_alone_stops_without_a_panic_when_standard_error_is_a_dead_pipe() {
 
 #[test]
 fn run_panics_with_the_printed_form_of_an_unwrapped_error() {
-    let sandbox = Sandbox::new("unwrapped_failure").with_file("failure.knv", UNWRAPPED_FAILURE);
+    let sandbox =
+        Sandbox::admitted("unwrapped_failure").with_file("failure.knv", UNWRAPPED_FAILURE);
     let run = sandbox.compiler(&["run", "failure.knv"]);
     assert!(
         run.assert_exit_code(101)
@@ -4933,22 +4942,22 @@ fn run_panics_with_the_printed_form_of_an_unwrapped_error() {
 
 #[test]
 fn check_reports_errors_without_terminal_styling() {
-    let sandbox = Sandbox::new("check_errors").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("check_errors").with_file("unbound.knv", UNBOUND_NAME);
     let check = sandbox.compiler(&["check", "unbound.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn check_caps_the_printed_diagnostics_and_counts_the_rest() {
-    let sandbox =
-        Sandbox::new("check_capped").with_unbound_names("flood.knv", UNBOUND_NAMES_PAST_THE_CAP);
+    let sandbox = Sandbox::admitted("check_capped")
+        .with_unbound_names("flood.knv", UNBOUND_NAMES_PAST_THE_CAP);
     let check = sandbox.compiler(&["check", "flood.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn expand_prints_kernel_forms() {
-    let sandbox = Sandbox::new("expand").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("expand").with_file("greeting.knv", GREETING);
     let expand = sandbox.compiler(&["expand", "greeting.knv"]);
     assert_eq!(
         expand.assert_exit_code(0).stdout(),
@@ -4958,14 +4967,14 @@ fn expand_prints_kernel_forms() {
 
 #[test]
 fn emit_prints_the_generated_rust() {
-    let sandbox = Sandbox::new("emit").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("emit").with_file("greeting.knv", GREETING);
     let emit = sandbox.compiler(&["emit", "greeting.knv"]);
     assert!(emit.assert_exit_code(0).stdout().contains("fn main() {"));
 }
 
 #[test]
 fn build_writes_the_program_under_the_build_directory() {
-    let sandbox = Sandbox::new("build_default").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("build_default").with_file("greeting.knv", GREETING);
     sandbox
         .compiler(&["build", "greeting.knv"])
         .assert_exit_code(0);
@@ -4978,7 +4987,7 @@ fn build_writes_the_program_under_the_build_directory() {
 
 #[test]
 fn build_keeps_entries_with_the_same_stem_apart() {
-    let sandbox = Sandbox::new("build_same_stem")
+    let sandbox = Sandbox::admitted("build_same_stem")
         .with_file("a/program.knv", PRINTS_A)
         .with_file("b/program.knv", PRINTS_B);
     sandbox
@@ -4995,7 +5004,7 @@ fn build_keeps_entries_with_the_same_stem_apart() {
 
 #[test]
 fn build_mirrors_an_entry_outside_the_working_directory() {
-    let sandbox = Sandbox::new("build_outside")
+    let sandbox = Sandbox::admitted("build_outside")
         .with_file("shared/program.knv", PRINTS_A)
         .with_file("work/empty", "");
     sandbox
@@ -5008,7 +5017,7 @@ fn build_mirrors_an_entry_outside_the_working_directory() {
 
 #[test]
 fn built_program_stops_quietly_when_its_reader_closes_stdout() {
-    let sandbox = Sandbox::new("closed_stdout").with_file("count.knv", MILLION_LINES);
+    let sandbox = Sandbox::admitted("closed_stdout").with_file("count.knv", MILLION_LINES);
     sandbox
         .compiler(&["build", "count.knv"])
         .assert_exit_code(0);
@@ -5018,7 +5027,8 @@ fn built_program_stops_quietly_when_its_reader_closes_stdout() {
 
 #[test]
 fn built_program_shows_a_prompt_before_it_reads_a_line() {
-    let sandbox = Sandbox::new("prompt_before_read").with_file("who.knv", PROMPT_THEN_READ_LINE);
+    let sandbox =
+        Sandbox::admitted("prompt_before_read").with_file("who.knv", PROMPT_THEN_READ_LINE);
     sandbox.compiler(&["build", "who.knv"]).assert_exit_code(0);
     let shown =
         sandbox.built_program_output_before_its_input(Sandbox::built_path("who/who"), "Ada\n");
@@ -5027,7 +5037,7 @@ fn built_program_shows_a_prompt_before_it_reads_a_line() {
 
 #[test]
 fn built_program_shows_a_prompt_before_it_slurps_its_input() {
-    let sandbox = Sandbox::new("prompt_before_slurp").with_file("who.knv", PROMPT_THEN_SLURP);
+    let sandbox = Sandbox::admitted("prompt_before_slurp").with_file("who.knv", PROMPT_THEN_SLURP);
     sandbox.compiler(&["build", "who.knv"]).assert_exit_code(0);
     let shown =
         sandbox.built_program_output_before_its_input(Sandbox::built_path("who/who"), "Ada\n");
@@ -5036,8 +5046,8 @@ fn built_program_shows_a_prompt_before_it_slurps_its_input() {
 
 #[test]
 fn built_program_shows_a_prompt_before_it_slurps_any_source() {
-    let sandbox =
-        Sandbox::new("prompt_before_source").with_file("who.knv", PROMPT_THEN_SLURP_ANY_SOURCE);
+    let sandbox = Sandbox::admitted("prompt_before_source")
+        .with_file("who.knv", PROMPT_THEN_SLURP_ANY_SOURCE);
     sandbox.compiler(&["build", "who.knv"]).assert_exit_code(0);
     let shown =
         sandbox.built_program_output_before_its_input(Sandbox::built_path("who/who"), "Ada\n");
@@ -5046,7 +5056,7 @@ fn built_program_shows_a_prompt_before_it_slurps_any_source() {
 
 #[test]
 fn built_program_ends_its_input_lines_after_a_failed_read() {
-    let sandbox = Sandbox::new("failed_read").with_file("lines.knv", COUNT_INPUT_LINES);
+    let sandbox = Sandbox::admitted("failed_read").with_file("lines.knv", COUNT_INPUT_LINES);
     sandbox
         .compiler(&["build", "lines.knv"])
         .assert_exit_code(0);
@@ -5056,7 +5066,7 @@ fn built_program_ends_its_input_lines_after_a_failed_read() {
 
 #[test]
 fn build_writes_the_program_to_the_output_path() {
-    let sandbox = Sandbox::new("build_output").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("build_output").with_file("greeting.knv", GREETING);
     sandbox
         .compiler(&["build", "greeting.knv", "-o", "bin/hello"])
         .assert_exit_code(0);
@@ -5069,7 +5079,7 @@ fn build_writes_the_program_to_the_output_path() {
 
 #[test]
 fn emit_without_rustfmt_prints_one_note_and_writes_unformatted_rust() {
-    let sandbox = Sandbox::new("emit_without_rustfmt").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("emit_without_rustfmt").with_file("greeting.knv", GREETING);
     let emit = sandbox.compiler_with_path("no-tools", &["emit", "greeting.knv"]);
     let emit = emit.assert_exit_code(0);
     assert!(emit.stdout().contains("fn main() {"));
@@ -5080,7 +5090,7 @@ fn emit_without_rustfmt_prints_one_note_and_writes_unformatted_rust() {
 
 #[test]
 fn emit_with_a_failing_rustfmt_prints_one_note_and_writes_unformatted_rust() {
-    let sandbox = Sandbox::new("emit_failing_rustfmt")
+    let sandbox = Sandbox::admitted("emit_failing_rustfmt")
         .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustfmt", FAILING_RUSTFMT);
     let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
@@ -5109,8 +5119,8 @@ impl NestedIfProgram {
 #[test]
 fn emit_stops_rustfmt_past_its_time_limit_and_writes_unformatted_rust() {
     let time_limit = Duration::from_millis(500);
-    let sandbox =
-        Sandbox::new("emit_rustfmt_time_limit").with_file("nested.knv", &NestedIfProgram::source());
+    let sandbox = Sandbox::admitted("emit_rustfmt_time_limit")
+        .with_file("nested.knv", &NestedIfProgram::source());
     let started = Instant::now();
     let emit = sandbox.compiler_with_rustfmt_time_limit(time_limit, &["emit", "nested.knv"]);
     assert!(started.elapsed() < time_limit + Duration::from_secs(5));
@@ -5130,7 +5140,8 @@ fn emit_stops_rustfmt_past_its_time_limit_and_writes_unformatted_rust() {
 
 #[test]
 fn emit_reports_an_entry_without_main() {
-    let sandbox = Sandbox::new("emit_without_main").with_file("helper.knv", "(defn helper () 1)\n");
+    let sandbox =
+        Sandbox::admitted("emit_without_main").with_file("helper.knv", "(defn helper () 1)\n");
     let emit = sandbox.compiler(&["emit", "helper.knv"]);
     let stderr = emit.assert_exit_code(1).stderr();
     assert!(stderr.starts_with("error[L0601]: "), "{stderr}");
@@ -5138,8 +5149,8 @@ fn emit_reports_an_entry_without_main() {
 
 #[test]
 fn emit_reads_the_rustfmt_time_limit_before_checking() {
-    let sandbox =
-        Sandbox::new("emit_limit_before_check").with_file("mistyped.knv", OTHER_DEFINITION_FAILS);
+    let sandbox = Sandbox::admitted("emit_limit_before_check")
+        .with_file("mistyped.knv", OTHER_DEFINITION_FAILS);
     let emit = sandbox.compiler_with_rustfmt_time_limit_value("soon", &["emit", "mistyped.knv"]);
     let stderr = emit.assert_exit_code(2).stderr();
     assert!(
@@ -5151,7 +5162,7 @@ fn emit_reads_the_rustfmt_time_limit_before_checking() {
 #[test]
 fn emit_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
     let sandbox =
-        Sandbox::new("emit_malformed_rustfmt_time_limit").with_file("greeting.knv", GREETING);
+        Sandbox::admitted("emit_malformed_rustfmt_time_limit").with_file("greeting.knv", GREETING);
     let emit = sandbox.compiler_with_rustfmt_time_limit_value("soon", &["emit", "greeting.knv"]);
     let emit = emit.assert_exit_code(2);
     assert!(
@@ -5164,7 +5175,7 @@ fn emit_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
 
 #[test]
 fn build_reports_rustc_errors_as_program_errors() {
-    let sandbox = Sandbox::new("build_rustc_error").with_file("sign.knv", RUSTC_SYNTAX_ERROR);
+    let sandbox = Sandbox::admitted("build_rustc_error").with_file("sign.knv", RUSTC_SYNTAX_ERROR);
     let build = sandbox.compiler(&["build", "sign.knv"]);
     assert!(
         build
@@ -5176,41 +5187,41 @@ fn build_reports_rustc_errors_as_program_errors() {
 
 #[test]
 fn run_prints_the_program_output() {
-    let sandbox = Sandbox::new("run").with_file("greeting.knv", GREETING);
+    let sandbox = Sandbox::admitted("run").with_file("greeting.knv", GREETING);
     let run = sandbox.compiler(&["run", "--release", "greeting.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "hello from the sandbox\n");
 }
 
 #[test]
 fn run_passes_the_arguments_after_the_separator() {
-    let sandbox = Sandbox::new("run_arguments").with_file("echo.knv", ECHO);
+    let sandbox = Sandbox::admitted("run_arguments").with_file("echo.knv", ECHO);
     let run = sandbox.compiler(&["run", "echo.knv", "--", "fake-argument"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "fake-argument\n");
 }
 
 #[test]
 fn run_exits_with_the_program_exit_code() {
-    let sandbox = Sandbox::new("run_exit_code").with_file("exit.knv", EXIT_THREE);
+    let sandbox = Sandbox::admitted("run_exit_code").with_file("exit.knv", EXIT_THREE);
     sandbox.compiler(&["run", "exit.knv"]).assert_exit_code(3);
 }
 
 #[test]
 fn run_dies_by_sigpipe_when_its_reader_closes() {
-    let sandbox = Sandbox::new("run_closed_pipe").with_file("lines.knv", THOUSAND_LINES);
+    let sandbox = Sandbox::admitted("run_closed_pipe").with_file("lines.knv", THOUSAND_LINES);
     let run = sandbox.compiler_writing_to_a_closed_pipe(&["run", "lines.knv"]);
     assert_eq!(run.assert_killed_by(Outcome::SIGPIPE).stderr(), "");
 }
 
 #[test]
 fn run_dies_by_the_signal_that_kills_the_program() {
-    let sandbox = Sandbox::new("run_abort").with_file("abort.knv", ABORT);
+    let sandbox = Sandbox::admitted("run_abort").with_file("abort.knv", ABORT);
     let run = sandbox.compiler(&["run", "abort.knv"]);
     assert_eq!(run.assert_killed_by(Outcome::SIGABRT).stderr(), "");
 }
 
 #[test]
 fn run_dies_by_the_program_signal_that_it_inherits_blocked() {
-    let sandbox = Sandbox::new("run_abort_blocked").with_file("abort.knv", ABORT);
+    let sandbox = Sandbox::admitted("run_abort_blocked").with_file("abort.knv", ABORT);
     sandbox
         .compiler_blocking_sigabrt(&["run", "abort.knv"])
         .assert_killed_by(Outcome::SIGABRT);
@@ -5218,7 +5229,7 @@ fn run_dies_by_the_program_signal_that_it_inherits_blocked() {
 
 #[test]
 fn run_prints_a_main_error_with_display_and_exits_one() {
-    let sandbox = Sandbox::new("run_main_error").with_file("main_error.knv", MAIN_ERROR);
+    let sandbox = Sandbox::admitted("run_main_error").with_file("main_error.knv", MAIN_ERROR);
     let run = sandbox.compiler(&["run", "main_error.knv"]);
     run.assert_exit_code(1);
     let stderr = run.stderr();
@@ -5231,7 +5242,7 @@ fn run_prints_a_main_error_with_display_and_exits_one() {
 
 #[test]
 fn every_command_reports_program_errors() {
-    let sandbox = Sandbox::new("program_errors").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("program_errors").with_file("unbound.knv", UNBOUND_NAME);
     for command in ["expand", "emit", "build", "run"] {
         sandbox
             .compiler(&[command, "unbound.knv"])
@@ -5241,7 +5252,7 @@ fn every_command_reports_program_errors() {
 
 #[test]
 fn build_without_rustc_is_a_usage_error() {
-    let sandbox = Sandbox::new("build_without_rustc")
+    let sandbox = Sandbox::admitted("build_without_rustc")
         .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
     let build = sandbox.compiler_with_path("tools", &["build", "greeting.knv"]);
@@ -5255,7 +5266,7 @@ fn build_without_rustc_is_a_usage_error() {
 
 #[test]
 fn build_cannot_write_under_a_file() {
-    let sandbox = Sandbox::new("build_under_file")
+    let sandbox = Sandbox::admitted("build_under_file")
         .with_file("greeting.knv", GREETING)
         .with_file("blocker", "");
     let build = sandbox.compiler(&["build", "greeting.knv", "-o", "blocker/program"]);
@@ -5269,7 +5280,7 @@ fn build_cannot_write_under_a_file() {
 
 #[test]
 fn build_reports_a_rustc_failure_without_diagnostics() {
-    let sandbox = Sandbox::new("build_rustc_crash")
+    let sandbox = Sandbox::admitted("build_rustc_crash")
         .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustc", CRASHING_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
@@ -5279,7 +5290,7 @@ fn build_reports_a_rustc_failure_without_diagnostics() {
 
 #[test]
 fn run_reports_a_program_that_cannot_start() {
-    let sandbox = Sandbox::new("run_missing_program")
+    let sandbox = Sandbox::admitted("run_missing_program")
         .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustc", SILENT_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
@@ -5292,7 +5303,7 @@ fn run_reports_a_program_that_cannot_start() {
 
 #[test]
 fn eval_prints_a_value_as_prn_prints_it() {
-    let sandbox = Sandbox::new("eval_value").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_value").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(->point (square 2) 3)"]);
     assert_eq!(
         eval.assert_silent_success().stdout(),
@@ -5303,14 +5314,14 @@ fn eval_prints_a_value_as_prn_prints_it() {
 #[test]
 fn eval_prints_through_the_prelude_prn_beside_a_module_prn() {
     let sandbox =
-        Sandbox::new("eval_shadowed_prn").with_file("session.knv", "(defmacro prn (x) x)\n");
+        Sandbox::admitted("eval_shadowed_prn").with_file("session.knv", "(defmacro prn (x) x)\n");
     let eval = sandbox.compiler(&["eval", "session.knv", "(str \"a\") 1"]);
     assert_eq!(eval.assert_silent_success().stdout(), "\"a\"\n1\n");
 }
 
 #[test]
 fn eval_json_prints_through_the_prelude_pr_str_beside_a_module_pr_str() {
-    let sandbox = Sandbox::new("eval_shadowed_pr_str")
+    let sandbox = Sandbox::admitted("eval_shadowed_pr_str")
         .with_file("session.knv", "(defn pr-str (x) (str \"mine\"))\n");
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(fn () 1) 2"]);
     let replies = eval.assert_exit_code(0).json_replies();
@@ -5322,14 +5333,14 @@ fn eval_json_prints_through_the_prelude_pr_str_beside_a_module_pr_str() {
 
 #[test]
 fn eval_prints_nothing_for_a_unit_result() {
-    let sandbox = Sandbox::new("eval_unit").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_unit").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(println \"side \" (square 3))"]);
     assert_eq!(eval.assert_silent_success().stdout(), "side 9\n");
 }
 
 #[test]
 fn eval_runs_every_form_once_in_order_as_one_body() {
-    let sandbox = Sandbox::new("eval_body").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_body").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&[
         "eval",
         "session.knv",
@@ -5343,7 +5354,7 @@ fn eval_runs_every_form_once_in_order_as_one_body() {
 
 #[test]
 fn eval_notes_a_value_whose_type_does_not_implement_show() {
-    let sandbox = Sandbox::new("eval_no_show").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_no_show").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(square 2) (fn ((x i64)) x)"]);
     insta::assert_snapshot!(eval.assert_exit_code(0).stderr());
     assert_eq!(eval.stdout(), "4\n");
@@ -5351,7 +5362,7 @@ fn eval_notes_a_value_whose_type_does_not_implement_show() {
 
 #[test]
 fn eval_reports_an_open_type_on_the_form() {
-    let sandbox = Sandbox::new("eval_open_type").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_open_type").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(println \"never\") none"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
@@ -5359,7 +5370,7 @@ fn eval_reports_an_open_type_on_the_form() {
 
 #[test]
 fn eval_wraps_a_lone_open_form() {
-    let sandbox = Sandbox::new("eval_lone_open_form").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_lone_open_form").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(vec)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
@@ -5367,7 +5378,7 @@ fn eval_wraps_a_lone_open_form() {
 
 #[test]
 fn eval_wraps_the_innermost_open_value_of_a_form() {
-    let sandbox = Sandbox::new("eval_inner_open_type").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_inner_open_type").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(some none)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
@@ -5375,7 +5386,8 @@ fn eval_wraps_the_innermost_open_value_of_a_form() {
 
 #[test]
 fn eval_reports_a_diagnostic_of_the_module_and_runs_nothing() {
-    let sandbox = Sandbox::new("eval_module_error").with_file("geometry.knv", AREA_OF_A_STRING);
+    let sandbox =
+        Sandbox::admitted("eval_module_error").with_file("geometry.knv", AREA_OF_A_STRING);
     let eval = sandbox.compiler(&["eval", "geometry.knv", "(println \"never\")"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
@@ -5383,14 +5395,14 @@ fn eval_reports_a_diagnostic_of_the_module_and_runs_nothing() {
 
 #[test]
 fn eval_reports_a_recur_outside_a_function() {
-    let sandbox = Sandbox::new("eval_recur_outside_function").with_file("empty.knv", "");
+    let sandbox = Sandbox::admitted("eval_recur_outside_function").with_file("empty.knv", "");
     let eval = sandbox.compiler(&["eval", "empty.knv", "(recur 1)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn eval_reports_a_try_outside_a_function() {
-    let sandbox = Sandbox::new("eval_try_outside_function").with_file("empty.knv", "");
+    let sandbox = Sandbox::admitted("eval_try_outside_function").with_file("empty.knv", "");
     let eval = sandbox.compiler(&["eval", "empty.knv", "(try (ok 1))"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
 }
@@ -5398,7 +5410,7 @@ fn eval_reports_a_try_outside_a_function() {
 #[test]
 fn eval_reports_a_diagnostic_of_a_form_at_its_own_line() {
     let sandbox =
-        Sandbox::new("eval_form_error").with_file("geometry.knv", TOP_LEVEL_AREA_OF_A_STRING);
+        Sandbox::admitted("eval_form_error").with_file("geometry.knv", TOP_LEVEL_AREA_OF_A_STRING);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5413,8 +5425,8 @@ fn eval_reports_a_diagnostic_of_a_form_at_its_own_line() {
 
 #[test]
 fn eval_reports_a_diagnostic_inside_a_definition_once() {
-    let sandbox =
-        Sandbox::new("eval_form_in_definition_error").with_file("geometry.knv", AREA_OF_A_STRING);
+    let sandbox = Sandbox::admitted("eval_form_in_definition_error")
+        .with_file("geometry.knv", AREA_OF_A_STRING);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5429,7 +5441,7 @@ fn eval_reports_a_diagnostic_inside_a_definition_once() {
 
 #[test]
 fn eval_runs_a_top_level_form_that_the_module_check_leaves_out() {
-    let sandbox = Sandbox::new("eval_top_level").with_file("geometry.knv", EVALUATED_GEOMETRY);
+    let sandbox = Sandbox::admitted("eval_top_level").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5444,7 +5456,8 @@ fn eval_runs_a_top_level_form_that_the_module_check_leaves_out() {
 
 #[test]
 fn eval_notes_a_definition_form_and_runs_nothing() {
-    let sandbox = Sandbox::new("eval_definition").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
+    let sandbox =
+        Sandbox::admitted("eval_definition").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5461,7 +5474,7 @@ fn eval_notes_a_definition_form_and_runs_nothing() {
 #[test]
 fn eval_notes_a_definition_inside_a_top_level_do() {
     let sandbox =
-        Sandbox::new("eval_definition_in_do").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
+        Sandbox::admitted("eval_definition_in_do").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5476,7 +5489,7 @@ fn eval_notes_a_definition_inside_a_top_level_do() {
 
 #[test]
 fn eval_runs_a_form_inside_a_definition() {
-    let sandbox = Sandbox::new("eval_inside").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
+    let sandbox = Sandbox::admitted("eval_inside").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5491,7 +5504,7 @@ fn eval_runs_a_form_inside_a_definition() {
 
 #[test]
 fn eval_rejects_forms_that_are_not_the_text_at_their_position() {
-    let sandbox = Sandbox::new("eval_misplaced").with_file("geometry.knv", EVALUATED_GEOMETRY);
+    let sandbox = Sandbox::admitted("eval_misplaced").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5509,7 +5522,7 @@ fn eval_rejects_forms_that_are_not_the_text_at_their_position() {
 
 #[test]
 fn eval_rejects_a_line_without_a_column() {
-    let sandbox = Sandbox::new("eval_line_only").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_line_only").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "--line", "2", "session.knv", "1"]);
     assert!(
         eval.assert_exit_code(2)
@@ -5520,14 +5533,14 @@ fn eval_rejects_a_line_without_a_column() {
 
 #[test]
 fn eval_reads_the_module_from_standard_input() {
-    let sandbox = Sandbox::new("eval_stdin");
+    let sandbox = Sandbox::admitted("eval_stdin");
     let eval = sandbox.compiler_reading(SESSION, &["eval", "--stdin", "unsaved.knv", "(square 7)"]);
     assert_eq!(eval.assert_silent_success().stdout(), "49\n");
 }
 
 #[test]
 fn eval_resolves_use_from_the_root() {
-    let sandbox = Sandbox::new("eval_root")
+    let sandbox = Sandbox::admitted("eval_root")
         .with_file("shapes.knv", SHAPES)
         .with_file("src/user.knv", SHAPES_USER);
     let eval = sandbox.compiler(&["eval", "--root", ".", "src/user.knv", "(circle 2)"]);
@@ -5536,7 +5549,7 @@ fn eval_resolves_use_from_the_root() {
 
 #[test]
 fn eval_exits_with_the_program_exit_code() {
-    let sandbox = Sandbox::new("eval_exit").with_file("exits.knv", EXITS);
+    let sandbox = Sandbox::admitted("eval_exit").with_file("exits.knv", EXITS);
     sandbox
         .compiler(&["eval", "exits.knv", "(exit 3)"])
         .assert_exit_code(3);
@@ -5544,7 +5557,7 @@ fn eval_exits_with_the_program_exit_code() {
 
 #[test]
 fn eval_exits_with_the_code_of_a_panic() {
-    let sandbox = Sandbox::new("eval_panic").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_panic").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(at (vec 1) 5)"]);
     assert!(
         eval.assert_exit_code(101)
@@ -5555,7 +5568,7 @@ fn eval_exits_with_the_code_of_a_panic() {
 
 #[test]
 fn eval_dies_by_the_signal_that_kills_the_program() {
-    let sandbox = Sandbox::new("eval_signal").with_file("exits.knv", EXITS);
+    let sandbox = Sandbox::admitted("eval_signal").with_file("exits.knv", EXITS);
     sandbox
         .compiler(&["eval", "exits.knv", "(abort)"])
         .assert_killed_by(Outcome::SIGABRT);
@@ -5563,7 +5576,7 @@ fn eval_dies_by_the_signal_that_kills_the_program() {
 
 #[test]
 fn eval_dies_by_sigpipe_when_its_output_closes() {
-    let sandbox = Sandbox::new("eval_closed_output").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_closed_output").with_file("session.knv", SESSION);
     let forms = "(for-each (range 0 1000000) (fn (i) (println i)))";
     sandbox
         .compiler_writing_to_a_closed_pipe(&["eval", "session.knv", forms])
@@ -5572,7 +5585,7 @@ fn eval_dies_by_sigpipe_when_its_output_closes() {
 
 #[test]
 fn eval_leaves_no_build_directory_beside_the_module() {
-    let sandbox = Sandbox::new("eval_no_target").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_no_target").with_file("session.knv", SESSION);
     sandbox
         .compiler(&["eval", "session.knv", "(square 2)"])
         .assert_exit_code(0);
@@ -5581,7 +5594,7 @@ fn eval_leaves_no_build_directory_beside_the_module() {
 
 #[test]
 fn eval_prints_a_warning_of_the_module_once_beside_a_warning_of_a_form() {
-    let sandbox = Sandbox::new("eval_warnings").with_file("pick.knv", UNREACHABLE_ARM);
+    let sandbox = Sandbox::admitted("eval_warnings").with_file("pick.knv", UNREACHABLE_ARM);
     let eval = sandbox.compiler(&["eval", "pick.knv", "(match 3 (_ 1) (_ 2))"]);
     let stderr = eval.assert_exit_code(0).stderr();
     assert_eq!(stderr.matches("--> pick.knv").count(), 1, "{stderr}");
@@ -5592,7 +5605,7 @@ fn eval_prints_a_warning_of_the_module_once_beside_a_warning_of_a_form() {
 #[test]
 fn eval_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
     let sandbox =
-        Sandbox::new("eval_malformed_rustfmt_time_limit").with_file("session.knv", SESSION);
+        Sandbox::admitted("eval_malformed_rustfmt_time_limit").with_file("session.knv", SESSION);
     let eval =
         sandbox.compiler_with_rustfmt_time_limit_value("soon", &["eval", "session.knv", "(* 2 3)"]);
     let stderr = eval.assert_exit_code(2).stderr();
@@ -5604,7 +5617,7 @@ fn eval_rejects_a_malformed_rustfmt_time_limit_as_a_usage_error() {
 
 #[test]
 fn eval_prints_a_borrowed_value() {
-    let sandbox = Sandbox::new("eval_borrowed").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_borrowed").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(as-str (str \"ab\"))"]);
     assert_eq!(eval.assert_silent_success().stdout(), "\"ab\"\n");
 }
@@ -5612,7 +5625,7 @@ fn eval_prints_a_borrowed_value() {
 #[test]
 fn eval_notes_a_top_level_do_of_definitions() {
     let sandbox =
-        Sandbox::new("eval_do_of_definitions").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
+        Sandbox::admitted("eval_do_of_definitions").with_file("geometry.knv", GEOMETRY_DEFINITIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5627,8 +5640,8 @@ fn eval_notes_a_top_level_do_of_definitions() {
 
 #[test]
 fn eval_runs_a_top_level_do_of_expressions() {
-    let sandbox =
-        Sandbox::new("eval_do_of_expressions").with_file("square.knv", TOP_LEVEL_DO_OF_EXPRESSIONS);
+    let sandbox = Sandbox::admitted("eval_do_of_expressions")
+        .with_file("square.knv", TOP_LEVEL_DO_OF_EXPRESSIONS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5643,8 +5656,8 @@ fn eval_runs_a_top_level_do_of_expressions() {
 
 #[test]
 fn eval_prints_a_warning_of_the_module_once_beside_a_failing_form() {
-    let sandbox =
-        Sandbox::new("eval_warning_beside_error").with_file("pick.knv", UNREACHABLE_ARM_IN_A_BODY);
+    let sandbox = Sandbox::admitted("eval_warning_beside_error")
+        .with_file("pick.knv", UNREACHABLE_ARM_IN_A_BODY);
     let eval = sandbox.compiler(&["eval", "pick.knv", "(square \"a\")"]);
     let stderr = eval.assert_exit_code(1).stderr();
     assert_eq!(
@@ -5657,7 +5670,7 @@ fn eval_prints_a_warning_of_the_module_once_beside_a_failing_form() {
 #[test]
 fn eval_prints_a_warning_of_a_form_inside_a_definition_once() {
     let sandbox =
-        Sandbox::new("eval_warning_inside").with_file("pick.knv", UNREACHABLE_ARM_IN_A_BODY);
+        Sandbox::admitted("eval_warning_inside").with_file("pick.knv", UNREACHABLE_ARM_IN_A_BODY);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5678,14 +5691,14 @@ fn eval_prints_a_warning_of_a_form_inside_a_definition_once() {
 
 #[test]
 fn eval_prints_a_value_behind_a_mutable_borrow() {
-    let sandbox = Sandbox::new("eval_mutable").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_mutable").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "session.knv", "(local v (vec 1)) (mut v)"]);
     assert_eq!(eval.assert_silent_success().stdout(), "(vec 1)\n");
 }
 
 #[test]
 fn eval_reports_an_expression_beside_a_definition_in_a_top_level_do() {
-    let sandbox = Sandbox::new("eval_mixed_do").with_file("mixed.knv", MIXED_TOP_LEVEL_DO);
+    let sandbox = Sandbox::admitted("eval_mixed_do").with_file("mixed.knv", MIXED_TOP_LEVEL_DO);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -5701,7 +5714,8 @@ fn eval_reports_an_expression_beside_a_definition_in_a_top_level_do() {
 
 #[test]
 fn eval_prints_a_warning_of_a_form_at_the_range_of_a_module_warning() {
-    let sandbox = Sandbox::new("eval_warning_same_range").with_file("pick.knv", UNREACHABLE_ARM);
+    let sandbox =
+        Sandbox::admitted("eval_warning_same_range").with_file("pick.knv", UNREACHABLE_ARM);
     let indented = format!("{}(match 3 (_ 1) (_ 2))", " ".repeat(15));
     let eval = sandbox.compiler(&["eval", "pick.knv", &indented]);
     let stderr = eval.assert_exit_code(0).stderr();
@@ -5711,7 +5725,7 @@ fn eval_prints_a_warning_of_a_form_at_the_range_of_a_module_warning() {
 
 #[test]
 fn eval_json_streams_output_and_values_in_order() {
-    let sandbox = Sandbox::new("eval_json_streams").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_streams").with_file("session.knv", SESSION);
     let forms = "(do (print \"x\") 6) (println \"hi\") (square 3)";
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", forms]);
     assert_eq!(
@@ -5728,7 +5742,7 @@ fn eval_json_streams_output_and_values_in_order() {
 
 #[test]
 fn eval_json_echoes_the_id_on_every_object() {
-    let sandbox = Sandbox::new("eval_json_id").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_id").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -5747,7 +5761,8 @@ fn eval_json_echoes_the_id_on_every_object() {
 
 #[test]
 fn eval_json_numbers_a_value_by_its_form_among_definitions() {
-    let sandbox = Sandbox::new("eval_json_numbers").with_file("geometry.knv", EVALUATED_GEOMETRY);
+    let sandbox =
+        Sandbox::admitted("eval_json_numbers").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -5764,7 +5779,7 @@ fn eval_json_numbers_a_value_by_its_form_among_definitions() {
 
 #[test]
 fn eval_json_prints_nothing_for_a_comment_form() {
-    let sandbox = Sandbox::new("eval_json_comment").with_file("scratch.knv", SCRATCH);
+    let sandbox = Sandbox::admitted("eval_json_comment").with_file("scratch.knv", SCRATCH);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -5783,7 +5798,7 @@ fn eval_json_prints_nothing_for_a_comment_form() {
 
 #[test]
 fn eval_json_runs_a_form_sent_from_inside_a_comment() {
-    let sandbox = Sandbox::new("eval_json_inside_comment").with_file("scratch.knv", SCRATCH);
+    let sandbox = Sandbox::admitted("eval_json_inside_comment").with_file("scratch.knv", SCRATCH);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -5805,7 +5820,7 @@ fn eval_json_runs_a_form_sent_from_inside_a_comment() {
 
 #[test]
 fn eval_json_prints_a_value_that_borrows_a_temporary() {
-    let sandbox = Sandbox::new("eval_json_temporary").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_temporary").with_file("session.knv", SESSION);
     let forms = "(trim (as-str (str \" a\" \"b \")))";
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", forms]);
     assert_eq!(
@@ -5816,7 +5831,7 @@ fn eval_json_prints_a_value_that_borrows_a_temporary() {
 
 #[test]
 fn eval_json_carries_an_inferred_type_as_a_string_value() {
-    let sandbox = Sandbox::new("eval_json_infer").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_infer").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(infer (vec 1 2))"]);
     assert_eq!(
         eval.assert_silent_success().json_replies()[0],
@@ -5826,7 +5841,7 @@ fn eval_json_carries_an_inferred_type_as_a_string_value() {
 
 #[test]
 fn eval_json_streams_a_doc_page_as_out() {
-    let sandbox = Sandbox::new("eval_json_doc").with_file("page.knv", PAGE_PROGRAM);
+    let sandbox = Sandbox::admitted("eval_json_doc").with_file("page.knv", PAGE_PROGRAM);
     let eval = sandbox.compiler(&["eval", "--json", "page.knv", "(doc twice)"]);
     assert_eq!(
         eval.assert_silent_success().json_replies(),
@@ -5839,7 +5854,7 @@ fn eval_json_streams_a_doc_page_as_out() {
 
 #[test]
 fn eval_json_streams_standard_error_as_err() {
-    let sandbox = Sandbox::new("eval_json_err").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_err").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(eprintln \"oops\")"]);
     assert_eq!(
         eval.assert_silent_success().json_replies(),
@@ -5852,7 +5867,7 @@ fn eval_json_streams_standard_error_as_err() {
 
 #[test]
 fn eval_json_reports_a_note_as_a_diagnostic_without_a_code() {
-    let sandbox = Sandbox::new("eval_json_note").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_note").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(fn ((x i64)) x)"]);
     let replies = eval.assert_silent_success().json_replies();
     let note = &replies[0]["diagnostics"][0];
@@ -5877,7 +5892,7 @@ fn eval_json_reports_a_note_as_a_diagnostic_without_a_code() {
 
 #[test]
 fn eval_json_places_an_error_in_the_module_text_in_bytes() {
-    let sandbox = Sandbox::new("eval_json_error").with_file(
+    let sandbox = Sandbox::admitted("eval_json_error").with_file(
         "geometry.knv",
         "(defn area (w h) (* w h))\n(do \"☃\" (area 2 \"3\"))\n",
     );
@@ -5915,7 +5930,7 @@ fn eval_json_places_an_error_in_the_module_text_in_bytes() {
 #[test]
 fn eval_json_reports_a_diagnostic_of_the_module_and_runs_nothing() {
     let sandbox =
-        Sandbox::new("eval_json_module_error").with_file("geometry.knv", AREA_OF_A_STRING);
+        Sandbox::admitted("eval_json_module_error").with_file("geometry.knv", AREA_OF_A_STRING);
     let eval = sandbox.compiler(&["eval", "--json", "geometry.knv", "(println \"never\")"]);
     let replies = eval.assert_exit_code(1).json_replies();
     assert_eq!(replies.len(), 2, "{replies:?}");
@@ -5926,7 +5941,7 @@ fn eval_json_reports_a_diagnostic_of_the_module_and_runs_nothing() {
 
 #[test]
 fn eval_json_ends_with_the_exit_code_of_the_program() {
-    let sandbox = Sandbox::new("eval_json_exit").with_file("exits.knv", EXITS);
+    let sandbox = Sandbox::admitted("eval_json_exit").with_file("exits.knv", EXITS);
     let eval = sandbox.compiler(&["eval", "--json", "exits.knv", "(exit 3)"]);
     assert_eq!(
         eval.assert_exit_code(3).json_replies(),
@@ -5936,7 +5951,7 @@ fn eval_json_ends_with_the_exit_code_of_the_program() {
 
 #[test]
 fn eval_json_ends_with_128_plus_the_signal_then_dies_by_it() {
-    let sandbox = Sandbox::new("eval_json_signal").with_file("exits.knv", EXITS);
+    let sandbox = Sandbox::admitted("eval_json_signal").with_file("exits.knv", EXITS);
     let eval = sandbox.compiler(&["eval", "--json", "exits.knv", "(abort)"]);
     assert_eq!(
         eval.assert_killed_by(Outcome::SIGABRT).json_replies(),
@@ -5946,7 +5961,7 @@ fn eval_json_ends_with_128_plus_the_signal_then_dies_by_it() {
 
 #[test]
 fn eval_json_dies_by_sigpipe_when_its_output_closes() {
-    let sandbox = Sandbox::new("eval_json_closed_output").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_closed_output").with_file("session.knv", SESSION);
     let forms = "(for-each (range 0 1000000) (fn (i) (println i)))";
     sandbox
         .compiler_writing_to_a_closed_pipe(&["eval", "--json", "session.knv", forms])
@@ -5955,7 +5970,8 @@ fn eval_json_dies_by_sigpipe_when_its_output_closes() {
 
 #[test]
 fn eval_json_writes_no_json_for_misplaced_forms() {
-    let sandbox = Sandbox::new("eval_json_misplaced").with_file("geometry.knv", EVALUATED_GEOMETRY);
+    let sandbox =
+        Sandbox::admitted("eval_json_misplaced").with_file("geometry.knv", EVALUATED_GEOMETRY);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -5975,7 +5991,7 @@ fn eval_json_writes_no_json_for_misplaced_forms() {
 
 #[test]
 fn eval_json_writes_no_json_for_a_missing_module() {
-    let sandbox = Sandbox::new("eval_json_missing");
+    let sandbox = Sandbox::admitted("eval_json_missing");
     let eval = sandbox.compiler(&["eval", "--json", "missing.knv", "1"]);
     assert_eq!(eval.assert_exit_code(2).stdout(), "");
     assert!(
@@ -5986,14 +6002,14 @@ fn eval_json_writes_no_json_for_a_missing_module() {
 
 #[test]
 fn eval_rejects_an_id_without_json() {
-    let sandbox = Sandbox::new("eval_id_without_json").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_id_without_json").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "--id", "7", "session.knv", "1"]);
     assert_eq!(eval.assert_exit_code(2).stdout(), "");
 }
 
 #[test]
 fn eval_json_prints_a_value_beside_a_module_println() {
-    let sandbox = Sandbox::new("eval_json_shadowed").with_file("square.knv", SHADOWED_PRINTLN);
+    let sandbox = Sandbox::admitted("eval_json_shadowed").with_file("square.knv", SHADOWED_PRINTLN);
     let eval = sandbox.compiler(&["eval", "--json", "square.knv", "(square 2)"]);
     assert_eq!(
         eval.assert_silent_success().json_replies()[0],
@@ -6003,7 +6019,7 @@ fn eval_json_prints_a_value_beside_a_module_println() {
 
 #[test]
 fn eval_json_reports_a_warning_with_its_severity_and_code() {
-    let sandbox = Sandbox::new("eval_json_warning").with_file("pick.knv", UNREACHABLE_ARM);
+    let sandbox = Sandbox::admitted("eval_json_warning").with_file("pick.knv", UNREACHABLE_ARM);
     let eval = sandbox.compiler(&["eval", "--json", "pick.knv", "(do)"]);
     let replies = eval.assert_silent_success().json_replies();
     let warning = &replies[0]["diagnostics"][0];
@@ -6013,7 +6029,8 @@ fn eval_json_reports_a_warning_with_its_severity_and_code() {
 
 #[test]
 fn eval_json_stops_a_program_whose_output_closes() {
-    let sandbox = Sandbox::new("eval_json_closed_count").with_file("count.knv", COUNT_THEN_FAIL);
+    let sandbox =
+        Sandbox::admitted("eval_json_closed_count").with_file("count.knv", COUNT_THEN_FAIL);
     sandbox
         .compiler_writing_to_a_closed_pipe(&["eval", "--json", "count.knv", "(count-up 0)"])
         .assert_killed_by(Outcome::SIGPIPE);
@@ -6021,7 +6038,7 @@ fn eval_json_stops_a_program_whose_output_closes() {
 
 #[test]
 fn eval_json_ends_with_status_2_for_a_program_that_cannot_start() {
-    let sandbox = Sandbox::new("eval_json_missing_program")
+    let sandbox = Sandbox::admitted("eval_json_missing_program")
         .with_file("session.knv", SESSION)
         .with_executable("tools/rustc", SILENT_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
@@ -6035,7 +6052,7 @@ fn eval_json_ends_with_status_2_for_a_program_that_cannot_start() {
 
 #[test]
 fn eval_json_ends_with_status_2_without_rustc() {
-    let sandbox = Sandbox::new("eval_json_missing_rustc")
+    let sandbox = Sandbox::admitted("eval_json_missing_rustc")
         .with_file("pick.knv", UNREACHABLE_ARM)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
     let eval = sandbox.compiler_with_path("tools", &["eval", "--json", "pick.knv", "(pick 1)"]);
@@ -6046,7 +6063,7 @@ fn eval_json_ends_with_status_2_without_rustc() {
 
 #[test]
 fn eval_json_ends_with_status_2_without_a_build_directory() {
-    let sandbox = Sandbox::new("eval_json_no_temporary").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_no_temporary").with_file("session.knv", SESSION);
     let eval = sandbox
         .compiler_with_temporary_directory("missing", &["eval", "--json", "session.knv", "1"]);
     assert_eq!(
@@ -6061,7 +6078,7 @@ fn eval_json_ends_with_status_2_without_a_build_directory() {
 
 #[test]
 fn eval_json_prints_values_of_two_types_in_one_call() {
-    let sandbox = Sandbox::new("eval_json_two_types").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_two_types").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&[
         "eval",
         "--json",
@@ -6080,7 +6097,7 @@ fn eval_json_prints_values_of_two_types_in_one_call() {
 
 #[test]
 fn eval_json_reports_a_reader_error_in_the_forms() {
-    let sandbox = Sandbox::new("eval_json_reader_error").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("eval_json_reader_error").with_file("session.knv", SESSION);
     let eval = sandbox.compiler(&["eval", "--json", "session.knv", "(square 2"]);
     let replies = eval.assert_exit_code(1).json_replies();
     assert_eq!(replies[0]["diagnostics"][0]["code"], "L0101");
@@ -6090,14 +6107,14 @@ fn eval_json_reports_a_reader_error_in_the_forms() {
 
 #[test]
 fn color_diagnostics_on_a_terminal() {
-    let sandbox = Sandbox::new("color_terminal").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_terminal").with_file("unbound.knv", UNBOUND_NAME);
     let check = sandbox.compiler_on_a_terminal(&[("TERM", "xterm")], &["check", "unbound.knv"]);
     assert!(check.stdout_is_colored(), "{}", check.stdout());
 }
 
 #[test]
 fn color_stays_off_diagnostics_on_a_dumb_terminal() {
-    let sandbox = Sandbox::new("color_dumb").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_dumb").with_file("unbound.knv", UNBOUND_NAME);
     let check = sandbox.compiler_on_a_terminal(&[("TERM", "dumb")], &["check", "unbound.knv"]);
     assert!(
         check.stdout().contains("error[L0201]"),
@@ -6109,7 +6126,7 @@ fn color_stays_off_diagnostics_on_a_dumb_terminal() {
 
 #[test]
 fn color_stays_off_diagnostics_on_a_terminal_when_clicolor_is_zero() {
-    let sandbox = Sandbox::new("color_clicolor").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_clicolor").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("TERM", "xterm"), ("CLICOLOR", "0")];
     let check = sandbox.compiler_on_a_terminal(&environment, &["check", "unbound.knv"]);
     assert!(
@@ -6122,7 +6139,7 @@ fn color_stays_off_diagnostics_on_a_terminal_when_clicolor_is_zero() {
 
 #[test]
 fn color_stays_off_diagnostics_on_a_terminal_when_no_color_is_set() {
-    let sandbox = Sandbox::new("color_no_color").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_no_color").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("TERM", "xterm"), ("NO_COLOR", "1")];
     let check = sandbox.compiler_on_a_terminal(&environment, &["check", "unbound.knv"]);
     assert!(
@@ -6135,7 +6152,7 @@ fn color_stays_off_diagnostics_on_a_terminal_when_no_color_is_set() {
 
 #[test]
 fn color_stays_off_diagnostics_written_to_a_file_from_a_terminal() {
-    let sandbox = Sandbox::new("color_file").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_file").with_file("unbound.knv", UNBOUND_NAME);
     let arguments = ["check", "unbound.knv", "2>", "errors.log"];
     sandbox.compiler_on_a_terminal(&[("TERM", "xterm")], &arguments);
     let errors = sandbox.written_file("errors.log");
@@ -6145,7 +6162,7 @@ fn color_stays_off_diagnostics_written_to_a_file_from_a_terminal() {
 
 #[test]
 fn color_stays_off_diagnostics_in_a_pipe() {
-    let sandbox = Sandbox::new("color_pipe").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_pipe").with_file("unbound.knv", UNBOUND_NAME);
     let check = sandbox.compiler_with_colors(&[("TERM", "xterm")], &["check", "unbound.knv"]);
     assert!(
         !check.assert_exit_code(1).stderr_is_colored(),
@@ -6156,7 +6173,7 @@ fn color_stays_off_diagnostics_in_a_pipe() {
 
 #[test]
 fn color_diagnostics_in_a_pipe_when_clicolor_force_is_set() {
-    let sandbox = Sandbox::new("color_force").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_force").with_file("unbound.knv", UNBOUND_NAME);
     let check = sandbox.compiler_with_colors(&[("CLICOLOR_FORCE", "1")], &["check", "unbound.knv"]);
     assert!(
         check.assert_exit_code(1).stderr_is_colored(),
@@ -6167,7 +6184,7 @@ fn color_diagnostics_in_a_pipe_when_clicolor_force_is_set() {
 
 #[test]
 fn color_no_color_wins_over_clicolor_force() {
-    let sandbox = Sandbox::new("color_no_color_force").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_no_color_force").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("CLICOLOR_FORCE", "1"), ("NO_COLOR", "1")];
     let check = sandbox.compiler_with_colors(&environment, &["check", "unbound.knv"]);
     assert!(
@@ -6179,7 +6196,7 @@ fn color_no_color_wins_over_clicolor_force() {
 
 #[test]
 fn color_follows_the_decision_in_a_doc_term_that_does_not_read() {
-    let sandbox = Sandbox::new("color_doc_term");
+    let sandbox = Sandbox::admitted("color_doc_term");
     let doc = sandbox.compiler_with_colors(&[("CLICOLOR_FORCE", "1")], &["doc", "("]);
     assert!(
         doc.assert_exit_code(2).stderr_is_colored(),
@@ -6190,7 +6207,7 @@ fn color_follows_the_decision_in_a_doc_term_that_does_not_read() {
 
 #[test]
 fn color_follows_the_decision_in_eval_forms_that_do_not_read() {
-    let sandbox = Sandbox::new("color_eval_forms").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("color_eval_forms").with_file("session.knv", SESSION);
     let environment = [("CLICOLOR_FORCE", "1")];
     let eval = sandbox.compiler_with_colors(&environment, &["eval", "session.knv", "("]);
     assert!(eval.stderr().contains("L0101"), "{}", eval.stderr());
@@ -6199,7 +6216,7 @@ fn color_follows_the_decision_in_eval_forms_that_do_not_read() {
 
 #[test]
 fn color_always_colors_diagnostics_in_a_pipe() {
-    let sandbox = Sandbox::new("color_always").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_always").with_file("unbound.knv", UNBOUND_NAME);
     let check = sandbox.compiler_with_colors(&[], &["--color", "always", "check", "unbound.knv"]);
     assert!(
         check.assert_exit_code(1).stderr_is_colored(),
@@ -6210,7 +6227,7 @@ fn color_always_colors_diagnostics_in_a_pipe() {
 
 #[test]
 fn color_never_wins_over_clicolor_force_after_the_subcommand() {
-    let sandbox = Sandbox::new("color_never").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_never").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("CLICOLOR_FORCE", "1")];
     let check =
         sandbox.compiler_with_colors(&environment, &["check", "unbound.knv", "--color=never"]);
@@ -6223,7 +6240,7 @@ fn color_never_wins_over_clicolor_force_after_the_subcommand() {
 
 #[test]
 fn color_never_keeps_the_help_plain_before_the_subcommand() {
-    let sandbox = Sandbox::new("color_never_help");
+    let sandbox = Sandbox::admitted("color_never_help");
     let environment = [("CLICOLOR_FORCE", "1")];
     let help = sandbox.compiler_with_colors(&environment, &["--color", "never", "--help"]);
     assert!(
@@ -6235,7 +6252,7 @@ fn color_never_keeps_the_help_plain_before_the_subcommand() {
 
 #[test]
 fn color_never_keeps_the_help_plain_after_the_subcommand() {
-    let sandbox = Sandbox::new("color_never_command_help");
+    let sandbox = Sandbox::admitted("color_never_command_help");
     let environment = [("CLICOLOR_FORCE", "1")];
     let help = sandbox.compiler_with_colors(&environment, &["check", "--help", "--color=never"]);
     assert!(
@@ -6247,7 +6264,7 @@ fn color_never_keeps_the_help_plain_after_the_subcommand() {
 
 #[test]
 fn color_always_colors_the_help_after_the_subcommand() {
-    let sandbox = Sandbox::new("color_always_command_help");
+    let sandbox = Sandbox::admitted("color_always_command_help");
     let help = sandbox.compiler_with_colors(&[], &["check", "--help", "--color", "always"]);
     assert!(
         help.assert_exit_code(0).stdout_is_colored(),
@@ -6258,7 +6275,7 @@ fn color_always_colors_the_help_after_the_subcommand() {
 
 #[test]
 fn color_never_keeps_a_usage_error_plain() {
-    let sandbox = Sandbox::new("color_never_usage");
+    let sandbox = Sandbox::admitted("color_never_usage");
     let environment = [("CLICOLOR_FORCE", "1")];
     let usage = sandbox.compiler_with_colors(&environment, &["--color", "never", "nonsense"]);
     assert!(
@@ -6270,7 +6287,7 @@ fn color_never_keeps_a_usage_error_plain() {
 
 #[test]
 fn color_always_colors_a_usage_error() {
-    let sandbox = Sandbox::new("color_always_usage");
+    let sandbox = Sandbox::admitted("color_always_usage");
     let usage = sandbox.compiler_with_colors(&[], &["--color", "always", "nonsense"]);
     assert!(
         usage.assert_exit_code(2).stderr_is_colored(),
@@ -6281,7 +6298,7 @@ fn color_always_colors_a_usage_error() {
 
 #[test]
 fn color_after_the_end_of_options_is_not_read() {
-    let sandbox = Sandbox::new("color_after_end");
+    let sandbox = Sandbox::admitted("color_after_end");
     let usage = sandbox.compiler_with_colors(&[], &["nonsense", "--", "--color", "always"]);
     assert!(
         !usage.assert_exit_code(2).stderr_is_colored(),
@@ -6292,7 +6309,7 @@ fn color_after_the_end_of_options_is_not_read() {
 
 #[test]
 fn color_with_an_unknown_value_is_a_usage_error_under_auto() {
-    let sandbox = Sandbox::new("color_unknown").with_file("unbound.knv", UNBOUND_NAME);
+    let sandbox = Sandbox::admitted("color_unknown").with_file("unbound.knv", UNBOUND_NAME);
     let environment = [("CLICOLOR_FORCE", "1")];
     let arguments = ["--color", "sometimes", "check", "unbound.knv"];
     let forced = sandbox.compiler_with_colors(&environment, &arguments);
@@ -6312,7 +6329,7 @@ fn color_with_an_unknown_value_is_a_usage_error_under_auto() {
 
 #[test]
 fn color_follows_the_last_color_argument() {
-    let sandbox = Sandbox::new("color_last");
+    let sandbox = Sandbox::admitted("color_last");
     let arguments = ["--color", "always", "check", "--help", "--color", "never"];
     let help = sandbox.compiler_with_colors(&[], &arguments);
     assert!(
@@ -6324,7 +6341,7 @@ fn color_follows_the_last_color_argument() {
 
 #[test]
 fn color_always_keeps_eval_json_plain() {
-    let sandbox = Sandbox::new("color_json").with_file("session.knv", SESSION);
+    let sandbox = Sandbox::admitted("color_json").with_file("session.knv", SESSION);
     let arguments = [
         "--color",
         "always",
@@ -6344,7 +6361,7 @@ fn color_always_keeps_eval_json_plain() {
 
 #[test]
 fn eval_notes_a_struct_that_the_module_defines() {
-    let sandbox = Sandbox::new("eval_struct_definition").with_file("points.knv", POINTS);
+    let sandbox = Sandbox::admitted("eval_struct_definition").with_file("points.knv", POINTS);
     let eval = sandbox.compiler(&[
         "eval",
         "--line",
@@ -6359,21 +6376,22 @@ fn eval_notes_a_struct_that_the_module_defines() {
 
 #[test]
 fn repl_keeps_definitions_and_prints_expressions() {
-    let sandbox = Sandbox::new("repl_definitions");
+    let sandbox = Sandbox::admitted("repl_definitions");
     let repl = sandbox.compiler_reading(PROMPT_DEFINITIONS, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_prints_a_doc_page_as_text() {
-    let sandbox = Sandbox::new("repl_doc");
+    let sandbox = Sandbox::admitted("repl_doc");
     let repl = sandbox.compiler_reading(PROMPT_DOC, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn eval_reports_a_document_of_a_name_the_module_does_not_define() {
-    let sandbox = Sandbox::new("eval_undefined_documented_term").with_file("e.knv", DOCUMENTED_ONE);
+    let sandbox =
+        Sandbox::admitted("eval_undefined_documented_term").with_file("e.knv", DOCUMENTED_ONE);
     let eval = sandbox.compiler(&["eval", "e.knv", "(document (nope) \"Says nothing.\") (f)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
     assert_eq!(eval.stdout(), "");
@@ -6381,8 +6399,8 @@ fn eval_reports_a_document_of_a_name_the_module_does_not_define() {
 
 #[test]
 fn eval_reports_a_misplaced_documented_definition_once() {
-    let sandbox =
-        Sandbox::new("eval_misplaced_documented_definition").with_file("e.knv", DOCUMENTED_ONE);
+    let sandbox = Sandbox::admitted("eval_misplaced_documented_definition")
+        .with_file("e.knv", DOCUMENTED_ONE);
     let eval = sandbox.compiler(&["eval", "e.knv", "(defn k () \"K doc.\" 2) (doc k)"]);
     let stderr = eval.assert_exit_code(1).stderr();
     assert_eq!(stderr.matches("error[L0208]").count(), 1, "{stderr}");
@@ -6391,28 +6409,28 @@ fn eval_reports_a_misplaced_documented_definition_once() {
 
 #[test]
 fn repl_reports_a_document_of_an_unbound_name_once() {
-    let sandbox = Sandbox::new("repl_undefined_documented_term");
+    let sandbox = Sandbox::admitted("repl_undefined_documented_term");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENTED_UNBOUND_NAME, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_reports_a_document_entered_above_its_definition() {
-    let sandbox = Sandbox::new("repl_document_above_its_definition");
+    let sandbox = Sandbox::admitted("repl_document_above_its_definition");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_ABOVE_ITS_DEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_keeps_a_document_entered_alone() {
-    let sandbox = Sandbox::new("repl_document_alone");
+    let sandbox = Sandbox::admitted("repl_document_alone");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_BELOW_ITS_DEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_runs_a_document_beside_an_expression() {
-    let sandbox = Sandbox::new("repl_document_beside_an_expression");
+    let sandbox = Sandbox::admitted("repl_document_beside_an_expression");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_BESIDE_AN_EXPRESSION, &["repl"]);
     let output = repl.assert_exit_code(0);
     assert_eq!(output.stdout(), "1\n");
@@ -6421,35 +6439,35 @@ fn repl_runs_a_document_beside_an_expression() {
 
 #[test]
 fn repl_replaces_an_earlier_document_of_the_same_term() {
-    let sandbox = Sandbox::new("repl_document_entered_again");
+    let sandbox = Sandbox::admitted("repl_document_entered_again");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_ENTERED_AGAIN, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_reports_a_document_that_a_replacing_document_sets_aside() {
-    let sandbox = Sandbox::new("repl_document_leaving_another");
+    let sandbox = Sandbox::admitted("repl_document_leaving_another");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_LEAVING_ANOTHER, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_keeps_a_document_entered_beside_its_definition() {
-    let sandbox = Sandbox::new("repl_document_beside_its_definition");
+    let sandbox = Sandbox::admitted("repl_document_beside_its_definition");
     let repl = sandbox.compiler_reading(PROMPT_DOCUMENT_BESIDE_ITS_DEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_keeps_its_session_after_a_macro_passes_the_step_limit() {
-    let sandbox = Sandbox::new("repl_step_limit");
+    let sandbox = Sandbox::admitted("repl_step_limit");
     let repl = sandbox.compiler_reading(PROMPT_RUNAWAY_MACRO, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn eval_reports_a_macro_that_passes_the_step_limit() {
-    let sandbox = Sandbox::new("eval_step_limit")
+    let sandbox = Sandbox::admitted("eval_step_limit")
         .with_file("session.knv", "(defmacro spin () ((fn () (recur))))\n");
     let eval = sandbox.compiler(&["eval", "session.knv", "(with-macro-steps 1000 (spin))"]);
     insta::assert_snapshot!(eval.transcript());
@@ -6457,77 +6475,77 @@ fn eval_reports_a_macro_that_passes_the_step_limit() {
 
 #[test]
 fn repl_prints_an_inferred_type_as_a_string() {
-    let sandbox = Sandbox::new("repl_infer");
+    let sandbox = Sandbox::admitted("repl_infer");
     let repl = sandbox.compiler_reading(PROMPT_INFER, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_shadows_a_prelude_name_and_replaces_its_own_definition_of_it() {
-    let sandbox = Sandbox::new("repl_prelude_redefinition");
+    let sandbox = Sandbox::admitted("repl_prelude_redefinition");
     let repl = sandbox.compiler_reading(PROMPT_PRELUDE_REDEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_replaces_an_earlier_definition_of_the_same_name() {
-    let sandbox = Sandbox::new("repl_redefinition");
+    let sandbox = Sandbox::admitted("repl_redefinition");
     let repl = sandbox.compiler_reading(PROMPT_REDEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_sets_aside_a_name_that_a_replacement_drops() {
-    let sandbox = Sandbox::new("repl_dropping_replacement");
+    let sandbox = Sandbox::admitted("repl_dropping_replacement");
     let repl = sandbox.compiler_reading(PROMPT_DROPPING_REPLACEMENT, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_replaces_every_earlier_input_that_shares_a_name() {
-    let sandbox = Sandbox::new("repl_replacement_of_two");
+    let sandbox = Sandbox::admitted("repl_replacement_of_two");
     let repl = sandbox.compiler_reading(PROMPT_REPLACEMENT_OF_TWO, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_rejects_a_failing_definition_and_keeps_the_buffer() {
-    let sandbox = Sandbox::new("repl_failing_definition");
+    let sandbox = Sandbox::admitted("repl_failing_definition");
     let repl = sandbox.compiler_reading(PROMPT_FAILING_DEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_enters_each_form_of_a_line_as_its_own_input() {
-    let sandbox = Sandbox::new("repl_forms_on_one_line");
+    let sandbox = Sandbox::admitted("repl_forms_on_one_line");
     let repl = sandbox.compiler_reading(PROMPT_FORMS_ON_ONE_LINE, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_reads_an_unclosed_list_or_string_across_lines() {
-    let sandbox = Sandbox::new("repl_multi_line");
+    let sandbox = Sandbox::admitted("repl_multi_line");
     let repl = sandbox.compiler_reading(PROMPT_MULTI_LINE, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_ends_an_input_at_an_extra_close() {
-    let sandbox = Sandbox::new("repl_extra_close");
+    let sandbox = Sandbox::admitted("repl_extra_close");
     let repl = sandbox.compiler_reading(PROMPT_EXTRA_CLOSE, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_resolves_use_from_the_root_and_sets_aside_an_import_it_drops() {
-    let sandbox = Sandbox::new("repl_uses").with_file("lib/shapes.knv", SHAPES_OF_TWO);
+    let sandbox = Sandbox::admitted("repl_uses").with_file("lib/shapes.knv", SHAPES_OF_TWO);
     let repl = sandbox.compiler_reading(PROMPT_USES, &["repl", "--root", "lib"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_shows_a_panic_and_keeps_its_definitions() {
-    let sandbox = Sandbox::new("repl_panic");
+    let sandbox = Sandbox::admitted("repl_panic");
     let repl = sandbox.compiler_reading(PROMPT_PANIC, &["repl"]);
     let stderr = repl.assert_exit_code(0).stderr();
     assert!(stderr.contains("index out of bounds"), "{stderr}");
@@ -6540,7 +6558,7 @@ fn repl_shows_a_panic_and_keeps_its_definitions() {
 
 #[test]
 fn repl_notes_128_plus_the_signal_that_kills_a_program_and_keeps_going() {
-    let sandbox = Sandbox::new("repl_abort");
+    let sandbox = Sandbox::admitted("repl_abort");
     let repl = sandbox.compiler_reading(PROMPT_ABORT, &["repl"]);
     let stderr = repl.assert_exit_code(0).stderr();
     assert!(
@@ -6552,35 +6570,35 @@ fn repl_notes_128_plus_the_signal_that_kills_a_program_and_keeps_going() {
 
 #[test]
 fn repl_notes_a_nonzero_exit_of_a_program() {
-    let sandbox = Sandbox::new("repl_exit");
+    let sandbox = Sandbox::admitted("repl_exit");
     let repl = sandbox.compiler_reading(PROMPT_EXIT, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_reports_the_end_of_input_inside_a_list_and_quits() {
-    let sandbox = Sandbox::new("repl_unclosed_end");
+    let sandbox = Sandbox::admitted("repl_unclosed_end");
     let repl = sandbox.compiler_reading(PROMPT_UNCLOSED_END, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_replaces_an_enum_by_every_name_it_defines() {
-    let sandbox = Sandbox::new("repl_enum_redefinition");
+    let sandbox = Sandbox::admitted("repl_enum_redefinition");
     let repl = sandbox.compiler_reading(PROMPT_ENUM_REDEFINITION, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_prints_a_warning_of_a_definition_once() {
-    let sandbox = Sandbox::new("repl_warning");
+    let sandbox = Sandbox::admitted("repl_warning");
     let repl = sandbox.compiler_reading(PROMPT_WARNING, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
 
 #[test]
 fn repl_reports_unreadable_input() {
-    let sandbox = Sandbox::new("repl_unreadable_input");
+    let sandbox = Sandbox::admitted("repl_unreadable_input");
     let repl = sandbox.compiler_reading(PROMPT_NOT_UTF8, &["repl"]);
     assert_eq!(repl.assert_exit_code(2).stdout(), "2\n");
     assert_eq!(
@@ -6591,7 +6609,7 @@ fn repl_reports_unreadable_input() {
 
 #[test]
 fn eval_reports_unreadable_input() {
-    let sandbox = Sandbox::new("eval_unreadable_input");
+    let sandbox = Sandbox::admitted("eval_unreadable_input");
     let eval = sandbox.compiler_reading(b"\xff", &["eval", "--stdin", "buffer.knv", "1"]);
     assert_eq!(eval.assert_exit_code(2).stdout(), "");
     assert_eq!(
@@ -6633,7 +6651,7 @@ impl PromptColors {
     }
 
     fn session(name: &str, environment: &[(&str, &str)], arguments: &[&str]) -> String {
-        let sandbox = Sandbox::new(name);
+        let sandbox = Sandbox::admitted(name);
         sandbox
             .compiler_on_a_terminal_reading(PROMPT_EXIT_ON_A_TERMINAL, environment, arguments)
             .assert_exit_code(0)
@@ -6721,7 +6739,7 @@ impl ValueColors {
             .collect();
         let typed_tag = Self::TAG.replace('\n', "\r");
         let typed_value = Self::typed_value();
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .compiler_on_a_terminal_reading(
                 &[
                     Keys::AtPrompt(&typed_tag),
@@ -6754,7 +6772,7 @@ impl ValueColors {
             .into_iter()
             .chain(shell_words.iter().copied())
             .collect();
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .with_file("tags.knv", Self::TAG)
             .compiler_on_a_terminal(&environment, &arguments)
     }
@@ -6768,7 +6786,7 @@ fn color_repl_values_by_token_kind() {
 
 #[test]
 fn color_repl_passes_the_program_escape_codes_unchanged() {
-    let sandbox = Sandbox::new("color_repl_program_codes");
+    let sandbox = Sandbox::admitted("color_repl_program_codes");
     let session = sandbox
         .compiler_on_a_terminal_reading(
             &[
@@ -6785,7 +6803,7 @@ fn color_repl_passes_the_program_escape_codes_unchanged() {
 
 #[test]
 fn color_repl_shows_the_program_prompt_before_it_reads() {
-    let sandbox = Sandbox::new("color_repl_program_prompt");
+    let sandbox = Sandbox::admitted("color_repl_program_prompt");
     let session = sandbox
         .compiler_on_a_terminal_reading(
             &[
@@ -6825,7 +6843,7 @@ fn color_never_keeps_repl_values_plain() {
 #[test]
 fn color_stays_off_repl_values_in_a_pipe() {
     let input = format!("{}{}\n", ValueColors::TAG, ValueColors::TAG_FORM);
-    let repl = Sandbox::new("color_repl_values_pipe").compiler_reading(input, &["repl"]);
+    let repl = Sandbox::admitted("color_repl_values_pipe").compiler_reading(input, &["repl"]);
     let output = repl.assert_exit_code(0).stdout();
     assert!(!output.contains(Outcome::ESCAPE), "{output:?}");
     ValueColors::assert_plain(&output);
@@ -6886,7 +6904,7 @@ impl DocColors {
             .chain(flags.iter().copied())
             .chain(["--file", "scale.knv", "scale"])
             .collect();
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .with_file("scale.knv", Self::SCALE_PROGRAM)
             .compiler_on_a_terminal(&environment, &arguments)
             .assert_exit_code(0)
@@ -6920,7 +6938,7 @@ struct RedefinitionSession;
 
 impl RedefinitionSession {
     fn transcript(name: &str, input: &str) -> String {
-        let sandbox = Sandbox::new(name).with_file("shapes.knv", SHAPES_OF_TWO);
+        let sandbox = Sandbox::admitted(name).with_file("shapes.knv", SHAPES_OF_TWO);
         sandbox.compiler_reading(input, &["repl"]).transcript()
     }
 
@@ -7015,7 +7033,7 @@ fn repl_helps_an_expression_after_a_module_change() {
 
 #[test]
 fn repl_forgets_the_record_of_a_name_entered_again() {
-    let sandbox = Sandbox::new("repl_re_entered_type").with_file("geo.knv", GEO_WITHOUT_POINT);
+    let sandbox = Sandbox::admitted("repl_re_entered_type").with_file("geo.knv", GEO_WITHOUT_POINT);
     let repl = sandbox.compiler_reading(PROMPT_RE_ENTERED_TYPE, &["repl"]);
     insta::assert_snapshot!(repl.transcript());
 }
@@ -7060,7 +7078,7 @@ impl EditedSession {
 
     fn new(name: &str) -> Self {
         Self {
-            sandbox: Sandbox::new(name),
+            sandbox: Sandbox::admitted(name),
         }
     }
 
@@ -7424,7 +7442,7 @@ fn repl_says_once_that_history_cannot_be_written() {
 
 #[test]
 fn build_stops_quietly_when_rustc_is_interrupted() {
-    let sandbox = Sandbox::new("build_rustc_interrupted")
+    let sandbox = Sandbox::admitted("build_rustc_interrupted")
         .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustc", INTERRUPTED_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
@@ -7529,7 +7547,7 @@ fn repl_interrupts_a_running_program_on_an_unsupported_terminal() {
 
 #[test]
 fn emit_stops_quietly_when_rustfmt_is_interrupted() {
-    let sandbox = Sandbox::new("emit_rustfmt_interrupted")
+    let sandbox = Sandbox::admitted("emit_rustfmt_interrupted")
         .with_file("greeting.knv", GREETING)
         .with_executable("tools/rustfmt", INTERRUPTED_RUSTFMT);
     let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
@@ -7538,7 +7556,7 @@ fn emit_stops_quietly_when_rustfmt_is_interrupted() {
 
 #[test]
 fn emit_stops_quietly_when_rustfmt_is_interrupted_before_it_reads_its_input() {
-    let sandbox = Sandbox::new("emit_rustfmt_interrupted_before_reading")
+    let sandbox = Sandbox::admitted("emit_rustfmt_interrupted_before_reading")
         .with_file("greeting.knv", &Sandbox::pipe_overflowing_greeting())
         .with_executable("tools/rustfmt", INTERRUPTED_RUSTFMT);
     let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
@@ -7547,7 +7565,7 @@ fn emit_stops_quietly_when_rustfmt_is_interrupted_before_it_reads_its_input() {
 
 #[test]
 fn emit_notes_a_rustfmt_that_fails_before_it_reads_its_input() {
-    let sandbox = Sandbox::new("emit_rustfmt_failed_before_reading")
+    let sandbox = Sandbox::admitted("emit_rustfmt_failed_before_reading")
         .with_file("greeting.knv", &Sandbox::pipe_overflowing_greeting())
         .with_executable("tools/rustfmt", FAILING_RUSTFMT);
     let emit = sandbox.compiler_with_path("tools", &["emit", "greeting.knv"]);
@@ -7591,7 +7609,7 @@ fn repl_skips_rustc_after_an_interrupt_in_the_front_end() {
 
 #[test]
 fn repl_on_piped_input_stops_at_an_interrupt() {
-    let sandbox = Sandbox::new("repl_piped_interrupt");
+    let sandbox = Sandbox::admitted("repl_piped_interrupt");
     let mut child = sandbox
         .command(Path::new(Sandbox::COMPILER), &["repl"])
         .stdin(Stdio::piped())
@@ -7673,14 +7691,14 @@ const FAILING_DOC_EXAMPLE: &str = r#"(defn twice (x)
 
 #[test]
 fn test_reports_a_failing_docstring_example_at_its_line() {
-    let sandbox = Sandbox::new("test_doc_example").with_file("twice.knv", FAILING_DOC_EXAMPLE);
+    let sandbox = Sandbox::admitted("test_doc_example").with_file("twice.knv", FAILING_DOC_EXAMPLE);
     let test = sandbox.compiler(&["test", "twice.knv"]);
     insta::assert_snapshot!(test.assert_exit_code(1).transcript());
 }
 
 #[test]
 fn test_selects_a_docstring_example_by_its_full_name() {
-    let sandbox = Sandbox::new("test_doc_filter").with_file("twice.knv", FAILING_DOC_EXAMPLE);
+    let sandbox = Sandbox::admitted("test_doc_filter").with_file("twice.knv", FAILING_DOC_EXAMPLE);
     let test = sandbox.compiler(&["test", "twice.knv", "--exact", "twice/doc:twice"]);
     insta::assert_snapshot!(test.assert_exit_code(1).transcript());
 }
@@ -7690,14 +7708,14 @@ fn test_filter_runs_only_docstring_examples() {
     let source = format!(
         "(use prelude/test assert deftest)\n\n(deftest plain (assert true))\n\n{FAILING_DOC_EXAMPLE}"
     );
-    let sandbox = Sandbox::new("test_doc_only").with_file("twice.knv", &source);
+    let sandbox = Sandbox::admitted("test_doc_only").with_file("twice.knv", &source);
     let test = sandbox.compiler(&["test", "twice.knv", "--filter", "doc:"]);
     insta::assert_snapshot!(test.assert_exit_code(1).transcript());
 }
 
 #[test]
 fn test_runs_a_docstring_example_with_crlf_line_endings() {
-    let sandbox = Sandbox::new("test_doc_crlf").with_file(
+    let sandbox = Sandbox::admitted("test_doc_crlf").with_file(
         "twice.knv",
         "(defn twice (x)\r\n  \"Doubles.\r\n\r\n  (twice 3)\r\n  => several forms ...\r\n  (twice 1)\r\n  => 2\"\r\n  (* 2 x))\r\n",
     );
@@ -7709,7 +7727,7 @@ fn test_accepts_a_thousand_docstrings_without_a_docstring_example() {
     let source: String = (0..1100)
         .map(|number| format!("(defn term-{number} (x) \"Documented.\" x)\n"))
         .collect();
-    let sandbox = Sandbox::new("test_doc_many").with_file("many.knv", &source);
+    let sandbox = Sandbox::admitted("test_doc_many").with_file("many.knv", &source);
     sandbox.compiler(&["test", "many.knv"]).assert_exit_code(0);
 }
 
@@ -7717,13 +7735,13 @@ fn test_accepts_a_thousand_docstrings_without_a_docstring_example() {
 fn test_runs_two_hundred_docstring_examples_in_one_paragraph() {
     let examples: String = (0..200).map(|_| "  (twice 1)\n  => 2\n").collect();
     let source = format!("(defn twice (x)\n  \"Doubles.\n\n{examples}\"\n  (* 2 x))\n");
-    let sandbox = Sandbox::new("test_doc_paragraph").with_file("twice.knv", &source);
+    let sandbox = Sandbox::admitted("test_doc_paragraph").with_file("twice.knv", &source);
     sandbox.compiler(&["test", "twice.knv"]).assert_exit_code(0);
 }
 
 #[test]
 fn check_leaves_a_docstring_example_unexpanded() {
-    let sandbox = Sandbox::new("check_doc_example").with_file(
+    let sandbox = Sandbox::admitted("check_doc_example").with_file(
         "twice.knv",
         "(defn twice (x)\n  \"Doubles.\n\n  (twic 3)\n  => 6\"\n  (* 2 x))\n",
     );
@@ -7734,14 +7752,14 @@ fn check_leaves_a_docstring_example_unexpanded() {
 
 #[test]
 fn test_reports_passing_failing_and_panicking_tests() {
-    let sandbox = Sandbox::new("test_report").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_report").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv"]);
     insta::assert_snapshot!(test.assert_exit_code(1).transcript());
 }
 
 #[test]
 fn test_exits_zero_when_every_selected_test_passes() {
-    let sandbox = Sandbox::new("test_pass").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_pass").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv", "--filter", "pads-a"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -7751,21 +7769,21 @@ fn test_exits_zero_when_every_selected_test_passes() {
 
 #[test]
 fn test_runs_tests_that_use_no_module() {
-    let sandbox = Sandbox::new("test_without_use").with_file("padding.knv", UNIMPORTED_TESTS);
+    let sandbox = Sandbox::admitted("test_without_use").with_file("padding.knv", UNIMPORTED_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv"]);
     insta::assert_snapshot!(test.assert_exit_code(1).stdout());
 }
 
 #[test]
 fn test_runs_the_tests_whose_full_name_contains_the_filter() {
-    let sandbox = Sandbox::new("test_filter").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_filter").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv", "--filter", "padding/pads"]);
     insta::assert_snapshot!(test.assert_exit_code(1).stdout());
 }
 
 #[test]
 fn test_with_exact_runs_only_the_test_of_that_full_name() {
-    let sandbox = Sandbox::new("test_exact").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_exact").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv", "--exact", "padding/pads-a-letter"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -7775,7 +7793,7 @@ fn test_with_exact_runs_only_the_test_of_that_full_name() {
 
 #[test]
 fn test_with_exact_runs_no_test_whose_name_only_contains_it() {
-    let sandbox = Sandbox::new("test_exact_part").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_exact_part").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv", "--exact", "padding/pads"]);
     test.assert_exit_code(0);
     assert_eq!(test.stdout(), "running 0 tests\n0 passed, 0 failed\n");
@@ -7784,7 +7802,7 @@ fn test_with_exact_runs_no_test_whose_name_only_contains_it() {
 
 #[test]
 fn test_notes_a_filter_that_matches_no_test() {
-    let sandbox = Sandbox::new("test_no_match").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_no_match").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv", "--filter", "trims"]);
     test.assert_exit_code(0);
     assert_eq!(test.stdout(), "running 0 tests\n0 passed, 0 failed\n");
@@ -7793,7 +7811,8 @@ fn test_notes_a_filter_that_matches_no_test() {
 
 #[test]
 fn test_of_a_program_without_tests_runs_none() {
-    let sandbox = Sandbox::new("test_none").with_file("plain.knv", "(defn twice (x) (* 2 x))\n");
+    let sandbox =
+        Sandbox::admitted("test_none").with_file("plain.knv", "(defn twice (x) (* 2 x))\n");
     let test = sandbox.compiler(&["test", "plain.knv"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -7803,14 +7822,15 @@ fn test_of_a_program_without_tests_runs_none() {
 
 #[test]
 fn test_points_a_bare_filter_to_the_filter_flag() {
-    let sandbox = Sandbox::new("test_bare_filter").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_bare_filter").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv", "pads"]);
     insta::assert_snapshot!(test.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn test_rejects_both_a_filter_and_exact() {
-    let sandbox = Sandbox::new("test_filter_and_exact").with_file("padding.knv", PADDING_TESTS);
+    let sandbox =
+        Sandbox::admitted("test_filter_and_exact").with_file("padding.knv", PADDING_TESTS);
     sandbox
         .compiler(&[
             "test",
@@ -7825,14 +7845,14 @@ fn test_rejects_both_a_filter_and_exact() {
 
 #[test]
 fn test_reports_a_crash_and_counts_the_tests_not_run() {
-    let sandbox = Sandbox::new("test_crash").with_file("crash.knv", CRASHING_TESTS);
+    let sandbox = Sandbox::admitted("test_crash").with_file("crash.knv", CRASHING_TESTS);
     let test = sandbox.compiler(&["test", "crash.knv"]);
     insta::assert_snapshot!(test.assert_exit_code(1).transcript());
 }
 
 #[test]
 fn test_reports_a_test_that_exits_with_zero_as_a_crash() {
-    let sandbox = Sandbox::new("test_exit_zero").with_file("crash.knv", CRASHING_TESTS);
+    let sandbox = Sandbox::admitted("test_exit_zero").with_file("crash.knv", CRASHING_TESTS);
     let test = sandbox.compiler(&["test", "crash.knv", "--filter", "exits"]);
     assert_eq!(
         test.assert_exit_code(1).stdout(),
@@ -7845,7 +7865,7 @@ fn test_reports_a_test_that_exits_with_zero_as_a_crash() {
 
 #[test]
 fn test_reports_an_abort_by_its_signal() {
-    let sandbox = Sandbox::new("test_abort").with_file("crash.knv", CRASHING_TESTS);
+    let sandbox = Sandbox::admitted("test_abort").with_file("crash.knv", CRASHING_TESTS);
     let test = sandbox.compiler(&["test", "crash.knv", "--filter", "aborts"]);
     assert_eq!(
         test.assert_exit_code(1).stdout(),
@@ -7858,7 +7878,7 @@ fn test_reports_an_abort_by_its_signal() {
 
 #[test]
 fn test_puts_the_result_after_the_output_of_the_test() {
-    let sandbox = Sandbox::new("test_output").with_file(
+    let sandbox = Sandbox::admitted("test_output").with_file(
         "talking.knv",
         "(use prelude/test deftest)\n\n(deftest prints-a-line (println \"hello\"))\n\n\
          (deftest prints-a-word (print \"hello\"))\n\n\
@@ -7877,7 +7897,7 @@ fn test_puts_the_result_after_the_output_of_the_test() {
 
 #[test]
 fn test_checks_the_entry_main_without_running_it() {
-    let sandbox = Sandbox::new("test_main").with_file(
+    let sandbox = Sandbox::admitted("test_main").with_file(
         "app.knv",
         "(use prelude/test deftest)\n\n(defn main () (println \"main ran\"))\n\n(deftest calls-main (main))\n",
     );
@@ -7890,7 +7910,7 @@ fn test_checks_the_entry_main_without_running_it() {
 
 #[test]
 fn test_runs_the_tests_of_every_module_of_a_directory() {
-    let sandbox = Sandbox::new("test_directory")
+    let sandbox = Sandbox::admitted("test_directory")
         .with_file("checks/text.knv", "(use prelude/test assert deftest)\n(use shelf/stock restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n")
         .with_file("checks/notes.txt", "(deftest ignored (assert false))\n")
         .with_file("checks/shelf/stock.knv", "(use prelude/test assert deftest)\n\n(export restock)\n\n(defn restock (count) (+ count 1))\n\n(deftest keeps-count (assert (= (restock 0) 1)))\n");
@@ -7906,7 +7926,7 @@ fn test_runs_the_tests_of_every_module_of_a_directory() {
 
 #[test]
 fn test_skips_hidden_directories_and_the_target_directory_of_its_walk() {
-    let sandbox = Sandbox::new("test_skipped_directories")
+    let sandbox = Sandbox::admitted("test_skipped_directories")
         .with_file("checks/stock.knv", PROJECT_TESTS)
         .with_file("checks/.direnv/stock.knv", UNCLOSED)
         .with_file("checks/target/stock.knv", UNCLOSED)
@@ -7923,7 +7943,7 @@ fn test_skips_hidden_directories_and_the_target_directory_of_its_walk() {
 
 #[test]
 fn test_in_a_project_walks_a_target_directory_of_its_test_directory() {
-    let sandbox = Sandbox::new("project_test_inner_target")
+    let sandbox = Sandbox::admitted("project_test_inner_target")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("tests/target/stock.knv", PROJECT_TESTS);
     let test = sandbox.compiler(&["test", "tests"]);
@@ -7935,7 +7955,7 @@ fn test_in_a_project_walks_a_target_directory_of_its_test_directory() {
 
 #[test]
 fn test_in_a_project_skips_only_the_project_build_directory() {
-    let sandbox = Sandbox::new("project_test_skipped_directories")
+    let sandbox = Sandbox::admitted("project_test_skipped_directories")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("tests/stock.knv", PROJECT_TESTS)
         .with_file("tests/target/stock.knv", PROJECT_TESTS)
@@ -7953,7 +7973,7 @@ fn test_in_a_project_skips_only_the_project_build_directory() {
 
 #[test]
 fn test_lists_the_exports_that_no_test_writes() {
-    let sandbox = Sandbox::new("test_untested")
+    let sandbox = Sandbox::admitted("test_untested")
         .with_file("app.knv", "(use prelude/test assert deftest)\n(use shelf restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n")
         .with_file("shelf.knv", "(export restock shelve stack)\n\n(defn restock (count) (+ count 1))\n\n(defn shelve (count) (- count 1))\n\n(defn stack (count) (* count 2))\n");
     let test = sandbox.compiler(&["test", "app.knv", "--untested", "shelf"]);
@@ -7968,7 +7988,8 @@ fn test_lists_the_exports_that_no_test_writes() {
 
 #[test]
 fn test_rejects_untested_for_a_module_the_program_does_not_load() {
-    let sandbox = Sandbox::new("test_untested_unloaded").with_file("padding.knv", PADDING_TESTS);
+    let sandbox =
+        Sandbox::admitted("test_untested_unloaded").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler(&["test", "padding.knv", "--untested", "shelf"]);
     test.assert_exit_code(2);
     assert_eq!(test.stdout(), "");
@@ -7980,7 +8001,7 @@ fn test_rejects_untested_for_a_module_the_program_does_not_load() {
 
 #[test]
 fn test_of_a_program_with_errors_reports_them_and_runs_nothing() {
-    let sandbox = Sandbox::new("test_errors").with_file(
+    let sandbox = Sandbox::admitted("test_errors").with_file(
         "broken.knv",
         "(use prelude/test assert deftest)\n\n(deftest pads (assert (= (missing 1) 2)))\n",
     );
@@ -7992,7 +8013,7 @@ fn test_of_a_program_with_errors_reports_them_and_runs_nothing() {
 
 #[test]
 fn test_of_a_missing_path_is_a_usage_error() {
-    let sandbox = Sandbox::new("test_missing_path");
+    let sandbox = Sandbox::admitted("test_missing_path");
     sandbox
         .compiler(&["test", "missing.knv"])
         .assert_exit_code(2);
@@ -8011,7 +8032,7 @@ fn test_runs_the_prelude_tests_and_lists_the_untested_prelude_names() {
 
 #[test]
 fn test_ends_quietly_when_its_reader_closes() {
-    let sandbox = Sandbox::new("test_closed_pipe").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_closed_pipe").with_file("padding.knv", PADDING_TESTS);
     sandbox
         .compiler_writing_to_a_closed_pipe(&["test", "padding.knv"])
         .assert_silent_success();
@@ -8020,7 +8041,7 @@ fn test_ends_quietly_when_its_reader_closes() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_reports_a_standard_output_it_cannot_write() {
-    let sandbox = Sandbox::new("test_unwritable").with_file("padding.knv", PADDING_TESTS);
+    let sandbox = Sandbox::admitted("test_unwritable").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler_writing_to_a_full_device(&["test", "padding.knv"]);
     assert!(
         test.assert_exit_code(2)
@@ -8043,7 +8064,7 @@ const FAILED_ASSERT_TEXT: &str = "assertion failed at failing.knv:4:3: \
 
 #[test]
 fn assert_in_a_helper_shared_with_a_test_builds_and_runs() {
-    let sandbox = Sandbox::new("assert_shared").with_file("shared.knv", ASSERTING_PROGRAM);
+    let sandbox = Sandbox::admitted("assert_shared").with_file("shared.knv", ASSERTING_PROGRAM);
     sandbox
         .compiler(&["build", "shared.knv"])
         .assert_silent_success();
@@ -8058,7 +8079,7 @@ fn assert_in_a_helper_shared_with_a_test_builds_and_runs() {
 
 #[test]
 fn a_failed_assert_in_main_prints_its_location_and_both_sides() {
-    let sandbox = Sandbox::new("assert_failed_run").with_file("failing.knv", FAILING_ASSERT);
+    let sandbox = Sandbox::admitted("assert_failed_run").with_file("failing.knv", FAILING_ASSERT);
     let run = sandbox.compiler(&["run", "failing.knv"]);
     assert!(
         run.assert_exit_code(101)
@@ -8071,14 +8092,15 @@ fn a_failed_assert_in_main_prints_its_location_and_both_sides() {
 
 #[test]
 fn assert_runs_under_eval() {
-    let sandbox = Sandbox::new("assert_eval").with_file("shared.knv", ASSERTING_PROGRAM);
+    let sandbox = Sandbox::admitted("assert_eval").with_file("shared.knv", ASSERTING_PROGRAM);
     let eval = sandbox.compiler(&["eval", "shared.knv", "(assert (= (positive 2) 2))"]);
     eval.assert_silent_success();
 }
 
 #[test]
 fn a_failed_assert_under_eval_prints_both_sides() {
-    let sandbox = Sandbox::new("assert_eval_failed").with_file("shared.knv", ASSERTING_PROGRAM);
+    let sandbox =
+        Sandbox::admitted("assert_eval_failed").with_file("shared.knv", ASSERTING_PROGRAM);
     let eval = sandbox.compiler(&["eval", "shared.knv", "(assert (= (positive 2) 3))"]);
     assert!(
         eval.assert_exit_code(101).stderr().contains(
@@ -8091,7 +8113,7 @@ fn a_failed_assert_under_eval_prints_both_sides() {
 
 #[test]
 fn assert_runs_at_the_prompt() {
-    let sandbox = Sandbox::new("assert_prompt");
+    let sandbox = Sandbox::admitted("assert_prompt");
     let prompt = sandbox.compiler_reading(
         "(use prelude/test assert)\n(assert (= 1 1))\n(println \"passed\")\n(assert (= 1 2))\n",
         &["repl"],
@@ -8108,7 +8130,7 @@ fn assert_runs_at_the_prompt() {
 
 #[test]
 fn test_prints_no_names_when_a_test_writes_every_export() {
-    let sandbox = Sandbox::new("test_all_written")
+    let sandbox = Sandbox::admitted("test_all_written")
         .with_file(
             "app.knv",
             "(use prelude/test assert deftest)\n(use shelf restock)\n\n(deftest restocks (assert (= (restock 1) 2)))\n",
@@ -8126,7 +8148,7 @@ fn test_prints_no_names_when_a_test_writes_every_export() {
 
 #[test]
 fn test_does_not_count_a_binding_of_the_same_name_as_an_export() {
-    let sandbox = Sandbox::new("test_same_name")
+    let sandbox = Sandbox::admitted("test_same_name")
         .with_file(
             "app.knv",
             "(use prelude/test assert deftest)\n(use shelf shelve)\n\n(defn restock () (shelve 2))\n\n(deftest restocks (assert (= (restock) 1)))\n",
@@ -8144,7 +8166,8 @@ fn test_does_not_count_a_binding_of_the_same_name_as_an_export() {
 
 #[test]
 fn test_reports_a_missing_build_directory() {
-    let sandbox = Sandbox::new("test_no_build_directory").with_file("padding.knv", PADDING_TESTS);
+    let sandbox =
+        Sandbox::admitted("test_no_build_directory").with_file("padding.knv", PADDING_TESTS);
     let test = sandbox.compiler_with_temporary_directory("missing", &["test", "padding.knv"]);
     assert!(
         test.assert_exit_code(2)
@@ -8157,7 +8180,7 @@ fn test_reports_a_missing_build_directory() {
 
 #[test]
 fn test_reports_a_program_that_cannot_start() {
-    let sandbox = Sandbox::new("test_missing_program")
+    let sandbox = Sandbox::admitted("test_missing_program")
         .with_file("padding.knv", PADDING_TESTS)
         .with_executable("tools/rustc", SILENT_RUSTC)
         .with_executable("tools/rustfmt", PASSTHROUGH_RUSTFMT);
@@ -8173,7 +8196,7 @@ fn test_reports_a_program_that_cannot_start() {
 
 #[test]
 fn test_reports_a_directory_it_cannot_read() {
-    let sandbox = Sandbox::new("test_unreadable_directory")
+    let sandbox = Sandbox::admitted("test_unreadable_directory")
         .with_file("checks/hidden/stock.knv", "(defn restock () 1)\n");
     let hidden = sandbox.directory.join("checks/hidden");
     fs::set_permissions(&hidden, fs::Permissions::from_mode(Sandbox::NO_ACCESS))
@@ -8192,7 +8215,7 @@ fn test_reports_a_directory_it_cannot_read() {
 
 #[test]
 fn form_location_keeps_the_name_of_a_source_outside_the_root() {
-    let sandbox = Sandbox::new("form_location_outside_root").with_file(
+    let sandbox = Sandbox::admitted("form_location_outside_root").with_file(
         "library/located.knv",
         "(use code form-location)\n\n(def here (macro (form) (form-location form)))\n",
     );
@@ -8202,7 +8225,7 @@ fn form_location_keeps_the_name_of_a_source_outside_the_root() {
 
 #[test]
 fn test_lists_the_untested_names_of_a_program_with_no_tests() {
-    let sandbox = Sandbox::new("test_untested_no_tests")
+    let sandbox = Sandbox::admitted("test_untested_no_tests")
         .with_file(
             "app.knv",
             "(use shelf restock)\n\n(defn main () (println (restock 1)))\n",
@@ -8253,20 +8276,20 @@ impl Sandbox {
 
 #[test]
 fn check_defaults_to_the_project_entry() {
-    let sandbox = Sandbox::new("project_check").with_project(PROJECT);
+    let sandbox = Sandbox::admitted("project_check").with_project(PROJECT);
     sandbox.compiler(&["check"]).assert_silent_success();
 }
 
 #[test]
 fn run_finds_the_project_from_a_subdirectory() {
-    let sandbox = Sandbox::new("project_run").with_project(PROJECT);
+    let sandbox = Sandbox::admitted("project_run").with_project(PROJECT);
     let run = sandbox.compiler_in("src/text", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "hi!\n");
 }
 
 #[test]
 fn build_writes_a_project_under_its_root_with_the_project_name() {
-    let sandbox = Sandbox::new("project_build").with_project(PROJECT);
+    let sandbox = Sandbox::admitted("project_build").with_project(PROJECT);
     sandbox.compiler_in("src", &["build"]).assert_exit_code(0);
     let greeter = sandbox.built_program(Sandbox::project_program("greeter"));
     assert_eq!(greeter.assert_exit_code(0).stdout(), "hi!\n");
@@ -8274,7 +8297,7 @@ fn build_writes_a_project_under_its_root_with_the_project_name() {
 
 #[test]
 fn building_a_file_beside_the_entry_leaves_the_project_program_alone() {
-    let sandbox = Sandbox::new("project_build_script")
+    let sandbox = Sandbox::admitted("project_build_script")
         .with_project(PROJECT)
         .with_file("tools/script.knv", PROJECT_SCRIPT)
         .with_file("tools/helper.knv", PROJECT_HELPER);
@@ -8288,7 +8311,7 @@ fn building_a_file_beside_the_entry_leaves_the_project_program_alone() {
 
 #[test]
 fn run_in_a_project_with_only_dev_crates_builds_without_cargo() {
-    let sandbox = Sandbox::new("crate_dev_only_run").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_dev_only_run").with_fixture_tree("crates");
     let run = sandbox.compiler_in("dev-only-app", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "hi\n");
     assert!(
@@ -8301,7 +8324,7 @@ fn run_in_a_project_with_only_dev_crates_builds_without_cargo() {
 
 #[test]
 fn a_second_test_run_through_cargo_rewrites_and_relinks_nothing() {
-    let sandbox = Sandbox::new("crate_test_unchanged").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_test_unchanged").with_fixture_tree("crates");
     let built = || {
         sandbox
             .compiler_in("dev-only-app", &["test"])
@@ -8330,7 +8353,7 @@ fn a_second_test_run_through_cargo_rewrites_and_relinks_nothing() {
 
 #[test]
 fn two_test_runs_of_one_project_at_once_both_pass() {
-    let sandbox = Sandbox::new("crate_test_together").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_test_together").with_fixture_tree("crates");
     let runs: Vec<Child> = (0..2)
         .map(|_| {
             sandbox
@@ -8355,7 +8378,7 @@ fn two_test_runs_of_one_project_at_once_both_pass() {
 
 #[test]
 fn a_test_run_waits_while_another_run_builds_the_same_crate() {
-    let sandbox = Sandbox::new("crate_test_waiting").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_test_waiting").with_fixture_tree("crates");
     let crate_directory = sandbox.directory.join(format!(
         "dev-only-app/target/{}/dev-only-app/test_runner",
         Language::NAME
@@ -8386,7 +8409,7 @@ fn a_test_run_waits_while_another_run_builds_the_same_crate() {
 
 #[test]
 fn a_test_run_holds_its_crate_lock_while_cargo_builds() {
-    let sandbox = Sandbox::new("crate_test_lock_held").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_test_lock_held").with_fixture_tree("crates");
     let release = sandbox.directory.join("release-cargo");
     let fifo = std::ffi::CString::new(release.as_os_str().as_encoded_bytes())
         .expect("the sandbox path has no zero byte");
@@ -8432,7 +8455,7 @@ fn a_test_run_holds_its_crate_lock_while_cargo_builds() {
 
 #[test]
 fn a_test_program_does_not_pass_its_marker_to_child_processes() {
-    let sandbox = Sandbox::new("test_marker_hidden").with_file(
+    let sandbox = Sandbox::admitted("test_marker_hidden").with_file(
         "hidden.knv",
         "(use prelude/test assert deftest)\n\n(def marker-hidden\n  (rust \"std::env::var(\\\"KNAVE_TEST_MARKER\\\").is_err()\" (fn () bool)))\n\n(deftest hides-the-marker\n  (assert (marker-hidden)))\n",
     );
@@ -8448,7 +8471,7 @@ fn a_test_program_does_not_pass_its_marker_to_child_processes() {
 
 #[test]
 fn test_builds_through_cargo_with_only_dev_crates() {
-    let sandbox = Sandbox::new("crate_dev_only_test").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_dev_only_test").with_fixture_tree("crates");
     let stdout = sandbox
         .compiler_in("dev-only-app", &["test"])
         .assert_exit_code(0)
@@ -8461,7 +8484,7 @@ fn test_builds_through_cargo_with_only_dev_crates() {
 
 #[test]
 fn eval_names_a_module_in_a_directory_that_does_not_exist() {
-    let sandbox = Sandbox::new("project_absent_directory");
+    let sandbox = Sandbox::admitted("project_absent_directory");
     let eval = sandbox.compiler_reading(
         "(defn f () 1)\n",
         &["eval", "--stdin", "notes/draft.knv", "(f)"],
@@ -8471,14 +8494,14 @@ fn eval_names_a_module_in_a_directory_that_does_not_exist() {
 
 #[test]
 fn eval_with_a_root_names_a_module_by_its_path_from_the_root() {
-    let sandbox = Sandbox::new("root_module_name").with_file("sub/c.knv", SELF_IMPORT);
+    let sandbox = Sandbox::admitted("root_module_name").with_file("sub/c.knv", SELF_IMPORT);
     let eval = sandbox.compiler(&["eval", "--root", ".", "sub/c.knv", "(f)"]);
     insta::assert_snapshot!(eval.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn check_resolves_use_from_the_source_root_for_a_module_in_a_subdirectory() {
-    let sandbox = Sandbox::new("project_module").with_project(PROJECT);
+    let sandbox = Sandbox::admitted("project_module").with_project(PROJECT);
     sandbox
         .compiler(&["check", "src/text/shout.knv"])
         .assert_silent_success();
@@ -8486,7 +8509,7 @@ fn check_resolves_use_from_the_source_root_for_a_module_in_a_subdirectory() {
 
 #[test]
 fn a_file_outside_the_source_root_resolves_use_from_its_directory() {
-    let sandbox = Sandbox::new("project_script")
+    let sandbox = Sandbox::admitted("project_script")
         .with_project(PROJECT)
         .with_file("tools/script.knv", PROJECT_SCRIPT)
         .with_file("tools/helper.knv", PROJECT_HELPER);
@@ -8496,28 +8519,28 @@ fn a_file_outside_the_source_root_resolves_use_from_its_directory() {
 
 #[test]
 fn a_command_without_a_file_outside_a_project_is_a_usage_error() {
-    let sandbox = Sandbox::new("project_missing");
+    let sandbox = Sandbox::admitted("project_missing");
     let check = sandbox.compiler(&["check"]);
     insta::assert_snapshot!(check.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn a_project_file_error_stops_the_command() {
-    let sandbox = Sandbox::new("project_error").with_project(PROJECT_WITH_UNKNOWN_KEY);
+    let sandbox = Sandbox::admitted("project_error").with_project(PROJECT_WITH_UNKNOWN_KEY);
     let check = sandbox.compiler(&["check", "src/main.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn eval_resolves_use_from_the_project_source_root() {
-    let sandbox = Sandbox::new("project_eval").with_project(PROJECT);
+    let sandbox = Sandbox::admitted("project_eval").with_project(PROJECT);
     let eval = sandbox.compiler_in("src/text", &["eval", "shout.knv", "(shout \"a\")"]);
     assert_eq!(eval.assert_silent_success().stdout(), "\"a!\"\n");
 }
 
 #[test]
 fn repl_resolves_use_from_the_project_source_root() {
-    let sandbox = Sandbox::new("project_repl").with_project(PROJECT);
+    let sandbox = Sandbox::admitted("project_repl").with_project(PROJECT);
     let repl = sandbox.compiler_reading("(use text/shout shout)\n(shout \"b\")\n", &["repl"]);
     assert_eq!(repl.assert_exit_code(0).stdout(), "\"b!\"\n");
 }
@@ -8531,7 +8554,7 @@ impl PlacedTestsFixture {
     }
 
     fn at_level(name: &str, level: &str) -> Sandbox {
-        Sandbox::new(name)
+        Sandbox::admitted(name)
             .with_fixture_tree("placed-tests")
             .with_file(
                 &format!("stock/{}", Language::project_file_name()),
@@ -8576,7 +8599,7 @@ fn test_keeps_silent_on_a_test_file_linked_into_the_tasks_directory() {
 
 #[test]
 fn check_keeps_silent_on_a_test_in_a_library_under_the_tasks_directory() {
-    let sandbox = Sandbox::new("placed_tests_task_library").with_fixture_tree("placed-tests");
+    let sandbox = Sandbox::admitted("placed_tests_task_library").with_fixture_tree("placed-tests");
     let check = sandbox.compiler_in("stock", &["check"]);
     let stderr = check.assert_exit_code(0).stderr();
     assert!(stderr.contains("restocks-a-shelf"), "{stderr}");
@@ -8585,7 +8608,7 @@ fn check_keeps_silent_on_a_test_in_a_library_under_the_tasks_directory() {
 
 #[test]
 fn check_warns_of_a_source_link_into_the_tests_directory() {
-    let sandbox = Sandbox::new("placed_tests_source_link").with_fixture_tree("placed-tests");
+    let sandbox = Sandbox::admitted("placed_tests_source_link").with_fixture_tree("placed-tests");
     PlacedTestsFixture::link(
         &sandbox,
         "stock/src/borrowed.knv",
@@ -8613,14 +8636,14 @@ fn test_fails_on_a_denied_test_outside_the_tests_directory() {
 
 #[test]
 fn check_warns_of_each_test_outside_the_tests_directory() {
-    let sandbox = Sandbox::new("placed_tests_check").with_fixture_tree("placed-tests");
+    let sandbox = Sandbox::admitted("placed_tests_check").with_fixture_tree("placed-tests");
     let check = sandbox.compiler_in("stock", &["check"]);
     insta::assert_snapshot!(check.assert_exit_code(0).stderr());
 }
 
 #[test]
 fn test_skips_the_project_file_in_a_directory() {
-    let sandbox = Sandbox::new("project_test")
+    let sandbox = Sandbox::admitted("project_test")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/checks.knv", PROJECT_TESTS);
     let test = sandbox.compiler(&["test", "."]);
@@ -8629,7 +8652,7 @@ fn test_skips_the_project_file_in_a_directory() {
 
 #[test]
 fn test_in_a_project_reaches_a_source_module() {
-    let sandbox = Sandbox::new("project_test_source").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("project_test_source").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("tested-app", &["test", "tests", "--exact", "parse/parses"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -8639,7 +8662,7 @@ fn test_in_a_project_reaches_a_source_module() {
 
 #[test]
 fn test_of_a_file_in_a_project_reaches_a_source_module() {
-    let sandbox = Sandbox::new("project_test_file").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("project_test_file").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("tested-app", &["test", "tests/parse.knv"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -8652,14 +8675,14 @@ fn test_of_a_file_in_a_project_reaches_a_source_module() {
 
 #[test]
 fn test_of_the_project_root_loads_each_source_module_once() {
-    let sandbox = Sandbox::new("project_test_root").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("project_test_root").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("tested-app", &["test", ".", "--filter", "pars"]);
     insta::assert_snapshot!(test.assert_silent_success().stdout());
 }
 
 #[test]
 fn test_in_a_project_reaches_a_library() {
-    let sandbox = Sandbox::new("project_test_library").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("project_test_library").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("tested-app", &["test", "tests", "--exact", "shout/shouts"]);
     assert_eq!(
         test.assert_silent_success().stdout(),
@@ -8669,7 +8692,7 @@ fn test_in_a_project_reaches_a_library() {
 
 #[test]
 fn test_directory_module_shadows_a_source_module() {
-    let sandbox = Sandbox::new("project_test_shadowing").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("project_test_shadowing").with_fixture_tree("libraries");
     let test = sandbox.compiler_in(
         "tested-app",
         &[
@@ -8688,7 +8711,7 @@ fn test_directory_module_shadows_a_source_module() {
 
 #[test]
 fn test_in_a_project_warns_of_a_source_module_hidden_by_a_library() {
-    let sandbox = Sandbox::new("project_test_hidden_source")
+    let sandbox = Sandbox::admitted("project_test_hidden_source")
         .with_fixture_tree("libraries")
         .with_file("tested-app/src/hints.knv", "(def unused 1)\n");
     let test = sandbox.compiler_in("tested-app", &["test", "tests", "--exact", "shout/shouts"]);
@@ -8698,7 +8721,7 @@ fn test_in_a_project_warns_of_a_source_module_hidden_by_a_library() {
 #[test]
 fn test_refuses_a_test_file_that_takes_a_compiler_module_path() {
     let failing_test = "(use prelude/test deftest assert)\n(deftest fails (assert false))\n";
-    let sandbox = Sandbox::new("test_compiler_module_paths")
+    let sandbox = Sandbox::admitted("test_compiler_module_paths")
         .with_file("tests/prelude.knv", failing_test)
         .with_file("tests/kernel.knv", failing_test)
         .with_file("tests/code.knv", "this does not ) read (\n")
@@ -8712,8 +8735,8 @@ fn test_refuses_a_test_file_that_takes_a_compiler_module_path() {
 #[test]
 fn test_of_one_file_refuses_a_file_that_takes_a_compiler_module_path() {
     let failing_test = "(use prelude/test deftest assert)\n(deftest fails (assert false))\n";
-    let sandbox =
-        Sandbox::new("test_one_compiler_module_path").with_file("tests/kernel.knv", failing_test);
+    let sandbox = Sandbox::admitted("test_one_compiler_module_path")
+        .with_file("tests/kernel.knv", failing_test);
     let test = sandbox.compiler(&["test", "tests/kernel.knv"]);
     insta::assert_snapshot!(test.assert_exit_code(1).stderr());
 }
@@ -8721,7 +8744,7 @@ fn test_of_one_file_refuses_a_file_that_takes_a_compiler_module_path() {
 #[test]
 fn test_refuses_a_test_file_that_takes_a_library_module_path() {
     let failing_test = "(use prelude/test deftest assert)\n(deftest fails (assert false))\n";
-    let sandbox = Sandbox::new("test_library_module_paths")
+    let sandbox = Sandbox::admitted("test_library_module_paths")
         .with_fixture_tree("libraries")
         .with_file("tested-app/tests/hints.knv", failing_test)
         .with_file("tested-app/tests/hints/extra.knv", failing_test);
@@ -8731,7 +8754,7 @@ fn test_refuses_a_test_file_that_takes_a_library_module_path() {
 
 #[test]
 fn test_refuses_a_source_file_that_takes_a_library_module_path() {
-    let sandbox = Sandbox::new("test_source_library_module_path")
+    let sandbox = Sandbox::admitted("test_source_library_module_path")
         .with_fixture_tree("libraries")
         .with_file("tested-app/src/hints.knv", "(def unused 1)\n");
     let test = sandbox.compiler_in("tested-app", &["test", "src"]);
@@ -8740,34 +8763,34 @@ fn test_refuses_a_source_file_that_takes_a_library_module_path() {
 
 #[test]
 fn test_outside_a_project_resolves_use_from_the_directory_alone() {
-    let sandbox = Sandbox::new("loose_test").with_fixture_tree("loose-tests");
+    let sandbox = Sandbox::admitted("loose_test").with_fixture_tree("loose-tests");
     let test = sandbox.compiler(&["test", "tests"]);
     insta::assert_snapshot!(test.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn test_without_a_path_runs_the_project_tests_directory_from_a_subdirectory() {
-    let sandbox = Sandbox::new("project_test_default").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("project_test_default").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("tested-app/src", &["test"]);
     insta::assert_snapshot!(test.assert_silent_success().stdout());
 }
 
 #[test]
 fn test_without_a_path_in_a_project_without_tests_directory_is_a_usage_error() {
-    let sandbox = Sandbox::new("project_test_no_tests").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("project_test_no_tests").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("app", &["test"]);
     insta::assert_snapshot!(test.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn test_without_a_path_outside_a_project_is_a_usage_error() {
-    let test = Sandbox::new("test_without_path").compiler(&["test"]);
+    let test = Sandbox::admitted("test_without_path").compiler(&["test"]);
     insta::assert_snapshot!(test.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn fmt_check_without_a_path_prints_paths_relative_to_the_working_directory() {
-    let sandbox = Sandbox::new("fmt_project_check_paths")
+    let sandbox = Sandbox::admitted("fmt_project_check_paths")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/twice.knv", UNFORMATTED);
     let from_root = sandbox.compiler(&["fmt", "--check"]);
@@ -8783,7 +8806,7 @@ fn fmt_check_without_a_path_prints_paths_relative_to_the_working_directory() {
 
 #[test]
 fn fmt_without_a_path_lays_out_the_whole_project_from_a_subdirectory() {
-    let sandbox = Sandbox::new("fmt_project_default")
+    let sandbox = Sandbox::admitted("fmt_project_default")
         .with_file(
             &format!("browser/{}", Language::project_file_name()),
             UNLAID_PROJECT,
@@ -8812,7 +8835,7 @@ fn fmt_without_a_path_lays_out_the_whole_project_from_a_subdirectory() {
 
 #[test]
 fn new_creates_a_project_that_runs() {
-    let sandbox = Sandbox::new("new_project");
+    let sandbox = Sandbox::admitted("new_project");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8822,7 +8845,7 @@ fn new_creates_a_project_that_runs() {
 
 #[test]
 fn new_records_the_compiler_version_in_the_project_file() {
-    let sandbox = Sandbox::new("new_project_version");
+    let sandbox = Sandbox::admitted("new_project_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8837,7 +8860,7 @@ fn new_records_the_compiler_version_in_the_project_file() {
 
 #[test]
 fn new_writes_a_gitignore_that_lists_the_build_and_doc_folders() {
-    let sandbox = Sandbox::new("new_gitignore");
+    let sandbox = Sandbox::admitted("new_gitignore");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8846,7 +8869,7 @@ fn new_writes_a_gitignore_that_lists_the_build_and_doc_folders() {
 
 #[test]
 fn new_writes_a_gitattributes_that_highlights_knave_as_clojure() {
-    let sandbox = Sandbox::new("new_gitattributes");
+    let sandbox = Sandbox::admitted("new_gitattributes");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8855,7 +8878,7 @@ fn new_writes_a_gitattributes_that_highlights_knave_as_clojure() {
 
 #[test]
 fn new_writes_the_same_agent_skill_for_each_agent_tool() {
-    let sandbox = Sandbox::new("new_agent_skill_folders");
+    let sandbox = Sandbox::admitted("new_agent_skill_folders");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8865,7 +8888,7 @@ fn new_writes_the_same_agent_skill_for_each_agent_tool() {
 
 #[test]
 fn new_writes_the_compiler_version_into_the_agent_skill() {
-    let sandbox = Sandbox::new("new_agent_skill_version");
+    let sandbox = Sandbox::admitted("new_agent_skill_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8877,7 +8900,7 @@ fn new_writes_the_compiler_version_into_the_agent_skill() {
 
 #[test]
 fn new_writes_every_component_by_default() {
-    let sandbox = Sandbox::new("new_every_component");
+    let sandbox = Sandbox::admitted("new_every_component");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8886,7 +8909,7 @@ fn new_writes_every_component_by_default() {
 
 #[test]
 fn new_skips_the_github_workflow() {
-    let sandbox = Sandbox::new("new_skip_github");
+    let sandbox = Sandbox::admitted("new_skip_github");
     sandbox
         .compiler(&["new", "demo-app", "--skip-github"])
         .assert_silent_success();
@@ -8906,7 +8929,7 @@ fn new_skips_the_github_workflow() {
 
 #[test]
 fn new_skips_the_setup_knave_action_with_the_github_workflow() {
-    let sandbox = Sandbox::new("new_skip_setup_knave");
+    let sandbox = Sandbox::admitted("new_skip_setup_knave");
     sandbox
         .compiler(&["new", "demo-app", "--skip-github"])
         .assert_silent_success();
@@ -8915,7 +8938,7 @@ fn new_skips_the_setup_knave_action_with_the_github_workflow() {
 
 #[test]
 fn new_skips_the_agent_skill() {
-    let sandbox = Sandbox::new("new_skip_agent_skill");
+    let sandbox = Sandbox::admitted("new_skip_agent_skill");
     sandbox
         .compiler(&["new", "demo-app", "--skip-agent-skill"])
         .assert_silent_success();
@@ -8936,7 +8959,7 @@ fn new_skips_the_agent_skill() {
 
 #[test]
 fn new_skips_git_and_keeps_the_github_workflow() {
-    let sandbox = Sandbox::new("new_skip_git");
+    let sandbox = Sandbox::admitted("new_skip_git");
     sandbox
         .compiler(&["new", "demo-app", "--skip-git"])
         .assert_silent_success();
@@ -8959,7 +8982,7 @@ fn new_skips_git_and_keeps_the_github_workflow() {
 
 #[test]
 fn test_refuses_a_test_file_that_cannot_be_a_module() {
-    let sandbox = Sandbox::new("test_unnamable_file")
+    let sandbox = Sandbox::admitted("test_unnamable_file")
         .with_file(&Language::project_file_name(), "(defproject unnamable)\n")
         .with_file("src/main.knv", "(defn main () (println 1))\n")
         .with_file("tests/bad name.knv", "(deftest t (assert true))\n");
@@ -8973,7 +8996,7 @@ fn test_refuses_a_test_file_that_cannot_be_a_module() {
 
 #[test]
 fn new_writes_a_project_that_passes_its_own_checks() {
-    let sandbox = Sandbox::new("new_project_checks");
+    let sandbox = Sandbox::admitted("new_project_checks");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8984,7 +9007,7 @@ fn new_writes_a_project_that_passes_its_own_checks() {
 
 #[test]
 fn new_writes_a_test_of_the_programs_own_function() {
-    let sandbox = Sandbox::new("new_starter_test");
+    let sandbox = Sandbox::admitted("new_starter_test");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -8997,7 +9020,7 @@ fn new_writes_a_test_of_the_programs_own_function() {
 
 #[test]
 fn new_writes_a_workflow_that_runs_each_check() {
-    let sandbox = Sandbox::new("new_workflow_checks");
+    let sandbox = Sandbox::admitted("new_workflow_checks");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9010,7 +9033,7 @@ fn new_writes_a_workflow_that_runs_each_check() {
 
 #[test]
 fn new_writes_a_setup_knave_action_that_the_workflow_uses() {
-    let sandbox = Sandbox::new("new_setup_knave_action");
+    let sandbox = Sandbox::admitted("new_setup_knave_action");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9026,7 +9049,7 @@ fn new_writes_a_setup_knave_action_that_the_workflow_uses() {
 
 #[test]
 fn new_writes_a_setup_knave_action_that_runs_its_script_and_installs_knave() {
-    let sandbox = Sandbox::new("new_setup_knave_steps");
+    let sandbox = Sandbox::admitted("new_setup_knave_steps");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9051,7 +9074,7 @@ fn new_writes_a_setup_knave_action_that_runs_its_script_and_installs_knave() {
 
 #[test]
 fn new_runs_git_init() {
-    let sandbox = Sandbox::new("new_git_init");
+    let sandbox = Sandbox::admitted("new_git_init");
     sandbox
         .compiler_outside_git_in(".", &["new", "demo-app"])
         .assert_silent_success();
@@ -9060,7 +9083,7 @@ fn new_runs_git_init() {
 
 #[test]
 fn new_inside_a_git_repository_runs_no_git_init() {
-    let sandbox = Sandbox::new("new_inside_git");
+    let sandbox = Sandbox::admitted("new_inside_git");
     sandbox
         .compiler_outside_git_in(".", &["new", "outer"])
         .assert_silent_success();
@@ -9072,7 +9095,7 @@ fn new_inside_a_git_repository_runs_no_git_init() {
 
 #[test]
 fn new_without_git_writes_the_project_and_warns() {
-    let sandbox = Sandbox::new("new_without_git").with_file("no-tools/.keep", "");
+    let sandbox = Sandbox::admitted("new_without_git").with_file("no-tools/.keep", "");
     let new = sandbox.compiler_with_path("no-tools", &["new", "demo-app"]);
     insta::assert_snapshot!(new.assert_exit_code(0).stderr());
     assert_eq!(sandbox.project_files("demo-app"), EVERY_NEW_FILE);
@@ -9081,21 +9104,22 @@ fn new_without_git_writes_the_project_and_warns() {
 #[test]
 fn new_warns_when_git_init_fails() {
     let sandbox =
-        Sandbox::new("new_git_init_fails").with_executable("failing-bin/git", FAILING_GIT);
+        Sandbox::admitted("new_git_init_fails").with_executable("failing-bin/git", FAILING_GIT);
     let new = sandbox.compiler_with_path("failing-bin", &["new", "demo-app"]);
     insta::assert_snapshot!(new.assert_exit_code(0).stderr());
 }
 
 #[test]
 fn new_warns_when_git_cannot_start() {
-    let sandbox = Sandbox::new("new_git_cannot_start").with_file("locked-bin/git", FAILING_GIT);
+    let sandbox =
+        Sandbox::admitted("new_git_cannot_start").with_file("locked-bin/git", FAILING_GIT);
     let new = sandbox.compiler_with_path("locked-bin", &["new", "demo-app"]);
     insta::assert_snapshot!(new.assert_exit_code(0).stderr());
 }
 
 #[test]
 fn new_writes_a_workflow_that_holds_no_version() {
-    let sandbox = Sandbox::new("new_workflow_version");
+    let sandbox = Sandbox::admitted("new_workflow_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9106,7 +9130,7 @@ fn new_writes_a_workflow_that_holds_no_version() {
 
 #[test]
 fn new_writes_a_workflow_that_says_knave_upgrade_rewrites_it() {
-    let sandbox = Sandbox::new("new_workflow_owned");
+    let sandbox = Sandbox::admitted("new_workflow_owned");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9121,7 +9145,7 @@ fn new_writes_a_workflow_that_says_knave_upgrade_rewrites_it() {
 
 #[test]
 fn new_writes_a_workflow_that_reads_the_version_from_the_project_file() {
-    let sandbox = Sandbox::new("new_workflow_reads_version");
+    let sandbox = Sandbox::admitted("new_workflow_reads_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9137,7 +9161,7 @@ fn new_writes_a_workflow_that_reads_the_version_from_the_project_file() {
 
 #[test]
 fn new_writes_a_workflow_that_builds_between_lint_and_test() {
-    let sandbox = Sandbox::new("new_workflow_build_step");
+    let sandbox = Sandbox::admitted("new_workflow_build_step");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9151,7 +9175,7 @@ fn new_writes_a_workflow_that_builds_between_lint_and_test() {
 
 #[test]
 fn new_writes_a_workflow_that_fails_without_a_recorded_version() {
-    let sandbox = Sandbox::new("new_workflow_without_version");
+    let sandbox = Sandbox::admitted("new_workflow_without_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9167,7 +9191,7 @@ fn new_writes_a_workflow_that_fails_without_a_recorded_version() {
 
 #[test]
 fn new_writes_a_workflow_that_fails_without_a_project_file() {
-    let sandbox = Sandbox::new("new_workflow_without_project_file");
+    let sandbox = Sandbox::admitted("new_workflow_without_project_file");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9180,7 +9204,7 @@ fn new_writes_a_workflow_that_fails_without_a_project_file() {
 
 #[test]
 fn new_writes_a_workflow_that_fails_on_a_version_two_spaces_from_its_key() {
-    let sandbox = Sandbox::new("new_workflow_spaced_version");
+    let sandbox = Sandbox::admitted("new_workflow_spaced_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9196,7 +9220,7 @@ fn new_writes_a_workflow_that_fails_on_a_version_two_spaces_from_its_key() {
 
 #[test]
 fn new_writes_a_workflow_that_skips_a_commented_version() {
-    let sandbox = Sandbox::new("new_workflow_commented_version");
+    let sandbox = Sandbox::admitted("new_workflow_commented_version");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9212,7 +9236,7 @@ fn new_writes_a_workflow_that_skips_a_commented_version() {
 
 #[test]
 fn new_writes_a_workflow_that_skips_a_comment_after_the_version() {
-    let sandbox = Sandbox::new("new_workflow_trailing_comment");
+    let sandbox = Sandbox::admitted("new_workflow_trailing_comment");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9228,7 +9252,7 @@ fn new_writes_a_workflow_that_skips_a_comment_after_the_version() {
 
 #[test]
 fn new_writes_a_workflow_that_skips_a_version_in_a_trailing_comment() {
-    let sandbox = Sandbox::new("new_workflow_version_in_trailing_comment");
+    let sandbox = Sandbox::admitted("new_workflow_version_in_trailing_comment");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9244,7 +9268,7 @@ fn new_writes_a_workflow_that_skips_a_version_in_a_trailing_comment() {
 
 #[test]
 fn new_writes_a_workflow_that_reads_past_a_semicolon_in_a_string() {
-    let sandbox = Sandbox::new("new_workflow_semicolon_in_string");
+    let sandbox = Sandbox::admitted("new_workflow_semicolon_in_string");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9260,7 +9284,7 @@ fn new_writes_a_workflow_that_reads_past_a_semicolon_in_a_string() {
 
 #[test]
 fn new_writes_a_workflow_that_reads_past_an_escaped_quote_in_a_string() {
-    let sandbox = Sandbox::new("new_workflow_escaped_quote_in_string");
+    let sandbox = Sandbox::admitted("new_workflow_escaped_quote_in_string");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9276,7 +9300,7 @@ fn new_writes_a_workflow_that_reads_past_an_escaped_quote_in_a_string() {
 
 #[test]
 fn new_writes_a_workflow_that_reads_past_a_semicolon_in_a_string_across_lines() {
-    let sandbox = Sandbox::new("new_workflow_semicolon_in_string_across_lines");
+    let sandbox = Sandbox::admitted("new_workflow_semicolon_in_string_across_lines");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9292,7 +9316,7 @@ fn new_writes_a_workflow_that_reads_past_a_semicolon_in_a_string_across_lines() 
 
 #[test]
 fn new_writes_a_workflow_that_fails_on_two_recorded_versions() {
-    let sandbox = Sandbox::new("new_workflow_two_versions");
+    let sandbox = Sandbox::admitted("new_workflow_two_versions");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9313,7 +9337,7 @@ fn new_writes_a_workflow_that_fails_on_two_recorded_versions() {
 
 #[test]
 fn new_writes_a_workflow_that_fails_on_two_versions_in_one_line() {
-    let sandbox = Sandbox::new("new_workflow_two_versions_in_one_line");
+    let sandbox = Sandbox::admitted("new_workflow_two_versions_in_one_line");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -9711,7 +9735,7 @@ fn upgrade_of_a_current_project_changes_nothing() {
 
 #[test]
 fn upgrade_of_a_current_project_without_a_skill_says_it_is_current() {
-    let sandbox = Sandbox::new("upgrade_current_without_skill");
+    let sandbox = Sandbox::admitted("upgrade_current_without_skill");
     sandbox
         .compiler(&["new", "demo-app", "--skip-agent-skill"])
         .assert_silent_success();
@@ -9727,7 +9751,7 @@ fn upgrade_of_a_current_project_without_a_skill_says_it_is_current() {
 
 #[test]
 fn upgrade_outside_a_project_is_a_usage_error() {
-    let sandbox = Sandbox::new("upgrade_outside_project");
+    let sandbox = Sandbox::admitted("upgrade_outside_project");
     insta::assert_snapshot!(sandbox.compiler(&["upgrade"]).assert_exit_code(2).stderr());
 }
 
@@ -9813,7 +9837,7 @@ fn a_compiler_older_than_a_library_checks_the_app_silently() {
 
 #[test]
 fn a_compiler_older_than_the_app_reports_only_the_version_before_its_libraries() {
-    let sandbox = Sandbox::new("version_older_app_before_libraries")
+    let sandbox = Sandbox::admitted("version_older_app_before_libraries")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             &format!(
@@ -9850,7 +9874,7 @@ fn a_compiler_older_than_the_app_reports_only_the_version_before_its_libraries()
 
 #[test]
 fn a_compiler_newer_than_the_project_warns_when_a_library_fails_to_load() {
-    let sandbox = Sandbox::new("version_newer_failing_library")
+    let sandbox = Sandbox::admitted("version_newer_failing_library")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             &format!(
@@ -9890,7 +9914,7 @@ fn fmt_under_a_newer_compiler_shows_the_project_file_from_the_root() {
 
 #[test]
 fn a_compiler_older_than_a_nested_library_leaves_fmt_of_the_app_silent() {
-    let sandbox = Sandbox::new("version_older_nested_library")
+    let sandbox = Sandbox::admitted("version_older_nested_library")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (lib1 :path \"libs/lib1\")))\n",
@@ -10048,7 +10072,7 @@ fn upgrade_of_an_earlier_version_records_it_without_the_warning() {
 
 #[test]
 fn upgrade_keeps_a_comment_after_the_project_name_on_its_line() {
-    let sandbox = Sandbox::new("upgrade_name_comment");
+    let sandbox = Sandbox::admitted("upgrade_name_comment");
     sandbox.compiler(&["new", "demo"]).assert_silent_success();
     let sandbox = sandbox.committed("demo").with_file(
         "demo/project.knv",
@@ -10102,7 +10126,7 @@ fn upgrade_reads_only_the_root_project_file() {
 
 #[test]
 fn a_project_without_a_recorded_version_reports_no_version() {
-    let sandbox = Sandbox::new("version_unrecorded");
+    let sandbox = Sandbox::admitted("version_unrecorded");
     sandbox
         .compiler(&["new", "demo-app"])
         .assert_silent_success();
@@ -10122,14 +10146,14 @@ fn a_project_without_a_recorded_version_reports_no_version() {
 
 #[test]
 fn new_refuses_a_directory_that_exists() {
-    let sandbox = Sandbox::new("new_existing").with_file("demo-app/notes.txt", "kept\n");
+    let sandbox = Sandbox::admitted("new_existing").with_file("demo-app/notes.txt", "kept\n");
     let new = sandbox.compiler(&["new", "demo-app"]);
     insta::assert_snapshot!(new.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn new_rejects_a_name_that_is_not_kebab_case() {
-    let sandbox = Sandbox::new("new_bad_name");
+    let sandbox = Sandbox::admitted("new_bad_name");
     let new = sandbox.compiler(&["new", "DemoApp"]);
     insta::assert_snapshot!(new.assert_exit_code(1).stderr());
 }
@@ -10137,7 +10161,7 @@ fn new_rejects_a_name_that_is_not_kebab_case() {
 #[test]
 fn fmt_lays_out_the_project_file_by_its_shapes() {
     let sandbox =
-        Sandbox::new("fmt_project").with_file(&Language::project_file_name(), UNLAID_PROJECT);
+        Sandbox::admitted("fmt_project").with_file(&Language::project_file_name(), UNLAID_PROJECT);
     let fmt = sandbox.compiler_reading(
         UNLAID_PROJECT,
         &["fmt", "-", "--stdin-path", &Language::project_file_name()],
@@ -10147,7 +10171,7 @@ fn fmt_lays_out_the_project_file_by_its_shapes() {
 
 #[test]
 fn fmt_puts_each_bare_name_in_the_project_file_on_its_own_line() {
-    let sandbox = Sandbox::new("fmt_project_names");
+    let sandbox = Sandbox::admitted("fmt_project_names");
     let fmt = sandbox.compiler_reading(
         BARE_NAMES_PROJECT,
         &["fmt", "-", "--stdin-path", &Language::project_file_name()],
@@ -10157,7 +10181,7 @@ fn fmt_puts_each_bare_name_in_the_project_file_on_its_own_line() {
 
 #[test]
 fn new_labels_each_rejected_name_on_the_argument() {
-    let sandbox = Sandbox::new("new_rejected_names");
+    let sandbox = Sandbox::admitted("new_rejected_names");
     let rejected = [
         ("digit_first", "1abc"),
         ("spaced", "a b"),
@@ -10180,7 +10204,7 @@ fn new_labels_each_rejected_name_on_the_argument() {
 
 #[test]
 fn new_reports_a_directory_it_cannot_write() {
-    let sandbox = Sandbox::new("new_unwritable");
+    let sandbox = Sandbox::admitted("new_unwritable");
     fs::set_permissions(
         &sandbox.directory,
         fs::Permissions::from_mode(Sandbox::UNWRITABLE_DIRECTORY),
@@ -10196,7 +10220,7 @@ fn new_reports_a_directory_it_cannot_write() {
 
 #[test]
 fn new_rejects_an_empty_name_as_a_usage_error() {
-    let sandbox = Sandbox::new("new_empty_name");
+    let sandbox = Sandbox::admitted("new_empty_name");
     let new = sandbox.compiler(&["new", ""]);
     insta::assert_snapshot!(new.assert_exit_code(2).stderr());
 }
@@ -10204,7 +10228,7 @@ fn new_rejects_an_empty_name_as_a_usage_error() {
 #[cfg(target_os = "linux")]
 #[test]
 fn new_removes_its_directory_after_a_failed_write() {
-    let sandbox = Sandbox::new("new_failed_write");
+    let sandbox = Sandbox::admitted("new_failed_write");
     let new = Outcome::of(&mut sandbox.command(
         Path::new("sh"),
         &[
@@ -10223,21 +10247,21 @@ fn new_removes_its_directory_after_a_failed_write() {
 
 #[test]
 fn run_uses_a_path_library_and_the_library_it_lists() {
-    let sandbox = Sandbox::new("library_run").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("library_run").with_fixture_tree("libraries");
     let run = sandbox.compiler_in("app", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "hi!k\n!\n");
 }
 
 #[test]
 fn a_library_listed_twice_at_one_source_loads_once() {
-    let sandbox = Sandbox::new("library_listed_twice").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("library_listed_twice").with_fixture_tree("libraries");
     let run = sandbox.compiler_in("listed-twice", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "hi!k\n");
 }
 
 #[test]
 fn eval_with_a_root_reaches_the_project_libraries() {
-    let sandbox = Sandbox::new("library_eval_root").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("library_eval_root").with_fixture_tree("libraries");
     let eval = sandbox.compiler_in(
         "app",
         &["eval", "--root", "src", "src/main.knv", "(shout \"e\")"],
@@ -10247,7 +10271,7 @@ fn eval_with_a_root_reaches_the_project_libraries() {
 
 #[test]
 fn repl_with_a_root_reaches_the_project_libraries() {
-    let sandbox = Sandbox::new("library_repl_root").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("library_repl_root").with_fixture_tree("libraries");
     let repl = sandbox.compiler_reading_in(
         "app",
         "(use hints shout)\n(shout \"r\")\n",
@@ -10415,7 +10439,7 @@ impl DeepProgram {
     }
 
     fn passes_on_a_short_stack(test_name: &str, source: &str, command: &str) {
-        let sandbox = Sandbox::new(test_name).with_file(Self::FILE, source);
+        let sandbox = Sandbox::admitted(test_name).with_file(Self::FILE, source);
         sandbox
             .compiler_on_a_short_stack(&[command, Self::FILE])
             .assert_exit_code(0);
@@ -10472,7 +10496,7 @@ fn a_deep_recur_body_emits_on_a_short_stack() {
 
 #[test]
 fn run_fetches_a_git_library_into_the_cache_by_commit() {
-    let (sandbox, commit) = Sandbox::new("git_library_run").with_git_library(None);
+    let (sandbox, commit) = Sandbox::admitted("git_library_run").with_git_library(None);
     let run = sandbox.compiler_in("git-app/src", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "k\n");
     let checkout = sandbox
@@ -10486,7 +10510,7 @@ fn run_fetches_a_git_library_into_the_cache_by_commit() {
 
 #[test]
 fn a_fetched_git_library_needs_no_repository_again() {
-    let (sandbox, _) = Sandbox::new("git_library_cached").with_git_library(None);
+    let (sandbox, _) = Sandbox::admitted("git_library_cached").with_git_library(None);
     sandbox
         .compiler_in("git-app", &["check"])
         .assert_silent_success();
@@ -10499,7 +10523,7 @@ fn a_fetched_git_library_needs_no_repository_again() {
 #[test]
 fn a_git_library_at_a_missing_commit_names_the_library() {
     let (sandbox, _) =
-        Sandbox::new("git_library_missing_commit").with_git_library(Some(MISSING_COMMIT));
+        Sandbox::admitted("git_library_missing_commit").with_git_library(Some(MISSING_COMMIT));
     let check = sandbox.compiler_in("git-app", &["check"]);
     let stderr = check.assert_exit_code(1).stderr();
     let shown: Vec<&str> = stderr
@@ -10523,7 +10547,7 @@ fn a_git_library_at_a_missing_commit_names_the_library() {
 
 #[test]
 fn a_git_library_without_git_is_an_environment_error() {
-    let (sandbox, _) = Sandbox::new("git_library_no_git").with_git_library(None);
+    let (sandbox, _) = Sandbox::admitted("git_library_no_git").with_git_library(None);
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
     command
         .current_dir(sandbox.directory.join("git-app"))
@@ -10538,7 +10562,7 @@ fn a_git_library_without_git_is_an_environment_error() {
 
 #[test]
 fn a_git_library_without_a_cache_directory_is_an_environment_error() {
-    let (sandbox, _) = Sandbox::new("git_library_no_cache").with_git_library(None);
+    let (sandbox, _) = Sandbox::admitted("git_library_no_cache").with_git_library(None);
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
     command
         .current_dir(sandbox.directory.join("git-app"))
@@ -10550,7 +10574,7 @@ fn a_git_library_without_a_cache_directory_is_an_environment_error() {
 
 #[test]
 fn fmt_with_an_unreadable_project_file_warns_that_it_cannot_read_it() {
-    let sandbox = Sandbox::new("fmt_unreadable_project")
+    let sandbox = Sandbox::admitted("fmt_unreadable_project")
         .with_file(&Language::project_file_name(), "(defproject app)\n")
         .with_file("src/main.knv", LOOP_CALL);
     let project_file = sandbox.directory.join(Language::project_file_name());
@@ -10565,7 +10589,7 @@ fn fmt_with_an_unreadable_project_file_warns_that_it_cannot_read_it() {
 
 #[test]
 fn fmt_without_a_cache_directory_warns_that_git_libraries_have_no_cache() {
-    let (sandbox, _) = Sandbox::new("fmt_git_no_cache").with_git_library(None);
+    let (sandbox, _) = Sandbox::admitted("fmt_git_no_cache").with_git_library(None);
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["fmt", "src/main.knv"]);
     command
         .current_dir(sandbox.directory.join("git-app"))
@@ -10577,7 +10601,7 @@ fn fmt_without_a_cache_directory_warns_that_git_libraries_have_no_cache() {
 
 #[test]
 fn a_git_library_falls_back_to_the_cache_under_home() {
-    let (sandbox, commit) = Sandbox::new("git_library_home_cache").with_git_library(None);
+    let (sandbox, commit) = Sandbox::admitted("git_library_home_cache").with_git_library(None);
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
     command
         .current_dir(sandbox.directory.join("git-app"))
@@ -10595,7 +10619,7 @@ fn a_git_library_falls_back_to_the_cache_under_home() {
 
 #[test]
 fn a_git_library_with_an_unwritable_cache_is_an_environment_error() {
-    let (sandbox, _) = Sandbox::new("git_library_unwritable_cache").with_git_library(None);
+    let (sandbox, _) = Sandbox::admitted("git_library_unwritable_cache").with_git_library(None);
     let cache = sandbox.directory.join(Sandbox::CACHE_DIRECTORY);
     fs::create_dir_all(&cache).expect("the sandbox accepts directories");
     fs::set_permissions(
@@ -10612,7 +10636,7 @@ fn a_git_library_with_an_unwritable_cache_is_an_environment_error() {
 
 #[test]
 fn a_git_scheme_outside_the_allowed_list_is_refused() {
-    let (sandbox, commit) = Sandbox::new("git_library_scheme").with_git_library(None);
+    let (sandbox, commit) = Sandbox::admitted("git_library_scheme").with_git_library(None);
     let project =
         format!("(defproject app (libraries (keymap :git \"ext::true\" :rev \"{commit}\")))\n");
     let sandbox = sandbox.with_file(
@@ -10630,7 +10654,7 @@ fn a_git_scheme_outside_the_allowed_list_is_refused() {
 
 #[test]
 fn git_runs_with_no_prompt_the_allowed_schemes_and_batch_ssh() {
-    let (sandbox, _) = Sandbox::new("git_library_environment").with_git_library(None);
+    let (sandbox, _) = Sandbox::admitted("git_library_environment").with_git_library(None);
     let stderr = sandbox
         .compiler_with_fake_git(None)
         .assert_exit_code(1)
@@ -10645,7 +10669,7 @@ fn git_runs_with_no_prompt_the_allowed_schemes_and_batch_ssh() {
 
 #[test]
 fn git_keeps_the_ssh_command_the_user_set() {
-    let (sandbox, _) = Sandbox::new("git_library_user_ssh").with_git_library(None);
+    let (sandbox, _) = Sandbox::admitted("git_library_user_ssh").with_git_library(None);
     let stderr = sandbox
         .compiler_with_fake_git(Some("ssh -p 2222"))
         .assert_exit_code(1)
@@ -10655,7 +10679,7 @@ fn git_keeps_the_ssh_command_the_user_set() {
 
 #[test]
 fn two_git_libraries_share_one_store() {
-    let sandbox = Sandbox::new("git_library_two").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("git_library_two").with_fixture_tree("libraries");
     let keymap = sandbox.git_repository("keymap");
     let marks = sandbox.git_repository("marks");
     let project = format!(
@@ -10671,7 +10695,7 @@ fn two_git_libraries_share_one_store() {
 
 #[test]
 fn an_empty_cache_variable_falls_back_to_home() {
-    let (sandbox, commit) = Sandbox::new("git_library_empty_cache").with_git_library(None);
+    let (sandbox, commit) = Sandbox::admitted("git_library_empty_cache").with_git_library(None);
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["check"]);
     command
         .current_dir(sandbox.directory.join("git-app"))
@@ -10689,7 +10713,7 @@ fn an_empty_cache_variable_falls_back_to_home() {
 
 #[test]
 fn a_git_library_lib_outside_its_checkout_is_an_error() {
-    let sandbox = Sandbox::new("git_library_lib_outside")
+    let sandbox = Sandbox::admitted("git_library_lib_outside")
         .with_one_git_library("lib-outside", "../lib-outside.git");
     let check = sandbox.compiler_in("git-app", &["check"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
@@ -10697,7 +10721,7 @@ fn a_git_library_lib_outside_its_checkout_is_an_error() {
 
 #[test]
 fn a_git_library_path_outside_its_checkout_is_an_error() {
-    let sandbox = Sandbox::new("git_library_path_outside")
+    let sandbox = Sandbox::admitted("git_library_path_outside")
         .with_one_git_library("path-outside", "../path-outside.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
@@ -10711,7 +10735,7 @@ fn a_git_library_path_outside_its_checkout_is_an_error() {
 
 #[test]
 fn a_git_library_relative_git_outside_its_checkout_is_an_error() {
-    let sandbox = Sandbox::new("git_library_git_outside")
+    let sandbox = Sandbox::admitted("git_library_git_outside")
         .with_one_git_library("git-outside", "../git-outside.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
@@ -10725,7 +10749,8 @@ fn a_git_library_relative_git_outside_its_checkout_is_an_error() {
 
 #[test]
 fn a_library_inside_a_git_checkout_stays_inside_it_too() {
-    let sandbox = Sandbox::new("git_library_chain").with_one_git_library("chain", "../chain.git");
+    let sandbox =
+        Sandbox::admitted("git_library_chain").with_one_git_library("chain", "../chain.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
@@ -10738,7 +10763,7 @@ fn a_library_inside_a_git_checkout_stays_inside_it_too() {
 
 #[test]
 fn a_git_library_file_url_outside_its_checkout_is_an_error() {
-    let sandbox = Sandbox::new("git_library_file_url")
+    let sandbox = Sandbox::admitted("git_library_file_url")
         .with_one_git_library("file-url-outside", "../file-url-outside.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
@@ -10752,7 +10777,7 @@ fn a_git_library_file_url_outside_its_checkout_is_an_error() {
 
 #[test]
 fn a_git_library_absolute_path_with_a_colon_is_local() {
-    let sandbox = Sandbox::new("git_library_colon_path")
+    let sandbox = Sandbox::admitted("git_library_colon_path")
         .with_one_git_library("colon-path-outside", "../colon-path-outside.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
@@ -10766,7 +10791,7 @@ fn a_git_library_absolute_path_with_a_colon_is_local() {
 
 #[test]
 fn a_git_library_lib_through_a_symbolic_link_outside_is_an_error() {
-    let sandbox = Sandbox::new("git_library_linked_lib")
+    let sandbox = Sandbox::admitted("git_library_linked_lib")
         .with_one_git_library("linked-lib", "../linked-lib.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
@@ -10781,7 +10806,7 @@ fn a_git_library_lib_through_a_symbolic_link_outside_is_an_error() {
 
 #[test]
 fn libraries_in_one_git_checkout_may_name_each_other() {
-    let sandbox = Sandbox::new("git_library_monorepo")
+    let sandbox = Sandbox::admitted("git_library_monorepo")
         .with_one_git_library("monorepo", "../monorepo.git")
         .with_file(
             "git-app/src/main.knv",
@@ -10794,8 +10819,8 @@ fn libraries_in_one_git_checkout_may_name_each_other() {
 
 #[test]
 fn a_git_library_lib_that_climbs_past_a_missing_directory_is_an_error() {
-    let sandbox =
-        Sandbox::new("git_library_lib_climb").with_one_git_library("lib-climb", "../lib-climb.git");
+    let sandbox = Sandbox::admitted("git_library_lib_climb")
+        .with_one_git_library("lib-climb", "../lib-climb.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
         .assert_exit_code(1)
@@ -10808,7 +10833,7 @@ fn a_git_library_lib_that_climbs_past_a_missing_directory_is_an_error() {
 
 #[test]
 fn a_git_library_may_list_another_git_library() {
-    let sandbox = Sandbox::new("git_library_nested_git").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("git_library_nested_git").with_fixture_tree("libraries");
     let inner = sandbox.git_repository("inner-git");
     let bundle = sandbox.directory.join("outer-git/inner.bundle");
     sandbox.git(
@@ -10847,7 +10872,7 @@ fn a_git_library_may_list_another_git_library() {
 
 #[test]
 fn a_module_file_linked_outside_a_git_checkout_is_an_error() {
-    let sandbox = Sandbox::new("git_library_linked_module").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("git_library_linked_module").with_fixture_tree("libraries");
     let sandbox = sandbox.with_one_git_library_from_tree("linked-module", "../linked-module.git");
     let sandbox = sandbox.with_file(
         "git-app/src/main.knv",
@@ -10860,7 +10885,7 @@ fn a_module_file_linked_outside_a_git_checkout_is_an_error() {
 
 #[test]
 fn run_builds_a_program_with_a_path_crate_through_cargo() {
-    let sandbox = Sandbox::new("crate_run").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_run").with_fixture_tree("crates");
     let run = sandbox.compiler_in("app", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "42\n");
     assert!(sandbox.directory.join("app/Cargo.lock").is_file());
@@ -10868,14 +10893,14 @@ fn run_builds_a_program_with_a_path_crate_through_cargo() {
 
 #[test]
 fn a_rustc_error_in_a_crate_build_maps_to_the_source() {
-    let sandbox = Sandbox::new("crate_wrong_call").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_wrong_call").with_fixture_tree("crates");
     let build = sandbox.compiler_in("wrong-call-app", &["build"]);
     insta::assert_snapshot!(build.assert_exit_code(1).stderr());
 }
 
 #[test]
 fn a_crate_that_fails_to_build_is_named() {
-    let sandbox = Sandbox::new("crate_broken").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_broken").with_fixture_tree("crates");
     let build = sandbox.compiler_in("broken-app", &["build"]);
     let stderr = build.assert_exit_code(2).stderr();
     assert!(
@@ -10887,7 +10912,7 @@ fn a_crate_that_fails_to_build_is_named() {
 
 #[test]
 fn a_crate_cargo_cannot_resolve_prints_cargo_text() {
-    let sandbox = Sandbox::new("crate_unresolved").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_unresolved").with_fixture_tree("crates");
     let build = sandbox.compiler_in("unresolved-app", &["build"]);
     let stderr = build.assert_exit_code(2).stderr();
     assert!(stderr.starts_with("error: "), "{stderr}");
@@ -10896,7 +10921,7 @@ fn a_crate_cargo_cannot_resolve_prints_cargo_text() {
 
 #[test]
 fn a_crate_build_without_cargo_is_an_environment_error() {
-    let sandbox = Sandbox::new("crate_no_cargo").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_no_cargo").with_fixture_tree("crates");
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
     command
         .current_dir(sandbox.directory.join("app"))
@@ -10923,7 +10948,7 @@ fn repl_in_a_project_with_crates_says_it_cannot_use_them_yet() {
 
 #[test]
 fn test_builds_through_cargo_with_only_the_project_crates() {
-    let sandbox = Sandbox::new("crate_test_without_dev").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_test_without_dev").with_fixture_tree("crates");
     let stdout = sandbox
         .compiler_in("app", &["test"])
         .assert_exit_code(0)
@@ -10936,7 +10961,7 @@ fn test_builds_through_cargo_with_only_the_project_crates() {
 
 #[test]
 fn test_builds_through_cargo_with_the_crates_and_dev_crates() {
-    let sandbox = Sandbox::new("crate_test").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_test").with_fixture_tree("crates");
     let stdout = sandbox
         .compiler_in("tested-app", &["test"])
         .assert_exit_code(0)
@@ -10961,7 +10986,7 @@ fn crate_requests_that_cannot_merge_are_an_error() {
 
 #[test]
 fn a_program_behaves_the_same_built_by_rustc_and_by_cargo() {
-    let sandbox = Sandbox::new("crate_compare").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_compare").with_fixture_tree("crates");
     for scenario in ["overflow", "zero", "leave"] {
         for profile in [None, Some("--release")] {
             let direct = sandbox.compared_run(scenario, profile, false);
@@ -10973,7 +10998,7 @@ fn a_program_behaves_the_same_built_by_rustc_and_by_cargo() {
 
 #[test]
 fn a_git_library_crate_path_outside_its_checkout_is_an_error() {
-    let sandbox = Sandbox::new("git_library_crate_outside")
+    let sandbox = Sandbox::admitted("git_library_crate_outside")
         .with_one_git_library("crate-outside", "../crate-outside.git");
     let stderr = sandbox
         .compiler_in("git-app", &["check"])
@@ -10989,7 +11014,7 @@ fn a_git_library_crate_path_outside_its_checkout_is_an_error() {
 
 #[test]
 fn a_library_crate_joins_the_program_manifest() {
-    let sandbox = Sandbox::new("crate_from_library").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_from_library").with_fixture_tree("crates");
     let run = sandbox.compiler_in("library-app", &["run"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "42\n");
     let manifest = fs::read_to_string(
@@ -11011,7 +11036,7 @@ fn a_library_crate_joins_the_program_manifest() {
 
 #[test]
 fn an_unchanged_program_keeps_its_generated_source_file() {
-    let sandbox = Sandbox::new("crate_unchanged_source").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_unchanged_source").with_fixture_tree("crates");
     sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
     let source = sandbox.directory.join("app/target/knave/app/src/main.rs");
     let first = fs::metadata(&source)
@@ -11026,7 +11051,7 @@ fn an_unchanged_program_keeps_its_generated_source_file() {
 
 #[test]
 fn run_of_another_file_in_a_project_with_crates_builds_through_cargo() {
-    let sandbox = Sandbox::new("crate_other_file").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_other_file").with_fixture_tree("crates");
     let run = sandbox.compiler_in("app", &["run", "src/tools/next.knv"]);
     assert_eq!(run.assert_exit_code(0).stdout(), "43\n");
 }
@@ -11054,7 +11079,7 @@ fn run_of_a_loose_file_that_fails_in_rustc_after_another_build_reports_the_error
 
 #[test]
 fn two_copies_of_a_project_with_crates_each_run_their_own_program() {
-    let sandbox = Sandbox::new("crate_project_copies").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_project_copies").with_fixture_tree("crates");
     Sandbox::copy_tree(
         &sandbox.directory.join("app"),
         &sandbox.directory.join("app-copy"),
@@ -11083,7 +11108,7 @@ fn loose_files_in_a_project_with_crates_share_the_built_crates() {
 
 #[test]
 fn a_missing_crate_path_resolves_from_the_project_root() {
-    let sandbox = Sandbox::new("crate_missing_path")
+    let sandbox = Sandbox::admitted("crate_missing_path")
         .with_fixture_tree("crates")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
@@ -11103,7 +11128,7 @@ fn a_missing_crate_path_resolves_from_the_project_root() {
 
 #[test]
 fn a_dependency_named_like_the_program_package_is_still_a_dependency() {
-    let sandbox = Sandbox::new("crate_program_like_name").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_program_like_name").with_fixture_tree("crates");
     Sandbox::copy_tree(
         &sandbox.directory.join("broken"),
         &sandbox.directory.join("knave-program-broken"),
@@ -11124,7 +11149,7 @@ fn a_dependency_named_like_the_program_package_is_still_a_dependency() {
 
 #[test]
 fn a_build_uses_the_project_cargo_lock() {
-    let sandbox = Sandbox::new("crate_lock_in").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_lock_in").with_fixture_tree("crates");
     sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
     let lock = sandbox.directory.join("app/Cargo.lock");
     let written = fs::read_to_string(&lock).expect("the build writes a lock file");
@@ -11172,7 +11197,7 @@ fn eval_with_a_root_in_a_project_with_crates_says_it_cannot_use_them_yet() {
 
 #[test]
 fn add_writes_a_crate_with_the_version_cargo_picks_and_its_features() {
-    let sandbox = Sandbox::new("add_crate").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_crate").with_fake_registry();
     sandbox
         .compiler_with_registry(&["add", "fake-json", "--features", "derive,std"])
         .assert_silent_success();
@@ -11182,7 +11207,7 @@ fn add_writes_a_crate_with_the_version_cargo_picks_and_its_features() {
 
 #[test]
 fn add_keeps_the_features_a_listed_crate_has() {
-    let sandbox = Sandbox::new("add_listed_crate").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_listed_crate").with_fake_registry();
     sandbox
         .compiler_with_registry(&["add", "fake-json", "--features", "derive"])
         .assert_silent_success();
@@ -11198,7 +11223,7 @@ fn add_keeps_the_features_a_listed_crate_has() {
 
 #[test]
 fn add_of_a_crate_cargo_cannot_find_prints_cargo_text() {
-    let sandbox = Sandbox::new("add_unknown_crate").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_unknown_crate").with_fake_registry();
     let stderr = sandbox
         .compiler_with_registry(&["add", "no-such-crate"])
         .assert_exit_code(2)
@@ -11212,7 +11237,7 @@ fn add_of_a_crate_cargo_cannot_find_prints_cargo_text() {
 
 #[test]
 fn add_outside_a_project_is_a_usage_error() {
-    let sandbox = Sandbox::new("add_outside_project");
+    let sandbox = Sandbox::admitted("add_outside_project");
     insta::assert_snapshot!(
         sandbox
             .compiler(&["add", "fake-json"])
@@ -11223,7 +11248,7 @@ fn add_outside_a_project_is_a_usage_error() {
 
 #[test]
 fn add_without_cargo_is_an_environment_error() {
-    let sandbox = Sandbox::new("add_no_cargo").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_no_cargo").with_fake_registry();
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["add", "fake-json"]);
     command.env("PATH", sandbox.directory.join("no-tools"));
     let stderr = Outcome::of(&mut command).assert_exit_code(2).stderr();
@@ -11235,7 +11260,7 @@ fn add_without_cargo_is_an_environment_error() {
 
 #[test]
 fn remove_deletes_the_entry_and_the_emptied_section() {
-    let sandbox = Sandbox::new("remove_crate").with_fake_registry();
+    let sandbox = Sandbox::admitted("remove_crate").with_fake_registry();
     sandbox
         .compiler_with_registry(&["add", "fake-json"])
         .assert_silent_success();
@@ -11247,7 +11272,7 @@ fn remove_deletes_the_entry_and_the_emptied_section() {
 
 #[test]
 fn add_with_dev_writes_the_crate_into_dev_dependencies() {
-    let sandbox = Sandbox::new("add_dev_crate").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_dev_crate").with_fake_registry();
     sandbox
         .compiler_with_registry(&["add", "--dev", "fake-json", "--features", "std"])
         .assert_silent_success();
@@ -11256,7 +11281,7 @@ fn add_with_dev_writes_the_crate_into_dev_dependencies() {
 
 #[test]
 fn add_with_dev_refuses_a_path_crate_listed_in_dev_dependencies() {
-    let sandbox = Sandbox::new("add_dev_path_crate")
+    let sandbox = Sandbox::admitted("add_dev_path_crate")
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
@@ -11274,7 +11299,7 @@ fn add_with_dev_refuses_a_path_crate_listed_in_dev_dependencies() {
 
 #[test]
 fn add_with_dev_refuses_a_path_crate_listed_in_dependencies() {
-    let sandbox = Sandbox::new("add_dev_over_path_dependency")
+    let sandbox = Sandbox::admitted("add_dev_over_path_dependency")
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
@@ -11292,7 +11317,7 @@ fn add_with_dev_refuses_a_path_crate_listed_in_dependencies() {
 
 #[test]
 fn add_with_dev_keeps_the_features_of_the_dev_entry() {
-    let sandbox = Sandbox::new("add_dev_beside_dependency")
+    let sandbox = Sandbox::admitted("add_dev_beside_dependency")
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
@@ -11306,7 +11331,7 @@ fn add_with_dev_keeps_the_features_of_the_dev_entry() {
 
 #[test]
 fn remove_of_a_crate_only_the_other_section_lists_names_that_section() {
-    let sandbox = Sandbox::new("remove_from_other_section")
+    let sandbox = Sandbox::admitted("remove_from_other_section")
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
@@ -11324,7 +11349,7 @@ fn remove_of_a_crate_only_the_other_section_lists_names_that_section() {
 
 #[test]
 fn remove_with_dev_of_a_crate_only_dependencies_list_names_them() {
-    let sandbox = Sandbox::new("remove_dev_from_other_section")
+    let sandbox = Sandbox::admitted("remove_dev_from_other_section")
         .with_fake_registry()
         .with_file(
             &Language::project_file_name(),
@@ -11342,7 +11367,7 @@ fn remove_with_dev_of_a_crate_only_dependencies_list_names_them() {
 
 #[test]
 fn remove_with_dev_leaves_the_dependencies_alone() {
-    let sandbox = Sandbox::new("remove_dev_crate").with_fake_registry();
+    let sandbox = Sandbox::admitted("remove_dev_crate").with_fake_registry();
     for arguments in [
         ["add", "fake-json"].as_slice(),
         &["add", "--dev", "fake-json"],
@@ -11361,7 +11386,7 @@ fn remove_with_dev_leaves_the_dependencies_alone() {
 
 #[test]
 fn remove_with_dev_of_an_unlisted_crate_names_dev_dependencies() {
-    let sandbox = Sandbox::new("remove_dev_unlisted").with_fake_registry();
+    let sandbox = Sandbox::admitted("remove_dev_unlisted").with_fake_registry();
     let stderr = sandbox
         .compiler(&["remove", "--dev", "fake-json"])
         .assert_exit_code(2)
@@ -11374,14 +11399,14 @@ fn remove_with_dev_of_an_unlisted_crate_names_dev_dependencies() {
 
 #[test]
 fn remove_of_a_crate_the_project_does_not_list_is_a_usage_error() {
-    let sandbox = Sandbox::new("remove_unlisted").with_fake_registry();
+    let sandbox = Sandbox::admitted("remove_unlisted").with_fake_registry();
     let remove = sandbox.compiler(&["remove", "fake-json"]);
     insta::assert_snapshot!(remove.assert_exit_code(2).stderr());
 }
 
 #[test]
 fn add_of_a_feature_a_crate_already_has_lists_it_once() {
-    let sandbox = Sandbox::new("add_same_feature").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_same_feature").with_fake_registry();
     for _ in 0..2 {
         sandbox
             .compiler_with_registry(&["add", "fake-json", "--features", "derive"])
@@ -11396,7 +11421,7 @@ fn add_of_a_feature_a_crate_already_has_lists_it_once() {
 
 #[test]
 fn add_of_a_feature_cargo_cannot_find_prints_cargo_text() {
-    let sandbox = Sandbox::new("add_unknown_feature").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_unknown_feature").with_fake_registry();
     let add = sandbox.compiler_with_registry(&["add", "fake-json", "--features", "nope"]);
     let stderr = add.assert_exit_code(2).stderr();
     assert!(stderr.contains("nope"), "{stderr}");
@@ -11405,7 +11430,7 @@ fn add_of_a_feature_cargo_cannot_find_prints_cargo_text() {
 
 #[test]
 fn remove_keeps_a_comment_before_the_entry() {
-    let sandbox = Sandbox::new("remove_after_comment").with_fake_registry().with_file(
+    let sandbox = Sandbox::admitted("remove_after_comment").with_fake_registry().with_file(
         &Language::project_file_name(),
         "(defproject demo\n  (dependencies ; first\n    (other \"1.0\")\n    ; json\n    (fake-json \"1.4.2\")))\n",
     );
@@ -11417,7 +11442,7 @@ fn remove_keeps_a_comment_before_the_entry() {
 
 #[test]
 fn add_of_a_name_that_is_not_a_crate_name_is_a_usage_error() {
-    let sandbox = Sandbox::new("add_bad_name").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_bad_name").with_fake_registry();
     for name in ["--path=x", "a b", "fake-json@1.4", "-quiet"] {
         let stderr = sandbox
             .compiler_with_registry(&["add", "--", name])
@@ -11430,7 +11455,7 @@ fn add_of_a_name_that_is_not_a_crate_name_is_a_usage_error() {
 
 #[test]
 fn add_of_a_value_that_is_not_a_feature_name_is_a_usage_error() {
-    let sandbox = Sandbox::new("add_bad_feature").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_bad_feature").with_fake_registry();
     for feature in ["derive std", "a/b/c", "/derive", "-x", "--dry-run"] {
         let value = format!("--features={feature}");
         let add = sandbox.compiler_with_registry(&["add", "fake-json", &value]);
@@ -11447,7 +11472,7 @@ fn add_of_a_value_that_is_not_a_feature_name_is_a_usage_error() {
 #[test]
 fn add_of_a_crate_listed_with_a_path_is_a_usage_error() {
     let project = "(defproject demo (dependencies (fake-json :path \"../fake-json\")))\n";
-    let sandbox = Sandbox::new("add_path_crate")
+    let sandbox = Sandbox::admitted("add_path_crate")
         .with_fake_registry()
         .with_file(&Language::project_file_name(), project);
     let add = sandbox.compiler_with_registry(&["add", "fake-json"]);
@@ -11457,7 +11482,7 @@ fn add_of_a_crate_listed_with_a_path_is_a_usage_error() {
 
 #[test]
 fn add_without_a_temporary_directory_is_an_environment_error() {
-    let sandbox = Sandbox::new("add_no_temporary_directory").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_no_temporary_directory").with_fake_registry();
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["add", "fake-json"]);
     command
         .env("CARGO_HOME", sandbox.directory.join("cargo-home"))
@@ -11474,7 +11499,7 @@ fn add_without_a_temporary_directory_is_an_environment_error() {
 
 #[test]
 fn add_to_a_project_in_a_read_only_directory_reports_the_file() {
-    let sandbox = Sandbox::new("add_read_only_project").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_read_only_project").with_fake_registry();
     fs::set_permissions(
         &sandbox.directory,
         fs::Permissions::from_mode(Sandbox::UNWRITABLE_DIRECTORY),
@@ -11499,7 +11524,7 @@ fn add_to_a_project_in_a_read_only_directory_reports_the_file() {
 
 #[test]
 fn add_writes_the_crate_name_cargo_wrote() {
-    let sandbox = Sandbox::new("add_translated_name").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_translated_name").with_fake_registry();
     sandbox
         .compiler_with_translating_cargo(&["add", "fake-json"])
         .assert_silent_success();
@@ -11512,7 +11537,7 @@ fn add_writes_the_crate_name_cargo_wrote() {
 #[test]
 fn add_refuses_a_path_crate_listed_under_the_name_cargo_wrote() {
     let project = "(defproject demo (dependencies (fake_json :path \"../fake-json\")))\n";
-    let sandbox = Sandbox::new("add_translated_path_crate")
+    let sandbox = Sandbox::admitted("add_translated_path_crate")
         .with_fake_registry()
         .with_file(&Language::project_file_name(), project);
     let stderr = sandbox
@@ -11528,7 +11553,7 @@ fn add_refuses_a_path_crate_listed_under_the_name_cargo_wrote() {
 
 #[test]
 fn add_keeps_the_project_file_link_and_mode() {
-    let sandbox = Sandbox::new("add_linked_project").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_linked_project").with_fake_registry();
     let real = sandbox.directory.join("real-project.knv");
     fs::rename(sandbox.directory.join(Language::project_file_name()), &real)
         .expect("the sandbox renames files");
@@ -11560,7 +11585,7 @@ fn add_keeps_the_project_file_link_and_mode() {
 
 #[test]
 fn add_when_cargo_writes_no_version_is_an_environment_error() {
-    let sandbox = Sandbox::new("add_versionless").with_fake_registry();
+    let sandbox = Sandbox::admitted("add_versionless").with_fake_registry();
     let add = sandbox.compiler_with_fake_cargo(Sandbox::VERSIONLESS_CARGO, &["add", "fake-json"]);
     assert_eq!(
         add.assert_exit_code(2).stderr(),
@@ -11571,7 +11596,7 @@ fn add_when_cargo_writes_no_version_is_an_environment_error() {
 
 #[test]
 fn a_crate_build_puts_cargo_output_in_the_shared_target() {
-    let sandbox = Sandbox::new("crate_shared_target").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_shared_target").with_fixture_tree("crates");
     sandbox.compiler_in("app", &["build"]).assert_exit_code(0);
     assert!(sandbox.shared_target().join("debug").is_dir());
     let build_directory = sandbox
@@ -11585,7 +11610,7 @@ fn a_crate_build_puts_cargo_output_in_the_shared_target() {
 
 #[test]
 fn a_user_cargo_target_dir_wins_over_the_shared_target() {
-    let sandbox = Sandbox::new("crate_own_target").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_own_target").with_fixture_tree("crates");
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
     command.current_dir(sandbox.directory.join("app")).env(
         Sandbox::CARGO_TARGET_VARIABLE,
@@ -11598,7 +11623,7 @@ fn a_user_cargo_target_dir_wins_over_the_shared_target() {
 
 #[test]
 fn a_crate_build_waiting_on_another_build_says_so() {
-    let sandbox = Sandbox::new("crate_waiting").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_waiting").with_fixture_tree("crates");
     let fake_cargo = sandbox.directory.join("waiting-bin/cargo");
     fs::create_dir_all(fake_cargo.parent().expect("the fake cargo has a directory"))
         .expect("the sandbox accepts directories");
@@ -11620,7 +11645,7 @@ fn a_crate_build_waiting_on_another_build_says_so() {
 
 #[test]
 fn a_user_cargo_build_target_dir_wins_over_the_shared_target() {
-    let sandbox = Sandbox::new("crate_own_build_target").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_own_build_target").with_fixture_tree("crates");
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
     command.current_dir(sandbox.directory.join("app")).env(
         Sandbox::CARGO_BUILD_TARGET_VARIABLE,
@@ -11633,7 +11658,7 @@ fn a_user_cargo_build_target_dir_wins_over_the_shared_target() {
 
 #[test]
 fn a_relative_cache_variable_is_ignored() {
-    let sandbox = Sandbox::new("crate_relative_cache").with_fixture_tree("crates");
+    let sandbox = Sandbox::admitted("crate_relative_cache").with_fixture_tree("crates");
     let mut command = sandbox.command(Path::new(Sandbox::COMPILER), &["build"]);
     command
         .current_dir(sandbox.directory.join("app"))
@@ -11656,7 +11681,7 @@ fn a_relative_cache_variable_is_ignored() {
 
 #[test]
 fn test_calls_only_the_project_own_tests() {
-    let sandbox = Sandbox::new("test_own_tests").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("test_own_tests").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("own-tests-app", &["test"]);
     assert_eq!(
         test.assert_exit_code(0).stdout(),
@@ -11666,7 +11691,7 @@ fn test_calls_only_the_project_own_tests() {
 
 #[test]
 fn test_of_a_module_that_asks_for_library_examples_runs_only_its_own_tests() {
-    let sandbox = Sandbox::new("test_asks_library").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("test_asks_library").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("asks-library-app", &["test"]);
     assert_eq!(
         test.assert_exit_code(0).stdout(),
@@ -11676,7 +11701,7 @@ fn test_of_a_module_that_asks_for_library_examples_runs_only_its_own_tests() {
 
 #[test]
 fn test_checks_the_docstring_examples_of_a_library() {
-    let sandbox = Sandbox::new("test_library_doc").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("test_library_doc").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("doc-checked-app", &["test"]);
     assert!(
         test.assert_exit_code(1)
@@ -11687,7 +11712,7 @@ fn test_checks_the_docstring_examples_of_a_library() {
 
 #[test]
 fn library_examples_check_without_emitting_or_checking_the_project() {
-    let sandbox = Sandbox::new("library_examples_emit").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("library_examples_emit").with_fixture_tree("libraries");
     let emit = sandbox.compiler_in("library-examples-app", &["emit"]);
     let emitted = emit.assert_exit_code(0).stdout();
     assert!(!emitted.contains("check_equal"), "{emitted}");
@@ -11696,7 +11721,7 @@ fn library_examples_check_without_emitting_or_checking_the_project() {
 
 #[test]
 fn run_tests_from_a_program_main_checks_only_project_examples() {
-    let sandbox = Sandbox::new("own_runner_check").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("own_runner_check").with_fixture_tree("libraries");
     sandbox
         .compiler_in("own-runner-app", &["check"])
         .assert_exit_code(0);
@@ -11704,7 +11729,7 @@ fn run_tests_from_a_program_main_checks_only_project_examples() {
 
 #[test]
 fn test_reports_library_and_project_example_errors_together() {
-    let sandbox = Sandbox::new("test_example_errors").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("test_example_errors").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("unbound-example-app", &["test"]);
     let stderr = test.assert_exit_code(1).stderr();
     assert!(
@@ -11721,7 +11746,7 @@ fn test_reports_library_and_project_example_errors_together() {
 
 #[test]
 fn test_checks_the_tests_of_a_library() {
-    let sandbox = Sandbox::new("test_library_test").with_fixture_tree("libraries");
+    let sandbox = Sandbox::admitted("test_library_test").with_fixture_tree("libraries");
     let test = sandbox.compiler_in("test-checked-app", &["test"]);
     assert!(
         test.assert_exit_code(1)
@@ -11774,7 +11799,7 @@ const FAILING_TASK: &str = "(deftask refuse () (err (str \"refused\")))\n";
 
 impl Sandbox {
     fn with_tasks(test_name: &str) -> Self {
-        Self::new(test_name)
+        Self::admitted(test_name)
             .with_file(&Language::project_file_name(), TASK_PROJECT)
             .with_file("src/main.knv", TASK_MODULE)
             .with_file("tasks/chores.knv", TASKS)
@@ -11857,7 +11882,7 @@ fn task_with_an_unknown_name_far_from_every_task_says_how_to_list_them() {
 
 #[test]
 fn task_in_a_project_without_tasks_directory_is_a_usage_error() {
-    let task = Sandbox::new("task_no_directory")
+    let task = Sandbox::admitted("task_no_directory")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .compiler(&["task"]);
@@ -11870,7 +11895,7 @@ struct ExportingProject;
 
 impl ExportingProject {
     fn of(test_name: &str, project: &str) -> Sandbox {
-        Sandbox::new(test_name)
+        Sandbox::admitted(test_name)
             .with_file(&Language::project_file_name(), project)
             .with_file("tasks/lint.knv", LINT_TASK)
     }
@@ -11909,7 +11934,7 @@ fn an_exported_name_far_from_every_task_says_how_to_define_it() {
 
 #[test]
 fn an_exporting_project_without_tasks_reports_each_name() {
-    let sandbox = Sandbox::new("exported_tasks_without_tasks").with_file(
+    let sandbox = Sandbox::admitted("exported_tasks_without_tasks").with_file(
         &Language::project_file_name(),
         "(defproject linter (exported-tasks lint fix))\n",
     );
@@ -11989,7 +12014,7 @@ fn task_named_by_a_missing_export_stops_at_the_export() {
 
 #[test]
 fn an_empty_exported_tasks_section_counts_as_tasks() {
-    let sandbox = Sandbox::new("exported_tasks_empty").with_file(
+    let sandbox = Sandbox::admitted("exported_tasks_empty").with_file(
         &Language::project_file_name(),
         "(defproject linter (exported-tasks))\n",
     );
@@ -12000,7 +12025,7 @@ fn an_empty_exported_tasks_section_counts_as_tasks() {
 
 #[test]
 fn a_tasks_file_in_an_exporting_project_is_an_absent_folder() {
-    let check = Sandbox::new("exported_tasks_tasks_file")
+    let check = Sandbox::admitted("exported_tasks_tasks_file")
         .with_file(
             &Language::project_file_name(),
             "(defproject linter (exported-tasks lint))\n",
@@ -12039,7 +12064,7 @@ fn an_exported_name_listed_twice_is_a_duplicate_entry() {
 
 #[test]
 fn a_program_that_calls_the_exported_tasks_section_is_an_error() {
-    let check = Sandbox::new("exported_tasks_in_program")
+    let check = Sandbox::admitted("exported_tasks_in_program")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file(
             "src/main.knv",
@@ -12069,7 +12094,7 @@ fn check_with_a_written_entry_that_names_no_file_stays_an_error() {
 
 #[test]
 fn check_without_an_entry_or_tasks_stays_an_error() {
-    let check = Sandbox::new("no_entry_no_tasks")
+    let check = Sandbox::admitted("no_entry_no_tasks")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .compiler(&["check"]);
     insta::assert_snapshot!(check.assert_exit_code(2).stderr());
@@ -12106,7 +12131,7 @@ struct LibraryProject;
 
 impl LibraryProject {
     fn of(test_name: &str, library: &str) -> Sandbox {
-        Sandbox::new(test_name)
+        Sandbox::admitted(test_name)
             .with_file(&Language::project_file_name(), SHELF_PROJECT)
             .with_file("src/lib.knv", library)
     }
@@ -12159,7 +12184,7 @@ fn check_reports_a_library_project_root_that_the_entry_uses_once() {
 
 #[test]
 fn check_starts_a_library_project_from_its_written_library_root() {
-    let check = Sandbox::new("library_project_written_root")
+    let check = Sandbox::admitted("library_project_written_root")
         .with_file(
             &Language::project_file_name(),
             "(defproject shelf :lib \"src/shelf.knv\")\n",
@@ -12171,7 +12196,7 @@ fn check_starts_a_library_project_from_its_written_library_root() {
 
 #[test]
 fn check_in_a_library_project_with_a_written_entry_that_names_no_file_stays_an_error() {
-    let check = Sandbox::new("library_project_missing_written_entry")
+    let check = Sandbox::admitted("library_project_missing_written_entry")
         .with_file(
             &Language::project_file_name(),
             "(defproject shelf :entry \"src/app.knv\")\n",
@@ -12197,7 +12222,7 @@ fn check_of_a_named_file_skips_the_library_project_root() {
 
 #[test]
 fn check_reads_a_library_project_root_that_is_the_entry_once() {
-    let sandbox = Sandbox::new("library_project_root_is_entry")
+    let sandbox = Sandbox::admitted("library_project_root_is_entry")
         .with_file(
             &Language::project_file_name(),
             "(defproject shelf :lib \"src/main.knv\")\n",
@@ -12220,7 +12245,7 @@ fn check_reads_a_library_project_root_that_is_the_entry_once() {
 
 #[test]
 fn lint_reads_an_unreadable_entry_once() {
-    let sandbox = Sandbox::new("lint_unreadable_entry")
+    let sandbox = Sandbox::admitted("lint_unreadable_entry")
         .with_file(&Language::project_file_name(), SHELF_PROJECT)
         .with_unreadable_entry();
     for arguments in [&["lint"][..], &["lint", "src/main.knv"]] {
@@ -12236,7 +12261,7 @@ fn lint_reads_an_unreadable_entry_once() {
 #[test]
 fn lint_with_a_written_entry_that_names_no_file_exits_as_check_does() {
     for library in [MISTYPED_SHELF_LIBRARY, UNCLOSED_SHELF_LIBRARY] {
-        let sandbox = Sandbox::new("lint_missing_written_entry")
+        let sandbox = Sandbox::admitted("lint_missing_written_entry")
             .with_file(
                 &Language::project_file_name(),
                 "(defproject shelf :entry \"src/app.knv\")\n",
@@ -12249,7 +12274,7 @@ fn lint_with_a_written_entry_that_names_no_file_exits_as_check_does() {
 
 #[test]
 fn lint_exits_with_the_first_failing_program_as_check_does() {
-    let sandbox = Sandbox::new("lint_first_failing_program")
+    let sandbox = Sandbox::admitted("lint_first_failing_program")
         .with_file(&Language::project_file_name(), SHELF_PROJECT)
         .with_file("src/main.knv", MISTYPED_SHELF_ENTRY)
         .with_unreadable_file("src/lib.knv");
@@ -12279,7 +12304,7 @@ struct LendingLibraries;
 
 impl LendingLibraries {
     fn of(test_name: &str, app: &str) -> Sandbox {
-        Sandbox::new(test_name)
+        Sandbox::admitted(test_name)
             .with_file("lint/project.knv", LENDING_PROJECT)
             .with_file("lint/tasks/check.knv", LENT_TASKS)
             .with_file("other/project.knv", OTHER_LENDER)
@@ -12483,7 +12508,7 @@ fn a_missing_export_of_a_path_library_names_the_library() {
 
 #[test]
 fn a_missing_export_of_a_git_library_asks_for_another_commit() {
-    let sandbox = Sandbox::new("library_missing_export_git")
+    let sandbox = Sandbox::admitted("library_missing_export_git")
         .with_file(
             "lint/project.knv",
             "(defproject lint (exported-tasks chek check))\n",
@@ -12577,7 +12602,7 @@ fn check_applies_no_lending_librarys_lint_levels() {
 
 #[test]
 fn a_linter_library_lints_a_dependent_that_has_no_tasks() {
-    let sandbox = Sandbox::new("ledelint_like")
+    let sandbox = Sandbox::admitted("ledelint_like")
         .with_file(
             "linter/project.knv",
             "(defproject linter (exported-tasks linter))\n",
@@ -12610,7 +12635,7 @@ fn a_linter_library_lints_a_dependent_that_has_no_tasks() {
 
 #[test]
 fn a_git_librarys_task_program_keeps_its_checkout_bounds() {
-    let sandbox = Sandbox::new("library_task_linked_module")
+    let sandbox = Sandbox::admitted("library_task_linked_module")
         .with_file("outside/secret.knv", "not = a module of the library\n")
         .with_file(
             "leaky-source/project.knv",
@@ -12670,7 +12695,7 @@ fn an_error_in_a_module_shared_with_a_librarys_task_prints_once() {
 
 #[test]
 fn a_project_without_tasks_or_lending_libraries_is_a_usage_error() {
-    let task = Sandbox::new("task_no_tasks_no_lenders")
+    let task = Sandbox::admitted("task_no_tasks_no_lenders")
         .with_file("hints/project.knv", "(defproject hints)\n")
         .with_file(
             "app/project.knv",
@@ -12682,7 +12707,7 @@ fn a_project_without_tasks_or_lending_libraries_is_a_usage_error() {
 
 #[test]
 fn task_outside_a_project_is_a_usage_error() {
-    let task = Sandbox::new("task_outside_project").compiler(&["task", "greet"]);
+    let task = Sandbox::admitted("task_outside_project").compiler(&["task", "greet"]);
     insta::assert_snapshot!(task.assert_exit_code(2).stderr());
 }
 
@@ -12713,7 +12738,7 @@ fn task_modules_that_import_each_other_name_the_tasks_entry_in_the_cycle() {
 
 #[test]
 fn test_can_use_a_task_module_beside_a_root_entry() {
-    let sandbox = Sandbox::new("test_task_helper")
+    let sandbox = Sandbox::admitted("test_task_helper")
         .with_file(&Language::project_file_name(), ROOT_ENTRY_PROJECT)
         .with_file("main.knv", ROOT_ENTRY)
         .with_file("tasks/build.knv", HELPER_TASK)
@@ -12759,7 +12784,7 @@ const CRATE_TASK: &str = "(def answer
 
 #[test]
 fn task_in_a_project_with_crates_builds_through_cargo_beside_the_program() {
-    let sandbox = Sandbox::new("crate_task")
+    let sandbox = Sandbox::admitted("crate_task")
         .with_fixture_tree("crates")
         .with_file("app/tasks/show.knv", CRATE_TASK);
     let task = sandbox.compiler_in("app", &["task", "show"]);
@@ -12775,7 +12800,7 @@ fn task_in_a_project_with_crates_builds_through_cargo_beside_the_program() {
 
 #[test]
 fn task_with_an_unknown_name_in_a_project_with_no_tasks_says_none_is_defined() {
-    let task = Sandbox::new("task_none_defined")
+    let task = Sandbox::admitted("task_none_defined")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/notes.knv", "(def note 1)\n")
@@ -12785,7 +12810,7 @@ fn task_with_an_unknown_name_in_a_project_with_no_tasks_says_none_is_defined() {
 
 #[test]
 fn check_without_a_file_in_a_project_without_tasks_checks_the_entry() {
-    let check = Sandbox::new("check_no_tasks_directory")
+    let check = Sandbox::admitted("check_no_tasks_directory")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .compiler(&["check"]);
@@ -12795,7 +12820,7 @@ fn check_without_a_file_in_a_project_without_tasks_checks_the_entry() {
 #[test]
 fn task_list_ends_each_line_and_prints_nothing_without_tasks() {
     let listing = Sandbox::with_tasks("task_listing_lines").compiler(&["task"]);
-    let empty = Sandbox::new("task_listing_empty")
+    let empty = Sandbox::admitted("task_listing_empty")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/notes.knv", "(def note 1)\n")
@@ -12949,7 +12974,7 @@ fn task_signature_shows_each_task_type_as_inferred() {
 
 #[test]
 fn check_keeps_an_open_local_outside_tasks_an_error() {
-    let check = Sandbox::new("open_local")
+    let check = Sandbox::admitted("open_local")
         .with_file("open.knv", OPEN_LOCAL)
         .compiler(&["check", "open.knv"]);
     insta::assert_snapshot!(check.assert_exit_code(1).stderr());
@@ -12991,7 +13016,7 @@ const SHARED_BROKEN: &str = "(export helper)\n\n(defn helper () (println (+ 1 \"
 
 impl Sandbox {
     fn with_one_task(test_name: &str, task: &str) -> Self {
-        Self::new(test_name)
+        Self::admitted(test_name)
             .with_file(&Language::project_file_name(), TASK_PROJECT)
             .with_file("src/main.knv", TRAIT_MODULE)
             .with_file(&format!("tasks/{task}.knv"), &Self::only_task(task))
@@ -13047,7 +13072,7 @@ fn check_without_a_file_rejects_what_task_rejects() {
 
 #[test]
 fn check_without_a_file_reports_an_error_shared_by_entry_and_task_once() {
-    let check = Sandbox::new("check_shared_error")
+    let check = Sandbox::admitted("check_shared_error")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/shared.knv", SHARED_BROKEN)
         .with_file(
@@ -13071,7 +13096,7 @@ fn check_without_a_file_reports_an_error_shared_by_entry_and_task_once() {
 
 #[test]
 fn task_cannot_reach_tests_when_the_entry_sits_at_the_root() {
-    let sandbox = Sandbox::new("task_root_entry")
+    let sandbox = Sandbox::admitted("task_root_entry")
         .with_file(
             &Language::project_file_name(),
             "(defproject rootreach :entry \"main.knv\")\n",
@@ -13125,7 +13150,7 @@ fn task_parses_flag_shapes_the_way_command_lines_write_them() {
 
 #[test]
 fn task_refuses_a_task_file_that_takes_a_library_module_path() {
-    let sandbox = Sandbox::new("task_library_module_paths")
+    let sandbox = Sandbox::admitted("task_library_module_paths")
         .with_fixture_tree("libraries")
         .with_file(
             "tested-app/tasks/hints.knv",
@@ -13160,7 +13185,7 @@ fn lint_of_a_task_file_reports_a_task_defined_twice() {
 
 #[test]
 fn check_refuses_a_task_file_that_takes_a_library_module_path() {
-    let sandbox = Sandbox::new("check_task_library_module_paths")
+    let sandbox = Sandbox::admitted("check_task_library_module_paths")
         .with_fixture_tree("libraries")
         .with_file(
             "tested-app/tasks/hints.knv",
@@ -13196,7 +13221,7 @@ fn task_deftask_outside_tasks_is_an_error_at_the_form() {
 
 #[test]
 fn task_without_tasks_directory_names_it_relative_from_a_subdirectory() {
-    let task = Sandbox::new("task_no_directory_subdirectory")
+    let task = Sandbox::admitted("task_no_directory_subdirectory")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .compiler_in("src", &["task"]);
@@ -13205,7 +13230,7 @@ fn task_without_tasks_directory_names_it_relative_from_a_subdirectory() {
 
 #[test]
 fn task_file_needs_no_import_of_deftask() {
-    let task = Sandbox::new("task_no_import")
+    let task = Sandbox::admitted("task_no_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -13225,7 +13250,7 @@ const OWN_DEFINE_TASK: &str = "(defn define-task (x) (+ x 1))
 
 #[test]
 fn task_expansion_leaves_the_name_define_task_to_the_program() {
-    let sandbox = Sandbox::new("task_own_define_task")
+    let sandbox = Sandbox::admitted("task_own_define_task")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/own.knv", OWN_DEFINE_TASK);
@@ -13274,7 +13299,7 @@ const PARAMETER_TASKS: &str = "(defn double ((port u16)) (* port 2))
 
 impl Sandbox {
     fn with_parameter_tasks(test_name: &str) -> Self {
-        Self::new(test_name)
+        Self::admitted(test_name)
             .with_file(&Language::project_file_name(), TASK_PROJECT)
             .with_file("src/main.knv", TASK_MODULE)
             .with_file("tasks/round.knv", PARAMETER_TASKS)
@@ -13311,7 +13336,7 @@ fn check_without_a_file_accepts_a_task_that_only_fails() {
 
 #[test]
 fn task_with_an_open_error_type_is_refused_at_its_name_under_task_and_check() {
-    let sandbox = Sandbox::new("task_open_error")
+    let sandbox = Sandbox::admitted("task_open_error")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/k.knv", "(deftask k () (ok (do)))\n");
@@ -13351,7 +13376,7 @@ fn task_definition_errors_have_their_own_codes() {
     ]
     .iter()
     .map(|(name, source)| {
-        Sandbox::new(&format!("task_definition_{name}"))
+        Sandbox::admitted(&format!("task_definition_{name}"))
             .with_file(&Language::project_file_name(), TASK_PROJECT)
             .with_file("src/main.knv", TASK_MODULE)
             .with_file("tasks/t.knv", source)
@@ -13365,7 +13390,7 @@ fn task_definition_errors_have_their_own_codes() {
 
 #[test]
 fn deftask_in_an_entry_module_is_an_error_under_run_and_check() {
-    let sandbox = Sandbox::new("deftask_in_main")
+    let sandbox = Sandbox::admitted("deftask_in_main")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file(
             "src/main.knv",
@@ -13380,7 +13405,7 @@ fn deftask_in_an_entry_module_is_an_error_under_run_and_check() {
 #[test]
 fn task_cannot_reach_tests_through_a_dotted_entry_a_parent_path_or_a_link() {
     let support = "(export helper)\n\n(defn helper () (println \"from tests\"))\n";
-    let dotted = Sandbox::new("task_tests_dotted")
+    let dotted = Sandbox::admitted("task_tests_dotted")
         .with_file(
             &Language::project_file_name(),
             "(defproject dotted :entry \"./main.knv\")\n",
@@ -13392,7 +13417,7 @@ fn task_cannot_reach_tests_through_a_dotted_entry_a_parent_path_or_a_link() {
             "(use tests/support helper)\n\n(deftask t () (helper))\n",
         )
         .compiler(&["task", "t"]);
-    let parent = Sandbox::new("task_tests_parent")
+    let parent = Sandbox::admitted("task_tests_parent")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tests/support.knv", support)
@@ -13401,7 +13426,7 @@ fn task_cannot_reach_tests_through_a_dotted_entry_a_parent_path_or_a_link() {
             "(use ../tests/support helper)\n\n(deftask t () (helper))\n",
         )
         .compiler(&["task", "t"]);
-    let linked_sandbox = Sandbox::new("task_tests_link")
+    let linked_sandbox = Sandbox::admitted("task_tests_link")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tests/support.knv", support)
@@ -13418,7 +13443,7 @@ fn task_cannot_reach_tests_through_a_dotted_entry_a_parent_path_or_a_link() {
 
 #[test]
 fn task_module_hiding_a_source_module_names_the_tasks_directory() {
-    let task = Sandbox::new("task_hides_source")
+    let task = Sandbox::admitted("task_hides_source")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("src/util.knv", "(export x)\n\n(def x 1)\n")
@@ -13433,7 +13458,7 @@ fn task_module_hiding_a_source_module_names_the_tasks_directory() {
 
 #[test]
 fn task_listing_warns_of_a_task_module_hiding_a_source_module() {
-    let task = Sandbox::new("task_listing_hides_source")
+    let task = Sandbox::admitted("task_listing_hides_source")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("src/util.knv", "(export x)\n\n(def x 1)\n")
@@ -13449,7 +13474,7 @@ fn task_listing_warns_of_a_task_module_hiding_a_source_module() {
 
 #[test]
 fn task_refuses_a_task_in_a_folder_that_the_task_tree_skips() {
-    let task = Sandbox::new("task_in_hidden_folder")
+    let task = Sandbox::admitted("task_in_hidden_folder")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -13466,7 +13491,7 @@ fn task_refuses_a_task_in_a_folder_that_the_task_tree_skips() {
 
 #[test]
 fn task_refuses_a_task_in_a_library_that_lies_under_tasks() {
-    let task = Sandbox::new("task_in_library_under_tasks")
+    let task = Sandbox::admitted("task_in_library_under_tasks")
         .with_file(
             &Language::project_file_name(),
             "(defproject chores (libraries (hints :path \"tasks/lib\")))\n",
@@ -13490,7 +13515,7 @@ fn task_refuses_a_task_in_a_library_that_lies_under_tasks() {
 
 #[test]
 fn task_tree_reads_a_folder_named_like_the_build_folder() {
-    let task = Sandbox::new("task_in_target_folder")
+    let task = Sandbox::admitted("task_in_target_folder")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -13503,7 +13528,7 @@ fn task_tree_reads_a_folder_named_like_the_build_folder() {
 
 #[test]
 fn task_refuses_a_task_in_a_project_file_under_tasks() {
-    let task = Sandbox::new("task_in_project_file")
+    let task = Sandbox::admitted("task_in_project_file")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -13520,7 +13545,7 @@ fn task_refuses_a_task_in_a_project_file_under_tasks() {
 
 #[test]
 fn task_in_a_hidden_folder_of_a_library_under_tasks_names_the_hidden_folder() {
-    let task = Sandbox::new("task_in_hidden_library_folder")
+    let task = Sandbox::admitted("task_in_hidden_library_folder")
         .with_file(
             &Language::project_file_name(),
             "(defproject chores (libraries (hints :path \"tasks/lib\")))\n",
@@ -13542,7 +13567,7 @@ fn task_in_a_hidden_folder_of_a_library_under_tasks_names_the_hidden_folder() {
 
 #[test]
 fn task_in_a_dotted_hidden_folder_names_the_hidden_folder() {
-    let task = Sandbox::new("task_in_dotted_hidden_folder")
+    let task = Sandbox::admitted("task_in_dotted_hidden_folder")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -13559,7 +13584,7 @@ fn task_in_a_dotted_hidden_folder_names_the_hidden_folder() {
 
 #[test]
 fn task_tree_reads_its_target_folder_beside_a_project_file() {
-    let task = Sandbox::new("task_target_beside_project_file")
+    let task = Sandbox::admitted("task_target_beside_project_file")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/project.knv", "(defproject inner)\n")
@@ -13577,7 +13602,7 @@ fn task_tree_reads_its_target_folder_beside_a_project_file() {
 
 #[test]
 fn task_reached_through_a_hidden_link_beside_hidden_folders_runs() {
-    let sandbox = Sandbox::new("task_other_path_beside_hidden")
+    let sandbox = Sandbox::admitted("task_other_path_beside_hidden")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/.a/keep.knv", "(def kept 1)\n")
@@ -13599,7 +13624,7 @@ fn task_reached_through_a_hidden_link_beside_hidden_folders_runs() {
 
 #[test]
 fn test_using_a_source_module_through_a_parent_part_is_told_its_module_path() {
-    let sandbox = Sandbox::new("test_dotted_source_module")
+    let sandbox = Sandbox::admitted("test_dotted_source_module")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/text/marks.knv", PROJECT_MARKS)
         .with_file("tests/marks.knv", DOTTED_MARKS_TEST);
@@ -13609,7 +13634,7 @@ fn test_using_a_source_module_through_a_parent_part_is_told_its_module_path() {
 
 #[test]
 fn test_using_a_hidden_source_module_through_a_parent_part_is_told_the_file_exists() {
-    let sandbox = Sandbox::new("test_dotted_hidden_source_module")
+    let sandbox = Sandbox::admitted("test_dotted_hidden_source_module")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/text/marks.knv", PROJECT_MARKS)
         .with_file("tests/text/marks.knv", PROJECT_MARKS)
@@ -13620,7 +13645,7 @@ fn test_using_a_hidden_source_module_through_a_parent_part_is_told_the_file_exis
 
 #[test]
 fn library_dotted_use_is_told_its_path_within_the_library() {
-    let sandbox = Sandbox::new("library_dotted_use")
+    let sandbox = Sandbox::admitted("library_dotted_use")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\")))\n",
@@ -13642,7 +13667,7 @@ fn library_dotted_use_is_told_its_path_within_the_library() {
 
 #[test]
 fn dotted_use_of_a_local_module_that_a_library_claims_names_the_file() {
-    let sandbox = Sandbox::new("dotted_use_library_claims")
+    let sandbox = Sandbox::admitted("dotted_use_library_claims")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\")))\n",
@@ -13667,7 +13692,7 @@ fn dotted_use_of_a_local_module_that_a_library_claims_names_the_file() {
 
 #[test]
 fn dotted_use_of_a_local_module_that_the_prelude_claims_names_the_file() {
-    let sandbox = Sandbox::new("dotted_use_prelude_claims")
+    let sandbox = Sandbox::admitted("dotted_use_prelude_claims")
         .with_file(
             "main.knv",
             "(use ./prelude/list)\n\n(defn main () (println 1))\n",
@@ -13679,7 +13704,7 @@ fn dotted_use_of_a_local_module_that_the_prelude_claims_names_the_file() {
 
 #[test]
 fn dotted_use_of_the_reserved_project_path_names_the_file() {
-    let sandbox = Sandbox::new("dotted_use_reserved_project")
+    let sandbox = Sandbox::admitted("dotted_use_reserved_project")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file(
             "src/main.knv",
@@ -13692,7 +13717,7 @@ fn dotted_use_of_the_reserved_project_path_names_the_file() {
 
 #[test]
 fn dotted_use_through_a_link_helps_with_the_file_the_link_leads_to() {
-    let sandbox = Sandbox::new("dotted_use_through_link")
+    let sandbox = Sandbox::admitted("dotted_use_through_link")
         .with_file(
             "main.knv",
             "(use .alias/../more)\n\n(defn main () (println 1))\n",
@@ -13708,7 +13733,7 @@ fn dotted_use_through_a_link_helps_with_the_file_the_link_leads_to() {
 
 #[test]
 fn dotted_use_that_leads_to_a_folder_names_no_file() {
-    let sandbox = Sandbox::new("dotted_use_to_folder")
+    let sandbox = Sandbox::admitted("dotted_use_to_folder")
         .with_file(
             "main.knv",
             "(use .alias/../folder)\n\n(defn main () (println 1))\n",
@@ -13724,7 +13749,7 @@ fn dotted_use_that_leads_to_a_folder_names_no_file() {
 
 #[test]
 fn library_dotted_use_of_a_path_its_listed_library_takes_names_the_file() {
-    let sandbox = Sandbox::new("library_dotted_use_listed")
+    let sandbox = Sandbox::admitted("library_dotted_use_listed")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\")))\n",
@@ -13754,7 +13779,7 @@ fn library_dotted_use_of_a_path_its_listed_library_takes_names_the_file() {
 
 #[test]
 fn task_dotted_use_through_a_link_names_the_file_it_reaches() {
-    let sandbox = Sandbox::new("task_dotted_use_through_link")
+    let sandbox = Sandbox::admitted("task_dotted_use_through_link")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -13783,7 +13808,7 @@ fn task_dotted_use_through_a_link_names_the_file_it_reaches() {
 
 #[test]
 fn dotted_use_of_a_link_to_a_file_of_another_extension_helps_with_the_link() {
-    let sandbox = Sandbox::new("dotted_use_link_other_extension")
+    let sandbox = Sandbox::admitted("dotted_use_link_other_extension")
         .with_file("main.knv", "(use ./alias)\n\n(defn main () (println 1))\n")
         .with_file("notes.txt", "(def kept 0)\n")
         .with_file("notes.knv", "(def kept 1)\n");
@@ -13795,7 +13820,7 @@ fn dotted_use_of_a_link_to_a_file_of_another_extension_helps_with_the_link() {
 
 #[test]
 fn dotted_use_through_a_folder_link_out_of_the_root_helps_with_the_path_in_place() {
-    let sandbox = Sandbox::new("dotted_use_folder_link_out")
+    let sandbox = Sandbox::admitted("dotted_use_folder_link_out")
         .with_file(
             "app/main.knv",
             "(use ./ext/foo kept)\n\n(defn main () (println kept))\n",
@@ -13809,7 +13834,7 @@ fn dotted_use_through_a_folder_link_out_of_the_root_helps_with_the_path_in_place
 
 #[test]
 fn dotted_use_with_a_parent_part_to_a_link_of_another_extension_helps_with_the_link() {
-    let sandbox = Sandbox::new("dotted_use_parent_link_other_extension")
+    let sandbox = Sandbox::admitted("dotted_use_parent_link_other_extension")
         .with_file(
             "main.knv",
             "(use deep/../alias)\n\n(defn main () (println 1))\n",
@@ -13825,7 +13850,7 @@ fn dotted_use_with_a_parent_part_to_a_link_of_another_extension_helps_with_the_l
 
 #[test]
 fn task_library_under_tests_with_a_dotted_use_helps_with_its_path() {
-    let sandbox = Sandbox::new("task_library_under_tests_dotted")
+    let sandbox = Sandbox::admitted("task_library_under_tests_dotted")
         .with_file(
             &Language::project_file_name(),
             "(defproject chores (libraries (fixtures :path \"tests/support-lib\")))\n",
@@ -13847,7 +13872,7 @@ fn task_library_under_tests_with_a_dotted_use_helps_with_its_path() {
 
 #[test]
 fn library_dotted_use_of_its_own_root_file_names_the_file() {
-    let sandbox = Sandbox::new("library_dotted_use_root_file")
+    let sandbox = Sandbox::admitted("library_dotted_use_root_file")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\")))\n",
@@ -13870,7 +13895,7 @@ fn library_dotted_use_of_its_own_root_file_names_the_file() {
 
 #[test]
 fn test_of_the_project_using_a_source_module_through_its_folder_is_told_its_module_path() {
-    let sandbox = Sandbox::new("test_project_dotted_source")
+    let sandbox = Sandbox::admitted("test_project_dotted_source")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/text/marks.knv", PROJECT_MARKS)
         .with_file(
@@ -13883,7 +13908,7 @@ fn test_of_the_project_using_a_source_module_through_its_folder_is_told_its_modu
 
 #[test]
 fn dotted_use_of_a_library_file_under_the_source_root_names_the_library() {
-    let sandbox = Sandbox::new("dotted_use_library_under_source")
+    let sandbox = Sandbox::admitted("dotted_use_library_under_source")
         .with_file(
             &Language::project_file_name(),
             "(defproject app (libraries (shapes :path \"src/vendor/shapes\")))\n",
@@ -13904,7 +13929,7 @@ fn dotted_use_of_a_library_file_under_the_source_root_names_the_library() {
 
 #[test]
 fn library_dotted_use_of_a_prelude_path_names_the_file() {
-    let sandbox = Sandbox::new("library_dotted_use_prelude")
+    let sandbox = Sandbox::admitted("library_dotted_use_prelude")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\")))\n",
@@ -13928,7 +13953,7 @@ fn library_dotted_use_of_a_prelude_path_names_the_file() {
 
 #[test]
 fn library_dotted_use_of_a_file_of_a_library_it_cannot_use_names_the_library() {
-    let sandbox = Sandbox::new("library_dotted_use_unseen_library")
+    let sandbox = Sandbox::admitted("library_dotted_use_unseen_library")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\") (dots :path \"../shapes/src/vendor/dots\")))\n",
@@ -13953,7 +13978,7 @@ fn library_dotted_use_of_a_file_of_a_library_it_cannot_use_names_the_library() {
 
 #[test]
 fn dotted_use_of_a_file_of_a_library_inside_another_names_the_inner_library() {
-    let sandbox = Sandbox::new("dotted_use_nested_library")
+    let sandbox = Sandbox::admitted("dotted_use_nested_library")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\") (dots :path \"../shapes/src/vendor/dots\")))\n",
@@ -13975,7 +14000,7 @@ fn dotted_use_of_a_file_of_a_library_inside_another_names_the_inner_library() {
 
 #[test]
 fn library_dotted_use_of_its_own_project_module_is_told_its_path() {
-    let sandbox = Sandbox::new("library_dotted_use_project_module")
+    let sandbox = Sandbox::admitted("library_dotted_use_project_module")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\")))\n",
@@ -13999,7 +14024,7 @@ fn library_dotted_use_of_its_own_project_module_is_told_its_path() {
 
 #[test]
 fn dotted_use_in_an_example_project_inside_a_library_is_told_its_own_path() {
-    let sandbox = Sandbox::new("dotted_use_example_inside_library")
+    let sandbox = Sandbox::admitted("dotted_use_example_inside_library")
         .with_file(
             &format!("shapes/{}", Language::project_file_name()),
             "(defproject shapes :lib \"shapes.knv\")\n",
@@ -14023,7 +14048,7 @@ fn dotted_use_in_an_example_project_inside_a_library_is_told_its_own_path() {
 
 #[test]
 fn library_dotted_use_inside_a_library_nested_in_another_is_told_its_own_path() {
-    let sandbox = Sandbox::new("library_dotted_use_nested_own")
+    let sandbox = Sandbox::admitted("library_dotted_use_nested_own")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app (libraries (shapes :path \"../shapes\") (dots :path \"../shapes/src/vendor/dots\")))\n",
@@ -14049,7 +14074,7 @@ fn library_dotted_use_inside_a_library_nested_in_another_is_told_its_own_path() 
 
 #[test]
 fn test_in_a_root_entry_project_using_a_folder_named_like_a_library_is_told_its_path() {
-    let sandbox = Sandbox::new("test_root_entry_library_folder")
+    let sandbox = Sandbox::admitted("test_root_entry_library_folder")
         .with_file(
             &format!("app/{}", Language::project_file_name()),
             "(defproject app :entry \"main.knv\" (libraries (shapes :path \"../shapes\")))\n",
@@ -14077,7 +14102,7 @@ fn test_in_a_root_entry_project_using_a_folder_named_like_a_library_is_told_its_
 
 #[test]
 fn use_through_a_linked_folder_of_a_loaded_file_is_told_its_first_path() {
-    let sandbox = Sandbox::new("use_linked_folder_loaded_file")
+    let sandbox = Sandbox::admitted("use_linked_folder_loaded_file")
         .with_file(
             "main.knv",
             "(use shapes/box count)\n(use alias/box size)\n\n(defn main () (println (+ count (size))))\n",
@@ -14094,7 +14119,7 @@ fn use_through_a_linked_folder_of_a_loaded_file_is_told_its_first_path() {
 
 #[test]
 fn use_of_one_file_by_one_path_twice_loads_it_once() {
-    let sandbox = Sandbox::new("use_one_path_twice")
+    let sandbox = Sandbox::admitted("use_one_path_twice")
         .with_file(
             "main.knv",
             "(use shapes/box count)\n(use shapes/box size)\n\n(defn main () (println (+ count (size))))\n",
@@ -14109,7 +14134,7 @@ fn use_of_one_file_by_one_path_twice_loads_it_once() {
 
 #[test]
 fn task_reaching_a_task_file_through_a_hidden_link_before_the_tree_is_told_its_tree_path() {
-    let sandbox = Sandbox::new("task_link_before_tree")
+    let sandbox = Sandbox::admitted("task_link_before_tree")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/sub/more.knv", "(deftask more () (println \"m\"))\n")
@@ -14125,8 +14150,8 @@ fn task_reaching_a_task_file_through_a_hidden_link_before_the_tree_is_told_its_t
 
 #[test]
 fn test_of_a_folder_with_a_linked_folder_inside_runs_each_test_once() {
-    let sandbox =
-        Sandbox::new("test_linked_folder_once").with_file("tests/sub/a_test.knv", PROJECT_TESTS);
+    let sandbox = Sandbox::admitted("test_linked_folder_once")
+        .with_file("tests/sub/a_test.knv", PROJECT_TESTS);
     std::os::unix::fs::symlink("sub", sandbox.directory.join("tests/alias"))
         .expect("the sandbox can hold a symbolic link");
     let test = sandbox.compiler(&["test", "tests"]);
@@ -14138,7 +14163,7 @@ fn test_of_a_folder_with_a_linked_folder_inside_runs_each_test_once() {
 
 #[test]
 fn use_of_a_library_file_by_a_local_path_is_told_the_library_path() {
-    let sandbox = Sandbox::new("use_library_file_local_path")
+    let sandbox = Sandbox::admitted("use_library_file_local_path")
         .with_file(
             &Language::project_file_name(),
             "(defproject app\n  (libraries (hints :path \"src/vendor/hints\")))\n",
@@ -14162,7 +14187,7 @@ fn use_of_a_library_file_by_a_local_path_is_told_the_library_path() {
 
 #[test]
 fn test_of_the_project_with_a_library_inside_the_source_root_loads_it_once() {
-    let sandbox = Sandbox::new("test_project_vendored_library")
+    let sandbox = Sandbox::admitted("test_project_vendored_library")
         .with_file(
             &Language::project_file_name(),
             "(defproject tiles\n  (libraries (shapes :path \"src/vendor/shapes\")))\n",
@@ -14200,7 +14225,7 @@ impl VendoredLibraryProject {
     const EVERY_TEST_RUN: &str = "running 2 tests\ntest tests/a_test/adds ... ok\ntest vendor/shapes/src/lib/adds ... ok\n2 passed, 0 failed\n";
 
     fn new(name: &str, user: &str) -> Self {
-        let sandbox = Sandbox::new(name)
+        let sandbox = Sandbox::admitted(name)
             .with_file(
                 &Language::project_file_name(),
                 "(defproject tiles\n  (libraries (shapes :path \"src/vendor/shapes\")))\n",
@@ -14223,7 +14248,7 @@ impl VendoredLibraryProject {
 
 #[test]
 fn doc_write_with_a_linked_folder_inside_the_source_root_loads_each_file_once() {
-    let sandbox = Sandbox::new("doc_write_linked_folder")
+    let sandbox = Sandbox::admitted("doc_write_linked_folder")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file(
             "src/main.knv",
@@ -14240,7 +14265,7 @@ fn doc_write_with_a_linked_folder_inside_the_source_root_loads_each_file_once() 
 
 #[test]
 fn task_with_a_linked_folder_inside_tasks_runs() {
-    let sandbox = Sandbox::new("task_linked_folder_inside")
+    let sandbox = Sandbox::admitted("task_linked_folder_inside")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/sub/more.knv", "(deftask more () (println \"m\"))\n")
@@ -14253,7 +14278,7 @@ fn task_with_a_linked_folder_inside_tasks_runs() {
 
 #[test]
 fn test_of_a_folder_with_a_link_out_of_it_runs_the_linked_tests() {
-    let sandbox = Sandbox::new("test_link_out_of_folder")
+    let sandbox = Sandbox::admitted("test_link_out_of_folder")
         .with_file("tests/a_test.knv", PROJECT_TESTS)
         .with_file("extra/b_test.knv", PROJECT_TESTS);
     std::os::unix::fs::symlink("../extra", sandbox.directory.join("tests/ext"))
@@ -14267,7 +14292,7 @@ fn test_of_a_folder_with_a_link_out_of_it_runs_the_linked_tests() {
 
 #[test]
 fn doc_write_of_a_module_written_through_a_linked_folder_finds_it() {
-    let sandbox = Sandbox::new("doc_write_module_through_link")
+    let sandbox = Sandbox::admitted("doc_write_module_through_link")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file(
             "src/main.knv",
@@ -14284,7 +14309,7 @@ fn doc_write_of_a_module_written_through_a_linked_folder_finds_it() {
 
 #[test]
 fn import_cycle_closed_through_a_linked_folder_is_a_cycle() {
-    let sandbox = Sandbox::new("cycle_through_linked_folder")
+    let sandbox = Sandbox::admitted("cycle_through_linked_folder")
         .with_file(
             "main.knv",
             "(use shapes/box area)\n\n(defn main () (println (area 2)))\n",
@@ -14305,7 +14330,7 @@ fn import_cycle_closed_through_a_linked_folder_is_a_cycle() {
 
 #[test]
 fn task_in_a_hidden_folder_reached_through_a_link_runs() {
-    let sandbox = Sandbox::new("task_link_to_hidden_folder")
+    let sandbox = Sandbox::admitted("task_link_to_hidden_folder")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/a.knv", "(deftask a () (println \"a\"))\n")
@@ -14318,7 +14343,7 @@ fn task_in_a_hidden_folder_reached_through_a_link_runs() {
 
 #[test]
 fn test_in_a_hidden_folder_reached_through_a_link_runs() {
-    let sandbox = Sandbox::new("test_link_to_hidden_folder")
+    let sandbox = Sandbox::admitted("test_link_to_hidden_folder")
         .with_file("tests/a_test.knv", PROJECT_TESTS)
         .with_file("tests/.shared/b_test.knv", PROJECT_TESTS);
     std::os::unix::fs::symlink(".shared", sandbox.directory.join("tests/shared"))
@@ -14332,7 +14357,7 @@ fn test_in_a_hidden_folder_reached_through_a_link_runs() {
 
 #[test]
 fn libraries_that_list_one_library_under_two_names_both_load_it() {
-    let sandbox = Sandbox::new("two_names_for_one_library")
+    let sandbox = Sandbox::admitted("two_names_for_one_library")
         .with_file(
             &Language::project_file_name(),
             "(defproject app\n  (libraries (a :path \"libs/a\") (b :path \"libs/b\")))\n",
@@ -14365,7 +14390,7 @@ fn libraries_that_list_one_library_under_two_names_both_load_it() {
 
 #[test]
 fn second_path_written_in_two_files_is_reported_in_each() {
-    let sandbox = Sandbox::new("second_path_in_two_files")
+    let sandbox = Sandbox::admitted("second_path_in_two_files")
         .with_file(
             "main.knv",
             "(use shapes/box count)\n(use util twice)\n(use alias/box size)\n\n(defn main () (println (+ count (twice (size)))))\n",
@@ -14390,7 +14415,7 @@ const DOTTED_LIBRARY_ROOT: &str =
 
 #[test]
 fn task_reached_through_a_hidden_link_runs_with_the_tree_module() {
-    let sandbox = Sandbox::new("task_through_hidden_link")
+    let sandbox = Sandbox::admitted("task_through_hidden_link")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/sub/more.knv", "(deftask more () (println \"m\"))\n")
@@ -14410,7 +14435,7 @@ fn task_reached_through_a_hidden_link_runs_with_the_tree_module() {
 
 #[test]
 fn task_in_the_second_hidden_folder_names_the_hidden_folder() {
-    let task = Sandbox::new("task_in_second_hidden_folder")
+    let task = Sandbox::admitted("task_in_second_hidden_folder")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file("tasks/.a/keep.knv", "(def kept 1)\n")
@@ -14425,7 +14450,7 @@ fn task_in_the_second_hidden_folder_names_the_hidden_folder() {
 
 #[test]
 fn task_file_may_still_import_deftask_from_prelude_task() {
-    let task = Sandbox::new("task_explicit_import")
+    let task = Sandbox::admitted("task_explicit_import")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -14438,7 +14463,7 @@ fn task_file_may_still_import_deftask_from_prelude_task() {
 
 #[test]
 fn check_separates_a_task_warning_from_an_entry_warning() {
-    let sandbox = Sandbox::new("check_task_and_entry_warnings")
+    let sandbox = Sandbox::admitted("check_task_and_entry_warnings")
         .with_file(&Language::project_file_name(), PROJECT)
         .with_file("src/main.knv", LintsFixture::PICKS)
         .with_file(
@@ -14472,7 +14497,7 @@ fn task_cannot_reach_another_task_module_through_the_source_root() {
     let reports: Vec<String> = [false, true]
         .iter()
         .map(|with_tests| {
-            let sandbox = Sandbox::new(&format!("task_through_source_root_{with_tests}"))
+            let sandbox = Sandbox::admitted(&format!("task_through_source_root_{with_tests}"))
                 .with_file(
                     &Language::project_file_name(),
                     "(defproject rootent :entry \"main.knv\")\n",
@@ -14500,7 +14525,7 @@ fn task_cannot_reach_another_task_module_through_the_source_root() {
 
 #[test]
 fn task_with_a_bounded_open_success_is_refused_at_its_name() {
-    let task = Sandbox::new("task_bounded_success")
+    let task = Sandbox::admitted("task_bounded_success")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -14513,7 +14538,7 @@ fn task_with_a_bounded_open_success_is_refused_at_its_name() {
 
 #[test]
 fn task_help_keeps_the_docstring_indentation_relative_to_its_text() {
-    let task = Sandbox::new("task_help_indentation")
+    let task = Sandbox::admitted("task_help_indentation")
         .with_file(&Language::project_file_name(), TASK_PROJECT)
         .with_file("src/main.knv", TASK_MODULE)
         .with_file(
@@ -14595,86 +14620,59 @@ impl ReferenceSources {
     }
 }
 
-struct TestFilters {
-    arguments: Vec<String>,
-}
+struct ExactName;
 
-impl TestFilters {
-    const VALUED_OPTIONS: [&str; 7] = [
-        "--skip",
-        "--test-threads",
-        "--color",
-        "--format",
-        "--logfile",
-        "--shuffle-seed",
-        "-Z",
-    ];
-    const OPTION_PREFIX: char = '-';
+type CliFilters = TestArguments<ExactName>;
 
-    fn from_arguments() -> Self {
-        Self::of(std::env::args().skip(1))
-    }
-
-    fn of(arguments: impl IntoIterator<Item = String>) -> Self {
-        Self {
-            arguments: arguments.into_iter().collect(),
-        }
-    }
-
-    fn filters(&self) -> Vec<&str> {
-        let mut filters = Vec::new();
-        let mut arguments = self.arguments.iter();
-        while let Some(argument) = arguments.next() {
-            if Self::VALUED_OPTIONS.contains(&argument.as_str()) {
-                arguments.next();
-            } else if !argument.starts_with(Self::OPTION_PREFIX) {
-                filters.push(argument.as_str());
-            }
-        }
-        filters
-    }
-}
-
-impl Narrowing for TestFilters {
-    fn narrows(&self) -> bool {
-        !self.filters().is_empty()
+impl FilterRule for ExactName {
+    fn narrows(filters: &[&str], exact: bool) -> bool {
+        exact && !filters.is_empty()
     }
 }
 
 struct WholeCliRun;
 
 impl WholeCliRun {
-    const CI: &str = "CI";
-    const SKIP: &str = "--skip";
-    const PROBING_TEST: &str = "a_local_whole_cli_run_stops_with_the_refusal";
+    const SMALL_SUBSTRING: &str = "help_lists_every_command";
 
     fn output() -> Output {
         let executable = std::env::current_exe().expect("the test binary has a path");
-        Command::new(executable)
-            .args([Self::SKIP, Self::PROBING_TEST])
-            .env_remove(Self::CI)
-            .env_remove(LocalEnvironment::OWNER_OVERRIDE)
+        let mut command = Command::new(executable);
+        command.arg(Self::SMALL_SUBSTRING);
+        RunEnvironment::clear_from(&mut command)
             .output()
             .expect("the test binary starts")
     }
 }
 
 #[test]
-fn a_whole_cli_run_names_no_test() {
-    let arguments = ["--test-threads", "4", "--skip", "fmt", "--quiet"].map(String::from);
-    assert!(!TestFilters::of(arguments).narrows());
+fn a_cli_run_without_exact_names_no_test() {
+    for arguments in [
+        vec!["--test-threads", "4", "--skip", "fmt", "--quiet"],
+        vec!["_"],
+        vec!["doc"],
+    ] {
+        let arguments = arguments.into_iter().map(String::from);
+        assert!(!CliFilters::of(arguments).narrows());
+    }
 }
 
 #[test]
-fn a_named_cli_test_narrows_the_run() {
+fn a_cli_filter_with_exact_names_one_test() {
     let arguments = ["fmt_lays_out", "--exact"].map(String::from);
-    assert_eq!(TestFilters::of(arguments).filters(), ["fmt_lays_out"]);
+    assert!(CliFilters::of(arguments).narrows());
 }
 
 #[test]
-fn a_local_whole_cli_run_stops_with_the_refusal() {
+fn a_one_character_cli_filter_with_exact_names_one_test() {
+    let arguments = ["e", "--exact"].map(String::from);
+    assert!(CliFilters::of(arguments).narrows());
+}
+
+#[test]
+fn a_local_cli_run_without_exact_stops_with_the_refusal() {
     let output = WholeCliRun::output();
     let errors = String::from_utf8_lossy(&output.stderr);
-    assert_eq!(output.status.code(), Some(1), "{errors}");
-    assert!(errors.contains(HeavyTestRun::REFUSAL), "{errors}");
+    assert!(!output.status.success(), "{errors}");
+    assert_eq!(errors.matches(HeavyTestRun::REFUSAL).count(), 1, "{errors}");
 }

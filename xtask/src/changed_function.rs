@@ -53,7 +53,8 @@ impl ChangedFunction {
     fn clearing_step(&self) -> String {
         match &self.broader {
             Some(run) => format!(
-                "If `cargo test {run}` covers them, dispatch the forecast again with `-f also='{run}'`; otherwise test them."
+                "If `{}` covers them, dispatch the forecast again with `-f also='{run}'`; otherwise test them.",
+                run.cargo_command()
             ),
             None => "Name the test that covers them in the forecast's `also` input, or test them."
                 .to_string(),

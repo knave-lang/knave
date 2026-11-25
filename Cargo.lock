@@ -339,6 +339,7 @@ dependencies = [
  "anstyle",
  "clap",
  "ctrlc",
+ "globset",
  "insta",
  "knave-agree",
  "knave-expand",

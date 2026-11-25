@@ -16,6 +16,7 @@ mod crap_forecast_task;
 mod design;
 mod emitted_lints;
 mod failure;
+mod fork_point;
 mod function_owner;
 mod functions;
 mod gate;
@@ -148,7 +149,7 @@ impl RatchetTask {
 
     fn gate(&self, workspace_root: &Path) -> Result<RatchetGate, TaskFailure> {
         let fork_point = self.base.fork_point(workspace_root)?;
-        Ok(RatchetGate::new(workspace_root, &fork_point))
+        Ok(RatchetGate::new(workspace_root, fork_point))
     }
 }
 

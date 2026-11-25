@@ -76,7 +76,9 @@ impl CrapForecastTask {
     }
 
     fn selection_lines(runs: &[TestRun]) -> Vec<String> {
-        let run_lines = runs.iter().map(|run| format!("run: cargo test {run}"));
+        let run_lines = runs
+            .iter()
+            .map(|run| format!("run: {}", run.cargo_command()));
         let note_lines = Self::left_out_fixture_notes(runs)
             .into_iter()
             .map(|note| format!("note: {note}"));

@@ -24,6 +24,10 @@ impl TestRun {
         &self.arguments
     }
 
+    pub fn cargo_command(&self) -> String {
+        format!("cargo test {self}")
+    }
+
     pub fn selects_stage_test(&self, test: &str) -> bool {
         let Some(filters) = self
             .arguments
@@ -257,6 +261,14 @@ mod tests {
         assert_eq!(
             TestRun::parse(" --test  cli fmt").arguments(),
             ["--test", "cli", "fmt"]
+        );
+    }
+
+    #[test]
+    fn a_run_reproduces_as_its_cargo_test_command() {
+        assert_eq!(
+            TestRun::parse("--test stages emit_fixtures").cargo_command(),
+            "cargo test --test stages emit_fixtures"
         );
     }
 }

@@ -3,4 +3,5 @@ use crate::types::unifier::LiteralKind;
 
 pub(in crate::types) trait LiteralUnknowns {
     fn fresh_literal(&mut self, kind: LiteralKind) -> Type;
+    fn is_literal(&self, value: &Type) -> bool;
 }

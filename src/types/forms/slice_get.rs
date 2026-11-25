@@ -112,6 +112,10 @@ mod tests {
         fn option_of(&self, value: Type) -> Type {
             Self::option_of(value)
         }
+
+        fn iterator_of(&self, _item: Type) -> Type {
+            unreachable!("this form builds no iterator")
+        }
     }
 
     impl CollectionAssumptions for SliceFixture {

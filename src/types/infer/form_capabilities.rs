@@ -157,6 +157,10 @@ impl PreludeShapes for TypeChecker {
     fn option_of(&self, value: Type) -> Type {
         self.prelude_types().option_type(value)
     }
+
+    fn iterator_of(&self, item: Type) -> Type {
+        self.prelude_types().iterator_type(item)
+    }
 }
 
 impl CollectionLookups for TypeChecker {
@@ -166,6 +170,10 @@ impl CollectionLookups for TypeChecker {
 
     fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
         Collection::of_referent(ty, &self.declarations.types().rust_types)
+    }
+
+    fn collection_item(&self, ty: &Type) -> Option<(Type, Type)> {
+        TypeChecker::collection_item(self, ty)
     }
 }
 
@@ -194,6 +202,10 @@ impl FieldMoves for TypeChecker {
 impl LiteralUnknowns for TypeChecker {
     fn fresh_literal(&mut self, kind: LiteralKind) -> Type {
         self.unifier.fresh_literal(kind)
+    }
+
+    fn is_literal(&self, value: &Type) -> bool {
+        TypeChecker::is_literal(self, value)
     }
 }
 

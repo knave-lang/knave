@@ -98,7 +98,7 @@ mod tests {
     use super::LonePreludeModule;
     use crate::core::ModulePath;
     use crate::diagnostic::{DiagnosticCode, Diagnostics};
-    use crate::modules::ModuleSources;
+    use crate::modules::{EmbeddedModules, ModuleSources};
     use crate::project::{LintDefaults, WrittenEntries};
     use crate::source::{SourceMap, Span};
 
@@ -109,7 +109,7 @@ mod tests {
         const FORM_GAP: &str = "\n\n";
 
         fn lint() -> LonePreludeModule {
-            LonePreludeModule::expanded(&ModulePath::new(ModuleSources::LINT))
+            LonePreludeModule::expanded(&ModulePath::new(EmbeddedModules::LINT))
         }
 
         fn first_default_lint(module: &LonePreludeModule) -> Span {

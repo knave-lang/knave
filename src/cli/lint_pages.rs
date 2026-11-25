@@ -2,7 +2,7 @@ use super::expanded_page::ExpandedPage;
 use crate::core::{Expr, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::ExpansionSession;
-use crate::modules::{ModuleSources, PublicPrelude};
+use crate::modules::{EmbeddedModules, PublicPrelude};
 use crate::reader::Form;
 use crate::source::SourceId;
 
@@ -62,6 +62,6 @@ impl<'a, 's> LintPages<'a, 's> {
         let source = self.session.add_source(Self::CALL_SOURCE, call);
         let form = self.session.read(source)?.remove(0);
         self.session
-            .expression_in(&ModulePath::new(ModuleSources::DOCUMENTATION), form)
+            .expression_in(&ModulePath::new(EmbeddedModules::DOCUMENTATION), form)
     }
 }

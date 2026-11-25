@@ -2,7 +2,7 @@ use rustc_hash::FxHashSet;
 
 use super::lone_prelude_module::LonePreludeModule;
 use crate::core::ModulePath;
-use crate::modules::ModuleSources;
+use crate::modules::EmbeddedModules;
 use crate::project::{LevelKeys, ProjectRoles, ProjectVocabulary};
 use crate::reader::Form;
 
@@ -14,7 +14,7 @@ pub struct ProjectFileModule {
 
 impl ProjectFileModule {
     pub fn expanded() -> Self {
-        let path = ModulePath::new(ModuleSources::PROJECT_SHAPES);
+        let path = ModulePath::new(EmbeddedModules::PROJECT_SHAPES);
         Self::of(&LonePreludeModule::expanded(&path))
     }
 

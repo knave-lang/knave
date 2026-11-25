@@ -3,7 +3,7 @@ mod project_file_module;
 
 use super::prelude_state::{PreludeState, UnreadablePrelude};
 use crate::core::ModulePath;
-use crate::modules::ModuleSources;
+use crate::modules::EmbeddedModules;
 use crate::project::{LintDefaults, ProjectVocabulary};
 use lone_prelude_module::LonePreludeModule;
 use project_file_module::ProjectFileModule;
@@ -16,7 +16,7 @@ impl SavedPrelude {
     }
 
     fn vocabulary_with_defaults() -> ProjectVocabulary {
-        let lint = LonePreludeModule::expanded(&ModulePath::new(ModuleSources::LINT));
+        let lint = LonePreludeModule::expanded(&ModulePath::new(EmbeddedModules::LINT));
         ProjectFileModule::expanded()
             .vocabulary()
             .with_lint_defaults(&lint.notes(LintDefaults::NOTE))

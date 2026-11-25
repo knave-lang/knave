@@ -40,13 +40,7 @@ pub struct ModuleSources {
 }
 
 impl ModuleSources {
-    pub const TEST: &str = "prelude/test";
     pub const LIBRARY_EXAMPLES: &str = "prelude/library-examples";
-    pub const TASK: &str = "prelude/task";
-    pub const PROJECT_SHAPES: &str = "prelude/project-file";
-    pub const DOCUMENTATION: &str = "prelude/documentation";
-    pub const DOCSTRINGS: &str = "prelude/internal/docstrings";
-    pub const LINT: &str = "prelude/lint";
     const PRELUDE_DIRECTORY: &str = "prelude/";
     const INTERNAL_DIRECTORY: &str = "prelude/internal/";
     const BYTE_ORDER_MARK: char = '\u{feff}';
@@ -328,7 +322,7 @@ mod tests {
     use crate::language::Language;
     use crate::modules::ModuleSource;
     use crate::modules::libraries::{LibraryRoot, LibraryTable};
-    use crate::modules::{LibraryFolder, ProgramLibraries};
+    use crate::modules::{EmbeddedModules, LibraryFolder, ProgramLibraries};
 
     struct TestedApp {
         directory: PathBuf,
@@ -387,14 +381,14 @@ mod tests {
 
     #[test]
     fn every_reader_of_the_embedded_files_sees_prelude_lint() {
-        let lint = ModulePath::new(ModuleSources::LINT);
+        let lint = ModulePath::new(EmbeddedModules::LINT);
         let sources = ModuleSources::new(PathBuf::from("no-such-root"), PathBuf::new());
         assert!(ModuleSources::is_embedded_prelude(&lint));
         assert!(matches!(
             sources.find(&lint),
             Some(ModuleSource::Text { .. })
         ));
-        assert!(PublicPrelude::paths().contains(&ModuleSources::LINT.to_string()));
+        assert!(PublicPrelude::paths().contains(&EmbeddedModules::LINT.to_string()));
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use super::markdown_fence::MarkdownFence;
 use crate::core::{Keyword, ModulePath};
 use crate::expand::PreludeState;
-use crate::modules::ModuleSources;
+use crate::modules::EmbeddedModules;
 use crate::reader::{Form, FormKind};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -18,7 +18,7 @@ impl DocstringSyntax {
     const FENCE_LENGTH: &'static str = "fence-length";
 
     pub fn of_prelude(state: &PreludeState) -> Self {
-        let module = ModulePath::new(ModuleSources::DOCSTRINGS);
+        let module = ModulePath::new(EmbeddedModules::DOCSTRINGS);
         let note = state
             .module_note(&module, Self::NOTE)
             .and_then(<[Form]>::first)

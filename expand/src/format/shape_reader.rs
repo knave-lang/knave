@@ -6,7 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::shapes::{ShapeCatalog, ShapeStatement};
 use crate::core::{DefinitionForm, KernelForm, ModulePath};
 use crate::modules::ReservedModulePaths;
-use crate::modules::{LocatedModule, ModuleSource, ModuleSources};
+use crate::modules::{EmbeddedModules, LocatedModule, ModuleSource, ModuleSources};
 use crate::reader::{Form, Reader};
 use crate::source::SourceMap;
 
@@ -55,7 +55,7 @@ impl ModuleLookup {
         let mut lookup = Self::beside(directory);
         lookup
             .shape_modules
-            .push(ModulePath::new(ModuleSources::PROJECT_SHAPES));
+            .push(ModulePath::new(EmbeddedModules::PROJECT_SHAPES));
         lookup
     }
 

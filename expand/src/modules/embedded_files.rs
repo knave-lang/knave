@@ -3,6 +3,12 @@ use crate::core::ModulePath;
 pub struct EmbeddedModules;
 
 impl EmbeddedModules {
+    pub const TEST: &str = "prelude/test";
+    pub const TASK: &str = "prelude/task";
+    pub const PROJECT_SHAPES: &str = "prelude/project-file";
+    pub const DOCUMENTATION: &str = "prelude/documentation";
+    pub const DOCSTRINGS: &str = "prelude/internal/docstrings";
+    pub const LINT: &str = "prelude/lint";
     const FILES_IN_PAGE_OWNER_ORDER: [(&str, &str); 29] = [
         ("prelude", include_str!("../../prelude/prelude.knv")),
         (
@@ -45,20 +51,20 @@ impl EmbeddedModules {
             include_str!("../../prelude/sequence.knv"),
         ),
         (
-            "prelude/internal/docstrings",
+            Self::DOCSTRINGS,
             include_str!("../../prelude/internal/docstrings.knv"),
         ),
-        ("prelude/test", include_str!("../../prelude/test.knv")),
-        ("prelude/task", include_str!("../../prelude/task.knv")),
+        (Self::TEST, include_str!("../../prelude/test.knv")),
+        (Self::TASK, include_str!("../../prelude/task.knv")),
         (
-            "prelude/project-file",
+            Self::PROJECT_SHAPES,
             include_str!("../../prelude/project-file.knv"),
         ),
         (
-            "prelude/documentation",
+            Self::DOCUMENTATION,
             include_str!("../../prelude/documentation.knv"),
         ),
-        ("prelude/lint", include_str!("../../prelude/lint.knv")),
+        (Self::LINT, include_str!("../../prelude/lint.knv")),
         (
             "prelude/internal/links",
             include_str!("../../prelude/internal/links.knv"),
@@ -92,7 +98,7 @@ mod tests {
     use super::EmbeddedModules;
     use crate::core::ModulePath;
     use crate::language::Language;
-    use crate::modules::{ModuleSources, ReservedModulePaths};
+    use crate::modules::ReservedModulePaths;
 
     struct PreludeFolder {
         root: PathBuf,
@@ -171,7 +177,7 @@ mod tests {
         )));
         assert_eq!(EmbeddedModules::text(&ModulePath::new("geometry")), None);
         assert!(EmbeddedModules::contains(&ModulePath::new(
-            ModuleSources::LINT
+            EmbeddedModules::LINT
         )));
     }
 }

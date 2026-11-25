@@ -19,7 +19,7 @@ use super::user_label_output::UserLabelOutput;
 use crate::core::{Expr, ExprKind, Leaf, Literal, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
-use crate::modules::ModuleSources;
+use crate::modules::EmbeddedModules;
 use crate::reader::StringLiteral;
 use crate::source::{SourceId, Span};
 use crate::types::{TypedExpr, TypedExprKind, TypedLeaf, TypedProgram};
@@ -253,7 +253,7 @@ impl TaskCatalog {
         call: &TaskLookupCall,
     ) -> Result<TaskLookup, Diagnostics> {
         let form = call.form(&mut session, Self::LOOKUP_SOURCE)?;
-        let expression = session.expression_in(&ModulePath::new(ModuleSources::TASK), form)?;
+        let expression = session.expression_in(&ModulePath::new(EmbeddedModules::TASK), form)?;
         let warnings = session.finish()?.warnings;
         Ok(TaskLookup {
             expression,

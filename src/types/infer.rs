@@ -13,6 +13,7 @@ use super::forms::{
 };
 use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
+use super::rust_leaf::RustLeaf;
 use super::variant_site::VariantSite;
 use std::rc::Rc;
 
@@ -46,8 +47,7 @@ use super::{pattern_fields::PatternFields, pattern_placement::PatternPlacement};
 use crate::core::{
     Arm, Binder, BindingId, BindingKind, BorrowTrait, Control, EqualityTrait, Expr, ExprKind,
     FieldLabel, HashTrait, KeyedPath, Lambda, Leaf, Literal, MapOperation, OrderTrait, Pattern,
-    PatternArguments, PatternKind, PrimitiveType, Push, ReferenceKind, RustTemplate, StructExpr,
-    TypeExpr, TypeExprKind, VariantInfo,
+    PatternArguments, PatternKind, PrimitiveType, Push, ReferenceKind, StructExpr, VariantInfo,
 };
 use crate::diagnostic::{Diagnostic, DiagnosticCode, SimilarName};
 use crate::source::Span;
@@ -2237,16 +2237,8 @@ impl TypeChecker {
         result: Type,
         span: Span,
     ) -> TypedExpr {
-        let template = RustTemplate {
-            template: Rc::from(template),
-            type_expr: TypeExpr::new(TypeExprKind::Hole, span),
-            clauses: Vec::new(),
-        };
-        TypedExpr {
-            kind: TypedExprKind::Leaf(TypedLeaf::Rust(Rc::new(template))),
-            ty: Type::Function(crate::types::ClosureKind::Fn, parameters, Box::new(result)),
-            span,
-        }
+        let ty = Type::Function(crate::types::ClosureKind::Fn, parameters, Box::new(result));
+        RustLeaf::new(template).typed(ty, span)
     }
 
     fn point_struct_base_to_fields(&self, error: Diagnostic, base: &Type) -> Diagnostic {

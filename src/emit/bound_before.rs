@@ -1,9 +1,8 @@
 use super::lift_placement::LiftPlacement;
 use super::lifted_temporary::LiftedTemporary;
-use super::rust_leaf::RustLeaf;
 use super::temporary_scope::TemporaryScope;
 use super::tree_position::TreePosition;
-use crate::types::TypedExpr;
+use crate::types::{RustLeaf, TypedExpr};
 
 pub struct BoundBefore {
     owner: TreePosition,

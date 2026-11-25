@@ -15,9 +15,12 @@ mod if_operands;
 mod inline_rust;
 mod literal_value;
 mod local_binding;
+mod map_lookup;
 mod map_write;
+mod pair_part_read;
 mod recurrence;
 mod sequence;
+mod slice_get;
 mod string_push;
 mod type_text_request;
 mod variable_reference;
@@ -31,14 +34,14 @@ pub(super) use association::Association;
 pub(super) use body::Body;
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
-    AnnotationLowering, ArgumentTyping, AssociationTyping, Bindings, BodyTyping, ChildTyping,
-    CollectionAssumptions, CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves,
-    GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys,
-    MapWriteTyping, Obligations, OperandTyping, PlaceReads, PlaceWrites, RecurTargets,
-    SchemeInstantiation, StringPushTyping, StructBases, SyntheticCalls, TemplateSchemes,
-    TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns, VariableTyping,
-    VariantArms, VariantSites, VectorPushTyping, VectorWriteTyping, WholePlaceWriteTyping,
-    WriteCollectionTyping,
+    AnnotationLowering, ArgumentTyping, AssociationTyping, Bindings, BodyTyping, CalleeShapes,
+    ChildTyping, CollectionAssumptions, CollectionLookups, CollectionShapes, ExpectedChildTyping,
+    FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys,
+    MapLookupTyping, MapWriteTyping, Obligations, OperandTyping, OptionShapes, PairPartTyping,
+    PairParts, PlaceReads, PlaceWrites, RecurTargets, SchemeInstantiation, SliceGetTyping,
+    StringPushTyping, StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting,
+    TypeTextRecords, TypeUnification, Unknowns, VariableTyping, VariantArms, VariantSites,
+    VectorPushTyping, VectorWriteTyping, WholePlaceWriteTyping, WriteCollectionTyping,
 };
 pub(super) use conditional::Conditional;
 pub(super) use dereference::Dereference;
@@ -46,9 +49,12 @@ pub(super) use expression_form::ExpressionForm;
 pub(super) use if_operands::IfOperands;
 pub(super) use inline_rust::InlineRust;
 pub(super) use literal_value::LiteralValue;
+pub(super) use map_lookup::MapLookup;
 pub(super) use map_write::MapWrite;
+pub(super) use pair_part_read::PairPartRead;
 pub(super) use recurrence::Recurrence;
 pub(super) use sequence::Sequence;
+pub(super) use slice_get::SliceGet;
 pub(super) use string_push::StringPush;
 pub(super) use type_text_request::TypeTextRequest;
 pub(super) use variable_reference::VariableReference;

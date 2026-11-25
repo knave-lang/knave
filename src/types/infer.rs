@@ -7,9 +7,9 @@ mod variant_target;
 
 use super::forms::{
     ArgumentTyping, Association, Body, Borrowing, Conditional, Dereference, ExpressionForm,
-    IfOperands, InlineRust, LiteralValue, MapWrite, Recurrence, Sequence, StringPush,
-    TypeTextRequest, VariableReference, VariantConstruction, VectorPush, VectorWrite,
-    WholePlaceWrite, WriteCollection,
+    IfOperands, InlineRust, LiteralValue, MapLookup, MapWrite, PairPartRead, Recurrence, Sequence,
+    SliceGet, StringPush, TypeTextRequest, VariableReference, VariantConstruction, VectorPush,
+    VectorWrite, WholePlaceWrite, WriteCollection,
 };
 use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
@@ -1873,8 +1873,12 @@ impl TypeChecker {
         match operation {
             MapOperation::Iter => self.infer_iter(value, arguments, span),
             MapOperation::Get => self.infer_get(value, arguments, span),
-            MapOperation::First => self.infer_part(PositionalRead::first(span), value, arguments),
-            MapOperation::Second => self.infer_part(PositionalRead::second(span), value, arguments),
+            MapOperation::First => {
+                PairPartRead::new(PositionalRead::first(span), arguments).type_with(self, value)
+            }
+            MapOperation::Second => {
+                PairPartRead::new(PositionalRead::second(span), arguments).type_with(self, value)
+            }
             _ => self.infer_map_only(operation, value, arguments, span),
         }
     }
@@ -1942,51 +1946,9 @@ impl TypeChecker {
         match Collection::of_referent(&resolved, &self.declarations.types().rust_types)
             .filter(Collection::is_map)
         {
-            Some(collection) => {
-                self.check_map_key(&collection, value.span);
-                self.infer_map_lookup(value, collection, arguments, span)
-            }
-            None => self.infer_slice_get(value, arguments, span),
+            Some(map) => MapLookup::new(arguments, span).type_with(self, value, map),
+            None => SliceGet::new(arguments, span).type_with(self, value),
         }
-    }
-
-    fn infer_slice_get(
-        &mut self,
-        value: TypedExpr,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if arguments.len() != 1 {
-            return Err(TypeProblems::wrong_argument_count(1, arguments.len(), span));
-        }
-        self.note_unknown_collection(&value, CollectionAssumption::GetCollection);
-        let element = self.unifier.fresh();
-        let parameters = vec![
-            Type::shared(self.prelude_types().slice_of(element.clone())),
-            Collection::INDEX,
-        ];
-        let result = self.prelude_types().option_type(element);
-        let template = SyntheticTemplate::SLICE_LOOK_UP.text();
-        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
-    }
-
-    fn infer_part(
-        &mut self,
-        read: PositionalRead,
-        value: TypedExpr,
-        arguments: &[Expr],
-    ) -> Result<TypedExpr, Diagnostic> {
-        let (reader, span) = (read.reader(arguments)?, read.span());
-        let types = &self.declarations.types().rust_types;
-        if let Some(found) = read.pair_part(&self.unifier.resolve(&value.ty), types) {
-            return Ok(found.read(value, |part| self.passing_facts().holds_copy_value(part)));
-        }
-        self.note_unknown_collection(&value, read.slice_assumption());
-        let callee = self.infer(reader)?;
-        let (parameters, ty) = self.function_shape(&callee, 1)?;
-        let borrow = self.pass_call_argument(Some(&callee), 0, &parameters[0], &value)?;
-        let kind = TypedExprKind::Call(Box::new(callee), vec![TypedArgument { value, borrow }]);
-        Ok(TypedExpr { kind, ty, span })
     }
 
     fn infer_push(&mut self, push: &Push, span: Span) -> Result<TypedExpr, Diagnostic> {
@@ -2056,42 +2018,6 @@ impl TypeChecker {
                 self.report_missing_trait(&bound, &key, span);
             }
         }
-    }
-
-    fn infer_map_lookup(
-        &mut self,
-        value: TypedExpr,
-        collection: Collection,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if arguments.len() != 1 {
-            return Err(TypeProblems::wrong_argument_count(1, arguments.len(), span));
-        }
-        let query_type = self.unifier.fresh();
-        let parameters = vec![
-            Type::shared(collection.ty().clone()),
-            Type::shared(query_type),
-        ];
-        let result = self.prelude_types().option_type(collection.value().clone());
-        let call = self.synthetic_call_with_value(
-            SyntheticTemplate::LOOK_UP.text(),
-            parameters,
-            result,
-            value,
-            arguments,
-            span,
-        )?;
-        let query = match &call.kind {
-            TypedExprKind::Call(_, arguments) => {
-                arguments.get(1).map(|argument| argument.value.ty.clone())
-            }
-            _ => None,
-        };
-        if let Some(query) = query {
-            self.check_borrow(&collection, &query, arguments[0].span());
-        }
-        Ok(call)
     }
 
     fn check_borrow(&mut self, collection: &Collection, query: &Type, span: Span) {

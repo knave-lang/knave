@@ -47,7 +47,10 @@ requested_range() {
   }
 }
 
-if [[ -n ${BASE_INPUT:-} ]]; then
+if [[ -n ${HEAD_INPUT:-} && -z ${BASE_INPUT:-} ]]; then
+  echo "::error::A head input needs a base input: give both to test a backfill slice, or neither for the nightly range."
+  exit 1
+elif [[ -n ${BASE_INPUT:-} ]]; then
   requested_range
 else
   nightly_range

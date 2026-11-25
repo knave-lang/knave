@@ -5,28 +5,56 @@ source .github/mutation/issue.sh
 source .github/mutation/shard-results.sh
 
 readonly ISSUE_INTRODUCTION='Each comment below records one backfill slice of the nightly mutants: its range, its run, and the mutants that no test caught. Check a box once a test covers the line or the code is simplified.'
-readonly MOST_COMMENT_CHARACTERS=60000
+readonly MOST_COMMENT_BYTES=60000
+readonly FULL_COMMENT=slice-comment-full.md
+readonly COMMENT=slice-comment.md
 
 main() {
-  local number
+  local number survivors
   number=$(nightly_issue | issue_number)
   if [[ -z $number ]]; then
     number=$(gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_INTRODUCTION" | sed 's#.*/##')
   fi
-  slice_comment | head -c "$MOST_COMMENT_CHARACTERS" > slice-comment.md
-  gh issue comment "$number" --body-file slice-comment.md
+  survivors=$(surviving_mutants)
+  slice_comment "$survivors" > "$FULL_COMMENT"
+  fit_to_comment_limit "$FULL_COMMENT" > "$COMMENT"
+  gh issue comment "$number" --body-file "$COMMENT"
+  if [[ -n $survivors ]]; then
+    gh issue reopen "$number" 2>/dev/null || true
+  fi
   if ! every_shard_completed; then
     fail "A mutation shard did not finish, so this slice is incomplete."
   fi
 }
 
 slice_comment() {
+  local survivors=$1
   echo "## \`$BASE\` to \`$HEAD_COMMIT\`"
   echo
+  if ((${SHARD_COUNT:-0} == 0)); then
+    echo "[This run]($RUN_URL) found no Rust source change in the slice, so it has no mutants."
+    return
+  fi
   echo "[This run]($RUN_URL) tested the slice: $(verdict_counts)."
-  every_shard_completed || echo "Some shards did not finish, so the slice needs a rerun."
   echo
-  surviving_mutants | grep . || echo "No mutant survived."
+  if [[ -n $survivors ]]; then
+    echo "$survivors"
+  elif every_shard_completed; then
+    echo "No mutant survived."
+  fi
+  every_shard_completed || echo "Some shards did not finish, so the slice needs a rerun."
+}
+
+fit_to_comment_limit() {
+  local full=$1
+  local kept total
+  kept=$(LC_ALL=C awk -v limit="$MOST_COMMENT_BYTES" '{ bytes += length($0) + 1; if (bytes > limit) exit; count++ } END { print count + 0 }' "$full")
+  total=$(wc -l < "$full")
+  head -n "$kept" "$full"
+  if ((kept < total)); then
+    echo
+    echo "This comment leaves out $((total - kept)) lines past GitHub's size limit. The run's shard artifacts hold every result."
+  fi
 }
 
 verdict_counts() {

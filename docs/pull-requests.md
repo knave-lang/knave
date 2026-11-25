@@ -351,8 +351,8 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 gh workflow run mutation.yml --ref main -f base=<commit before the slice> -f head=<last commit of the slice>
 ```
 
-**Dispatch one slice at a time, and dispatch the next after the run ends.** The workflow runs one range at a time, and a newer pending run replaces an older pending one.
+**Dispatch one slice at a time, and dispatch the next after the run ends.** The workflow runs one range at a time, and a newer pending run replaces an older pending one. The scheduled run at 03:00 UTC waits in the same queue. Whichever of a pending slice and the night's run joins the queue later cancels the other.
 
 **Size each slice as about one day of commits on `main`.** A larger slice can hold more mutants than the shards finish.
 
-**If a slice's comment says some shards did not finish, dispatch the slice again.**
+**If a slice's comment says some shards did not finish, dispatch the slice again.** Then check every box of the earlier comment of that slice: the rerun's comment supersedes it.

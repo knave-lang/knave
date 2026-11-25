@@ -202,12 +202,6 @@ jobs:
         with:
           name: mutants
           path: mutants
-      - name: Compare the mutants' seconds with their estimates
-        if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
-        timeout-minutes: 5
-        env:
-          MUTANTS: mutants
-        run: bash .github/mutation/check-estimates.sh
       - name: Record the backfill slice
         if: (inputs.base || '') != ''
         timeout-minutes: 5
@@ -231,3 +225,10 @@ jobs:
           MUTANTS: mutants
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash .github/mutation/report.sh
+      - name: Compare the mutants' seconds with their estimates
+        if: ${{ !cancelled() && needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0' }}
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          MUTANTS: mutants
+        run: bash .github/mutation/check-estimates.sh

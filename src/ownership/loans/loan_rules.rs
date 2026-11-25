@@ -1,16 +1,12 @@
 use super::type_memo::TypeMemo;
-use crate::ownership::result_ties::ResultTies;
-use crate::ownership::store_pairs::StorePairs;
-use crate::ownership::store_ties::StoreTies;
+use crate::ownership::callee_borrows::CalleeBorrows;
 use crate::types::{
-    BorrowingTypes, CopyRules, TemplateTies, Type, TypedExpr, TypedExprKind, TypedProgram,
-    TypedStructExpr,
+    BorrowingTypes, CopyRules, Type, TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr,
 };
 
 pub struct LoanRules<'p> {
     program: &'p TypedProgram,
-    ties: ResultTies<'p>,
-    stores: StoreTies<'p>,
+    callees: CalleeBorrows<'p>,
     copy: CopyRules<'p>,
     moved: TypeMemo,
     borrowing: TypeMemo,
@@ -20,8 +16,7 @@ impl<'p> LoanRules<'p> {
     pub fn of(program: &'p TypedProgram) -> Self {
         Self {
             program,
-            ties: ResultTies::new(program),
-            stores: StoreTies::new(program),
+            callees: CalleeBorrows::new(program),
             copy: CopyRules::new(&program.declarations, &program.generics),
             moved: TypeMemo::default(),
             borrowing: TypeMemo::default(),
@@ -32,12 +27,8 @@ impl<'p> LoanRules<'p> {
         self.moved.answer(ty, |ty| !self.copy.is_copy(ty))
     }
 
-    pub fn ties(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        self.ties.of(callee)
-    }
-
-    pub fn stores(&self, callee: &TypedExpr) -> StorePairs {
-        self.stores.of(callee)
+    pub fn callees(&self) -> &CalleeBorrows<'p> {
+        &self.callees
     }
 
     pub fn reads_through_a_stored_reference(&self, read: &TypedExpr) -> bool {

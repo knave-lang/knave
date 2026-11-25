@@ -1,59 +1,22 @@
-use std::cell::RefCell;
-
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use super::tied_parts::TiedParts;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, ParameterRole, Regions, ResultRegions, SharedLifetime, TemplateTies, Type, TypeLifetimes,
-    TypedDefinition, TypedExpr, TypedLambda, TypedProgram,
+    ParameterRole, Regions, ResultRegions, SharedLifetime, TemplateTies, Type, TypeLifetimes,
+    TypedDefinition, TypedLambda, TypedProgram,
 };
 
 pub struct ResultTies<'p> {
     program: &'p TypedProgram,
-    definitions: DefinitionTable<'p>,
-    ties_by_function: RefCell<FxHashMap<BindingId, TemplateTies>>,
 }
 
 impl<'p> ResultTies<'p> {
     pub fn new(program: &'p TypedProgram) -> Self {
-        Self {
-            program,
-            definitions: DefinitionTable::of(program),
-            ties_by_function: RefCell::default(),
-        }
+        Self { program }
     }
 
-    pub fn of(&self, callee: &TypedExpr) -> Option<TemplateTies> {
-        match self.called_function(callee) {
-            Some((definition, lambda)) => Some(self.remembered_ties(definition, lambda)),
-            None => self
-                .program
-                .template_borrows
-                .read_template(callee, None, |_, ties| ties.cloned()),
-        }
-    }
-
-    fn called_function(
-        &self,
-        callee: &TypedExpr,
-    ) -> Option<(&'p TypedDefinition, &'p TypedLambda)> {
-        let definition = self.definitions.called_definition(callee)?;
-        Some((definition, definition.value.lambda_value()?))
-    }
-
-    fn remembered_ties(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> TemplateTies {
-        if let Some(known) = self.ties_by_function.borrow().get(&definition.binding) {
-            return known.clone();
-        }
-        let ties = self.function_ties(definition, lambda);
-        self.ties_by_function
-            .borrow_mut()
-            .insert(definition.binding, ties.clone());
-        ties
-    }
-
-    fn function_ties(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> TemplateTies {
+    pub fn of_function(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> TemplateTies {
         if let Some(written) = Self::written_result(definition) {
             let lent = self.signature_lent(lambda, written);
             return Self::without_partial_ties(lambda, written, lent);

@@ -1,51 +1,22 @@
-use std::cell::RefCell;
-
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use super::store_pairs::StorePairs;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, Lifetime, SharedLifetime, Type, TypeLifetimes, TypedDefinition,
-    TypedExpr, TypedLambda, TypedProgram,
+    Lifetime, SharedLifetime, Type, TypeLifetimes, TypedDefinition,
+    TypedLambda, TypedProgram,
 };
 
 pub struct StoreTies<'p> {
     program: &'p TypedProgram,
-    definitions: DefinitionTable<'p>,
-    pairs_by_function: RefCell<FxHashMap<BindingId, StorePairs>>,
 }
 
 impl<'p> StoreTies<'p> {
     pub fn new(program: &'p TypedProgram) -> Self {
-        Self {
-            program,
-            definitions: DefinitionTable::of(program),
-            pairs_by_function: RefCell::default(),
-        }
+        Self { program }
     }
 
-    pub fn of(&self, callee: &TypedExpr) -> StorePairs {
-        let Some(definition) = self.definitions.called_definition(callee) else {
-            return StorePairs::default();
-        };
-        match definition.value.lambda_value() {
-            Some(lambda) => self.remembered_pairs(definition, lambda),
-            None => StorePairs::default(),
-        }
-    }
-
-    fn remembered_pairs(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> StorePairs {
-        if let Some(known) = self.pairs_by_function.borrow().get(&definition.binding) {
-            return known.clone();
-        }
-        let pairs = self.function_pairs(definition, lambda);
-        self.pairs_by_function
-            .borrow_mut()
-            .insert(definition.binding, pairs.clone());
-        pairs
-    }
-
-    fn function_pairs(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> StorePairs {
+    pub fn of_function(&self, definition: &TypedDefinition, lambda: &TypedLambda) -> StorePairs {
         let Type::Function(_, declared, _) = &definition.value.ty else {
             return StorePairs::default();
         };

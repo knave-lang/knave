@@ -39,7 +39,7 @@ impl<'c, 'w> CallWalk<'c, 'w> {
     }
 
     fn store_into_targets(&mut self, passed: &[PassedHoldings]) {
-        let stores = self.walk.rules().stores(self.site.callee());
+        let stores = self.walk.rules().callees().stores(self.site.callee());
         for (target, values) in stores.stores() {
             let stored = values
                 .iter()

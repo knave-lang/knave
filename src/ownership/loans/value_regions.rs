@@ -10,7 +10,7 @@ use super::loan_layers::LoanLayers;
 use super::recorded_flow::RecordedFlow;
 use crate::core::BindingId;
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 pub struct ValueRegions {
     loans: FxHashMap<BindingId, LoanLayers>,
     sources: FxHashMap<BindingId, BTreeSet<HeldValue>>,

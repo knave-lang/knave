@@ -1,11 +1,8 @@
-use super::{CollectionShapes, SliceShapes, SyntheticCalls, TypeFitting, Unknowns};
+use super::{CollectionShapes, SyntheticCalls, TypeFitting, Unknowns};
 
 pub(in crate::types) trait VectorWriteTyping:
-    Unknowns + CollectionShapes + SliceShapes + TypeFitting + SyntheticCalls
+    Unknowns + CollectionShapes + TypeFitting + SyntheticCalls
 {
 }
 
-impl<C> VectorWriteTyping for C where
-    C: Unknowns + CollectionShapes + SliceShapes + TypeFitting + SyntheticCalls
-{
-}
+impl<C> VectorWriteTyping for C where C: Unknowns + CollectionShapes + TypeFitting + SyntheticCalls {}

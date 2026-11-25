@@ -108,24 +108,24 @@ mod tests {
     use std::rc::Rc;
 
     use super::Association;
-    use crate::core::{BindingId, Expr, ExprKind, KeyedPath, Leaf, Literal, PrimitiveType};
+    use crate::core::{Expr, ExprKind, KeyedPath, Leaf, Literal};
     use crate::diagnostic::Diagnostic;
     use crate::source::Span;
     use crate::types::collection::Collection;
     use crate::types::expectation::Expectation;
+    use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{
-        ChildTyping, CollectionShapes, ExpressionForm, FieldMoves, MapKeys, StructBases,
-        TypeFitting, Unknowns,
+        ChildTyping, CollectionLookups, CollectionShapes, ExpressionForm, FieldMoves, MapKeys,
+        StructBases, TypeFitting, Unknowns,
     };
     use crate::types::problems::TypeProblems;
-    use crate::types::rust_types::{RustType, RustTypeTable};
     use crate::types::ty::Type;
     use crate::types::typed::TypedExpr;
 
     struct AssociationFixture {
         base: Type,
-        rust_types: RustTypeTable,
+        collections: CollectionFixtures,
         refuses_base: bool,
         fitted: Vec<Type>,
         required_keys: usize,
@@ -133,36 +133,15 @@ mod tests {
     }
 
     impl AssociationFixture {
-        const MAP: BindingId = BindingId::from_index(1);
-        const VECTOR: BindingId = BindingId::from_index(2);
-
         fn of(base: Type) -> Self {
-            let mut rust_types = RustTypeTable::default();
-            rust_types.add(Self::MAP, RustType::hash_map());
             Self {
                 base,
-                rust_types,
+                collections: CollectionFixtures::new(),
                 refuses_base: false,
                 fitted: Vec::new(),
                 required_keys: 0,
                 moved: false,
             }
-        }
-
-        fn map() -> Type {
-            Type::Named(Self::MAP, vec![Self::key(), Type::bool()])
-        }
-
-        fn vector() -> Type {
-            Type::Named(Self::VECTOR, vec![Type::bool()])
-        }
-
-        fn key() -> Type {
-            Type::Primitive(PrimitiveType::Str)
-        }
-
-        fn element() -> Type {
-            Type::Primitive(PrimitiveType::U8)
         }
 
         fn associate(&mut self, keys: usize) -> Result<TypedExpr, Diagnostic> {
@@ -206,21 +185,35 @@ mod tests {
 
     impl Unknowns for AssociationFixture {
         fn fresh(&mut self) -> Type {
-            Self::element()
+            CollectionFixtures::element()
         }
 
         fn resolve(&self, value: &Type) -> Type {
             value.clone()
         }
+
+        fn is_open(&self, _value: &Type) -> bool {
+            false
+        }
+    }
+
+    impl CollectionLookups for AssociationFixture {
+        fn collection_of(&self, ty: &Type) -> Option<Collection> {
+            self.collections.collection_of(ty)
+        }
+
+        fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
+            self.collections.collection_of_referent(ty)
+        }
     }
 
     impl CollectionShapes for AssociationFixture {
-        fn collection_of(&self, ty: &Type) -> Option<Collection> {
-            Collection::of(ty, &self.rust_types)
+        fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
+            CollectionFixtures::nested_vector_of(depth, element)
         }
 
-        fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
-            (0..depth).fold(element.clone(), |ty, _| Type::Named(Self::VECTOR, vec![ty]))
+        fn slice_of(&self, element: Type) -> Type {
+            CollectionFixtures::slice_of(element)
         }
     }
 
@@ -228,6 +221,8 @@ mod tests {
         fn require_map_key(&mut self, _map: &Collection, _span: Span) {
             self.required_keys += 1;
         }
+
+        fn require_key_borrow(&mut self, _map: &Collection, _query: &Type, _span: Span) {}
     }
 
     impl StructBases for AssociationFixture {
@@ -245,74 +240,75 @@ mod tests {
 
     #[test]
     fn a_map_assoc_fits_its_key_and_item_to_the_map() {
-        let mut fixture = AssociationFixture::of(AssociationFixture::map());
+        let mut fixture = AssociationFixture::of(CollectionFixtures::map());
         let _ = fixture.associate(1);
-        assert_eq!(fixture.fitted, [AssociationFixture::key(), Type::bool()]);
+        assert_eq!(fixture.fitted, [CollectionFixtures::key(), Type::bool()]);
     }
 
     #[test]
     fn a_map_assoc_requires_its_key_bounds() {
-        let mut fixture = AssociationFixture::of(AssociationFixture::map());
+        let mut fixture = AssociationFixture::of(CollectionFixtures::map());
         let _ = fixture.associate(1);
         assert_eq!(fixture.required_keys, 1);
     }
 
     #[test]
     fn a_map_assoc_takes_one_key() {
-        let typed = AssociationFixture::of(AssociationFixture::map()).associate(2);
+        let typed = AssociationFixture::of(CollectionFixtures::map()).associate(2);
         assert!(typed.is_err());
     }
 
     #[test]
     fn a_map_assoc_has_the_map_type() {
-        let typed = AssociationFixture::of(AssociationFixture::map()).associate(1);
+        let typed = AssociationFixture::of(CollectionFixtures::map()).associate(1);
         assert_eq!(
             typed.ok().map(|typed| typed.ty),
-            Some(AssociationFixture::map())
+            Some(CollectionFixtures::map())
         );
     }
 
     #[test]
     fn an_assoc_reads_its_base_as_a_moved_field() {
-        let mut fixture = AssociationFixture::of(AssociationFixture::vector());
+        let mut fixture = AssociationFixture::of(CollectionFixtures::vector_of(Type::bool()));
         let _ = fixture.associate(1);
         assert!(fixture.moved);
     }
 
     #[test]
     fn a_vector_assoc_fits_its_base_to_a_vector_as_deep_as_its_keys() {
-        let mut fixture = AssociationFixture::of(AssociationFixture::vector());
+        let mut fixture = AssociationFixture::of(CollectionFixtures::vector_of(Type::bool()));
         let _ = fixture.associate(2);
-        let expected = fixture.nested_vector_of(2, &AssociationFixture::element());
+        let expected = fixture.nested_vector_of(2, &CollectionFixtures::element());
         assert_eq!(fixture.fitted.first(), Some(&expected));
     }
 
     #[test]
     fn a_vector_assoc_fits_each_key_to_an_index() {
-        let mut fixture = AssociationFixture::of(AssociationFixture::vector());
+        let mut fixture = AssociationFixture::of(CollectionFixtures::vector_of(Type::bool()));
         let _ = fixture.associate(2);
         assert_eq!(fixture.fitted[1..3], [Collection::INDEX, Collection::INDEX]);
     }
 
     #[test]
     fn a_vector_assoc_fits_its_item_to_the_element() {
-        let mut fixture = AssociationFixture::of(AssociationFixture::vector());
+        let mut fixture = AssociationFixture::of(CollectionFixtures::vector_of(Type::bool()));
         let _ = fixture.associate(1);
-        assert_eq!(fixture.fitted.last(), Some(&AssociationFixture::element()));
+        assert_eq!(fixture.fitted.last(), Some(&CollectionFixtures::element()));
     }
 
     #[test]
     fn a_vector_assoc_has_its_base_type() {
-        let typed = AssociationFixture::of(AssociationFixture::vector()).associate(1);
+        let typed =
+            AssociationFixture::of(CollectionFixtures::vector_of(Type::bool())).associate(1);
         assert_eq!(
             typed.ok().map(|typed| typed.ty),
-            Some(AssociationFixture::vector())
+            Some(CollectionFixtures::vector_of(Type::bool()))
         );
     }
 
     #[test]
     fn a_refused_base_explains_a_struct_base() {
-        let mut fixture = AssociationFixture::of(AssociationFixture::vector());
+        let mut fixture = AssociationFixture::of(CollectionFixtures::vector_of(Type::bool()));
         fixture.refuses_base = true;
         let error = fixture.associate(1).err();
         assert!(error.is_some_and(|error| !error.helps().is_empty()));

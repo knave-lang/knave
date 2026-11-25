@@ -62,9 +62,7 @@ mod tests {
     use crate::types::expectation::Expectation;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{
-        CollectionShapes, SliceShapes, SyntheticCalls, TypeFitting, Unknowns,
-    };
+    use crate::types::forms::{CollectionShapes, SyntheticCalls, TypeFitting, Unknowns};
     use crate::types::problems::TypeProblems;
     use crate::types::synthetic_call::SyntheticCall;
     use crate::types::synthetic_template::SyntheticTemplate;
@@ -114,19 +112,17 @@ mod tests {
         fn resolve(&self, value: &Type) -> Type {
             value.clone()
         }
+
+        fn is_open(&self, _value: &Type) -> bool {
+            false
+        }
     }
 
     impl CollectionShapes for VectorFixture {
-        fn collection_of(&self, _ty: &Type) -> Option<Collection> {
-            None
-        }
-
         fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
             CollectionFixtures::nested_vector_of(depth, element)
         }
-    }
 
-    impl SliceShapes for VectorFixture {
         fn slice_of(&self, element: Type) -> Type {
             CollectionFixtures::slice_of(element)
         }

@@ -8,18 +8,17 @@ use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionShapes,
-    ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralKinds, LiteralUnknowns, LocalScope,
-    LocalTypes, MacroOrigins, MapBorrows, MapKeys, Obligations, OperandTyping, PlaceReads,
-    RecurTargets, ReferentCollections, SchemeInstantiation, SliceShapes, StructBases,
-    SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification,
-    Unknowns, VariantArms, VariantSites,
+    AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionLookups, CollectionShapes,
+    ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes,
+    MacroOrigins, MapKeys, Obligations, OperandTyping, PlaceReads, RecurTargets,
+    SchemeInstantiation, StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting,
+    TypeTextRecords, TypeUnification, Unknowns, VariantArms, VariantSites,
 };
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
 use crate::types::synthetic_call::SyntheticCall;
 use crate::types::templates::TemplateName;
-use crate::types::ty::{Scheme, Type, TypeVar};
+use crate::types::ty::{Scheme, Type};
 use crate::types::typed::{TypedArgument, TypedExpr};
 use crate::types::unifier::{LiteralKind, UnifyError};
 use crate::types::variant_arm_reference::VariantArmReference;
@@ -80,6 +79,10 @@ impl Unknowns for TypeChecker {
     fn resolve(&self, value: &Type) -> Type {
         self.unifier.resolve(value)
     }
+
+    fn is_open(&self, value: &Type) -> bool {
+        matches!(value, Type::Var(var) if self.unifier.literal_kind(*var).is_none())
+    }
 }
 
 impl Obligations for TypeChecker {
@@ -133,18 +136,32 @@ impl LocalTypes for TypeChecker {
 }
 
 impl CollectionShapes for TypeChecker {
+    fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
+        self.prelude_types().nested_vector_of(depth, element)
+    }
+
+    fn slice_of(&self, element: Type) -> Type {
+        self.prelude_types().slice_of(element)
+    }
+}
+
+impl CollectionLookups for TypeChecker {
     fn collection_of(&self, ty: &Type) -> Option<Collection> {
         Collection::of(ty, &self.declarations.types().rust_types)
     }
 
-    fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
-        self.prelude_types().nested_vector_of(depth, element)
+    fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
+        Collection::of_referent(ty, &self.declarations.types().rust_types)
     }
 }
 
 impl MapKeys for TypeChecker {
     fn require_map_key(&mut self, map: &Collection, span: Span) {
         self.check_map_key(map, span);
+    }
+
+    fn require_key_borrow(&mut self, map: &Collection, query: &Type, span: Span) {
+        self.check_borrow(map, query, span);
     }
 }
 
@@ -269,24 +286,6 @@ impl SyntheticCalls for TypeChecker {
     }
 }
 
-impl ReferentCollections for TypeChecker {
-    fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
-        Collection::of_referent(ty, &self.declarations.types().rust_types)
-    }
-}
-
-impl SliceShapes for TypeChecker {
-    fn slice_of(&self, element: Type) -> Type {
-        self.prelude_types().slice_of(element)
-    }
-}
-
-impl LiteralKinds for TypeChecker {
-    fn literal_kind(&self, var: TypeVar) -> Option<LiteralKind> {
-        self.unifier.literal_kind(var)
-    }
-}
-
 impl TypeUnification for TypeChecker {
     fn unify(&mut self, left: &Type, right: &Type, span: Span) -> Result<(), UnifyError> {
         self.unifier.unify(left, right, span)
@@ -296,11 +295,5 @@ impl TypeUnification for TypeChecker {
 impl TypeDisplays for TypeChecker {
     fn show(&self, ty: &Type) -> String {
         self.display().show(ty)
-    }
-}
-
-impl MapBorrows for TypeChecker {
-    fn check_borrow(&mut self, map: &Collection, query: &Type, span: Span) {
-        TypeChecker::check_borrow(self, map, query, span);
     }
 }

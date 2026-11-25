@@ -8,6 +8,7 @@ use crate::types::check_round::{CheckRound, RoundGrowth};
 use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
+use crate::types::forms::Unknowns;
 use crate::types::graph::DefinitionGraph;
 use crate::types::open_set_at::OpenSetAt;
 use crate::types::pinning::InstantiationReport;
@@ -170,10 +171,7 @@ impl TypeChecker {
         depth == ONE_KEY
             && !self.vector_bases.contains(&value.span)
             && !self.defaults_literal_parameters()
-            && matches!(
-                self.unifier.resolve(&value.ty),
-                Type::Var(var) if self.unifier.literal_kind(var).is_none()
-            )
+            && Unknowns::is_open(self, &self.unifier.resolve(&value.ty))
     }
 
     pub(in crate::types) fn close_open_set_ats(&mut self) {

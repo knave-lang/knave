@@ -1,9 +1,9 @@
 use super::bound_origin_problems::BoundOriginProblems;
 use super::bound_origins::BoundOrigins;
+use super::failure_kind::FailureKind;
 use super::field_bound_problems::FieldBoundProblems;
 use super::inferred_at::InferredAt;
 use super::missing_read::MissingRead;
-use super::settlement_failure::SettlementFailure;
 use super::settlement_verdicts::SettlementVerdicts;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
@@ -44,10 +44,7 @@ impl HeldBound {
     }
 
     fn waits(verdicts: &SettlementVerdicts) -> bool {
-        matches!(
-            verdicts.first_failure(),
-            Some(SettlementFailure::Waiting(_))
-        )
+        verdicts.failure_kind() == Some(FailureKind::Waiting)
     }
 
     fn reads(&self) -> Vec<Span> {

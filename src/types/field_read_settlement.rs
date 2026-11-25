@@ -7,7 +7,7 @@ use super::field_readers::FieldReaders;
 use super::field_traits::FieldTraitPlan;
 use super::inferred_bound_problems::InferredBoundProblems;
 use super::pinning::InstantiationReport;
-use super::reaching_read::ReachingRead;
+use super::reaching_read_set::ReachingReadSet;
 use super::reaching_reads::ReachingReads;
 use super::read_settlements::ReadSettlements;
 use super::reader_shape::ReaderShape;
@@ -77,15 +77,14 @@ impl<'r> FieldReadSettlement<'r> {
         reader: &FieldReader,
     ) -> Result<Option<FieldTraitPlan>, WrittenRefusal> {
         let reads = ReachingReads::new(self.report, program).of(reader);
-        let unreached = matches!(&reads, Ok(found) if found.is_empty());
+        let unreached = matches!(&reads, Ok(found) if found.distinct().is_empty());
         if !reader.read.is_concrete() && !unreached {
             return Err(WrittenRefusal::Read(Self::open_refusal(&reads)));
         }
         let reads = reads?;
         let mut plan: Option<FieldTraitPlan> = None;
-        for reached in reads
-            .into_iter()
-            .filter(|reached| reached.read.read == reader.read)
+        for reached in
+            (reads.into_reads().into_iter()).filter(|reached| reached.read.read == reader.read)
         {
             let implementor = Type::Named(reached.owner, reached.arguments);
             let found = plan.get_or_insert_with(|| FieldTraitPlan {
@@ -127,15 +126,11 @@ impl<'r> FieldReadSettlement<'r> {
             .collect()
     }
 
-    fn open_refusal(reads: &Result<Vec<ReachingRead>, WrittenRefusal>) -> ReadRefusal {
-        let found = reads.as_ref().map(Vec::as_slice).unwrap_or_default();
-        let function = |reached: &ReachingRead| matches!(reached.read.read, Type::Function(..));
-        if found.iter().any(function) {
-            ReadRefusal::Function
-        } else if found.iter().any(|reached| reached.read != found[0].read) {
-            ReadRefusal::Differing
-        } else {
-            ReadRefusal::Open
+    fn open_refusal(reads: &Result<ReachingReadSet, WrittenRefusal>) -> ReadRefusal {
+        match reads {
+            Ok(found) if found.reads_function() => ReadRefusal::Function,
+            Ok(found) if found.differ() => ReadRefusal::Differing,
+            _ => ReadRefusal::Open,
         }
     }
 
@@ -146,7 +141,7 @@ impl<'r> FieldReadSettlement<'r> {
         refusal: WrittenRefusal,
     ) -> Option<String> {
         let reads = ReachingReads::new(self.report, program).of(reader).ok()?;
-        let shown = ReachingReads::shown(program, &reads);
+        let shown = reads.shown(program);
         match refusal {
             WrittenRefusal::Read(ReadRefusal::Open) => Some(RefusalWording::agreed_read(
                 &reader.field,

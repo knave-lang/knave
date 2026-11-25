@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_a_part_of_a_loop_binder_that_borrows_a_local.knv
+---
+hi a
+hi a
+hi a
+hi a

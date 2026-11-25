@@ -11,7 +11,6 @@ use crate::types::{
 #[derive(Clone, Copy)]
 pub enum BoundLocal<'e> {
     Value(&'e TypedExpr),
-    LoopBinder(&'e TypedBinder, &'e TypedExpr),
     Within(&'e TypedExpr),
     Unresolved,
 }
@@ -122,10 +121,7 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
 
     fn loop_binders(&mut self, body: &'e TypedLambda, arguments: &'e [TypedArgument]) {
         for (parameter, argument) in body.params.iter().zip(arguments) {
-            self.bind_local(
-                parameter,
-                BoundLocal::LoopBinder(parameter, &argument.value),
-            );
+            self.bind_value(parameter, &argument.value);
         }
         self.lets(&body.body);
     }
@@ -133,16 +129,16 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     fn lets(&mut self, block: &'e TypedBlock) {
         for item in &block.items {
             if let TypedBodyItem::Let(binder, value) = item {
-                self.bind_local(binder, BoundLocal::Value(value));
+                self.bind_value(binder, value);
             }
         }
     }
 
-    fn bind_local(&mut self, binder: &TypedBinder, local: BoundLocal<'e>) {
+    fn bind_value(&mut self, binder: &TypedBinder, value: &'e TypedExpr) {
         let local = if self.changes_what_it_borrows(binder) {
             BoundLocal::Unresolved
         } else {
-            local
+            BoundLocal::Value(value)
         };
         self.locals.insert(binder.binding, local);
     }

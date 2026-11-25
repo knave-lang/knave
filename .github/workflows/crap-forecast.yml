@@ -54,10 +54,7 @@ jobs:
             if [[ $run =~ [^[:space:]] ]]; then runs+=("$run"); fi
           done <<< "$ALSO"
           mkdir -p "$(dirname "$OUTPUT")"
-          {
-            echo "commit: $GITHUB_SHA"
-            for run in "${runs[@]}"; do echo "also: $run"; done
-          } | tee "$OUTPUT"
+          echo "commit: $GITHUB_SHA" | tee "$OUTPUT"
           nix develop .#ci -c cargo xtask crap-forecast --base "origin/$DEFAULT_BRANCH" --verdict "$VERDICT" "${runs[@]/#/--also=}" 2>&1 | tee -a "$OUTPUT"
       - name: Report the verdict
         if: ${{ !cancelled() && steps.forecast.outcome != 'skipped' }}

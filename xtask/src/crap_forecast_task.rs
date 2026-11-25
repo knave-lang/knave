@@ -57,7 +57,7 @@ impl CrapForecastTask {
     fn forecast(&self, root: &Path, changed: &ChangedLines) -> Result<CrapForecast, TaskFailure> {
         let functions = ChangedFunctions::find(root, changed)?;
         let runs = functions.test_runs(&self.extra_runs());
-        Self::announce_left_out_fixtures(&runs);
+        Self::announce_selection(&runs);
         let report = InstrumentedTests::new(root).run_selected(&runs)?;
         Ok(functions.forecast(&report))
     }
@@ -69,10 +69,18 @@ impl CrapForecastTask {
             .collect()
     }
 
-    fn announce_left_out_fixtures(runs: &[TestRun]) {
-        for note in Self::left_out_fixture_notes(runs) {
-            println!("note: {note}");
+    fn announce_selection(runs: &[TestRun]) {
+        for line in Self::selection_lines(runs) {
+            println!("{line}");
         }
+    }
+
+    fn selection_lines(runs: &[TestRun]) -> Vec<String> {
+        let run_lines = runs.iter().map(|run| format!("run: cargo test {run}"));
+        let note_lines = Self::left_out_fixture_notes(runs)
+            .into_iter()
+            .map(|note| format!("note: {note}"));
+        run_lines.chain(note_lines).collect()
     }
 
     fn left_out_fixture_notes(runs: &[TestRun]) -> Vec<String> {
@@ -139,6 +147,27 @@ mod tests {
             TestRun::parse("--test stages expand_fixtures"),
         ];
         assert!(CrapForecastTask::left_out_fixture_notes(&runs).is_empty());
+    }
+
+    #[test]
+    fn the_selection_names_each_run_before_its_notes() {
+        let runs = [
+            TestRun::parse("--lib emit::"),
+            TestRun::parse("--test stages check_fixtures"),
+        ];
+        let lines = CrapForecastTask::selection_lines(&runs);
+        assert_eq!(
+            lines[..2],
+            [
+                "run: cargo test --lib emit::",
+                "run: cargo test --test stages check_fixtures"
+            ]
+        );
+        assert!(lines[2..].iter().all(|line| line.starts_with("note: ")));
+        assert_eq!(
+            lines.len(),
+            2 + CrapForecastTask::left_out_fixture_notes(&runs).len()
+        );
     }
 
     #[test]

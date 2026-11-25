@@ -12,7 +12,9 @@ use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
 use crate::interpret::{Closure, Value};
 use crate::modules::ReservedModulePaths;
-use crate::modules::{BuiltPreludeRecords, ModuleSource, ModuleSources, PreludeRecords};
+use crate::modules::{
+    BuiltPreludeRecords, ModuleSources, PreludeRecords, PreludeSourceBytes, PreludeSourceFiles,
+};
 use crate::reader::Form;
 use crate::scope::{NameTables, SavedNames};
 use crate::source::{SourceId, SourceMap, Span};
@@ -36,6 +38,7 @@ enum PreludeDefinitions {
 #[derive(serde::Serialize)]
 struct BuiltTables {
     modules: BuiltPreludeRecords,
+    sources: PreludeSourceBytes,
     bindings: BindingTables,
     names: NameTables,
     origins: OriginTables,
@@ -49,6 +52,7 @@ struct BuiltTables {
 #[serde(bound(deserialize = "'de: 'static"))]
 struct LoadedTables {
     modules: PreludeRecords,
+    sources: PreludeSourceFiles,
     bindings: SavedBindings,
     names: SavedNames,
     origins: SavedOrigins,
@@ -136,9 +140,7 @@ impl PreludeState {
         let PreludeDefinitions::Loaded(tables) = self.definitions else {
             panic!("a built prelude state installs only after a save and a load")
         };
-        if !expander.holds_prelude_sources(self.first_source, &tables.modules) {
-            expander.add_prelude_sources(self.first_source, &tables.modules);
-        }
+        expander.add_prelude_sources(self.first_source, tables.sources);
         tables.modules.install_into(&mut expander.modules);
         expander.saved_definitions = tables.definitions;
         expander.saved_macros = tables.macros;
@@ -180,7 +182,9 @@ impl Expander<'_> {
         let origin_tables =
             OriginTables::of_own_layers(std::mem::take(&mut self.tables.macro_origins));
         let note_tables = self.tables.module_notes.take_saved();
-        let modules = BuiltPreludeRecords::of(self.modules.into_records_after(placeholder));
+        let records = self.modules.into_records_after(placeholder);
+        let sources = PreludeSourceFiles::of(&records);
+        let modules = BuiltPreludeRecords::of(records);
         PreludeState {
             first_source,
             prelude,
@@ -188,6 +192,7 @@ impl Expander<'_> {
             lowered_globals,
             definitions: PreludeDefinitions::Built(BuiltTables {
                 modules,
+                sources,
                 bindings: binding_tables,
                 names: name_tables,
                 origins: origin_tables,
@@ -209,35 +214,23 @@ impl Expander<'_> {
         );
     }
 
-    fn add_prelude_sources(&mut self, first_source: SourceId, modules: &PreludeRecords) {
+    fn add_prelude_sources(&mut self, first_source: SourceId, files: PreludeSourceFiles) {
+        if self.holds_prelude_sources(first_source, &files) {
+            return;
+        }
         assert_eq!(
             self.sources.next_id(),
             first_source,
             "the entry is the only source before the prelude"
         );
-        for record in modules.records() {
-            self.add_prelude_source(record.path());
-        }
+        self.sources.add_embedded(Box::new(files));
     }
 
-    fn add_prelude_source(&mut self, path: &ModulePath) {
-        if let Some(ModuleSource::Text { name, text, .. }) = self.module_sources.find(path) {
-            self.sources.add(name, text);
-        }
-    }
-
-    fn holds_prelude_sources(&self, first_source: SourceId, modules: &PreludeRecords) -> bool {
+    fn holds_prelude_sources(&self, first_source: SourceId, files: &PreludeSourceFiles) -> bool {
         if self.sources.next_id().index() <= first_source.index() {
             return false;
         }
-        let held = self.sources.file(first_source).name();
-        modules
-            .records()
-            .find_map(|record| match self.module_sources.find(record.path()) {
-                Some(ModuleSource::Text { name, .. }) => Some(name),
-                _ => None,
-            })
-            .is_some_and(|name| name == held)
+        self.sources.file(first_source).name() == files.first_name()
     }
 }
 
@@ -252,6 +245,7 @@ mod tests {
         BindingArena, BindingKind, ExprKind, Item, ItemKind, KernelConstants, KernelForm,
         KernelType, Leaf, Literal, Namespace,
     };
+    use crate::language::Language;
     use crate::modules::{EmbeddedModules, ModuleRecord};
     use crate::scope::ImportedCounts;
 
@@ -549,6 +543,27 @@ mod tests {
             let path = record.path().as_str();
             assert!(saved.contains(&path.as_ptr()), "{path} is a copy");
         }
+    }
+
+    #[test]
+    fn an_installed_prelude_source_borrows_its_embedded_text() {
+        let program = UserProgram::EMPTY;
+        let (mut sources, entry) = program.sources();
+        let expander = Expander::with_prelude(
+            &mut sources,
+            UserProgram::module_sources(),
+            UserProgram::loaded_state(),
+        );
+        program.entry_module(expander, entry);
+        let first_prelude_source = SourceId::new(entry.index() + 1);
+        let file = sources.file(first_prelude_source);
+        let extension = format!(".{}", Language::EXTENSION);
+        let path = file
+            .name()
+            .strip_suffix(&extension)
+            .expect("a prelude file");
+        let embedded = EmbeddedModules::text(&ModulePath::new(path)).expect("an embedded module");
+        assert_eq!(file.text().as_ptr(), embedded.as_ptr());
     }
 
     #[test]

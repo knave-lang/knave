@@ -32,6 +32,7 @@ impl PreludeRecords {
         PreludeIndex::new(first, self.paths)
     }
 
+    #[cfg(test)]
     pub fn records(&self) -> impl Iterator<Item = &ModuleRecord> {
         self.records.iter()
     }

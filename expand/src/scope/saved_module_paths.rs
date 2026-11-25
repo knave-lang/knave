@@ -30,6 +30,15 @@ impl SavedModulePaths {
         self.keys.position(Self::key(path))
     }
 
+    pub fn path(&self, position: usize) -> &'static str {
+        let (path, _) = self.keys.key(position);
+        path
+    }
+
+    pub fn count(&self) -> usize {
+        self.keys.count()
+    }
+
     fn key(path: &str) -> NameKey<'_> {
         NameKey::new(path, Self::PATH_NAMESPACE)
     }
@@ -56,7 +65,9 @@ mod tests {
         let saved = PathsFixture::saved();
         for (position, path) in PathsFixture::PATHS.into_iter().enumerate() {
             assert_eq!(saved.position(path), Some(position));
+            assert_eq!(saved.path(position), path);
         }
+        assert_eq!(saved.count(), PathsFixture::PATHS.len());
         assert_eq!(saved.position("prelude/result"), None);
     }
 }

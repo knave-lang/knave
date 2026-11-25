@@ -26,14 +26,32 @@ commit_a_day_old() {
   git rev-list -1 --first-parent --before="24 hours ago" HEAD
 }
 
-tested=$(last_tested_commit)
-if is_usable_base "$tested"; then
-  base=$tested
+nightly_range() {
+  local tested
+  tested=$(last_tested_commit)
+  if is_usable_base "$tested"; then
+    base=$tested
+  else
+    base=$(commit_a_day_old)
+    announce_skipped_commits "$tested" "$base"
+  fi
+  head=$(git rev-parse HEAD)
+}
+
+requested_range() {
+  base=$(git rev-parse --verify "$BASE_INPUT^{commit}")
+  head=$(git rev-parse --verify "${HEAD_INPUT:-HEAD}^{commit}")
+  git merge-base --is-ancestor "$base" "$head" || {
+    echo "::error::The base $base is not an ancestor of the head $head."
+    exit 1
+  }
+}
+
+if [[ -n ${BASE_INPUT:-} ]]; then
+  requested_range
 else
-  base=$(commit_a_day_old)
-  announce_skipped_commits "$tested" "$base"
+  nightly_range
 fi
-head=$(git rev-parse HEAD)
 git diff --find-renames "$base" "$head" > "$DIFF"
 changed_sources=$(git diff --name-only "$base" "$head" -- 'src/*.rs' 'expand/src/*.rs' 'xtask/src/*.rs' 'xtask/agree/src/*.rs' | wc -l)
 {

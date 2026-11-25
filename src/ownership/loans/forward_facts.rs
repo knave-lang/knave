@@ -21,9 +21,12 @@ impl ForwardFacts {
     }
 
     pub fn entering(&self, point: PointId, fact: usize) -> bool {
-        self.entering
-            .get(point.index())
+        self.entering_row(point)
             .is_some_and(|row| row.contains(fact))
+    }
+
+    pub fn entering_row(&self, point: PointId) -> Option<&FactRow> {
+        self.entering.get(point.index())
     }
 
     fn grow(&mut self, graph: &PointGraph, transfer: &impl FactTransfer) -> bool {

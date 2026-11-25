@@ -42,6 +42,14 @@ impl FactRow {
         }
     }
 
+    pub fn facts(&self) -> impl Iterator<Item = usize> + '_ {
+        self.words.iter().enumerate().flat_map(|(index, word)| {
+            (0..FACTS_PER_WORD)
+                .filter(move |bit| word & (1 << bit) != 0)
+                .map(move |bit| index * FACTS_PER_WORD + bit)
+        })
+    }
+
     fn bit(fact: usize) -> u64 {
         1 << (fact % FACTS_PER_WORD)
     }
@@ -75,5 +83,6 @@ mod tests {
         row.meet(&kept);
         assert!(!row.contains(1));
         assert!(row.contains(65));
+        assert_eq!(row.facts().collect::<Vec<_>>(), [65]);
     }
 }

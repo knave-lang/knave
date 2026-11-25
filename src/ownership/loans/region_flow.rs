@@ -13,6 +13,7 @@ use super::recorded_flow::RecordedFlow;
 use super::recorded_store::RecordedStore;
 use super::region_graph::{Region, RegionGraph};
 use super::store_holders::StoreHolders;
+use super::store_masks::StoreMasks;
 use super::store_scope::StoreScope;
 use super::stored_loans::StoredLoans;
 use crate::core::BindingId;
@@ -20,13 +21,9 @@ use crate::core::BindingId;
 #[derive(Default)]
 pub struct RegionFlow {
     regions: RegionGraph,
-    stores: Vec<RegionStore>,
+    masks: StoreMasks,
+    loans: Vec<BTreeSet<LoanId>>,
     scope: ForwardFacts,
-}
-
-struct RegionStore {
-    reach: FxHashSet<Region>,
-    loans: BTreeSet<LoanId>,
 }
 
 impl RegionFlow {
@@ -40,52 +37,46 @@ impl RegionFlow {
         }
         let flows = ConnectedFlows::kept(flows, &stores);
         let regions = RegionGraph::linked(ReachingFacts::of(graph, flows), &stores);
-        let (points, stores) = Self::reached(&regions, stores);
+        let points: Vec<PointId> = stores.iter().map(|store| store.point).collect();
+        let reaches = Self::reaches(&regions, &stores);
+        let masks = StoreMasks::of(reaches.iter());
         let live = LiveValues::holding(graph, regions.flowing_at());
-        let reaches = stores.iter().map(|store| &store.reach);
-        let holders = StoreHolders::new(&regions, &live, reaches);
+        let holders = StoreHolders::new(&regions, &live, &masks);
         let scope = StoreScope::of(graph, &holders, &points);
         let scope = ForwardFacts::solved(graph, stores.len(), &scope);
         Self {
             regions,
-            stores,
+            masks,
+            loans: stores.into_iter().map(|store| store.held.loans).collect(),
             scope,
         }
     }
 
     pub fn held_at(&self, point: PointId, binding: BindingId) -> Vec<&BTreeSet<LoanId>> {
-        let regions: FxHashSet<Region> = self
-            .regions
-            .regions_of(binding, point)
-            .into_iter()
-            .collect();
-        self.stores
-            .iter()
-            .enumerate()
-            .filter(|(store, _)| self.scope.entering(point, *store))
-            .filter(|(_, store)| !store.reach.is_disjoint(&regions))
-            .map(|(_, store)| &store.loans)
-            .collect()
+        let Some(entering) = self.scope.entering_row(point) else {
+            return Vec::new();
+        };
+        let mut held = self.masks.held_by(&self.regions.regions_of(binding, point));
+        held.meet(entering);
+        held.facts().map(|store| &self.loans[store]).collect()
     }
 
-    fn reached(
+    fn reaches(
         regions: &RegionGraph,
-        stores: Vec<RecordedStore<StoredLoans>>,
-    ) -> (Vec<PointId>, Vec<RegionStore>) {
-        let mut reaches: FxHashMap<Vec<Region>, FxHashSet<Region>> = FxHashMap::default();
+        stores: &[RecordedStore<StoredLoans>],
+    ) -> Vec<FxHashSet<Region>> {
+        let mut reached: FxHashMap<Vec<Region>, FxHashSet<Region>> = FxHashMap::default();
         stores
-            .into_iter()
+            .iter()
             .map(|store| {
                 let mut starts = regions.regions_of(store.target, store.point);
                 starts.sort_unstable();
-                let reach = reaches
+                reached
                     .entry(starts)
                     .or_insert_with_key(|starts| regions.reached_from(starts))
-                    .clone();
-                let loans = store.held.loans;
-                (store.point, RegionStore { reach, loans })
+                    .clone()
             })
-            .unzip()
+            .collect()
     }
 }
 

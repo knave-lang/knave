@@ -347,7 +347,7 @@ impl ExprKind {
 
     fn collection_children(&self) -> Vec<&Expr> {
         match self {
-            ExprKind::Assoc(path) | ExprKind::SetAt(path) => path.children(),
+            ExprKind::Assoc(path) | ExprKind::SetAt(path) => path.arguments(),
             ExprKind::MapAt(_, value, arguments) => {
                 std::iter::once(value.as_ref()).chain(arguments).collect()
             }
@@ -411,10 +411,6 @@ impl KeyedPath {
             .chain(std::iter::once(self.item.as_ref()))
             .cloned()
             .collect()
-    }
-
-    fn children(&self) -> Vec<&Expr> {
-        self.arguments()
     }
 }
 

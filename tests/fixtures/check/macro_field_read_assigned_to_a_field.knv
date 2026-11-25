@@ -1,0 +1,18 @@
+(use code list)
+
+(defstruct item
+  :name string)
+
+(defstruct holder
+  :label string)
+
+(defmacro read-field (source field) (list field source))
+
+(defn relabel! ((holder (mut holder))
+                (source (ref item)))
+  (set! (:label holder) (read-field source :name)))
+
+(defn main ()
+  (local h (->holder (str "old")))
+  (relabel! (mut h) (->item (str "plum")))
+  (println (:label h)))

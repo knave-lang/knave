@@ -1,0 +1,13 @@
+(use code list)
+
+(defstruct item
+  :name string)
+
+(defmacro read-field (source field) (list field source))
+
+(defn main ()
+  (local label (str "old"))
+  (local source (->item (str "plum")))
+  (set! (mut label)
+        (read-field (ref source) :name))
+  (println label))

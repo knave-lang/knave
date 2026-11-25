@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/whole_place_set_at_labels_a_copied_argument.knv
+---
+error[L0514]: this argument is a copy, so changing it changes nothing
+ --> check/whole_place_set_at_labels_a_copied_argument.knv:6:10
+  |
+2 |   (set-at! count (+ count 1)))
+  |   --------------------------- `bump!` changes its parameter here
+...
+6 |   (bump! (+ total 1)))
+  |          ^^^^^^^^^^^ this is a copy, not a place
+  |
+  = help: bind it and pass the binding: `(let (value (+ total 1)) ...)`
+  = note: run `knave doc L0514` for an explanation

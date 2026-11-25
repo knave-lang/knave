@@ -1,0 +1,51 @@
+(use code list)
+
+(defstruct item
+  :name string)
+
+(defmacro read-field (source field) (list field source))
+
+(defn element-at-a-number ()
+  (local names (vec (str "old")))
+  (local source (->item (str "plum")))
+  (set! (at names 0)
+        (read-field (ref source) :name))
+  (println (at names 0)))
+
+(defn element-at-a-local-and-a-number ()
+  (local grid (vec (vec (str "old"))))
+  (local row 0)
+  (local source (->item (str "pear")))
+  (set! (at (at grid row) 0)
+        (read-field (ref source) :name))
+  (println (at (at grid row) 0)))
+
+(defn entry-at-a-string ()
+  (local labels (sorted-map "first" (str "old")))
+  (local source (->item (str "fig")))
+  (set! (at labels "first")
+        (read-field (ref source) :name))
+  (prn labels))
+
+(defn element-at-a-computed-key ()
+  (local names
+    (vec (str "old") (str "older")))
+  (local source (->item (str "lime")))
+  (set! (at names (+ 0 1))
+        (read-field (ref source) :name))
+  (println (at names 1)))
+
+(defn element-at-a-key-named-like-the-field ()
+  (local names (vec (str "old")))
+  (local name 0)
+  (local source (->item (str "kiwi")))
+  (set! (at names name)
+        (read-field (ref source) :name))
+  (println (at names 0)))
+
+(defn main ()
+  (element-at-a-number)
+  (element-at-a-local-and-a-number)
+  (entry-at-a-string)
+  (element-at-a-computed-key)
+  (element-at-a-key-named-like-the-field))

@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/user_template_of_assignment_type_is_no_assignment.knv
+---
+error[L0514]: this argument is a copy, so changing it changes nothing
+  --> check/user_template_of_assignment_type_is_no_assignment.knv:10:10
+   |
+10 |   (bump! (+ total 1)))
+   |          ^^^^^^^^^^^ this is a copy, not a place
+   |
+   = help: bind it and pass the binding: `(let (value (+ total 1)) ...)`
+   = note: run `knave doc L0514` for an explanation

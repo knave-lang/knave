@@ -1,0 +1,16 @@
+(use code list)
+
+(defstruct item
+  :name string)
+
+(defmacro read-field (source field) (list field source))
+
+(defn rename! ((name (mut string))
+               (source (ref item)))
+  (set! name (read-field source :name)))
+
+(defn main ()
+  (local fig (str "fig"))
+  (rename! (mut fig)
+           (->item :name (str "plum")))
+  (println fig))

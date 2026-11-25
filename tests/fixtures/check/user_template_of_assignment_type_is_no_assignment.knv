@@ -1,0 +1,10 @@
+(def assign!
+  (rust "*{0} = {1}"
+    (where (a) (fn ((mut a) a) unit))))
+
+(defn bump! (count)
+  (assign! count (+ count 1)))
+
+(defn main ()
+  (local total 1)
+  (bump! (+ total 1)))

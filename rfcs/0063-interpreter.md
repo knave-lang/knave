@@ -1,6 +1,6 @@
 # RFC 0063: One interpreter for programs and macro code
 
-**Status:** Accepted
+**Status:** Accepted. Its example of a write through a place, `set!`'s template `*{0} = {1}`, is superseded by 0087: `set!` expands to the `set-at!` kernel form, whose typed node names the place written, and the interpreter writes that place when it runs the node.
 **Date:** 2026-11-12
 
 ## Problem

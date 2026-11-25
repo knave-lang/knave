@@ -1,0 +1,13 @@
+(defstruct point
+  :x int
+  :y int)
+
+(defn main ()
+  (local total 1)
+  (println total)
+  (set! total 2)
+  (set-at! total (+ total 3))
+  (local p (->point 1 2))
+  (set! (:x p) 4)
+  (set-at! (:y p) 5)
+  (println total (:x p) (:y p)))

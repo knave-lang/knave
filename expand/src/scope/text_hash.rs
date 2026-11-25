@@ -5,11 +5,16 @@ impl TextHash {
     const ROTATION: u32 = 5;
     const FINAL_ROTATION: u32 = 26;
     const CHUNK: usize = size_of::<u64>();
+    const UNTAGGED: u32 = u32::MAX;
 
     pub(super) fn of(text: &str, tag: u32) -> u64 {
         let chunks = text.as_bytes().chunks(Self::CHUNK);
         let hash = chunks.fold(0, |hash, chunk| Self::mix(hash, Self::chunk_word(chunk)));
         Self::mix(hash, Self::closing_word(text.len(), tag)).rotate_left(Self::FINAL_ROTATION)
+    }
+
+    pub(super) fn untagged(text: &str) -> u64 {
+        Self::of(text, Self::UNTAGGED)
     }
 
     pub(super) fn first_slot(hash: u64, mask: usize) -> usize {

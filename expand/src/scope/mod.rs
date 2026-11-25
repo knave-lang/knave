@@ -9,6 +9,7 @@ mod name_entries;
 mod name_entry;
 mod name_key;
 mod name_slots;
+mod path_key;
 mod phase;
 mod prelude_names;
 mod qualified_entries;

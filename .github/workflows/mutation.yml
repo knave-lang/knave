@@ -13,6 +13,10 @@ on:
         description: The commit a backfill slice ends at. Defaults to the ref's head
         default: ""
         type: string
+      plan_only:
+        description: Plan the range and its shards, then stop, to check a plan without testing it
+        default: false
+        type: boolean
 
 concurrency:
   group: nightly-mutants
@@ -31,16 +35,17 @@ env:
 
 jobs:
   plan:
-    if: github.ref == 'refs/heads/main' || (inputs.base || '') != '' || (inputs.head || '') != ''
+    if: github.ref == 'refs/heads/main' || (inputs.base || '') != '' || (inputs.head || '') != '' || inputs.plan_only
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     permissions:
       contents: read
       issues: read
     outputs:
       base: ${{ steps.plan.outputs.base }}
       skipped: ${{ steps.plan.outputs.skipped }}
-      head: ${{ steps.plan.outputs.head }}
+      head: ${{ steps.mutants.outputs.head || steps.plan.outputs.head }}
+      deferred-head: ${{ steps.mutants.outputs.deferred-head }}
       changed-sources: ${{ steps.plan.outputs.changed-sources }}
       shards: ${{ steps.mutants.outputs.shards }}
       shard-count: ${{ steps.mutants.outputs.shard-count }}
@@ -78,6 +83,8 @@ jobs:
         env:
           MUTANTS: ${{ runner.temp }}/mutants
           BASE_INPUT: ${{ inputs.base }}
+          BASE: ${{ steps.plan.outputs.base }}
+          HEAD_COMMIT: ${{ steps.plan.outputs.head }}
         run: nix develop .#mutation -c bash "$TOOLS/.github/mutation/write-generated-mutants.sh"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: steps.plan.outputs.changed-sources != '0'
@@ -87,7 +94,7 @@ jobs:
 
   baseline:
     needs: plan
-    if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
+    if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0' && !inputs.plan_only
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
@@ -129,7 +136,7 @@ jobs:
 
   mutants:
     needs: [plan, baseline]
-    if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
+    if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0' && !inputs.plan_only
     strategy:
       fail-fast: false
       max-parallel: 8
@@ -183,7 +190,7 @@ jobs:
 
   report:
     needs: [plan, baseline, mutants]
-    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    if: ${{ !cancelled() && needs.plan.result == 'success' && !inputs.plan_only }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -225,6 +232,7 @@ jobs:
           BASE: ${{ needs.plan.outputs.base }}
           SKIPPED: ${{ needs.plan.outputs.skipped }}
           HEAD_COMMIT: ${{ needs.plan.outputs.head }}
+          DEFERRED_HEAD: ${{ needs.plan.outputs.deferred-head }}
           SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
           MUTANTS: mutants
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

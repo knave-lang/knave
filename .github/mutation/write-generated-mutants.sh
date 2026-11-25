@@ -7,37 +7,86 @@ readonly SHARD_SECONDS=2700
 readonly MOST_SHARDS=48
 
 main() {
-  cargo mutants --workspace --list --json --diff --in-diff "$DIFF" > "$LIST"
+  list_mutants_up_to "$HEAD_COMMIT"
+  if is_over_budget; then
+    refuse_backfill_slice
+    fit_nightly_range
+  fi
   local shard_count
-  shard_count=$(planned "shard_count($SHARD_SECONDS; $MOST_SHARDS)")
+  shard_count=$(planned_shard_count)
   warn_when_over_budget "$shard_count"
   mkdir -p "$MUTANTS"
   planned length > "$MUTANTS/count"
   write_mutants "$shard_count"
   {
+    echo "head=$(git rev-parse HEAD)"
     echo "shard-count=$shard_count"
     echo "shards=$(jq -cn --argjson count "$shard_count" '[range($count)]')"
   } >> "$GITHUB_OUTPUT"
+}
+
+list_mutants_up_to() {
+  git checkout --quiet "$1"
+  git diff --find-renames "$BASE" "$1" > "$DIFF"
+  cargo mutants --workspace --list --json --diff --in-diff "$DIFF" > "$LIST"
 }
 
 planned() {
   jq -L "$MODULES" "include \"shards\"; $1" "$LIST"
 }
 
-warn_when_over_budget() {
-  local shard_count=$1
-  local total
-  total=$(planned estimated_total)
-  if ((total <= shard_count * SHARD_SECONDS)); then
-    return
-  fi
-  local seconds_of_a_minute_on_every_shard=$((shard_count * 60))
-  local minutes=$(((total + seconds_of_a_minute_on_every_shard - 1) / seconds_of_a_minute_on_every_shard))
+planned_shard_count() {
+  planned "shard_count($SHARD_SECONDS; $MOST_SHARDS)"
+}
+
+is_over_budget() {
+  (($(planned estimated_total) > MOST_SHARDS * SHARD_SECONDS))
+}
+
+refuse_backfill_slice() {
   if [[ -n ${BASE_INPUT:-} ]]; then
-    echo "::error::This slice needs about $minutes minutes per shard, over the budget of $((SHARD_SECONDS / 60)). Split it in two at a commit near its middle, and dispatch each half as its own slice."
+    echo "::error::This slice needs about $(minutes_per_shard "$MOST_SHARDS") minutes per shard, over the budget of $((SHARD_SECONDS / 60)). Split it in two at a commit near its middle, and dispatch each half as its own slice."
     exit 1
   fi
-  echo "::warning::The mutants need about $minutes minutes per shard, over the budget of $((SHARD_SECONDS / 60)), so a shard may not finish."
+}
+
+fit_nightly_range() {
+  local commits fitted
+  mapfile -t commits < <(git rev-list --first-parent --reverse "$BASE..$HEAD_COMMIT")
+  if ((${#commits[@]} < 2)); then
+    return
+  fi
+  fitted=$(last_fitting_commit "${commits[@]}")
+  list_mutants_up_to "$fitted"
+  echo "deferred-head=$HEAD_COMMIT" >> "$GITHUB_OUTPUT"
+  echo "::notice::The range up to $HEAD_COMMIT is over the shard budget, so this run tests up to $fitted and the next run tests the rest."
+}
+
+last_fitting_commit() {
+  local commits=("$@")
+  local low=0 high=$((${#commits[@]} - 2)) middle
+  while ((low < high)); do
+    middle=$(((low + high + 1) / 2))
+    list_mutants_up_to "${commits[middle]}"
+    if is_over_budget; then
+      high=$((middle - 1))
+    else
+      low=$middle
+    fi
+  done
+  echo "${commits[low]}"
+}
+
+warn_when_over_budget() {
+  local shard_count=$1
+  if is_over_budget; then
+    echo "::warning::The mutants need about $(minutes_per_shard "$shard_count") minutes per shard, over the budget of $((SHARD_SECONDS / 60)), so a shard may not finish."
+  fi
+}
+
+minutes_per_shard() {
+  local seconds_of_a_minute_on_every_shard=$(($1 * 60))
+  echo $((($(planned estimated_total) + seconds_of_a_minute_on_every_shard - 1) / seconds_of_a_minute_on_every_shard))
 }
 
 write_mutants() {

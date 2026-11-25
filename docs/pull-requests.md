@@ -335,7 +335,7 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 ## Nightly mutants backfill
 
-**The `Nightly mutants` workflow tests the mutants of one range of `main` per run.** A scheduled run starts at the last tested commit that the `Nightly mutants` issue records. It moves that record when every shard finishes. If a shard does not finish, the run still writes its findings. It lists that shard's untested mutants as not finished.
+**The `Nightly mutants` workflow tests the mutants of one range of `main` per run.** A scheduled run starts at the last tested commit that the `Nightly mutants` issue records. It moves that record when every shard finishes. If a shard does not finish, the run still writes its findings. It lists that shard's untested mutants as not finished. If a scheduled run's range is over the shard budget, the run tests only the oldest commits that fit. It then moves the record to the last of them, and the next run tests the rest.
 
 **A backfill slice is a run with an explicit range.** It leaves the `Nightly mutants` issue alone. It adds one comment to the `Mutants backfill` issue, with these parts:
 
@@ -348,6 +348,8 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 ```sh
 gh workflow run mutation.yml --ref main -f base=<commit before the slice> -f head=<last commit of the slice>
 ```
+
+**To check a plan without testing it, add `-f plan_only=true` to the dispatch.** The run plans the range and its shards, then stops. Without a base, it plans the nightly range up to the head of the ref.
 
 **Dispatch one slice at a time, and dispatch the next after the run ends.** The workflow runs one range at a time, and a newer pending run replaces an older pending one. The scheduled run at 03:00 UTC waits in the same queue. Whichever of a pending slice and the night's run joins the queue later cancels the other.
 

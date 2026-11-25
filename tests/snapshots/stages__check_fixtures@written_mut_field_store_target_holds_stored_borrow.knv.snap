@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/written_mut_field_store_target_holds_stored_borrow.knv
+---
+error[L0518]: `t` changes while `s` still borrows it
+  --> check/written_mut_field_store_target_holds_stored_borrow.knv:11:10
+   |
+10 |   (keep! (mut (:names s)) (as-str t))
+   |                                   - `s` borrows `t` here
+11 |   (push! t (char "b"))
+   |          ^ `t` changes here
+12 |   (println (len (:names s))))
+   |                         - `s` is used here, after the change
+   |
+   = help: finish using `s` before changing `t`, or copy what you need out of `t` first
+   = note: run `knave doc L0518` for an explanation

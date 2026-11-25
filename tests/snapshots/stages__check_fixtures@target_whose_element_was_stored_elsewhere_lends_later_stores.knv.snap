@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/target_whose_element_was_stored_elsewhere_lends_later_stores.knv
+---
+error[L0518]: `t` changes while `ms` still borrows it
+  --> check/target_whose_element_was_stored_elsewhere_lends_later_stores.knv:9:10
+   |
+ 8 |   (keep! ns (as-str t))
+   |                     - `ms` borrows `t` here
+ 9 |   (push! t (char "b"))
+   |          ^ `t` changes here
+10 |   (println (len ms)))
+   |                 -- `ms` is used here, after the change
+   |
+   = help: finish using `ms` before changing `t`, or copy what you need out of `t` first
+   = note: run `knave doc L0518` for an explanation

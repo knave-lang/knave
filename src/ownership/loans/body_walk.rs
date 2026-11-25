@@ -11,6 +11,7 @@ use super::loan_place::LoanPlace;
 use super::loan_rules::LoanRules;
 use super::loop_walk::LoopWalk;
 use super::point_id::PointId;
+use super::replaced_local::ReplacedLocal;
 use super::walked::Walked;
 use crate::core::ReferenceKind;
 use crate::source::Span;
@@ -54,7 +55,8 @@ impl<'w> BodyWalk<'w> {
     fn computed(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
             _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
-                self.call(CallSite::new(callee, arguments, self.rules()), at)
+                let site = CallSite::new(callee, arguments, self.rules());
+                self.call(site, ReplacedLocal::in_expr(expr), at)
             }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
             TypedExprKind::Control(control) => self.control(control, at),
@@ -76,10 +78,10 @@ impl<'w> BodyWalk<'w> {
         }
     }
 
-    fn call(&mut self, site: CallSite<'w>, at: PointId) -> Walked {
+    fn call(&mut self, site: CallSite<'w>, replaced: Option<ReplacedLocal>, at: PointId) -> Walked {
         match site.repeated_lambda() {
             Some(lambda) => LoopWalk::new(self).repeated(lambda, site.arguments(), at),
-            None => CallWalk::new(self, site).walk(at),
+            None => CallWalk::new(self, site).replacing(replaced).walk(at),
         }
     }
 
@@ -165,7 +167,9 @@ impl<'w> BodyWalk<'w> {
                         .move_out(place, matched.value.span);
                 }
                 for binder in arm.pattern.binders() {
-                    self.builder.define(bound, binder, &value.held);
+                    self.builder
+                        .values()
+                        .define(bound, binder.binding, &value.held);
                 }
                 self.block(&arm.body, bound)
             })
@@ -224,7 +228,9 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
                     {
                         self.builder.lender(defined).move_out(place, value.span);
                     }
-                    self.builder.define(defined, binder, &bound.held);
+                    self.builder
+                        .values()
+                        .define(defined, binder.binding, &bound.held);
                     Walked::at(defined)
                 }
                 TypedBodyItem::Expr(value) => self.expr(value, walked.end),

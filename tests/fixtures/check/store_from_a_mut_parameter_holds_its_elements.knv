@@ -1,0 +1,11 @@
+(defn move-one! (dst src)
+  (push! dst (clone (at src 0)))
+  (push! src "z"))
+
+(defn main ()
+  (local ds (vec "d"))
+  (local t (str "a"))
+  (local ss (vec (as-str t)))
+  (move-one! ds ss)
+  (push! t (char "b"))
+  (println (len ds)))

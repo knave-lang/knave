@@ -55,7 +55,9 @@ impl<'c, 'w> LoopWalk<'c, 'w> {
         let point = builder.join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut builder.lender(point));
         for (parameter, passed) in parameters.iter().zip(passed) {
-            builder.define(point, parameter, &passed.all());
+            builder
+                .values()
+                .define(point, parameter.binding, &passed.all());
         }
         point
     }

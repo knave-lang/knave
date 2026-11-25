@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/store_ends_when_the_target_is_reset_at_the_top_of_a_loop.knv
+---
+2
+2
+2
+2

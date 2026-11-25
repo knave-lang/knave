@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/store_ends_when_one_arm_resets_the_target_after_it.knv
+---
+2
+1

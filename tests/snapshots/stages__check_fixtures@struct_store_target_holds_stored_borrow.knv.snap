@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/struct_store_target_holds_stored_borrow.knv
+---
+error[L0518]: `t` changes while `s` still borrows it
+  --> check/struct_store_target_holds_stored_borrow.knv:12:10
+   |
+11 |   (shelve! s (as-str t))
+   |                      - `s` borrows `t` here
+12 |   (push! t (char "b"))
+   |          ^ `t` changes here
+13 |   (println (:count s)))
+   |                    - `s` is used here, after the change
+   |
+   = help: finish using `s` before changing `t`, or copy what you need out of `t` first
+   = note: run `knave doc L0518` for an explanation

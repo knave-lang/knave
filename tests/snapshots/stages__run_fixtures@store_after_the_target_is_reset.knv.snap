@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/store_after_the_target_is_reset.knv
+---
+1
+2

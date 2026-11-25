@@ -1,0 +1,11 @@
+(defstruct tag
+  :label (ref str))
+
+(defn keep! (tags one) (push! tags one))
+
+(defn main ()
+  (local ts (vec))
+  (local t (str "a"))
+  (keep! ts (->tag (as-str t)))
+  (push! t (char "b"))
+  (println (len ts)))

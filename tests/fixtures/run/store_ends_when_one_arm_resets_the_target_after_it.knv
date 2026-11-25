@@ -1,0 +1,13 @@
+(defn keep! (names name) (push! names name))
+
+(defn main ()
+  (local ns (vec "x"))
+  (local t (str "a"))
+  (if (> (len ns) 0)
+    (do
+      (keep! ns (as-str t))
+      (println (len ns))
+      (set! ns (vec "q")))
+    (do))
+  (push! t (char "b"))
+  (println (len ns)))

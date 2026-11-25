@@ -33,7 +33,7 @@ use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
     Bound, GenericId, GenericParam, Lifetime, ParameterRole, ReceiverKind, ResultRegions, Scheme,
-    StoredFlows, Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition,
+    SharedLifetime, Type, TypedAssociatedType, TypedBinder, TypedConversion, TypedDefinition,
     TypedExpr, TypedExprKind, TypedImplMethod, TypedLambda, TypedProgram, TypedTraitMethod,
     VariantDefinition,
 };
@@ -919,9 +919,8 @@ impl<'a> ItemEmitter<'a> {
         };
         let used = self.used_written_lifetimes(&definition.value);
         let regions = &self.program.ownership.regions;
-        let stored = regions.stored(lambda.as_ref());
-        let shared = stored.with_values(regions.of(ParameterRole::Reassigned, lambda.as_ref()));
-        let inferred = self.function_lifetime(definition, &shared);
+        let shared_lifetime = SharedLifetime::of(regions, lambda.as_ref());
+        let inferred = self.function_lifetime(definition, &shared_lifetime);
         let mut emitter = self
             .expressions(info.module, &definition.value)
             .with_enclosing_lifetime(inferred.clone());
@@ -936,9 +935,8 @@ impl<'a> ItemEmitter<'a> {
             .copied()
             .filter(|binding| used.contains(binding))
             .collect();
-        let result_regions = ResultRegions::of(regions, lambda.as_ref());
-        let sharing = result_regions.sharing();
-        let store_targets = result_regions.store_only_targets();
+        let sharing = shared_lifetime.sharing();
+        let store_targets = shared_lifetime.store_only_targets();
         let higher_ranked = regions.of(ParameterRole::HigherRanked, lambda.as_ref());
         let capture_plan = self.capture_plan(lambda, &types, &definition.value.ty, &scope);
         let named_lending: Vec<BindingId> = match capture_plan {
@@ -1333,9 +1331,9 @@ impl<'a> ItemEmitter<'a> {
     fn function_lifetime(
         &self,
         definition: &TypedDefinition,
-        stored: &StoredFlows,
+        shared_lifetime: &SharedLifetime<'_, TypedLambda>,
     ) -> Option<String> {
-        if stored.is_empty() {
+        if !shared_lifetime.forced_by_stores() {
             return self.inferred_lifetime(definition);
         }
         Some(self.unused_lifetime_avoiding(&definition.scheme.lifetimes, None))

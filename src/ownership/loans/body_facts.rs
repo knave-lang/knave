@@ -1,7 +1,9 @@
 use std::collections::BTreeSet;
 
 use super::access_facts::AccessFacts;
+use super::body_regions::BodyRegions;
 use super::closure::Closure;
+use super::held_loans::HeldLoans;
 use super::holdings::Holdings;
 use super::lent_place::LentPlace;
 use super::live_loan::LiveLoan;
@@ -14,7 +16,6 @@ use super::point_facts::PointFacts;
 use super::point_graph::PointGraph;
 use super::point_id::PointId;
 use super::result_loans::ResultLoans;
-use super::value_regions::ValueRegions;
 
 struct Liveness {
     values: LiveValues,
@@ -24,17 +25,18 @@ struct Liveness {
 pub struct BodyFacts<'w> {
     graph: PointGraph,
     loans: LoanTable,
-    regions: ValueRegions,
+    held: HeldLoans,
     returned: Holdings,
     closures: Vec<Closure<'w>>,
 }
 
 impl<'w> BodyFacts<'w> {
-    pub fn new(graph: PointGraph, loans: LoanTable, regions: ValueRegions) -> Self {
+    pub fn new(graph: PointGraph, loans: LoanTable, regions: BodyRegions) -> Self {
+        let held = regions.held_loans(&graph);
         Self {
             graph,
             loans,
-            regions: regions.resolved(),
+            held,
             returned: Holdings::default(),
             closures: Vec::new(),
         }
@@ -72,7 +74,7 @@ impl<'w> BodyFacts<'w> {
     }
 
     pub fn escapes(&self) -> Vec<LentPlace<'_>> {
-        self.regions
+        self.held
             .of_holdings(&self.returned)
             .into_iter()
             .map(|loan| self.loans.loan(loan).lending().lent())
@@ -87,7 +89,7 @@ impl<'w> BodyFacts<'w> {
     }
 
     fn liveness(&self) -> Liveness {
-        let returned = self.regions.of_holdings(&self.returned);
+        let returned = self.held.of_holdings(&self.returned);
         Liveness {
             values: LiveValues::of(&self.graph),
             result: ResultLoans::of(&self.graph, &self.loans, &returned),
@@ -103,8 +105,8 @@ impl<'w> BodyFacts<'w> {
         let mut values: Vec<_> = liveness.values.before(point).iter().copied().collect();
         values.sort_unstable();
         let held = values.into_iter().flat_map(|value| {
-            self.regions
-                .of(value)
+            self.held
+                .of(value, point)
                 .into_iter()
                 .map(move |loan| (loan, LoanHolder::Value(value)))
         });

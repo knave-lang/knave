@@ -1,4 +1,4 @@
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::point_graph::PointGraph;
 use super::point_id::PointId;
@@ -10,10 +10,14 @@ pub struct LiveValues {
 
 impl LiveValues {
     pub fn of(graph: &PointGraph) -> Self {
+        Self::holding(graph, &FxHashMap::default())
+    }
+
+    pub fn holding(graph: &PointGraph, flowing: &FxHashMap<PointId, Vec<BindingId>>) -> Self {
         let mut live = Self {
             live_before: graph.points().map(|_| FxHashSet::default()).collect(),
         };
-        while live.grow(graph) {}
+        while live.grow(graph, flowing) {}
         live
     }
 
@@ -21,7 +25,7 @@ impl LiveValues {
         &self.live_before[point.index()]
     }
 
-    fn grow(&mut self, graph: &PointGraph) -> bool {
+    fn grow(&mut self, graph: &PointGraph, flowing: &FxHashMap<PointId, Vec<BindingId>>) -> bool {
         let mut grew = false;
         let mut live = FxHashSet::default();
         for (point, facts) in graph.points().rev() {
@@ -30,6 +34,7 @@ impl LiveValues {
                 live.extend(self.live_before[successor.index()].iter().copied());
             }
             facts.narrow_to_live_before(&mut live);
+            live.extend(flowing.get(&point).into_iter().flatten().copied());
             let known = &mut self.live_before[point.index()];
             if live.len() != known.len() {
                 grew = true;
@@ -64,6 +69,22 @@ mod tests {
         assert!(!live.before(defined).contains(&value));
         assert!(live.before(head).contains(&value));
         assert!(live.before(back).contains(&value));
+        assert!(!live.before(after).contains(&value));
+    }
+
+    #[test]
+    fn a_value_flowing_into_a_later_point_is_live_until_that_point() {
+        let value = BindingId::from_index(7);
+        let mut graph = ControlFlowGraph::default();
+        let defined = graph.join(&[PointId::ENTRY]);
+        graph.define(defined, value);
+        let read = graph.join(&[defined]);
+        let consumed = graph.join(&[read]);
+        let after = graph.join(&[consumed]);
+        let flowing = [(consumed, vec![value])].into_iter().collect();
+        let live = LiveValues::holding(&graph.finished(), &flowing);
+        assert!(live.before(read).contains(&value));
+        assert!(live.before(consumed).contains(&value));
         assert!(!live.before(after).contains(&value));
     }
 }

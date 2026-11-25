@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/store_into_a_copy_leaves_the_original_free.knv
+---
+1

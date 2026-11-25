@@ -8,4 +8,4 @@ store-and-name!
 main
   8:40 borrow `t`: no live loan
   8:29 change `ns`: `t` lent at 8:40, passed to the call
-  9:10 change `ns`: `t` lent at 8:40, held by `r`
+  9:10 change `ns`: `t` lent at 8:40, held by `ns`

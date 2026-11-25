@@ -1,0 +1,11 @@
+(defn keep! (names name) (push! names name))
+
+(defn main ()
+  (local ms (vec "y"))
+  (local t (str "a"))
+  (local u (str "u"))
+  (keep! ms (as-str t))
+  (local ns ms)
+  (keep! ns (as-str u))
+  (push! t (char "b"))
+  (println (len ns)))

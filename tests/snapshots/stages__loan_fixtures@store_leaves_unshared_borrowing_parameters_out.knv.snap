@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/store_leaves_unshared_borrowing_parameters_out.knv
+---
+store-one!
+  5:10 change `names`: no live loan
+  7:17 borrow `others`: no live loan
+  7:25 borrow `kept.label`: no live loan
+main
+  14:26 borrow `u`: no live loan
+  16:23 borrow `t`: `u` lent at 14:26, held by `us`
+  18:30 borrow `w`: `u` lent at 14:26, held by `us`
+  15:15 change `ns`: `u` lent at 14:26, held by `us`; `t` lent at 16:23, passed to the call; `us` lent at 17:15, passed to the call; `w` lent at 18:30, passed to the call
+  17:15 borrow `us`: `u` lent at 14:26, held by `us`; mut `ns` lent at 15:15, passed to the call; `t` lent at 16:23, passed to the call; `w` lent at 18:30, passed to the call
+  19:10 change `u`: `t` lent at 16:23, held by `ns`
+  20:10 change `w`: `t` lent at 16:23, held by `ns`
+  21:17 borrow `ns`: `t` lent at 16:23, held by `ns`

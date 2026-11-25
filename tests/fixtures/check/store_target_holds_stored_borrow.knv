@@ -1,0 +1,11 @@
+(defn keep-and-give! (names name)
+  (push! names name)
+  name)
+
+(defn main ()
+  (local ns (vec "x"))
+  (local t (str "a"))
+  (local r (keep-and-give! ns (as-str t)))
+  (println r)
+  (push! t (char "b"))
+  (println (len ns)))

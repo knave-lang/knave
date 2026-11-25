@@ -1,0 +1,7 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/written_mut_reset_ends_the_stores.knv
+---
+(type keep! (fn ((mut (vec (ref str))) (ref str)) unit))
+(type main (fn () unit))

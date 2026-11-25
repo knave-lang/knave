@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/store_into_a_vector_built_from_an_element_leaves_the_source_free.knv
+---
+1

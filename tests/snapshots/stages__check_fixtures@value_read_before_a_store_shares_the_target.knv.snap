@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/value_read_before_a_store_shares_the_target.knv
+---
+error[L0518]: `t` changes while `first` still borrows it
+ --> check/value_read_before_a_store_shares_the_target.knv:8:10
+  |
+7 |   (keep! ns (as-str t))
+  |                     - `first` borrows `t` here
+8 |   (push! t (char "b"))
+  |          ^ `t` changes here
+9 |   (println first))
+  |            ----- `first` is used here, after the change
+  |
+  = help: finish using `first` before changing `t`, or copy what you need out of `t` first
+  = note: run `knave doc L0518` for an explanation

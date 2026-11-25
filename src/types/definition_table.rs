@@ -44,7 +44,7 @@ impl<'p> DefinitionTable<'p> {
         };
         Some(CalledFunction {
             function: Self::called_global(callee)?,
-            lambda: self.called_lambda(callee)?,
+            lambda: self.called_lambda(callee)?.1,
             arguments,
         })
     }
@@ -53,8 +53,12 @@ impl<'p> DefinitionTable<'p> {
         self.definition(Self::called_global(callee)?)
     }
 
-    fn called_lambda(&self, callee: &TypedExpr) -> Option<&'p TypedLambda> {
-        self.called_definition(callee)?.value.lambda_value()
+    pub fn called_lambda(
+        &self,
+        callee: &TypedExpr,
+    ) -> Option<(&'p TypedDefinition, &'p TypedLambda)> {
+        let definition = self.called_definition(callee)?;
+        Some((definition, definition.value.lambda_value()?))
     }
 
     fn called_global(callee: &TypedExpr) -> Option<BindingId> {

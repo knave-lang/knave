@@ -1,4 +1,6 @@
+use super::named_lifetimes::NamedLifetimes;
 use super::ty::{Lifetime, Type};
+use crate::core::BindingId;
 
 pub struct TypeLifetimes<'t> {
     ty: &'t Type,
@@ -10,9 +12,14 @@ impl<'t> TypeLifetimes<'t> {
     }
 
     pub fn all(&self) -> Vec<Lifetime> {
+        self.all_with(&WrittenOnly)
+    }
+
+    pub fn all_with(&self, named: &impl NamedLifetimes) -> Vec<Lifetime> {
         let own = match self.ty {
             Type::Function(..) => return Vec::new(),
             Type::Ref(lifetime, _) | Type::Mut(lifetime, _) => Some(*lifetime),
+            Type::Named(binding, _) => named.of_named(*binding),
             _ => None,
         };
         own.into_iter()
@@ -20,7 +27,7 @@ impl<'t> TypeLifetimes<'t> {
                 self.ty
                     .parts()
                     .into_iter()
-                    .flat_map(|part| TypeLifetimes::of(part).all()),
+                    .flat_map(|part| TypeLifetimes::of(part).all_with(named)),
             )
             .collect()
     }
@@ -29,6 +36,14 @@ impl<'t> TypeLifetimes<'t> {
         self.all()
             .into_iter()
             .any(|lifetime| matches!(lifetime, Lifetime::Written(_)))
+    }
+}
+
+struct WrittenOnly;
+
+impl NamedLifetimes for WrittenOnly {
+    fn of_named(&self, _binding: BindingId) -> Option<Lifetime> {
+        None
     }
 }
 

@@ -20,7 +20,7 @@ impl<'c> CallSite<'c> {
         Self {
             callee,
             arguments,
-            ties: rules.ties(callee),
+            ties: rules.callees().result_ties(callee),
         }
     }
 

@@ -186,21 +186,21 @@ cargo test <narrowest test>
 
 **A heavy test is a test of `tests/stages.rs` whose name ends in `check_fixtures`, `run_fixtures` or `emit_fixtures`, or starts with `each_explanation_`.**
 
-**A stage test is a run of `cargo test --test stages`. A filter is a test name argument of the run.** A `--skip` argument is no filter.
+**A stage test is a run of `cargo test --test stages`. A filter is a test name argument of the run.** A `--skip` argument is no filter. A filter selects a test if the filter is part of the test's name. Under `--exact`, a filter selects a test only if the two are equal.
 
 **A stage test is heavy in each of these cases, unless all of the conditions after them hold:**
 
 - The stage test has no filter.
 - The stage test has several filters and no `--exact`.
-- A filter is part of a heavy test's name, such as `check`, `run` or `fixtures`.
+- A filter selects a heavy test, such as `check`, `run` or `fixtures`.
 
 **These three conditions together keep a stage test light:**
 
 - `INSTA_GLOB_FILTER` names fixtures. Each of its globs compiles and holds none of `*`, `?`, `[` and `{` outside a leading `**/`.
 - The stage test has one filter, or several filters and `--exact`.
-- No filter is part of a test name that starts with `each_explanation_`.
+- No filter selects a test whose name starts with `each_explanation_`.
 
-**With a glob, give a filter whose stage tests share one fixture directory, such as `check_fixtures`.** A glob that keeps no fixture of a selected stage fails that stage.
+**With a glob, give a filter whose tests all read one fixture directory, such as `check_fixtures`.** A glob that keeps no fixture of a selected test fails that test. Locally, also end the command with `-- --exact`.
 
 **Every stage test that is not heavy is light.** `StageRun` in `tests/support/stage_run.rs` holds this rule and the heavy test lists. Every fixture and explanation test enforces it.
 
@@ -226,7 +226,7 @@ cargo test <narrowest test>
 | a unit test in `expand/src/` | `-p knave-expand --lib <module::path>` |
 | the fixtures of `check`, `run` or `emit` | the `Heavy tests` workflow with `filter=<stage>_fixtures` |
 | named fixtures of `check`, `run` or `emit` | `--test stages <stage>_fixtures -- --exact`, with `INSTA_GLOB_FILTER` naming the fixtures |
-| the fixtures of every other stage | `--test stages <stage>_fixtures` |
+| the fixtures of every other stage | `--test stages <test>`, naming the stage's fixture test, such as `reader_fixtures` for `tests/fixtures/read/` |
 | a diagnostic's explanation or its examples | the `Heavy tests` workflow with `filter=each_explanation_` |
 | the project file's reader | `--test stages project_fixtures` |
 | a corpus entry | `--test stages corpus_fixtures` |

@@ -1184,6 +1184,20 @@ fn the_heavy_test_lists_name_every_heavy_stage_test() {
 }
 
 #[test]
+fn each_heavy_stage_test_opens_with_the_guard() {
+    let source = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stages.rs"))
+        .expect("the stage tests read");
+    let guard = "    HeavyTestRun::of(&StageRun::from_process()).enforce();";
+    for test in [StageRun::FIXTURE_TESTS, StageRun::EXPLANATION_TESTS].concat() {
+        let opening = format!("fn {test}() {{\n{guard}\n");
+        assert!(
+            source.contains(&opening),
+            "{test} does not open with the guard"
+        );
+    }
+}
+
+#[test]
 fn an_explanation_filter_with_a_naming_glob_is_not_light() {
     let arguments = TestArguments::of(["explanation".to_string()]);
     let glob = FixtureGlob::of(Some(SMALL_CHECK_FIXTURE_BY_NAME.to_string()));

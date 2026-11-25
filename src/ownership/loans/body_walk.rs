@@ -165,7 +165,7 @@ impl<'w> BodyWalk<'w> {
                         .move_out(place, matched.value.span);
                 }
                 for binder in arm.pattern.binders() {
-                    self.builder.define(bound, binder, &value.held);
+                    self.builder.values().define(bound, binder, &value.held);
                 }
                 self.block(&arm.body, bound)
             })
@@ -224,7 +224,7 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
                     {
                         self.builder.lender(defined).move_out(place, value.span);
                     }
-                    self.builder.define(defined, binder, &bound.held);
+                    self.builder.values().define(defined, binder, &bound.held);
                     Walked::at(defined)
                 }
                 TypedBodyItem::Expr(value) => self.expr(value, walked.end),

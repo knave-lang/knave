@@ -7,10 +7,10 @@ use super::loan_table::LoanTable;
 use super::loop_heads::LoopHeads;
 use super::loop_scope::LoopScope;
 use super::point_id::PointId;
+use super::value_flow::ValueFlow;
 use super::value_regions::ValueRegions;
 use crate::core::BindingId;
 use crate::source::Span;
-use crate::types::TypedBinder;
 
 #[derive(Default)]
 pub struct BodyBuilder<'w> {
@@ -31,9 +31,8 @@ impl<'w> BodyBuilder<'w> {
         point
     }
 
-    pub fn define(&mut self, point: PointId, binder: &TypedBinder, held: &Holdings) {
-        self.graph.define(point, binder.binding);
-        self.regions.flow_into(binder.binding, held);
+    pub fn values(&mut self) -> ValueFlow<'_> {
+        ValueFlow::new(&mut self.graph, &mut self.regions)
     }
 
     pub fn lender(&mut self, point: PointId) -> Lender<'_> {

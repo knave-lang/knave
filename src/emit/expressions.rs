@@ -637,14 +637,11 @@ impl<'a> ExpressionEmitter<'a> {
 
     fn sure_arm_contents(&mut self, value: &TypedExpr, arm: &TypedArm) -> Vec<Fragment> {
         let position = BoxPosition::of(&value.ty);
-        let value = self.expr(value);
+        let value = self.preceded(value, |emitter, value| emitter.expr(value));
         self.locals.enter();
         let PatternEmission { code, prologue, .. } = self.pattern(&arm.pattern, position);
-        let mut statements = vec![Fragment::Newline, Fragment::Text("let ".to_string())];
-        statements.extend(code.fragments);
-        statements.push(Fragment::Text(" = ".to_string()));
-        statements.extend(value.fragments);
-        statements.push(Fragment::Text(";".to_string()));
+        let mut statements = vec![Fragment::Newline];
+        statements.extend(value.bind(&code.text()));
         let body = self.block_contents(&arm.body);
         statements.extend(Self::with_prologue(body, &prologue));
         self.locals.leave();

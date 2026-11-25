@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/one_arm_match_keeps_its_scrutinee_temporaries_to_the_block_end.knv
+---
+hi a
+hi a
+zza

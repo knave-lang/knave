@@ -355,4 +355,6 @@ gh workflow run mutation.yml --ref main -f base=<commit before the slice> -f hea
 
 **The `Nightly mutants` issue lists each day that a scheduled run skipped.** Each item gives the command that tests its day as a slice. Check a day's box once its slice has run.
 
+**If the planner refuses a slice as over budget, split the slice in two at a middle commit.** Dispatch each half as its own slice.
+
 **If a slice's comment says some shards did not finish, dispatch the slice again.** Then check every box of the earlier comment of that slice: the rerun's comment supersedes it.

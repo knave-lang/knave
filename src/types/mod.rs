@@ -181,6 +181,7 @@ mod parameter_names;
 mod parameter_role;
 mod parameter_usage;
 mod parameterized;
+mod passed_call;
 mod passed_types;
 mod passing_facts;
 #[cfg(test)]
@@ -299,6 +300,7 @@ mod type_text_writer;
 mod type_variables;
 mod typed;
 mod typed_argument;
+mod typed_assignment;
 mod typed_associated_type;
 mod typed_binder;
 mod typed_impl_method;
@@ -376,6 +378,7 @@ pub use parameter_copy::ParameterCopy;
 pub use parameter_modes::{ParamMode, ParameterModes};
 pub use parameter_role::ParameterRole;
 pub use parameterized::Parameterized;
+pub use passed_call::PassedCall;
 pub use payload_position::PayloadPosition;
 pub use pinning::{InstantiationReport, LiteralDefaults, Pinning};
 pub use pipelines::Pipelines;
@@ -409,10 +412,10 @@ pub use ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type, TypeVar};
 pub use type_declarations::TypeDeclarations;
 pub use type_lifetimes::TypeLifetimes;
 pub use typed::{
-    Borrow, ClosureType, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm,
-    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition,
-    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern,
-    TypedPatternKind, TypedProgram, TypedStructExpr,
+    AssignmentPath, Borrow, ClosureType, PendingModeCheck, TryErrorConversion, TypedArgument,
+    TypedArm, TypedAssignment, TypedBinder, TypedBlock, TypedBodyItem, TypedControl,
+    TypedConversion, TypedDefinition, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
+    TypedModule, TypedPattern, TypedPatternKind, TypedProgram, TypedStructExpr,
 };
 pub use typed_associated_type::TypedAssociatedType;
 pub use typed_impl_method::TypedImplMethod;

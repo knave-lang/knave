@@ -33,10 +33,10 @@ pub(super) use capabilities::{
     AnnotationLowering, ArgumentTyping, AssociationTyping, Bindings, BodyTyping, ChildTyping,
     CollectionAssumptions, CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves,
     GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys,
-    MapWriteTyping, Obligations, OperandTyping, PlaceReads, RecurTargets, SchemeInstantiation,
-    StringPushTyping, StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting,
-    TypeTextRecords, TypeUnification, Unknowns, VariableTyping, VariantArms, VariantSites,
-    VectorPushTyping, VectorWriteTyping, WriteCollectionTyping,
+    MapWriteTyping, Obligations, OperandTyping, PlaceReads, PlaceWrites, RecurTargets,
+    SchemeInstantiation, StringPushTyping, StructBases, SyntheticCalls, TemplateSchemes,
+    TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns, VariableTyping,
+    VariantArms, VariantSites, VectorPushTyping, VectorWriteTyping, WriteCollectionTyping,
 };
 pub(super) use conditional::Conditional;
 pub(super) use dereference::Dereference;

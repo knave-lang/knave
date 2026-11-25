@@ -19,9 +19,10 @@ use crate::core::{BindingArena, BindingId, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    Borrow, ClosureKind, CopyRules, FieldPlace, GenericId, GenericParam, InferredCopies, Pipelines,
-    StructTable, TemplateBorrows, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
-    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedStructExpr,
+    Borrow, ClosureKind, CopyRules, FieldPlace, GenericId, GenericParam, InferredCopies,
+    PassedCall, Pipelines, StructTable, TemplateBorrows, Type, TypedArgument, TypedBlock,
+    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
+    TypedStructExpr,
 };
 
 struct MovedUse<'u> {
@@ -118,7 +119,7 @@ impl<'a> MoveChecker<'a> {
     fn expr(&mut self, expr: &TypedExpr, usage: ReadUsage) {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr, usage),
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            _ if let Some(call) = PassedCall::of(expr) => self.call(call.callee, call.arguments),
             TypedExprKind::Control(control) => self.control(control, usage),
             TypedExprKind::Struct(structure) => self.structure(expr, structure, usage),
             other => self.nested_expr(expr, other),

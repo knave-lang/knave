@@ -25,6 +25,12 @@ impl ChangedLocals {
             TypedExprKind::Call(_, arguments) => self
                 .changed
                 .extend(arguments.iter().filter_map(ChangedRoot::of_argument)),
+            TypedExprKind::Assign(assignment) => self.changed.extend(
+                assignment
+                    .arguments
+                    .iter()
+                    .filter_map(ChangedRoot::of_argument),
+            ),
             _ => self.changed.extend(ChangedRoot::of_borrow(expr)),
         }
         for child in expr.children() {

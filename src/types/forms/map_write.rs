@@ -8,6 +8,7 @@ use crate::types::synthetic_call::SyntheticCall;
 use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::synthetic_template::SyntheticTemplate;
 use crate::types::ty::Type;
+use crate::types::typed::AssignmentPath;
 use crate::types::typed::TypedExpr;
 
 pub(in crate::types) struct MapWrite<'e> {
@@ -38,7 +39,7 @@ impl<'e> MapWrite<'e> {
             map.value().clone(),
         ];
         let arguments = self.path.keys_and_item();
-        let call = context.type_synthetic_call(SyntheticCall {
+        let call = SyntheticCall {
             signature: SyntheticSignature {
                 template: SyntheticTemplate::SET_AT_KEY.text(),
                 parameters,
@@ -47,10 +48,11 @@ impl<'e> MapWrite<'e> {
             value,
             arguments: &arguments,
             span: self.span,
-        })?;
+        };
+        let write = context.type_place_write(call, AssignmentPath::MapEntry)?;
         let query = context.resolve(&query_type);
         context.require_key_borrow(&map, &query, key.span());
-        Ok(call)
+        Ok(write)
     }
 }
 
@@ -63,11 +65,11 @@ mod tests {
     use crate::types::collection::Collection;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{MapKeys, SyntheticCalls, Unknowns};
+    use crate::types::forms::{MapKeys, PlaceWrites, Unknowns};
     use crate::types::synthetic_call::SyntheticCall;
-    use crate::types::synthetic_signature::SyntheticSignature;
     use crate::types::ty::Type;
-    use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
+    use crate::types::typed::AssignmentPath;
+    use crate::types::typed::TypedExpr;
 
     #[derive(Default)]
     struct MapFixture {
@@ -117,30 +119,14 @@ mod tests {
         }
     }
 
-    impl SyntheticCalls for MapFixture {
-        fn type_synthetic_call(
+    impl PlaceWrites for MapFixture {
+        fn type_place_write(
             &mut self,
             call: SyntheticCall<'_>,
+            _path: AssignmentPath,
         ) -> Result<TypedExpr, Diagnostic> {
             self.parameters.push(call.signature.parameters);
             Ok(call.value)
-        }
-
-        fn pass_argument(
-            &mut self,
-            _parameter: &Type,
-            _value: &TypedExpr,
-        ) -> Result<Borrow, Diagnostic> {
-            Ok(Borrow::None)
-        }
-
-        fn finish_call(
-            &mut self,
-            signature: SyntheticSignature<'_>,
-            _arguments: Vec<TypedArgument>,
-            _span: Span,
-        ) -> TypedExpr {
-            FormFixtures::typed_leaf(Literal::Bool(true), signature.result)
         }
     }
 

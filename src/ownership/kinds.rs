@@ -17,9 +17,9 @@ use crate::core::{BindingArena, BindingId, FieldLabel, ReferenceKind};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    Borrow, ClosureKind, CopyRules, FieldPlace, Pipelines, TemplateBorrows, Type, TypedArgument,
-    TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedModule, TypedProgram, TypedStructExpr,
+    Borrow, ClosureKind, CopyRules, FieldPlace, PassedCall, Pipelines, TemplateBorrows, Type,
+    TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedModule, TypedProgram, TypedStructExpr,
 };
 
 struct LocalClosure {
@@ -423,7 +423,7 @@ impl<'a> ClosureKinds<'a> {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.scan_leaf(leaf, expr, own, usage),
             TypedExprKind::Fn(lambda) => self.scan_lambda(lambda, own),
-            TypedExprKind::Call(callee, arguments) => {
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 let mut report = CaptureReport::default();
                 self.scan_call(callee, arguments, own, &mut report);
                 report
@@ -1053,7 +1053,7 @@ impl<'a> ClosureKinds<'a> {
     ) {
         match &expr.kind {
             TypedExprKind::Fn(lambda) => self.require_lambda(lambda, lambda.kind, params, uses),
-            TypedExprKind::Call(callee, arguments) => {
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 self.require_call(callee, arguments, params, nested, uses)
             }
             TypedExprKind::Control(control) => self.require_control(control, params, nested, uses),
@@ -1397,7 +1397,7 @@ impl<'a> ClosureKinds<'a> {
 
     fn check_expression(&self, expr: &TypedExpr, diagnostics: &mut Vec<Diagnostic>) {
         match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => {
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 self.check_call(callee, arguments, diagnostics);
                 self.check_expression(callee, diagnostics);
                 for argument in arguments {

@@ -90,6 +90,9 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr),
             TypedExprKind::Fn(lambda) => self.closure(lambda, expr, ClosureUse::Free),
             TypedExprKind::Call(callee, arguments) => self.call(expr, callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(expr, &assignment.template, &assignment.arguments)
+            }
             TypedExprKind::Recur(arguments) => {
                 self.recur(arguments.iter().map(|argument| &argument.value))
             }

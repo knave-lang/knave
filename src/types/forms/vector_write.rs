@@ -8,6 +8,7 @@ use crate::types::synthetic_call::SyntheticCall;
 use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::synthetic_template::SyntheticTemplate;
 use crate::types::ty::Type;
+use crate::types::typed::AssignmentPath;
 use crate::types::typed::TypedExpr;
 
 pub(in crate::types) struct VectorWrite<'e> {
@@ -35,7 +36,7 @@ impl<'e> VectorWrite<'e> {
         parameters.push(item_type);
         let template = SyntheticTemplate::set_at(depth);
         let arguments = self.path.keys_and_item();
-        context.type_synthetic_call(SyntheticCall {
+        let call = SyntheticCall {
             signature: SyntheticSignature {
                 template: &template,
                 parameters,
@@ -44,7 +45,8 @@ impl<'e> VectorWrite<'e> {
             value,
             arguments: &arguments,
             span: self.span,
-        })
+        };
+        context.type_place_write(call, AssignmentPath::Elements)
     }
 
     fn target<C: VectorWriteTyping>(context: &C, depth: usize, item: &Type) -> Type {
@@ -65,13 +67,13 @@ mod tests {
     use crate::types::expectation::Expectation;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{CollectionShapes, SyntheticCalls, TypeFitting, Unknowns};
+    use crate::types::forms::{CollectionShapes, PlaceWrites, TypeFitting, Unknowns};
     use crate::types::problems::TypeProblems;
     use crate::types::synthetic_call::SyntheticCall;
-    use crate::types::synthetic_signature::SyntheticSignature;
     use crate::types::synthetic_template::SyntheticTemplate;
     use crate::types::ty::Type;
-    use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
+    use crate::types::typed::AssignmentPath;
+    use crate::types::typed::TypedExpr;
 
     #[derive(Default)]
     struct VectorFixture {
@@ -147,10 +149,11 @@ mod tests {
         }
     }
 
-    impl SyntheticCalls for VectorFixture {
-        fn type_synthetic_call(
+    impl PlaceWrites for VectorFixture {
+        fn type_place_write(
             &mut self,
             call: SyntheticCall<'_>,
+            _path: AssignmentPath,
         ) -> Result<TypedExpr, Diagnostic> {
             self.calls.push((
                 call.signature.template.to_string(),
@@ -158,23 +161,6 @@ mod tests {
                 call.signature.result,
             ));
             Ok(call.value)
-        }
-
-        fn pass_argument(
-            &mut self,
-            _parameter: &Type,
-            _value: &TypedExpr,
-        ) -> Result<Borrow, Diagnostic> {
-            Ok(Borrow::None)
-        }
-
-        fn finish_call(
-            &mut self,
-            signature: SyntheticSignature<'_>,
-            _arguments: Vec<TypedArgument>,
-            _span: Span,
-        ) -> TypedExpr {
-            FormFixtures::typed_leaf(Literal::Bool(true), signature.result)
         }
     }
 

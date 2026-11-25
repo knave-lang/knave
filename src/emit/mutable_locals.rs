@@ -47,6 +47,9 @@ impl MutableLocals {
             TypedExprKind::Fn(lambda) => self.block(&lambda.body),
             TypedExprKind::Control(control) => self.control(control),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments);
+            }
             TypedExprKind::Recur(arguments) => self.arguments(arguments),
             TypedExprKind::Borrow(kind, value) => self.borrow(*kind, value),
             _ => self.children(expr),

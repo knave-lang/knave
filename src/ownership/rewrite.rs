@@ -207,6 +207,9 @@ impl<'a> ModeRewrite<'a> {
         self.rewrite_written(expr);
         match &mut expr.kind {
             TypedExprKind::Call(callee, arguments) => self.borrow_arguments(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.borrow_arguments(&mut assignment.template, &mut assignment.arguments);
+            }
             TypedExprKind::Recur(arguments) => self.borrow_recur(arguments, current),
             _ => {}
         }

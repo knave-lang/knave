@@ -10,8 +10,8 @@ use crate::core::{BindingArena, BindingId, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::types::{
     CopyRules, FunctionValueWrapper, GenericId, GenericParam, StructTable, Type, TypeDisplay,
-    TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition, TypedExpr,
-    TypedExprKind, TypedLeaf, TypedProgram, TypedStructExpr,
+    TypedArgument, TypedAssignment, TypedBlock, TypedBodyItem, TypedControl, TypedDefinition,
+    TypedExpr, TypedExprKind, TypedLeaf, TypedProgram, TypedStructExpr,
 };
 
 struct WrappedType<'a> {
@@ -123,16 +123,23 @@ impl<'a> FunctionValueModes<'a> {
 
     fn expr(&mut self, expr: &mut TypedExpr, current: Option<&[Type]>) {
         let ty = expr.ty.clone();
-        match &mut expr.kind {
-            TypedExprKind::Call(callee, arguments) => {
-                let expected = self.expected_params(callee);
-                let sites = self.argument_sites(callee, arguments.len());
-                self.arguments(arguments, expected.as_deref(), &sites, current);
-                self.expr(callee, current);
+        let (callee, arguments) = match &mut expr.kind {
+            TypedExprKind::Call(callee, arguments) => (callee.as_mut(), arguments),
+            TypedExprKind::Assign(assignment) => {
+                let TypedAssignment {
+                    template,
+                    arguments,
+                    ..
+                } = assignment.as_mut();
+                (template, arguments)
             }
-            TypedExprKind::Control(control) => self.control(control, current),
-            other => self.nested_expr(other, &ty, current),
-        }
+            TypedExprKind::Control(control) => return self.control(control, current),
+            other => return self.nested_expr(other, &ty, current),
+        };
+        let expected = self.expected_params(callee);
+        let sites = self.argument_sites(callee, arguments.len());
+        self.arguments(arguments, expected.as_deref(), &sites, current);
+        self.expr(callee, current);
     }
 
     fn nested_expr(&mut self, kind: &mut TypedExprKind, ty: &Type, current: Option<&[Type]>) {

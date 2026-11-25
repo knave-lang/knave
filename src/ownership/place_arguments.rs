@@ -57,7 +57,14 @@ impl<'a> PlaceArguments<'a> {
         tail_calls: &[&[TypedArgument]],
         diagnostics: &mut Diagnostics,
     ) {
-        if let TypedExprKind::Call(callee, arguments) = &expr.kind
+        let call = match &expr.kind {
+            TypedExprKind::Call(callee, arguments) => Some((callee.as_ref(), arguments)),
+            TypedExprKind::Assign(assignment) => {
+                Some((&assignment.template, &assignment.arguments))
+            }
+            _ => None,
+        };
+        if let Some((callee, arguments)) = call
             && !Self::is_tail_call(arguments, tail_calls)
         {
             self.call(callee, arguments, diagnostics);

@@ -56,6 +56,10 @@ impl<'w> BodyWalk<'w> {
             TypedExprKind::Call(callee, arguments) => {
                 self.call(CallSite::new(callee, arguments, self.rules()), at)
             }
+            TypedExprKind::Assign(assignment) => {
+                let (template, arguments) = (&assignment.template, &assignment.arguments);
+                self.call(CallSite::new(template, arguments, self.rules()), at)
+            }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
             TypedExprKind::Control(control) => self.control(control, at),
             _ => self.sequence(expr.children().into_iter(), at),

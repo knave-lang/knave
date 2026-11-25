@@ -55,6 +55,9 @@ impl ChangedValues {
             TypedExprKind::Call(callee, arguments) => {
                 self.call(callee, arguments, enclosing);
             }
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments, enclosing);
+            }
             TypedExprKind::Control(control) => self.control(control, enclosing),
             other => self.nested_expr(expr, other, enclosing),
         }

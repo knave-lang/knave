@@ -177,6 +177,9 @@ impl ExpressionEmitter<'_> {
                     TypedExprKind::Leaf(TypedLeaf::Global(_) | TypedLeaf::Rust(_))
                 ) || !arguments.iter().all(Self::passes_unchanged)
             }
+            TypedExprKind::Assign(assignment) => {
+                !assignment.arguments.iter().all(Self::passes_unchanged)
+            }
             _ => false,
         };
         !changes && expr.children().into_iter().all(Self::leaves_places_alone)

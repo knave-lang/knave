@@ -29,6 +29,10 @@ impl<'c, 'w, 'p> CompoundQueries<'c, 'w, 'p> {
             TypedExprKind::Call(_, arguments) => arguments
                 .get(query)
                 .map_or(self.call.span, |argument| argument.value.span),
+            TypedExprKind::Assign(assignment) => assignment
+                .arguments
+                .get(query)
+                .map_or(self.call.span, |argument| argument.value.span),
             _ => self.call.span,
         };
         let (Some(map), Some(query)) = (values.get(map), values.get(query)) else {

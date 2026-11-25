@@ -13,7 +13,14 @@ impl WholeValueChanges {
     }
 
     fn site_in(expr: &TypedExpr, param: BindingId) -> Option<Span> {
-        if let TypedExprKind::Call(callee, arguments) = &expr.kind
+        let call = match &expr.kind {
+            TypedExprKind::Call(callee, arguments) => Some((callee.as_ref(), arguments)),
+            TypedExprKind::Assign(assignment) => {
+                Some((&assignment.template, &assignment.arguments))
+            }
+            _ => None,
+        };
+        if let Some((callee, arguments)) = call
             && Self::replaces(callee, arguments, param)
         {
             return Some(callee.span);

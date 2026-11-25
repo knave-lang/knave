@@ -61,6 +61,10 @@ impl<'e> LendingExpression<'e> {
             TypedExprKind::Call(_, arguments) => arguments
                 .iter()
                 .try_for_each(|argument| lend(Self::argument_loan(argument))),
+            TypedExprKind::Assign(assignment) => assignment
+                .arguments
+                .iter()
+                .try_for_each(|argument| lend(Self::argument_loan(argument))),
             TypedExprKind::Borrow(_, value) => lend(Loan::Operand(value, scope)),
             TypedExprKind::Variant(_, values, _) => values
                 .iter()

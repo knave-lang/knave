@@ -126,6 +126,9 @@ impl<'r> BodyFlows<'r> {
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.local(*binding),
             TypedExprKind::Control(control) => self.control(control),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, expr),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments, expr)
+            }
             TypedExprKind::Borrow(_, place) => self.borrowed(place),
             _ => self.children(expr),
         }

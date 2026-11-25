@@ -80,6 +80,9 @@ impl<'a> LocalClosures<'a> {
     fn expr(&mut self, expr: &TypedExpr) {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments);
+            }
             _ => expr
                 .children()
                 .into_iter()

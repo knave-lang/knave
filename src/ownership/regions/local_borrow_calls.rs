@@ -54,8 +54,12 @@ impl<'a> LocalBorrowCalls<'a> {
     }
 
     fn expr(&mut self, expr: &TypedExpr) {
-        if let TypedExprKind::Call(callee, arguments) = &expr.kind {
-            self.call(callee, arguments);
+        match &expr.kind {
+            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments);
+            }
+            _ => {}
         }
         match &expr.kind {
             TypedExprKind::Fn(lambda) => self.block(&lambda.body),
@@ -122,6 +126,7 @@ impl<'a> LocalBorrowCalls<'a> {
             TypedExprKind::Leaf(TypedLeaf::Literal(_) | TypedLeaf::Global(_)) => true,
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.outliving.contains(binding),
             TypedExprKind::Call(_, arguments) => self.arguments_outlive_body(arguments),
+            TypedExprKind::Assign(assignment) => self.arguments_outlive_body(&assignment.arguments),
             TypedExprKind::Control(control) => self.control_outlives_body(control),
             _ => false,
         }

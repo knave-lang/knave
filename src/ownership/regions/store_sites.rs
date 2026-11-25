@@ -25,8 +25,12 @@ impl<'r, 'e> StoreSites<'r, 'e> {
     }
 
     fn expr(&mut self, expr: &'e TypedExpr) {
-        if let TypedExprKind::Call(callee, arguments) = &expr.kind {
-            self.call(callee, arguments);
+        match &expr.kind {
+            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments);
+            }
+            _ => {}
         }
         for child in expr.children() {
             self.expr(child);

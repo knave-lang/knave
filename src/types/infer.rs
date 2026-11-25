@@ -7,8 +7,9 @@ mod variant_target;
 
 use super::forms::{
     ArgumentTyping, Association, Body, Borrowing, Conditional, Dereference, ExpressionForm,
-    IfOperands, InlineRust, LiteralValue, MapWrite, Recurrence, Sequence, TypeTextRequest,
-    VariableReference, VariantConstruction, VectorWrite, WriteCollection,
+    IfOperands, InlineRust, LiteralValue, MapWrite, Recurrence, Sequence, StringPush,
+    TypeTextRequest, VariableReference, VariantConstruction, VectorPush, VectorWrite,
+    WriteCollection,
 };
 use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
@@ -1990,24 +1991,11 @@ impl TypeChecker {
     fn infer_push(&mut self, push: &Push, span: Span) -> Result<TypedExpr, Diagnostic> {
         let Push { target, item } = push;
         let value = self.infer(target)?;
-        if self.is_string_target(&value.ty) {
+        if StringPush::targets(self, &value.ty) {
             let item = self.infer(item)?;
-            return self.infer_string_push(value, item, span);
+            return StringPush::new(span).type_with(self, value, item);
         }
-        self.note_unknown_collection(&value, CollectionAssumption::PushTarget);
-        let element = self.unifier.fresh();
-        let parameters = vec![
-            Type::mutable(self.prelude_types().nested_vector_of(1, &element)),
-            element,
-        ];
-        self.synthetic_call_with_value(
-            SyntheticTemplate::PUSH.text(),
-            parameters,
-            Type::unit(),
-            value,
-            std::slice::from_ref(item),
-            span,
-        )
+        VectorPush::new(item, span).type_with(self, value)
     }
 
     fn note_unknown_collection(&mut self, target: &TypedExpr, assumption: CollectionAssumption) {
@@ -2015,62 +2003,6 @@ impl TypeChecker {
         if matches!(referent, Type::Var(_)) {
             self.assumed_collections.assume(target, assumption);
         }
-    }
-
-    fn is_string_target(&self, target: &Type) -> bool {
-        let referent = match self.unifier.resolve(target) {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => *inner,
-            other => other,
-        };
-        referent == Type::Primitive(PrimitiveType::String)
-    }
-
-    fn infer_string_push(
-        &mut self,
-        value: TypedExpr,
-        item: TypedExpr,
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        let character = Type::Primitive(PrimitiveType::Char);
-        let (template, parameter) = if self.unifier.resolve(&item.ty) == character {
-            (SyntheticTemplate::PUSH.text(), character)
-        } else {
-            (SyntheticTemplate::PUSH_TEXT.text(), Type::str_ref())
-        };
-        let parameters = vec![
-            Type::mutable(Type::Primitive(PrimitiveType::String)),
-            parameter,
-        ];
-        let target = self.pass_call_argument(None, 0, &parameters[0], &value)?;
-        let pushed = self.pass_string_push_item(&parameters[1], &item)?;
-        let arguments = vec![
-            TypedArgument {
-                value,
-                borrow: target,
-            },
-            TypedArgument {
-                value: item,
-                borrow: pushed,
-            },
-        ];
-        Ok(self.finish_synthetic_call(template, &parameters, &Type::unit(), arguments, span))
-    }
-
-    fn pass_string_push_item(
-        &mut self,
-        parameter: &Type,
-        item: &TypedExpr,
-    ) -> Result<Borrow, Diagnostic> {
-        self.pass_call_argument(None, 1, parameter, item)
-            .map_err(|_| self.string_push_item_problem(item))
-    }
-
-    fn string_push_item_problem(&mut self, item: &TypedExpr) -> Diagnostic {
-        let found = self.unifier.resolve(&item.ty);
-        if found == Type::Primitive(PrimitiveType::String) {
-            return TypeProblems::owned_string_push_item(item.span);
-        }
-        TypeProblems::string_push_item(&self.unification().describe(&found), item.span)
     }
 
     fn infer_iter_slice(&mut self, value: TypedExpr, span: Span) -> Result<TypedExpr, Diagnostic> {

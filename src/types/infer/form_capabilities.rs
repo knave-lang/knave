@@ -4,22 +4,25 @@ use super::shared_variables::SharedVariables;
 use crate::core::{BindingId, BindingKind, Expr, TypeExpr, VariantInfo};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
+use crate::types::assumed_collections::CollectionAssumption;
 use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
+use crate::types::finished_call::FinishedCall;
 use crate::types::forms::{
-    AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionLookups, CollectionShapes,
-    ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes,
-    MacroOrigins, MapKeys, Obligations, OperandTyping, PlaceReads, RecurTargets,
-    SchemeInstantiation, StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting,
-    TypeTextRecords, TypeUnification, Unknowns, VariantArms, VariantSites,
+    AnnotationLowering, ArgumentPassing, ArgumentTyping, Bindings, ChildTyping,
+    CollectionAssumptions, CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves,
+    GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations,
+    OperandTyping, PlaceReads, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls,
+    TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns,
+    VariantArms, VariantSites,
 };
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
 use crate::types::synthetic_call::SyntheticCall;
 use crate::types::templates::TemplateName;
 use crate::types::ty::{Scheme, Type};
-use crate::types::typed::{TypedArgument, TypedExpr};
+use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
 use crate::types::unifier::{LiteralKind, UnifyError};
 use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
@@ -284,6 +287,16 @@ impl SyntheticCalls for TypeChecker {
             call.span,
         )
     }
+
+    fn finish_call(&mut self, call: FinishedCall<'_>) -> TypedExpr {
+        self.finish_synthetic_call(
+            call.template,
+            &call.parameters,
+            &call.result,
+            call.arguments,
+            call.span,
+        )
+    }
 }
 
 impl TypeUnification for TypeChecker {
@@ -295,5 +308,26 @@ impl TypeUnification for TypeChecker {
 impl TypeDisplays for TypeChecker {
     fn show(&self, ty: &Type) -> String {
         self.display().show(ty)
+    }
+
+    fn describe(&mut self, ty: &Type) -> String {
+        self.unification().describe(ty)
+    }
+}
+
+impl CollectionAssumptions for TypeChecker {
+    fn assume_collection(&mut self, target: &TypedExpr, assumption: CollectionAssumption) {
+        self.note_unknown_collection(target, assumption);
+    }
+}
+
+impl ArgumentPassing for TypeChecker {
+    fn pass_argument(
+        &mut self,
+        position: usize,
+        parameter: &Type,
+        value: &TypedExpr,
+    ) -> Result<Borrow, Diagnostic> {
+        self.pass_call_argument(None, position, parameter, value)
     }
 }

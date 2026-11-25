@@ -60,6 +60,7 @@ mod tests {
     use crate::source::Span;
     use crate::types::collection::Collection;
     use crate::types::expectation::Expectation;
+    use crate::types::finished_call::FinishedCall;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{CollectionShapes, SyntheticCalls, TypeFitting, Unknowns};
@@ -151,6 +152,10 @@ mod tests {
             self.calls
                 .push((call.template.to_string(), call.parameters, call.result));
             Ok(call.value)
+        }
+
+        fn finish_call(&mut self, call: FinishedCall<'_>) -> TypedExpr {
+            FormFixtures::typed_leaf(Literal::Bool(true), call.result)
         }
     }
 

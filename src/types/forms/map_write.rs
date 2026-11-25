@@ -58,6 +58,7 @@ mod tests {
     use crate::diagnostic::Diagnostic;
     use crate::source::Span;
     use crate::types::collection::Collection;
+    use crate::types::finished_call::FinishedCall;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{MapKeys, SyntheticCalls, Unknowns};
@@ -120,6 +121,10 @@ mod tests {
         ) -> Result<TypedExpr, Diagnostic> {
             self.parameters.push(call.parameters);
             Ok(call.value)
+        }
+
+        fn finish_call(&mut self, call: FinishedCall<'_>) -> TypedExpr {
+            FormFixtures::typed_leaf(Literal::Bool(true), call.result)
         }
     }
 

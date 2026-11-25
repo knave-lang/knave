@@ -58,9 +58,6 @@ impl<H> RegionFlow<H> {
     }
 
     pub fn held_at(&self, point: PointId, binding: BindingId) -> Vec<&H> {
-        if self.stores.is_empty() {
-            return Vec::new();
-        }
         let regions = self.reaching.regions_of(binding, point, &self.regions);
         self.stores
             .iter()

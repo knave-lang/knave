@@ -65,7 +65,7 @@ These forms are the compiler's complete vocabulary. Every other form is a macro 
 | `assoc-at` | `(assoc-at value key... item)` | block | value: expression. keys: expressions. item: expression. |
 | `map-at` | `(map-at operation value argument...)` | method call or block | operation: `get`, `keys`, `vals`, `iter`, `update`, `first` or `second`. value: expression. arguments: expressions. |
 | `push-at!` | `(push-at! target item)` | method call | target: expression. item: expression. |
-| `set-at!` | `(set-at! place key... item)` | assignment | value: expression. keys: expressions. item: expression. |
+| `set-at!` | `(set-at! place key... item)` | assignment | place: expression. keys: expressions. item: expression. |
 | `field` | `(field value name)` | `value.name` | value: expression. name: field label. |
 | `ref` | `(ref value)` | `&value` | value: expression. |
 | `mut` | `(mut place)` | `&mut place` | place: expression. |

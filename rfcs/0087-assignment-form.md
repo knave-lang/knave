@@ -1,6 +1,6 @@
 # RFC 0087: Assignment is a kernel form
 
-**Status:** Accepted
+**Status:** Accepted. Decision 4 rests on the principle that a `rust` template is never an assignment, whatever its type, so only the assignment node counts as one.
 **Date:** 2026-11-24
 
 ## Problem

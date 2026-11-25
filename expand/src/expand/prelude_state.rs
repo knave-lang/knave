@@ -12,7 +12,7 @@ use crate::core::{ModuleId, ModulePath};
 use crate::diagnostic::DiagnosticRenderer;
 use crate::interpret::{Closure, Value};
 use crate::modules::ReservedModulePaths;
-use crate::modules::{ModuleRecord, ModuleSource, ModuleSources};
+use crate::modules::{BuiltPreludeRecords, ModuleSource, ModuleSources, PreludeRecords};
 use crate::reader::Form;
 use crate::scope::{NameTables, SavedNames};
 use crate::source::{SourceId, SourceMap, Span};
@@ -22,7 +22,6 @@ use crate::source::{SourceId, SourceMap, Span};
 pub struct PreludeState {
     first_source: SourceId,
     prelude: ModuleId,
-    modules: Vec<ModuleRecord>,
     tables: ExpansionTables,
     lowered_globals: LoweredGlobals,
     #[serde(skip)]
@@ -36,6 +35,7 @@ enum PreludeDefinitions {
 
 #[derive(serde::Serialize)]
 struct BuiltTables {
+    modules: BuiltPreludeRecords,
     bindings: BindingTables,
     names: NameTables,
     origins: OriginTables,
@@ -48,6 +48,7 @@ struct BuiltTables {
 #[derive(Default, serde::Deserialize)]
 #[serde(bound(deserialize = "'de: 'static"))]
 struct LoadedTables {
+    modules: PreludeRecords,
     bindings: SavedBindings,
     names: SavedNames,
     origins: SavedOrigins,
@@ -84,17 +85,6 @@ impl PreludeState {
         let entry = sources.add(Self::PLACEHOLDER_ENTRY, "");
         let module_sources = ModuleSources::new(PathBuf::new(), PathBuf::new());
         Expander::new(&mut sources, module_sources).capture_prelude(entry)
-    }
-
-    fn add_sources(&self, expander: &mut Expander<'_>) {
-        assert_eq!(
-            expander.sources.next_id(),
-            self.first_source,
-            "the entry is the only source before the prelude"
-        );
-        for record in &self.modules {
-            expander.add_prelude_source(record.path());
-        }
     }
 
     #[cfg(test)]
@@ -138,24 +128,18 @@ impl PreludeState {
         let PreludeDefinitions::Loaded(tables) = &self.definitions else {
             panic!("only a loaded prelude state holds readable notes")
         };
-        let position = self
-            .modules
-            .iter()
-            .position(|record| record.path() == path)?;
-        let module = ModuleId::new(self.prelude.index() + position);
+        let module = tables.modules.index(self.prelude).find(path)?;
         tables.notes.of(module, key).map(Vec::as_slice)
     }
 
     pub(super) fn install(self, expander: &mut Expander<'_>) -> ModuleId {
-        if !expander.holds_prelude_sources(self.first_source, &self.modules) {
-            self.add_sources(expander);
-        }
-        for record in self.modules {
-            expander.modules.adopt(record);
-        }
         let PreludeDefinitions::Loaded(tables) = self.definitions else {
             panic!("a built prelude state installs only after a save and a load")
         };
+        if !expander.holds_prelude_sources(self.first_source, &tables.modules) {
+            expander.add_prelude_sources(self.first_source, &tables.modules);
+        }
+        tables.modules.install_into(&mut expander.modules);
         expander.saved_definitions = tables.definitions;
         expander.saved_macros = tables.macros;
         expander.saved_globals = tables.globals;
@@ -196,13 +180,14 @@ impl Expander<'_> {
         let origin_tables =
             OriginTables::of_own_layers(std::mem::take(&mut self.tables.macro_origins));
         let note_tables = self.tables.module_notes.take_saved();
+        let modules = BuiltPreludeRecords::of(self.modules.into_records_after(placeholder));
         PreludeState {
             first_source,
             prelude,
-            modules: self.modules.into_records_after(placeholder),
             tables: self.tables,
             lowered_globals,
             definitions: PreludeDefinitions::Built(BuiltTables {
+                modules,
                 bindings: binding_tables,
                 names: name_tables,
                 origins: origin_tables,
@@ -224,19 +209,30 @@ impl Expander<'_> {
         );
     }
 
+    fn add_prelude_sources(&mut self, first_source: SourceId, modules: &PreludeRecords) {
+        assert_eq!(
+            self.sources.next_id(),
+            first_source,
+            "the entry is the only source before the prelude"
+        );
+        for record in modules.records() {
+            self.add_prelude_source(record.path());
+        }
+    }
+
     fn add_prelude_source(&mut self, path: &ModulePath) {
         if let Some(ModuleSource::Text { name, text, .. }) = self.module_sources.find(path) {
             self.sources.add(name, text);
         }
     }
 
-    fn holds_prelude_sources(&self, first_source: SourceId, modules: &[ModuleRecord]) -> bool {
+    fn holds_prelude_sources(&self, first_source: SourceId, modules: &PreludeRecords) -> bool {
         if self.sources.next_id().index() <= first_source.index() {
             return false;
         }
         let held = self.sources.file(first_source).name();
         modules
-            .iter()
+            .records()
             .find_map(|record| match self.module_sources.find(record.path()) {
                 Some(ModuleSource::Text { name, .. }) => Some(name),
                 _ => None,
@@ -256,7 +252,7 @@ mod tests {
         BindingArena, BindingKind, ExprKind, Item, ItemKind, KernelConstants, KernelForm,
         KernelType, Leaf, Literal, Namespace,
     };
-    use crate::modules::EmbeddedModules;
+    use crate::modules::{EmbeddedModules, ModuleRecord};
     use crate::scope::ImportedCounts;
 
     struct UserProgram {
@@ -315,6 +311,22 @@ mod tests {
                 Expander::with_prelude(&mut sources, Self::module_sources(), Self::loaded_state());
             expander.load_source_module(ModulePath::new(self.name), &[entry]);
             expander.tables.module_notes.decoded_no_saved_note()
+        }
+
+        fn installed_paths(&self) -> Vec<(ModulePath, Option<ModulePath>)> {
+            let (mut sources, entry) = self.sources();
+            let mut expander =
+                Expander::with_prelude(&mut sources, Self::module_sources(), Self::loaded_state());
+            expander.load_source_module(ModulePath::new(self.name), &[entry]);
+            let registry = &expander.modules;
+            registry
+                .records()
+                .map(|record| {
+                    let found = registry.find(record.path());
+                    let found_path = found.map(|id| registry.get(id).path().clone());
+                    (record.path().clone(), found_path)
+                })
+                .collect()
         }
 
         fn imported_prelude(&self) -> ImportedCounts {
@@ -412,11 +424,16 @@ mod tests {
 
         fn module<'a>(state: &'a PreludeState, path: &str) -> &'a ModuleRecord {
             let path = ModulePath::new(path);
-            state
-                .modules
-                .iter()
+            Self::records(state)
                 .find(|record| *record.path() == path)
                 .expect("the saved state holds the module")
+        }
+
+        fn records(state: &PreludeState) -> impl Iterator<Item = &ModuleRecord> {
+            let PreludeDefinitions::Loaded(tables) = &state.definitions else {
+                panic!("only a loaded prelude state holds its records")
+            };
+            tables.modules.records()
         }
 
         fn exported_names(module: &str) -> Vec<String> {
@@ -521,6 +538,26 @@ mod tests {
             decoded_names: 0,
         };
         assert_eq!(UserProgram::EMPTY.imported_prelude(), counts);
+    }
+
+    #[test]
+    fn a_loaded_state_borrows_each_module_path_from_its_bytes() {
+        let bytes: &'static [u8] = PreludeState::build().save().leak();
+        let state = PreludeState::load(bytes).expect("the saved prelude loads");
+        let saved = bytes.as_ptr_range();
+        for record in PreludePages::records(&state) {
+            let path = record.path().as_str();
+            assert!(saved.contains(&path.as_ptr()), "{path} is a copy");
+        }
+    }
+
+    #[test]
+    fn each_installed_module_is_found_by_its_path() {
+        let installed = UserProgram::EMPTY.installed_paths();
+        assert!(installed.len() > 1, "the prelude installs its modules");
+        for (path, found) in installed {
+            assert_eq!(found.as_ref(), Some(&path));
+        }
     }
 
     #[test]

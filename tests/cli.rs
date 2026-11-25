@@ -8264,6 +8264,7 @@ const PROJECT_ENTRY: &str =
 const PROJECT_SHOUT: &str =
     "(use text/marks bang)\n\n(export shout)\n\n(defn shout (text) (str text bang))\n";
 const PROJECT_MARKS: &str = "(export bang)\n\n(def bang \"!\")\n";
+const PRELUDE_NAMED_ENTRY: &str = "(use prelude use def fn)\n(use prelude/text println)\n\n(def main (fn () (println \"hello\")))\n";
 const PROJECT_SCRIPT: &str = "(use helper twice)\n\n(defn main ()\n  (println (twice 2)))\n";
 const PROJECT_HELPER: &str = "(export twice)\n\n(defn twice (n) (* 2 n))\n";
 const PROJECT_TESTS: &str =
@@ -8289,6 +8290,16 @@ impl Sandbox {
 fn check_defaults_to_the_project_entry() {
     let sandbox = Sandbox::admitted("project_check").with_project(PROJECT);
     sandbox.compiler(&["check"]).assert_silent_success();
+}
+
+#[test]
+fn check_of_a_project_file_named_like_a_prelude_module_imports_the_prelude_module() {
+    let sandbox = Sandbox::admitted("project_prelude_named_entry")
+        .with_project(PROJECT)
+        .with_file("src/prelude/text.knv", PRELUDE_NAMED_ENTRY);
+    sandbox
+        .compiler(&["check", "src/prelude/text.knv"])
+        .assert_silent_success();
 }
 
 #[test]

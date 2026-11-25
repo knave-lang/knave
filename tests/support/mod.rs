@@ -1,5 +1,4 @@
 mod agreement;
-mod any_filter;
 mod example_folder;
 mod example_layout;
 mod explanation_examples;
@@ -9,6 +8,7 @@ mod formatting;
 mod guide_links;
 mod headers;
 mod heavy_run_probe;
+mod light_stage_run;
 mod lint_fixture;
 mod project_example;
 mod read_back_agreement;
@@ -47,13 +47,13 @@ use knave::types::TypedProgram;
 use rustc_hash::FxHashMap;
 
 pub use agreement::AgreementReport;
-pub use any_filter::StageFilters;
 pub use explanation_examples::{EveryExplanation, ExampleDiagnostic, ExplanationExamples};
 pub use fixture_glob::FixtureGlob;
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use guide_links::GuideLinks;
 pub use headers::HeaderAgreement;
 pub use heavy_run_probe::HeavyRunProbe;
+pub use light_stage_run::LightStageRun;
 pub use lint_fixture::LintFixture;
 pub use read_back_agreement::ReadBackAgreement;
 pub use reference_index::ReferenceIndex;

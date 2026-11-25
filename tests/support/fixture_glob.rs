@@ -5,7 +5,7 @@ use std::thread;
 use globset::Glob;
 
 use crate::heavy_run::Narrowing;
-use crate::heavy_run::uncaptured::Uncaptured;
+use crate::heavy_run::uncaptured_output::UncapturedOutput;
 
 pub struct FixtureGlob {
     filter: Option<String>,
@@ -14,7 +14,7 @@ pub struct FixtureGlob {
 impl FixtureGlob {
     pub const VARIABLE: &str = "INSTA_GLOB_FILTER";
     const SEPARATOR: char = ';';
-    const PATH_SEPARATOR: char = '/';
+    const ANY_DIRECTORY: &str = "**/";
     const METACHARACTERS: [char; 4] = ['*', '?', '[', '{'];
     const UNNAMED_TEST: &str = "this test";
 
@@ -26,13 +26,13 @@ impl FixtureGlob {
         Self { filter }
     }
 
-    pub fn report_kept(&self, kept: &[PathBuf]) {
+    pub fn assert_kept(&self, kept: &[PathBuf]) {
         let test = thread::current()
             .name()
             .unwrap_or(Self::UNNAMED_TEST)
             .to_string();
         if let Some(line) = self.kept_line(kept.len(), &test) {
-            Uncaptured::write(&line);
+            UncapturedOutput::write(&line);
         }
         assert!(
             self.filter.is_none() || !kept.is_empty(),
@@ -56,8 +56,8 @@ impl FixtureGlob {
     }
 
     fn names_a_file(glob: &str) -> bool {
-        let file = glob.rsplit(Self::PATH_SEPARATOR).next().unwrap_or(glob);
-        Glob::new(glob).is_ok() && !file.contains(Self::METACHARACTERS)
+        let named = glob.strip_prefix(Self::ANY_DIRECTORY).unwrap_or(glob);
+        Glob::new(glob).is_ok() && !named.contains(Self::METACHARACTERS)
     }
 }
 

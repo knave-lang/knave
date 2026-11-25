@@ -17,12 +17,12 @@ use knave::stack::FreshStack;
 use knave_agree::LeftOutFixtures;
 
 use heavy_run::admission::Admission;
-use heavy_run::{HeavyTestRun, Narrowing, RunEnvironment};
+use heavy_run::{HeavyTestRun, Narrowing, RunEnvironment, TestArguments};
 use support::{
     AgreementReport, EveryExplanation, ExplanationExamples, Fixture, FixtureGlob, FixtureReports,
-    FormatFailures, GuideLinks, HeaderAgreement, HeavyRunProbe, LintFixture, PreludePages,
-    ReadBackAgreement, ReferenceIndex, ReferencePage, SavedPreludeAgreement, SkillPage,
-    StageFilters,
+    FormatFailures, GuideLinks, HeaderAgreement, HeavyRunProbe, LightStageRun, LintFixture,
+    PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage, SavedPreludeAgreement,
+    SkillPage,
 };
 
 const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
@@ -69,11 +69,11 @@ const FAILING_EXIT_FIX: &str = "## Fixes\n\n```knave\n(defn main ()\n  (local em
 
 #[test]
 fn reader_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/read/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).read_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -84,11 +84,11 @@ fn reader_fixtures() {
 
 #[test]
 fn project_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/project/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).project_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -99,11 +99,11 @@ fn project_fixtures() {
 
 #[test]
 fn format_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/format/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).format_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -128,11 +128,11 @@ fn every_repository_source_formats_to_the_same_forms_and_stays_formatted() {
 
 #[test]
 fn expand_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/expand/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).expand_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -143,11 +143,12 @@ fn expand_fixtures() {
 
 #[test]
 fn check_fixtures() {
-    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
+    let glob = FixtureGlob::from_environment();
+    HeavyTestRun::of(&glob).enforce();
     let fixtures = "fixtures/check/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    glob.assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).check_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -158,11 +159,11 @@ fn check_fixtures() {
 
 #[test]
 fn loan_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/loans/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).loan_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -173,11 +174,11 @@ fn loan_fixtures() {
 
 #[test]
 fn text_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/text/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).text_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -188,11 +189,12 @@ fn text_fixtures() {
 
 #[test]
 fn emit_fixtures() {
-    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
+    let glob = FixtureGlob::from_environment();
+    HeavyTestRun::of(&glob).enforce();
     let fixtures = "fixtures/emit/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    glob.assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).emit_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -203,11 +205,12 @@ fn emit_fixtures() {
 
 #[test]
 fn run_fixtures() {
-    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
+    let glob = FixtureGlob::from_environment();
+    HeavyTestRun::of(&glob).enforce();
     let fixtures = "fixtures/run/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    glob.assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).run_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -218,11 +221,11 @@ fn run_fixtures() {
 
 #[test]
 fn lint_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/lint/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| LintFixture::load(path).report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -233,7 +236,7 @@ fn lint_fixtures() {
 
 #[test]
 fn needless_type_lint_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/lint/needless_type/*.knv";
     let project_file = Language::project_file_name();
     let is_fixture = |path: &Path| path.file_name() != Some(project_file.as_ref());
@@ -241,7 +244,7 @@ fn needless_type_lint_fixtures() {
     insta::glob!(fixtures, |path| if is_fixture(path) {
         paths.push(PathBuf::from(path))
     });
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| LintFixture::load(path).report());
     insta::glob!(fixtures, |path| {
         if is_fixture(path)
@@ -378,11 +381,11 @@ fn skill_name_matches_its_folder() {
 
 #[test]
 fn corpus_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/corpus/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let reports = FixtureReports::compute(paths, |path| Fixture::load(path).run_report());
     insta::glob!(fixtures, |path| {
         if let Some(report) = reports.report(path) {
@@ -393,11 +396,11 @@ fn corpus_fixtures() {
 
 #[test]
 fn agree_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let fixtures = "fixtures/agree/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     let agreement = AgreementReport::new();
     let reports = FixtureReports::compute(paths, move |path| agreement.of(path));
     insta::glob!(fixtures, |path| {
@@ -429,50 +432,53 @@ fn defrule_headers_agree() {
 
 #[test]
 fn saved_prelude_expand_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/expand/*.knv", |path| paths
         .push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
 
 #[test]
 fn saved_prelude_check_fixtures() {
-    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
+    let glob = FixtureGlob::from_environment();
+    HeavyTestRun::of(&glob).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/check/*.knv", |path| paths
         .push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    glob.assert_kept(&paths);
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
 
 #[test]
 fn saved_prelude_emit_fixtures() {
-    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
+    let glob = FixtureGlob::from_environment();
+    HeavyTestRun::of(&glob).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/emit/*.knv", |path| paths
         .push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    glob.assert_kept(&paths);
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
 
 #[test]
 fn saved_prelude_run_fixtures() {
-    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
+    let glob = FixtureGlob::from_environment();
+    HeavyTestRun::of(&glob).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/run/*.knv", |path| paths.push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    glob.assert_kept(&paths);
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
 
 #[test]
 fn saved_prelude_corpus_fixtures() {
-    HeavyTestRun::of(&StageFilters::from_process()).enforce();
+    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/corpus/*.knv", |path| paths
         .push(PathBuf::from(path)));
-    FixtureGlob::from_environment().report_kept(&paths);
+    FixtureGlob::from_environment().assert_kept(&paths);
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
 }
 
@@ -1084,7 +1090,8 @@ fn a_glob_with_a_metacharacter_in_a_file_name_names_no_fixtures() {
     ] {
         assert!(!FixtureGlob::of(Some(glob.to_string())).narrows(), "{glob}");
     }
-    assert!(FixtureGlob::of(Some("check/*/a.knv".to_string())).narrows());
+    assert!(FixtureGlob::of(Some("check/a.knv".to_string())).narrows());
+    assert!(!FixtureGlob::of(Some("check/*/a.knv".to_string())).narrows());
 }
 
 #[test]
@@ -1107,19 +1114,66 @@ fn a_set_glob_reports_how_many_fixtures_it_kept() {
 #[test]
 #[should_panic(expected = "INSTA_GLOB_FILTER keeps no fixture")]
 fn a_set_glob_that_keeps_no_fixture_fails_the_stage() {
-    FixtureGlob::of(Some(NO_FIXTURE_BY_NAME.to_string())).report_kept(&[]);
+    FixtureGlob::of(Some(NO_FIXTURE_BY_NAME.to_string())).assert_kept(&[]);
 }
 
 #[test]
 fn an_unset_glob_lets_a_stage_keep_no_fixture() {
-    FixtureGlob::of(None).report_kept(&[]);
+    FixtureGlob::of(None).assert_kept(&[]);
 }
 
 #[test]
-fn a_stage_run_without_a_filter_is_not_narrowed() {
+fn a_stage_run_without_a_filter_is_not_light() {
     let skipping = ["--skip", "check_fixtures", "--skip", "each_explanation_"].map(String::from);
-    assert!(!StageFilters::of(skipping).narrows());
-    assert!(StageFilters::of(["expand_fixtures".to_string()]).narrows());
+    let run = LightStageRun::of(TestArguments::of(skipping), FixtureGlob::of(None));
+    assert!(!run.narrows());
+}
+
+#[test]
+fn a_stage_filter_that_selects_a_heavy_test_is_not_light() {
+    for filter in ["fixtures", "_", "", "prelude", "explanation"] {
+        let run = LightStageRun::of(
+            TestArguments::of([filter.to_string()]),
+            FixtureGlob::of(None),
+        );
+        assert!(!run.narrows(), "{filter:?}");
+    }
+}
+
+#[test]
+fn a_stage_filter_that_selects_only_light_tests_is_light() {
+    for arguments in [vec!["expand_fixtures"], vec!["lint_fixtures", "--exact"]] {
+        let arguments = TestArguments::of(arguments.into_iter().map(String::from));
+        assert!(LightStageRun::of(arguments, FixtureGlob::of(None)).narrows());
+    }
+}
+
+#[test]
+fn a_heavy_stage_filter_with_a_naming_glob_is_light() {
+    let arguments = TestArguments::of(["fixtures".to_string()]);
+    let glob = FixtureGlob::of(Some(SMALL_CHECK_FIXTURE_BY_NAME.to_string()));
+    assert!(LightStageRun::of(arguments, glob).narrows());
+}
+
+#[test]
+fn the_heavy_test_list_names_every_heavy_stage_test() {
+    let source = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stages.rs"))
+        .expect("the stage tests read");
+    let mut heavy: Vec<&str> = source
+        .lines()
+        .filter_map(|line| line.strip_prefix("fn "))
+        .filter_map(|line| line.split('(').next())
+        .filter(|name| {
+            ["check_fixtures", "run_fixtures", "emit_fixtures"]
+                .iter()
+                .any(|stage| name.ends_with(stage))
+                || name.starts_with("each_explanation_")
+        })
+        .collect();
+    heavy.sort_unstable();
+    let mut listed = LightStageRun::HEAVY_TESTS.to_vec();
+    listed.sort_unstable();
+    assert_eq!(heavy, listed);
 }
 
 #[test]

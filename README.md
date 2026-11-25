@@ -77,13 +77,9 @@ The repository uses a [Nix](https://nixos.org/download/) flake.
 
    If you use [direnv](https://direnv.net/), run `direnv allow` once instead. The shell then loads when you enter the directory.
 
-2. Run the tests with the coverage, CRAP and emitted-Rust lint checks:
+2. Run the light tests locally, such as `cargo test --test stages expand_fixtures`. [AGENTS.md](AGENTS.md) lists which tests are light.
 
-   ```sh
-   cargo xtask coverage
-   ```
-
-   `cargo test --workspace` runs the tests alone.
+   Run the heavy tests on GitHub Actions: push your branch and dispatch the `Heavy tests` workflow, as [docs/pull-requests.md](docs/pull-requests.md) describes. CI runs the coverage, CRAP and emitted-Rust lint checks on each ready pull request. Off GitHub Actions, a heavy test fails at once. Only the project owner's local override lets one run there.
 
 3. Build the compiler:
 

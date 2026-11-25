@@ -87,8 +87,7 @@ impl WrittenEntries for LonePreludeModule {
     }
 
     fn location(&self, site: Span) -> String {
-        let name = self.sources.file(site.source()).name();
-        format!("{name}:{}", self.sources.start_position(site))
+        self.sources.location(site)
     }
 }
 

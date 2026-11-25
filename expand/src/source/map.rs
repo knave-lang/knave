@@ -49,6 +49,11 @@ impl SourceMap {
             .position(span.range().start)
     }
 
+    pub fn location(&self, span: Span) -> String {
+        let name = self.file(span.source()).name();
+        format!("{name}:{}", self.start_position(span))
+    }
+
     fn add_excerpt(&mut self, enclosing: SourceId, range: Range<usize>) -> SourceId {
         let id = self.next_id();
         let enclosing = self.file(enclosing);
@@ -153,5 +158,15 @@ mod tests {
                 .borrow()
                 .contains_key(&fixture.enclosing)
         );
+    }
+
+    #[test]
+    fn a_location_names_the_file_and_the_start_position() {
+        let fixture = InsideFixture::new();
+        let second_line = InsideFixture::TEXT
+            .find(InsideFixture::SECOND_LINE)
+            .expect("the text holds the line");
+        let span = Span::new(fixture.enclosing, second_line..second_line);
+        assert_eq!(fixture.sources.location(span), "geometry.knv:2:1");
     }
 }

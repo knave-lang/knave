@@ -70,9 +70,10 @@ jobs:
           FILTER: ${{ inputs.filter }}
           GLOB: ${{ inputs.glob }}
           INSTA_UPDATE: new
+          GLOB_SKIP_LINE: '^Skipping .* due to glob filter$'
         run: |
           if [ -n "$GLOB" ]; then export INSTA_GLOB_FILTER="$GLOB"; fi
-          nix develop .#ci -c cargo test --quiet --test "$TARGET" ${FILTER:+"$FILTER"} 2>&1 | tee -a "$OUTPUT"
+          nix develop .#ci -c cargo test --quiet --test "$TARGET" ${FILTER:+"$FILTER"} 2>&1 | sed -u "/$GLOB_SKIP_LINE/d" | tee -a "$OUTPUT"
       - name: Collect the new snapshots
         if: ${{ !cancelled() && steps.build.outcome != 'skipped' }}
         shell: bash

@@ -3,9 +3,9 @@ use super::argument_values::ArgumentValues;
 use super::call_site::CallSite;
 use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
-use super::loan_place::LoanPlace;
 use super::passed_holdings::PassedHoldings;
 use super::point_id::PointId;
+use super::store_target::StoreTarget;
 use super::walked::Walked;
 
 pub struct CallWalk<'c, 'w> {
@@ -50,17 +50,9 @@ impl<'c, 'w> CallWalk<'c, 'w> {
     }
 
     fn store_into(&mut self, target: usize, stored: Holdings) {
-        let Some(argument) = self.site.arguments().get(target) else {
-            return;
-        };
-        let Some(place) = LoanPlace::of(&argument.value) else {
-            return;
-        };
-        let held = if argument.value.ty.is_reference() {
-            stored.within()
-        } else {
-            stored
-        };
-        self.walk.builder().values().store(place.root(), &held);
+        let argument = self.site.arguments().get(target);
+        if let Some(target) = argument.and_then(StoreTarget::of) {
+            target.receive(stored, &mut self.walk.builder().values());
+        }
     }
 }

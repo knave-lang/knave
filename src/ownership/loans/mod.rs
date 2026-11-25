@@ -50,6 +50,7 @@ mod point_index;
 mod point_lists;
 mod result_loans;
 mod sorted_set;
+mod store_target;
 mod type_memo;
 mod value_flow;
 mod value_regions;

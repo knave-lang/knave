@@ -127,6 +127,10 @@ mod tests {
         fn show(&self, _ty: &Type) -> String {
             "shown".to_string()
         }
+
+        fn describe(&mut self, _ty: &Type) -> String {
+            "described".to_string()
+        }
     }
 
     #[test]

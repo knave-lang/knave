@@ -7,6 +7,7 @@ use super::holdings::Holdings;
 use super::loan_depth::LoanDepth;
 use super::loan_id::LoanId;
 use super::loan_layers::LoanLayers;
+use super::recorded_flow::RecordedFlow;
 use crate::core::BindingId;
 
 #[derive(Clone, Default)]
@@ -16,7 +17,15 @@ pub struct ValueRegions {
 }
 
 impl ValueRegions {
-    pub fn flow_into(&mut self, binding: BindingId, held: &Holdings) {
+    pub fn of_flows(flows: &[RecordedFlow]) -> Self {
+        let mut regions = Self::default();
+        for flow in flows {
+            regions.flow_into(flow.binding, &flow.held);
+        }
+        regions.resolved()
+    }
+
+    fn flow_into(&mut self, binding: BindingId, held: &Holdings) {
         self.loans.entry(binding).or_default().extend(held.loans());
         self.sources
             .entry(binding)
@@ -24,7 +33,7 @@ impl ValueRegions {
             .extend(held.values());
     }
 
-    pub fn resolved(mut self) -> Self {
+    fn resolved(mut self) -> Self {
         while self.grow() {}
         self
     }

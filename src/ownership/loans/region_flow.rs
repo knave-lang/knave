@@ -163,8 +163,8 @@ impl ReachingFacts {
 
     fn unify_sources(&self, regions: &mut RegionSets) {
         for (index, flow) in self.flows.iter().enumerate() {
-            for source in &flow.sources {
-                for region in self.regions_of(*source, flow.point, regions) {
+            for source in flow.sources() {
+                for region in self.regions_of(source, flow.point, regions) {
                     regions.unite(index, region);
                 }
             }
@@ -282,11 +282,8 @@ mod tests {
 
         fn define(&mut self, point: PointId, binding: BindingId, sources: &[BindingId]) {
             self.graph.define(point, binding);
-            self.flows.push(RecordedFlow {
-                point,
-                binding,
-                sources: sources.to_vec(),
-            });
+            self.flows
+                .push(RecordedFlow::from_sources(point, binding, sources));
         }
 
         fn store(&mut self, point: PointId, target: BindingId) {

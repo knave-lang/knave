@@ -2,6 +2,7 @@ use super::body_regions::BodyRegions;
 use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
 use super::point_id::PointId;
+use super::recorded_flow::RecordedFlow;
 use super::recorded_store::RecordedStore;
 use crate::core::BindingId;
 
@@ -17,7 +18,11 @@ impl<'b> ValueFlow<'b> {
 
     pub fn define(&mut self, point: PointId, binding: BindingId, held: &Holdings) {
         self.graph.define(point, binding);
-        self.regions.flow_into(point, binding, held);
+        self.regions.flow_into(RecordedFlow {
+            point,
+            binding,
+            held: held.clone(),
+        });
     }
 
     pub fn store(&mut self, store: RecordedStore) {

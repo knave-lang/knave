@@ -12,8 +12,8 @@ impl ConnectedFlows {
     pub fn kept(flows: Vec<RecordedFlow>, targets: &[BindingId]) -> Vec<RecordedFlow> {
         let mut connected = Self::default();
         for flow in &flows {
-            for source in &flow.sources {
-                connected.unite(flow.binding, *source);
+            for source in flow.sources() {
+                connected.unite(flow.binding, source);
             }
         }
         let roots: FxHashSet<BindingId> = targets
@@ -54,11 +54,9 @@ mod tests {
 
     impl ConnectedFixture {
         fn flow(binding: u32, sources: &[u32]) -> RecordedFlow {
-            RecordedFlow {
-                point: PointId::ENTRY,
-                binding: BindingId::from_index(binding),
-                sources: sources.iter().copied().map(BindingId::from_index).collect(),
-            }
+            let sources: Vec<BindingId> =
+                sources.iter().copied().map(BindingId::from_index).collect();
+            RecordedFlow::from_sources(PointId::ENTRY, BindingId::from_index(binding), &sources)
         }
     }
 

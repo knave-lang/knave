@@ -3,6 +3,7 @@ use super::point_graph::PointGraph;
 use super::recorded_flow::RecordedFlow;
 use super::recorded_store::RecordedStore;
 use super::region_flow::RegionFlow;
+use super::stored_loans::StoredLoans;
 use super::value_regions::ValueRegions;
 
 #[derive(Default)]
@@ -28,7 +29,10 @@ impl BodyRegions {
             .map(|store| RecordedStore {
                 point: store.point,
                 target: store.target,
-                held: regions.of_holdings(&store.held),
+                held: StoredLoans {
+                    sources: store.held.sources().collect(),
+                    loans: regions.of_holdings(&store.held),
+                },
             })
             .collect();
         HeldLoans::new(regions, RegionFlow::of(graph, self.flows, stores))

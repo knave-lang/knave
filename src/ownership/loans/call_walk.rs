@@ -40,7 +40,8 @@ impl<'c, 'w> CallWalk<'c, 'w> {
                 <dyn Passing>::of(argument, self.site.parameter(position), rules)
             })
             .collect();
-        let values = ArgumentValues::new(self.site.arguments(), passings);
+        let overwritten = self.replaced.map(|replaced| replaced.place());
+        let values = ArgumentValues::new(self.site.arguments(), passings).overwriting(overwritten);
         let evaluated = values.evaluate(self.walk, called.end);
         let point = self.walk.builder().join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));

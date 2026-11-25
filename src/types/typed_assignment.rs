@@ -1,7 +1,7 @@
 use super::typed::{AssignmentPath, TypedArgument, TypedAssignment, TypedExpr};
 
 impl TypedAssignment {
-    const PLACE_POSITION: usize = 0;
+    pub(crate) const PLACE_POSITION: usize = 0;
 
     pub fn new(path: AssignmentPath, template: TypedExpr, arguments: Vec<TypedArgument>) -> Self {
         Self {

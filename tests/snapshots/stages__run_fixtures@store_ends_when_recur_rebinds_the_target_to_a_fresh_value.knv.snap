@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/store_ends_when_recur_rebinds_the_target_to_a_fresh_value.knv
+---
+2
+2
+2
+1

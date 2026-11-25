@@ -10,7 +10,7 @@ pub struct RecordedFlow {
 
 impl RecordedFlow {
     pub fn sources(&self) -> impl Iterator<Item = BindingId> + '_ {
-        self.held.values().map(|value| value.binding())
+        self.held.sources()
     }
 
     #[cfg(test)]

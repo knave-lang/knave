@@ -18,6 +18,10 @@ impl ReplacedLocal {
         }
     }
 
+    pub fn place(&self) -> usize {
+        TypedAssignment::PLACE_POSITION
+    }
+
     pub fn renew(&self, point: PointId, passed: &[PassedHoldings], values: &mut ValueFlow<'_>) {
         if let Some(value) = passed.get(self.value) {
             values.define(point, self.local, &value.all());

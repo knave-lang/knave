@@ -4,11 +4,13 @@ use super::holdings::Holdings;
 use super::lender::Lender;
 use super::passed_holdings::PassedHoldings;
 use super::point_id::PointId;
+use super::walked::Walked;
 use crate::types::TypedArgument;
 
 pub struct ArgumentValues<'w> {
     arguments: &'w [TypedArgument],
     passings: Vec<&'static dyn Passing>,
+    overwritten: Option<usize>,
 }
 
 pub struct EvaluatedArguments {
@@ -21,6 +23,14 @@ impl<'w> ArgumentValues<'w> {
         Self {
             arguments,
             passings,
+            overwritten: None,
+        }
+    }
+
+    pub fn overwriting(self, overwritten: Option<usize>) -> Self {
+        Self {
+            overwritten,
+            ..self
         }
     }
 
@@ -31,6 +41,7 @@ impl<'w> ArgumentValues<'w> {
         };
         for (position, argument) in self.arguments.iter().enumerate() {
             let walked = match self.passings.get(position) {
+                _ if self.overwritten == Some(position) => Walked::at(evaluated.end),
                 Some(passing) if passing.takes_the_place() => {
                     walk.place_root(&argument.value, evaluated.end)
                 }

@@ -1,0 +1,6 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/store_into_one_copy_leaves_its_sibling_free.knv
+---
+1

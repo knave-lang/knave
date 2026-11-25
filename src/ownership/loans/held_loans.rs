@@ -9,11 +9,11 @@ use crate::core::BindingId;
 
 pub struct HeldLoans {
     regions: ValueRegions,
-    stored: RegionFlow<BTreeSet<LoanId>>,
+    stored: RegionFlow,
 }
 
 impl HeldLoans {
-    pub fn new(regions: ValueRegions, stored: RegionFlow<BTreeSet<LoanId>>) -> Self {
+    pub fn new(regions: ValueRegions, stored: RegionFlow) -> Self {
         Self { regions, stored }
     }
 

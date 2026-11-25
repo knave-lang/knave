@@ -48,6 +48,10 @@ impl Holdings {
     pub fn values(&self) -> impl Iterator<Item = HeldValue> + '_ {
         self.values.iter()
     }
+
+    pub fn sources(&self) -> impl Iterator<Item = BindingId> + '_ {
+        self.values.iter().map(|value| value.binding())
+    }
 }
 
 impl From<LoanId> for Holdings {

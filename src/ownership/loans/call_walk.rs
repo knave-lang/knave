@@ -7,6 +7,7 @@ use super::passed_holdings::PassedHoldings;
 use super::point_id::PointId;
 use super::store_target::StoreTarget;
 use super::walked::Walked;
+use crate::ownership::whole_value_changes::WholeValueChanges;
 
 pub struct CallWalk<'c, 'w> {
     walk: &'c mut dyn ExpressionWalk<'w>,
@@ -34,25 +35,33 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         let evaluated = values.evaluate(self.walk, called.end);
         let point = self.walk.builder().join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));
-        self.store_into_targets(&passed);
+        self.store_into_targets(point, &passed);
+        self.renew_a_replaced_local(point);
         Walked::holding(point, self.site.result_holdings(passed))
     }
 
-    fn store_into_targets(&mut self, passed: &[PassedHoldings]) {
+    fn store_into_targets(&mut self, point: PointId, passed: &[PassedHoldings]) {
         let stores = self.walk.rules().callees().stores(self.site.callee());
         for (target, values) in stores.stores() {
             let stored = values
                 .iter()
                 .filter_map(|(value, layer)| Some(passed.get(*value)?.stored(*layer)))
                 .fold(Holdings::default(), Holdings::merged);
-            self.store_into(target, stored);
+            self.store_into(point, target, stored);
         }
     }
 
-    fn store_into(&mut self, target: usize, stored: Holdings) {
+    fn store_into(&mut self, point: PointId, target: usize, stored: Holdings) {
         let argument = self.site.arguments().get(target);
         if let Some(target) = argument.and_then(StoreTarget::of) {
-            target.receive(stored, &mut self.walk.builder().values());
+            target.receive(point, stored, &mut self.walk.builder().values());
+        }
+    }
+
+    fn renew_a_replaced_local(&mut self, point: PointId) {
+        let replaced = WholeValueChanges::replaced(self.site.callee(), self.site.arguments());
+        if let Some(local) = replaced {
+            self.walk.builder().values().renew(point, local);
         }
     }
 }

@@ -8,9 +8,9 @@ store-both!
   3:10 change `second`: no live loan
 main
   11:30 borrow `t`: no live loan
-  11:41 borrow `u`: `t` lent at 11:30, held by `xs`
-  11:16 change `xs`: mut `ys` lent at 11:19, passed to the call; `t` lent at 11:30, held by `xs`; `u` lent at 11:41, passed to the call
-  11:19 change `ys`: mut `xs` lent at 11:16, passed to the call; `t` lent at 11:30, held by `xs`; `u` lent at 11:41, passed to the call
+  11:41 borrow `u`: no live loan
+  11:16 change `xs`: mut `ys` lent at 11:19, passed to the call; `t` lent at 11:30, passed to the call; `u` lent at 11:41, passed to the call
+  11:19 change `ys`: mut `xs` lent at 11:16, passed to the call; `t` lent at 11:30, passed to the call; `u` lent at 11:41, passed to the call
   12:10 change `u`: `t` lent at 11:30, held by `xs`
   13:10 change `xs`: `t` lent at 11:30, held by `xs`
   14:10 change `ys`: `t` lent at 11:30, held by `xs`

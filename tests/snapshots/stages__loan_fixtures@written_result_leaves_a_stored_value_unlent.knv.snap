@@ -7,6 +7,6 @@ keep-other!
   9:10 change `names`: no live loan
 main
   17:29 borrow `t`: no live loan
-  17:40 borrow `u`: `t` lent at 17:29, held by `ns`
-  17:18 change `ns`: `t` lent at 17:29, held by `ns`; `u` lent at 17:40, passed to the call
+  17:40 borrow `u`: no live loan
+  17:18 change `ns`: `t` lent at 17:29, passed to the call; `u` lent at 17:40, passed to the call
   18:10 change `t`: `u` lent at 17:40, held by `r`

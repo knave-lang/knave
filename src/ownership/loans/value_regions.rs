@@ -9,7 +9,7 @@ use super::loan_id::LoanId;
 use super::loan_layers::LoanLayers;
 use crate::core::BindingId;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ValueRegions {
     loans: FxHashMap<BindingId, LoanLayers>,
     sources: FxHashMap<BindingId, BTreeSet<HeldValue>>,

@@ -1,5 +1,7 @@
 use super::holdings::Holdings;
 use super::loan_place::LoanPlace;
+use super::point_id::PointId;
+use super::recorded_store::RecordedStore;
 use super::value_flow::ValueFlow;
 use crate::core::BindingId;
 use crate::types::{TypedArgument, TypedExpr, TypedExprKind};
@@ -26,12 +28,16 @@ impl StoreTarget {
         }
     }
 
-    pub fn receive(&self, stored: Holdings, values: &mut ValueFlow<'_>) {
+    pub fn receive(&self, point: PointId, stored: Holdings, values: &mut ValueFlow<'_>) {
         let held = if self.through_reference {
             stored.within()
         } else {
             stored
         };
-        values.store(self.root, &held);
+        values.store(RecordedStore {
+            point,
+            target: self.root,
+            held,
+        });
     }
 }

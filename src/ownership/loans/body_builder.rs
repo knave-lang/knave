@@ -1,4 +1,5 @@
 use super::body_facts::BodyFacts;
+use super::body_regions::BodyRegions;
 use super::closure::Closure;
 use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
@@ -8,7 +9,6 @@ use super::loop_heads::LoopHeads;
 use super::loop_scope::LoopScope;
 use super::point_id::PointId;
 use super::value_flow::ValueFlow;
-use super::value_regions::ValueRegions;
 use crate::core::BindingId;
 use crate::source::Span;
 
@@ -16,7 +16,7 @@ use crate::source::Span;
 pub struct BodyBuilder<'w> {
     graph: ControlFlowGraph,
     loans: LoanTable,
-    regions: ValueRegions,
+    regions: BodyRegions,
     loops: LoopHeads<'w>,
 }
 

@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::Type;
 use super::parameterized::Parameterized;
+use super::passed_call::PassedCall;
 use super::typed::{
     LetValue, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
     TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
@@ -73,9 +74,11 @@ impl TypedExpr {
         match &self.kind {
             TypedExprKind::Leaf(_) => Vec::new(),
             TypedExprKind::Fn(lambda) => lambda.body.expressions().collect(),
-            TypedExprKind::Call(callee, arguments) => std::iter::once(callee.as_ref())
-                .chain(arguments.iter().map(|argument| &argument.value))
-                .collect(),
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(self) => {
+                std::iter::once(callee)
+                    .chain(arguments.iter().map(|argument| &argument.value))
+                    .collect()
+            }
             TypedExprKind::Control(control) => control.children(),
             other => other.nested_children(),
         }
@@ -214,9 +217,6 @@ impl TypedExprKind {
             TypedExprKind::Assoc(value, keys, item) => std::iter::once(value.as_ref())
                 .chain(keys)
                 .chain(std::iter::once(item.as_ref()))
-                .collect(),
-            TypedExprKind::Assign(assignment) => std::iter::once(&assignment.template)
-                .chain(assignment.arguments.iter().map(|argument| &argument.value))
                 .collect(),
             _ => Vec::new(),
         }

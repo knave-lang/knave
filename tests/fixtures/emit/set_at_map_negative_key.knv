@@ -1,0 +1,4 @@
+(defn main ()
+  (local offsets (sorted-map -1 10))
+  (set! (at offsets -1) 20)
+  (prn offsets))

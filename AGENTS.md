@@ -195,7 +195,7 @@ cargo test <narrowest test>
 
 **These two conditions together keep a stage test light:**
 
-- `INSTA_GLOB_FILTER` names fixtures. Each of its globs compiles, and the last path part of each holds none of `*`, `?`, `[` and `{`.
+- `INSTA_GLOB_FILTER` names fixtures. Each of its globs compiles and holds none of `*`, `?`, `[` and `{` outside a leading `**/`.
 - The stage test has a filter, and the filter is part of no test name that starts with `each_explanation_`.
 
 **Every stage test that is not heavy is light.**

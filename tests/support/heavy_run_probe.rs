@@ -1,4 +1,3 @@
-use std::env;
 use std::process::{Command, Output};
 
 use super::fixture_glob::FixtureGlob;
@@ -13,9 +12,8 @@ impl HeavyRunProbe {
     const EXACT: &str = "--exact";
 
     pub fn of_test(test: &str) -> Self {
-        let executable = env::current_exe().expect("the test binary has a path");
-        let mut command = Command::new(executable);
-        RunEnvironment::clear_from(&mut command)
+        let mut command = RunEnvironment::cleared_test_binary();
+        command
             .args([test, Self::EXACT])
             .env_remove(FixtureGlob::VARIABLE)
             .env_remove(Self::SNAPSHOT_UPDATE);

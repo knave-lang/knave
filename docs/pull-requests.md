@@ -247,6 +247,8 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **Make no other GitHub call until `gh run watch` exits:** the watch spends the budget of one call a minute.
 
+**With a glob, give a filter whose stage tests share one fixture directory, such as `check_fixtures`.** A glob that keeps no fixture of a selected stage fails that stage.
+
 **A run fails when its filter selects no test, or when its glob keeps no fixture of a stage the filter selects.** `output.txt` says which. With a glob, `output.txt` says how many fixtures the glob kept in each stage. Fix the filter or the glob, and dispatch again.
 
 **If `gh workflow run` fails with an HTTP 404 or 422 naming the workflow, merge `origin/main`, push, and dispatch again.**

@@ -1,18 +1,12 @@
 use std::env;
-use std::marker::PhantomData;
 
-use super::narrowing::Narrowing;
+use super::selection::Selection;
 
-pub trait FilterRule {
-    fn narrows(filters: &[&str], exact: bool) -> bool;
-}
-
-pub struct TestArguments<Rule> {
+pub struct TestArguments {
     arguments: Vec<String>,
-    rule: PhantomData<Rule>,
 }
 
-impl<Rule: FilterRule> TestArguments<Rule> {
+impl TestArguments {
     const VALUED_OPTIONS: [&'static str; 7] = [
         "--skip",
         "--test-threads",
@@ -23,6 +17,7 @@ impl<Rule: FilterRule> TestArguments<Rule> {
         "-Z",
     ];
     const EXACT: &'static str = "--exact";
+    const END_OF_OPTIONS: &'static str = "--";
     const OPTION_PREFIX: char = '-';
 
     pub fn from_process() -> Self {
@@ -32,32 +27,24 @@ impl<Rule: FilterRule> TestArguments<Rule> {
     pub fn of(arguments: impl IntoIterator<Item = String>) -> Self {
         Self {
             arguments: arguments.into_iter().collect(),
-            rule: PhantomData,
         }
     }
 
-    fn filters(&self) -> Vec<&str> {
+    pub fn selection(&self) -> Selection {
         let mut filters = Vec::new();
+        let mut exact = false;
         let mut arguments = self.arguments.iter();
         while let Some(argument) = arguments.next() {
-            if Self::VALUED_OPTIONS.contains(&argument.as_str()) {
+            if argument == Self::END_OF_OPTIONS {
+                filters.extend(arguments.by_ref().cloned());
+            } else if argument == Self::EXACT {
+                exact = true;
+            } else if Self::VALUED_OPTIONS.contains(&argument.as_str()) {
                 arguments.next();
             } else if !argument.starts_with(Self::OPTION_PREFIX) {
-                filters.push(argument.as_str());
+                filters.push(argument.clone());
             }
         }
-        filters
-    }
-
-    fn exact(&self) -> bool {
-        self.arguments
-            .iter()
-            .any(|argument| argument == Self::EXACT)
-    }
-}
-
-impl<Rule: FilterRule> Narrowing for TestArguments<Rule> {
-    fn narrows(&self) -> bool {
-        Rule::narrows(&self.filters(), self.exact())
+        Selection { filters, exact }
     }
 }

@@ -16,7 +16,7 @@ use knave::language::Language;
 use knave::source::SourceMap;
 use serde_json::{Map, Value, json};
 
-use heavy_run::{FilterRule, HeavyTestRun, Narrowing, RunEnvironment, TestArguments};
+use heavy_run::{HeavyTestRun, Narrowing, RunEnvironment, Selection, TestArguments};
 
 const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
 const NEW_PROJECT_CHECKS: [&[&str]; 3] = [&["fmt", "--check"], &["lint"], &["test"]];
@@ -368,7 +368,7 @@ impl Sandbox {
     const BUILD_PARENT: &str = "target";
 
     fn admitted(test_name: &str) -> Self {
-        HeavyTestRun::of(&CliFilters::from_process()).enforce();
+        HeavyTestRun::of(&ExactName::from_process()).enforce();
         let directory = std::env::temp_dir().join(format!(
             "{}-cli-{}-{test_name}",
             Language::NAME,
@@ -14620,12 +14620,23 @@ impl ReferenceSources {
     }
 }
 
-struct ExactName;
+struct ExactName {
+    arguments: TestArguments,
+}
 
-type CliFilters = TestArguments<ExactName>;
+impl ExactName {
+    fn from_process() -> Self {
+        Self::of(TestArguments::from_process())
+    }
 
-impl FilterRule for ExactName {
-    fn narrows(filters: &[&str], exact: bool) -> bool {
+    fn of(arguments: TestArguments) -> Self {
+        Self { arguments }
+    }
+}
+
+impl Narrowing for ExactName {
+    fn narrows(&self) -> bool {
+        let Selection { filters, exact } = self.arguments.selection();
         exact && !filters.is_empty()
     }
 }
@@ -14636,10 +14647,8 @@ impl WholeCliRun {
     const SMALL_SUBSTRING: &str = "help_lists_every_command";
 
     fn output() -> Output {
-        let executable = std::env::current_exe().expect("the test binary has a path");
-        let mut command = Command::new(executable);
-        command.arg(Self::SMALL_SUBSTRING);
-        RunEnvironment::clear_from(&mut command)
+        RunEnvironment::cleared_test_binary()
+            .arg(Self::SMALL_SUBSTRING)
             .output()
             .expect("the test binary starts")
     }
@@ -14651,22 +14660,23 @@ fn a_cli_run_without_exact_names_no_test() {
         vec!["--test-threads", "4", "--skip", "fmt", "--quiet"],
         vec!["_"],
         vec!["doc"],
+        vec!["doc", "--", "--exact"],
     ] {
         let arguments = arguments.into_iter().map(String::from);
-        assert!(!CliFilters::of(arguments).narrows());
+        assert!(!ExactName::of(TestArguments::of(arguments)).narrows());
     }
 }
 
 #[test]
 fn a_cli_filter_with_exact_names_one_test() {
     let arguments = ["fmt_lays_out", "--exact"].map(String::from);
-    assert!(CliFilters::of(arguments).narrows());
+    assert!(ExactName::of(TestArguments::of(arguments)).narrows());
 }
 
 #[test]
 fn a_one_character_cli_filter_with_exact_names_one_test() {
     let arguments = ["e", "--exact"].map(String::from);
-    assert!(CliFilters::of(arguments).narrows());
+    assert!(ExactName::of(TestArguments::of(arguments)).narrows());
 }
 
 #[test]

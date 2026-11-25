@@ -20,9 +20,12 @@ impl RunEnvironment {
         }
     }
 
-    pub fn clear_from(command: &mut Command) -> &mut Command {
-        Self::VARIABLES
-            .iter()
-            .fold(command, |command, variable| command.env_remove(variable))
+    pub fn cleared_test_binary() -> Command {
+        let executable = env::current_exe().expect("the test binary has a path");
+        let mut command = Command::new(executable);
+        for variable in Self::VARIABLES {
+            command.env_remove(variable);
+        }
+        command
     }
 }

@@ -23,10 +23,6 @@ impl BaseRevision {
         }
     }
 
-    pub fn revision(&self) -> &str {
-        &self.revision
-    }
-
     pub fn fork_point(&self, root: &Path) -> Result<String, TaskFailure> {
         Git::new(root).merge_base(&self.revision)
     }

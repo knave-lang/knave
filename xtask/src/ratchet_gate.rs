@@ -13,14 +13,14 @@ use crate::verdict::Verdict;
 
 pub struct RatchetGate {
     root: PathBuf,
-    base: String,
+    fork_point: String,
 }
 
 impl RatchetGate {
-    pub fn new(root: &Path, base: &str) -> Self {
+    pub fn new(root: &Path, fork_point: &str) -> Self {
         Self {
             root: root.to_path_buf(),
-            base: base.to_string(),
+            fork_point: fork_point.to_string(),
         }
     }
 
@@ -41,11 +41,10 @@ impl RatchetGate {
 
     fn comparison(&self) -> Result<BaseComparison<'_>, TaskFailure> {
         let git = Git::new(&self.root);
-        let merge_base = git.merge_base(&self.base)?;
         Ok(BaseComparison {
             head_root: &self.root,
-            approvals: RiseApprovals::since(&git, &merge_base)?,
-            tree: RevisionTree::extract(&self.root, &merge_base)?,
+            approvals: RiseApprovals::since(&git, &self.fork_point)?,
+            tree: RevisionTree::extract(&self.root, &self.fork_point)?,
         })
     }
 }
@@ -91,6 +90,7 @@ mod tests {
     use super::{BaseComparison, RatchetGate};
     use crate::census::Census;
     use crate::failure::TaskFailure;
+    use crate::git::Git;
     use crate::production_lines::ProductionLineCensus;
     use crate::ratchet::{Counts, Limit, Measurement};
     use crate::temporary_repository::TemporaryRepository;
@@ -143,7 +143,10 @@ mod tests {
         }
 
         fn details(&self) -> Vec<String> {
-            RatchetGate::new(self.repository.root(), Self::BASE)
+            let fork_point = Git::new(self.repository.root())
+                .merge_base(Self::BASE)
+                .expect("the branch forks from the base");
+            RatchetGate::new(self.repository.root(), &fork_point)
                 .checks(&[&CountsFile])
                 .expect("the gate measures")
                 .iter()
@@ -214,20 +217,5 @@ mod tests {
             })
             .collect();
         assert_eq!(paired, [("first", 1, None), ("second", 2, Some(20))]);
-    }
-
-    #[test]
-    fn an_unknown_base_fails() {
-        let repository = TemporaryRepository::initialized("gate-unknown");
-        repository.write(CountsFile::PATH, "");
-        repository.commit_all();
-        let failure = RatchetGate::new(repository.root(), "no-such-revision")
-            .checks(&[&CountsFile])
-            .err()
-            .expect("the base is unknown");
-        assert_eq!(
-            failure.to_string(),
-            "cannot find the revision `no-such-revision`"
-        );
     }
 }

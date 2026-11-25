@@ -4,7 +4,7 @@
 
 1. If the branch has no pull request, open one with `gh pr create --draft`.
 2. You MAY push to a draft pull request at any time.
-3. When the working commands pass, run `gh pr ready`.
+3. When the working commands pass and the CRAP forecast passes, run `gh pr ready`.
 4. Run `gh pr checks --watch --interval 60`.
 
 ## Issues
@@ -199,7 +199,7 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 2. Read the run's ID from the end of the run URL that `gh workflow run` prints.
 3. Run `gh run watch <run id> --interval 60 --exit-status` as a background shell command. The command exits when the run ends. It exits nonzero when the forecast fails or stops, and steps 4 to 6 still apply.
 4. Download the forecast with `gh run download <run id> --name crap-forecast --dir target/scratch/crap-forecast-<run id>`.
-5. Read `verdict.txt` in that directory. If `verdict.txt` is missing, the forecast stopped before its verdict. `output.txt` beside it names the commit the forecast judged and each `also` set it ran, then holds the forecast's output. The run's summary page shows both files.
+5. Read `verdict.txt` in that directory. If `verdict.txt` is missing, the forecast stopped before its verdict. `output.txt` beside it names the commit the forecast judged and each test run it ran, then holds the forecast's output. The run's summary page shows both files.
 6. If the verdict names a function, do what its line says.
 
 **Make no other GitHub call until `gh run watch` exits:** the watch spends the budget of one call a minute.

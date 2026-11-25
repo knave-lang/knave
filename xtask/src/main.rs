@@ -139,15 +139,16 @@ enum CoveragePart {
 
 impl RatchetTask {
     fn check_file_sizes(&self, workspace_root: &Path) -> Result<ExitCode, TaskFailure> {
-        self.gate(workspace_root).run(&[&ProductionLineCensus])
+        self.gate(workspace_root)?.run(&[&ProductionLineCensus])
     }
 
     fn check_design_rules(&self, workspace_root: &Path) -> Result<ExitCode, TaskFailure> {
-        self.gate(workspace_root).run(&[&DesignRules])
+        self.gate(workspace_root)?.run(&[&DesignRules])
     }
 
-    fn gate(&self, workspace_root: &Path) -> RatchetGate {
-        RatchetGate::new(workspace_root, self.base.revision())
+    fn gate(&self, workspace_root: &Path) -> Result<RatchetGate, TaskFailure> {
+        let fork_point = self.base.fork_point(workspace_root)?;
+        Ok(RatchetGate::new(workspace_root, &fork_point))
     }
 }
 

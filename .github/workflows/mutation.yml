@@ -19,7 +19,7 @@ on:
         type: boolean
 
 concurrency:
-  group: nightly-mutants
+  group: ${{ inputs.plan_only && 'nightly-mutants-plan' || 'nightly-mutants' }}
   cancel-in-progress: false
 
 permissions:

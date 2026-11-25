@@ -236,17 +236,25 @@ mod tests {
         fn text_at(&self, site: Span) -> &str {
             &self.sources.file(site.source()).text()[site.range()]
         }
+
+        fn written_note(&self, site: Span) -> Span {
+            let note = self.notes.iter().find(|note| note.span().contains(site));
+            note.map_or(site, Form::span)
+        }
     }
 
     impl WrittenEntries for DefaultsFixture {
         fn quoted_call(&self, site: Span) -> String {
-            let note = self.notes.iter().find(|note| note.span().contains(site));
-            let written = note.map_or(site, Form::span);
-            format!("{}: `{}`", self.location(written), self.text_at(written))
+            let written = self.written_note(site);
+            format!(
+                "{}: `{}`",
+                self.sources.location(written),
+                self.text_at(written)
+            )
         }
 
         fn location(&self, site: Span) -> String {
-            self.sources.location(site)
+            self.sources.location(self.written_note(site))
         }
     }
 
@@ -340,7 +348,7 @@ mod tests {
         assert_eq!(
             fixture.message(),
             "lint.knv:1:44: `(needless-type note)` gives `needless-type` a second default \
-             level; the first is at lint.knv:1:24"
+             level; the first is at lint.knv:1:23"
         );
     }
 

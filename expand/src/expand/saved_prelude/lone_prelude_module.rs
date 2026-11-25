@@ -76,18 +76,22 @@ impl LonePreludeModule {
             .map(|binding| binding.name().to_string())
             .collect()
     }
+
+    fn written_call(&self, site: Span) -> Span {
+        let call = self.tables.macro_origins.calls.enclosing(site);
+        call.map_or(site, |call| call.call_site)
+    }
 }
 
 impl WrittenEntries for LonePreludeModule {
     fn quoted_call(&self, site: Span) -> String {
-        let call = self.tables.macro_origins.calls.enclosing(site);
-        let written = call.map_or(site, |call| call.call_site);
+        let written = self.written_call(site);
         let text = &self.sources.file(written.source()).text()[written.range()];
-        format!("{}: `{text}`", self.location(written))
+        format!("{}: `{text}`", self.sources.location(written))
     }
 
     fn location(&self, site: Span) -> String {
-        self.sources.location(site)
+        self.sources.location(self.written_call(site))
     }
 }
 
@@ -153,6 +157,13 @@ mod tests {
             quoted,
             "prelude/lint.knv:24:1: `(lint-default needless-type allow)`"
         );
+    }
+
+    #[test]
+    fn a_location_is_the_start_of_the_written_call() {
+        let lint = LonePreludeFixture::lint();
+        let location = lint.location(LonePreludeFixture::first_default_lint(&lint));
+        assert_eq!(location, "prelude/lint.knv:24:1");
     }
 
     #[test]

@@ -15,7 +15,11 @@ pub(crate) struct LintDefaults {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum LintDefaultProblem {
     Malformed(Span),
-    Repeated(Span, String, Span),
+    Repeated {
+        site: Span,
+        lint: String,
+        first: Span,
+    },
     UnknownLint(Span, String, Option<Rc<str>>),
     UnknownLevel(Span, String, Option<Rc<str>>),
 }
@@ -32,7 +36,7 @@ impl LintDefaultProblem {
     fn site(&self) -> Span {
         match self {
             Self::Malformed(site)
-            | Self::Repeated(site, ..)
+            | Self::Repeated { site, .. }
             | Self::UnknownLint(site, ..)
             | Self::UnknownLevel(site, ..) => *site,
         }
@@ -40,7 +44,7 @@ impl LintDefaultProblem {
 
     fn first_site(&self) -> Option<Span> {
         match self {
-            Self::Repeated(_, _, first) => Some(*first),
+            Self::Repeated { first, .. } => Some(*first),
             _ => None,
         }
     }
@@ -48,7 +52,7 @@ impl LintDefaultProblem {
     fn fault(&self) -> String {
         match self {
             Self::Malformed(_) => "needs one lint name and one level name".to_string(),
-            Self::Repeated(_, lint, _) => format!("gives `{lint}` a second default level"),
+            Self::Repeated { lint, .. } => format!("gives `{lint}` a second default level"),
             Self::UnknownLint(_, lint, closest) => {
                 let suggestion = Self::suggestion("lint", closest.as_deref());
                 format!("names `{lint}`, which is no lint{suggestion}")
@@ -122,7 +126,11 @@ impl LintDefaults {
         let lint = CodeStage::LINTS
             .name_of(code)
             .expect("a lint default names a lint");
-        LintDefaultProblem::Repeated(Self::site_of(note), lint, first)
+        LintDefaultProblem::Repeated {
+            site: Self::site_of(note),
+            lint,
+            first,
+        }
     }
 
     fn malformed(note: &Form) -> LintDefaultProblem {

@@ -355,4 +355,6 @@ gh workflow run mutation.yml --ref main -f base=<commit before the slice> -f hea
 
 **Size each slice as about one day of commits on `main`.** A larger slice can hold more mutants than the shards finish.
 
+**The `Nightly mutants` issue lists each day that a scheduled run skipped.** Each item gives the command that tests its day as a slice. Check a day's box once its slice has run.
+
 **If a slice's comment says some shards did not finish, dispatch the slice again.** Then check every box of the earlier comment of that slice: the rerun's comment supersedes it.

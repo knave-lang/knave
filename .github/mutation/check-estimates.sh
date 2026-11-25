@@ -22,7 +22,7 @@ main() {
     echo "::warning::The mutants took $ratio times their estimated seconds. Refit the estimates in .github/mutation/shards.jq."
   fi
   if outside "$worst_ratio" 0 "$WORST_SHARD_RATIO"; then
-    echo "::warning::Shard $worst_shard took $worst_ratio times its estimated seconds, near the step limit. Refit the estimates in .github/mutation/shards.jq."
+    echo "::warning::Shard $worst_shard took $worst_ratio times its estimated seconds. Refit the estimates in .github/mutation/shards.jq."
   fi
 }
 

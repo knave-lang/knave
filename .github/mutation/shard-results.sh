@@ -5,7 +5,7 @@ surviving_mutants() {
 }
 
 invalid_mutants() {
-  mutants_with_verdicts 'invalid'
+  mutants_with_verdicts 'invalid' | sed 's/^- \[ \] /- /'
 }
 
 mutants_with_verdicts() {

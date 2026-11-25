@@ -2,7 +2,7 @@ use super::holdings::Holdings;
 use super::loan_place::LoanPlace;
 use super::value_flow::ValueFlow;
 use crate::core::BindingId;
-use crate::types::TypedArgument;
+use crate::types::{TypedArgument, TypedExpr, TypedExprKind};
 
 pub struct StoreTarget {
     root: BindingId,
@@ -11,11 +11,19 @@ pub struct StoreTarget {
 
 impl StoreTarget {
     pub fn of(argument: &TypedArgument) -> Option<Self> {
-        let place = LoanPlace::of(&argument.value)?;
+        let target = Self::borrowed(&argument.value);
+        let place = LoanPlace::of(target)?;
         Some(Self {
             root: place.root(),
-            through_reference: argument.value.ty.is_reference(),
+            through_reference: target.ty.is_reference(),
         })
+    }
+
+    fn borrowed(value: &TypedExpr) -> &TypedExpr {
+        match &value.kind {
+            TypedExprKind::Borrow(_, borrowed) => Self::borrowed(borrowed),
+            _ => value,
+        }
     }
 
     pub fn receive(&self, stored: Holdings, values: &mut ValueFlow<'_>) {

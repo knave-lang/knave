@@ -1,0 +1,12 @@
+(defstruct shelf
+  :names (vec (ref str))
+  :count i64)
+
+(defn keep! (names name) (push! names name))
+
+(defn main ()
+  (local s (->shelf (vec "x") 0))
+  (local t (str "a"))
+  (keep! (mut (:names s)) (as-str t))
+  (push! t (char "b"))
+  (println (len (:names s))))

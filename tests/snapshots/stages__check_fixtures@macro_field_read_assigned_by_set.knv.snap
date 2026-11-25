@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/macro_field_read_assigned_by_set.knv
+---
+error[L0503]: this value is borrowed, but the call needs to own it
+  --> check/macro_field_read_assigned_by_set.knv:10:33
+   |
+10 |   (set! name (read-field source :name)))
+   |                                 ^^^^^ `read-field` passes this field as a borrow
+   |
+   = help: `read-field` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(fn ((name-value (ref string))) (set! name (clone name-value)))`
+   = note: run `knave doc L0503` for an explanation

@@ -1,0 +1,49 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/macro_field_read_assigned_to_an_element.knv
+---
+error[L0503]: this value is borrowed, but the call needs to own it
+  --> check/macro_field_read_assigned_to_an_element.knv:12:34
+   |
+12 |         (read-field (ref source) :name))
+   |                                  ^^^^^ `read-field` passes this field as a borrow
+   |
+   = help: `read-field` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(fn ((name (ref string))) (set! (at names 0) (clone name)))`
+   = note: run `knave doc L0503` for an explanation
+
+error[L0503]: this value is borrowed, but the call needs to own it
+  --> check/macro_field_read_assigned_to_an_element.knv:20:34
+   |
+20 |         (read-field (ref source) :name))
+   |                                  ^^^^^ `read-field` passes this field as a borrow
+   |
+   = help: `read-field` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(fn ((name (ref string))) (set! (at (at grid row) 0) (clone name)))`
+   = note: run `knave doc L0503` for an explanation
+
+error[L0503]: this value is borrowed, but the call needs to own it
+  --> check/macro_field_read_assigned_to_an_element.knv:27:34
+   |
+27 |         (read-field (ref source) :name))
+   |                                  ^^^^^ `read-field` passes this field as a borrow
+   |
+   = help: `read-field` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(fn ((name (ref string))) (set! (at labels "first") (clone name)))`
+   = note: run `knave doc L0503` for an explanation
+
+error[L0503]: this value is borrowed, but the call needs to own it
+  --> check/macro_field_read_assigned_to_an_element.knv:35:34
+   |
+35 |         (read-field (ref source) :name))
+   |                                  ^^^^^ `read-field` passes this field as a borrow
+   |
+   = help: `read-field` passes `:name` as a `(ref string)`; annotate the parameter as `(ref string)` and clone it before you assign it
+   = note: run `knave doc L0503` for an explanation
+
+error[L0503]: this value is borrowed, but the call needs to own it
+  --> check/macro_field_read_assigned_to_an_element.knv:43:34
+   |
+43 |         (read-field (ref source) :name))
+   |                                  ^^^^^ `read-field` passes this field as a borrow
+   |
+   = help: `read-field` passes `:name` as a `(ref string)`; take a borrow and clone it, as in `(fn ((name-value (ref string))) (set! (at names name) (clone name-value)))`
+   = note: run `knave doc L0503` for an explanation

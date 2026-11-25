@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use super::assigned_place::AssignedPlace;
+use super::field_read_use::FieldReadUse;
 use super::problems::OwnershipProblems;
 use crate::diagnostic::{Diagnostic, DiagnosticCode, Label};
 use crate::source::Span;
@@ -9,12 +11,13 @@ pub struct MacroFieldRead<'n> {
     pub field: Rc<str>,
     pub field_span: Span,
     pub field_type: String,
-    pub callee: Option<&'n str>,
+    pub used: FieldReadUse<'n>,
 }
 
 pub struct NeedsOwnershipProblems;
 
 impl NeedsOwnershipProblems {
+    const DISTINCT_PARAMETER_SUFFIX: &'static str = "-value";
     const BORROWED_ARGUMENT_TITLE: &'static str =
         "this value is borrowed, but the call needs to own it";
 
@@ -43,13 +46,31 @@ impl NeedsOwnershipProblems {
 
     fn borrowed_field_fix(read: &MacroFieldRead<'_>, borrowed: &str) -> String {
         let field = &read.field;
-        match read.callee {
-            Some(callee) => format!(
+        match &read.used {
+            FieldReadUse::Call(callee) => format!(
                 "take a borrow and clone it, as in `(fn (({field} {borrowed})) ({callee} (clone {field})))`"
             ),
-            None => format!(
+            FieldReadUse::Assignment(place) => {
+                let parameter = Self::parameter_beside(field, place);
+                let written = &place.written;
+                format!(
+                    "take a borrow and clone it, as in `(fn (({parameter} {borrowed})) (set! {written} (clone {parameter})))`"
+                )
+            }
+            FieldReadUse::UnwrittenAssignment => {
+                format!("annotate the parameter as `{borrowed}` and clone it before you assign it")
+            }
+            FieldReadUse::Unnamed => format!(
                 "annotate the parameter as `{borrowed}` and clone it before the owning call"
             ),
+        }
+    }
+
+    fn parameter_beside(field: &str, place: &AssignedPlace<'_>) -> String {
+        if place.locals.contains(&field) {
+            format!("{field}{}", Self::DISTINCT_PARAMETER_SUFFIX)
+        } else {
+            field.to_string()
         }
     }
 

@@ -1,0 +1,7 @@
+(defn clamp (x)
+  (if (> x 10) (set-at! x 10) (do))
+  (println x))
+
+(defn main ()
+  (local total 12)
+  (clamp total))

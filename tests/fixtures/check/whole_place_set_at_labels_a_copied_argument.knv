@@ -1,0 +1,6 @@
+(defn bump! (count)
+  (set-at! count (+ count 1)))
+
+(defn main ()
+  (local total 12)
+  (bump! (+ total 1)))

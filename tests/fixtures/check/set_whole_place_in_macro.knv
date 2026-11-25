@@ -1,0 +1,3 @@
+(defmacro reset-entry (m) (set! m 1))
+
+(defn main () (println "unused"))

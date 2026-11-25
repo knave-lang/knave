@@ -1,0 +1,43 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/emit/set_and_set_at_assign_alike.knv
+---
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Point {
+    x: i64,
+    y: i64,
+}
+
+fn make_point(x: i64, y: i64) -> Point {
+    Point { x, y }
+}
+
+fn main() {
+    crate::rt::restore_default_sigpipe();
+    let mut total: i64 = 1;
+    println!("{}", total);
+    total = 2;
+    total += 3;
+    let mut p = make_point(1, 2);
+    p.x = 4;
+    p.y = 5;
+    println!("{}{}{}", total, p.x, p.y)
+}
+
+mod rt {
+    #[cfg(unix)]
+    pub fn restore_default_sigpipe() {
+        const SIGPIPE: i32 = 13;
+        const DEFAULT_HANDLER: usize = 0;
+        unsafe extern "C" {
+            fn signal(signal: i32, handler: usize) -> usize;
+        }
+        unsafe {
+            signal(SIGPIPE, DEFAULT_HANDLER);
+        }
+    }
+
+    #[cfg(not(unix))]
+    pub fn restore_default_sigpipe() {}
+}

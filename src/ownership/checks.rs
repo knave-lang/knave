@@ -2,13 +2,33 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
+use super::field_read_use::FieldReadUse;
 use super::needs_ownership_problems::{MacroFieldRead, NeedsOwnershipProblems};
+use super::place_text::PlaceText;
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
+use crate::source::Span;
 use crate::types::{
-    Borrow, PassedCall, Pipelines, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf,
-    TypedProgram, TypedStructExpr,
+    Borrow, PassedCall, Pipelines, Type, TypedArgument, TypedAssignment, TypedExpr, TypedExprKind,
+    TypedLeaf, TypedProgram, TypedStructExpr,
 };
+
+#[derive(Clone, Copy)]
+enum PassingSite<'e> {
+    Call(&'e TypedExpr),
+    Assignment(&'e TypedAssignment),
+    Recur,
+}
+
+impl PassingSite<'_> {
+    fn span(&self) -> Option<Span> {
+        match self {
+            PassingSite::Call(callee) => Some(callee.span),
+            PassingSite::Assignment(assignment) => Some(assignment.template.span),
+            PassingSite::Recur => None,
+        }
+    }
+}
 
 pub struct OwnershipNeeds<'a> {
     program: &'a TypedProgram,
@@ -45,6 +65,7 @@ impl<'a> OwnershipNeeds<'a> {
 
     fn value(&mut self, expr: &TypedExpr, current: Option<&[Type]>) {
         match &expr.kind {
+            TypedExprKind::Assign(assignment) => self.check_assignment(assignment),
             _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 self.check_arguments(callee, arguments)
             }
@@ -62,18 +83,24 @@ impl<'a> OwnershipNeeds<'a> {
 
     fn check_arguments(&mut self, callee: &TypedExpr, arguments: &[TypedArgument]) {
         let parameters = self.parameters(callee);
-        self.check_with_parameters(Some(callee), arguments, &parameters);
+        self.check_with_parameters(PassingSite::Call(callee), arguments, &parameters);
+    }
+
+    fn check_assignment(&mut self, assignment: &TypedAssignment) {
+        let parameters = self.parameters(&assignment.template);
+        let site = PassingSite::Assignment(assignment);
+        self.check_with_parameters(site, &assignment.arguments, &parameters);
     }
 
     fn check_recur(&mut self, arguments: &[TypedArgument], parameters: Option<&[Type]>) {
         if let Some(parameters) = parameters {
-            self.check_with_parameters(None, arguments, parameters);
+            self.check_with_parameters(PassingSite::Recur, arguments, parameters);
         }
     }
 
     fn check_with_parameters(
         &mut self,
-        callee: Option<&TypedExpr>,
+        site: PassingSite<'_>,
         arguments: &[TypedArgument],
         parameters: &[Type],
     ) {
@@ -82,17 +109,17 @@ impl<'a> OwnershipNeeds<'a> {
                 .get(position)
                 .is_some_and(|parameter| !parameter.is_reference());
             if argument.borrow == Borrow::Passthrough && owns {
-                let diagnostic = self.needs_ownership(callee, &argument.value);
+                let diagnostic = self.needs_ownership(site, &argument.value);
                 self.diagnostics.push(diagnostic);
             }
         }
     }
 
-    fn needs_ownership(&self, callee: Option<&TypedExpr>, value: &TypedExpr) -> Diagnostic {
+    fn needs_ownership(&self, site: PassingSite<'_>, value: &TypedExpr) -> Diagnostic {
         if self.pipelines.is_pipeline(value.ty.referent()) {
             return NeedsOwnershipProblems::needs_pipeline_ownership(value.span);
         }
-        match self.macro_field_read(callee, value) {
+        match self.macro_field_read(site, value) {
             Some(read) => NeedsOwnershipProblems::macro_field_needs_ownership(&read),
             None => NeedsOwnershipProblems::needs_ownership(value.span),
         }
@@ -100,27 +127,41 @@ impl<'a> OwnershipNeeds<'a> {
 
     fn macro_field_read(
         &self,
-        callee: Option<&TypedExpr>,
+        site: PassingSite<'_>,
         value: &TypedExpr,
     ) -> Option<MacroFieldRead<'a>> {
         let TypedExprKind::Struct(TypedStructExpr::Field(_, label)) = &value.kind else {
             return None;
         };
-        let callee = callee.filter(|callee| callee.span != value.span)?;
+        site.span().filter(|span| *span != value.span)?;
         let macro_name = self.program.macro_field_reads.get(&value.span)?;
         Some(MacroFieldRead {
             macro_name: Rc::clone(macro_name),
             field: Rc::clone(&label.name),
             field_span: label.span,
             field_type: self.program.show_type(value.ty.referent()),
-            callee: self.function_name(callee),
+            used: self.field_read_use(site),
         })
     }
 
-    fn function_name(&self, callee: &TypedExpr) -> Option<&'a str> {
+    fn field_read_use(&self, site: PassingSite<'_>) -> FieldReadUse<'a> {
+        let named =
+            |binding: Option<BindingId>| binding.map(|it| self.program.bindings.get(it).name());
+        match site {
+            PassingSite::Call(callee) => {
+                named(Self::function_of(callee)).map_or(FieldReadUse::Unnamed, FieldReadUse::Call)
+            }
+            PassingSite::Assignment(assignment) => (PlaceText::new(&self.program.bindings))
+                .assigned(assignment)
+                .map_or(FieldReadUse::UnwrittenAssignment, FieldReadUse::Assignment),
+            PassingSite::Recur => FieldReadUse::Unnamed,
+        }
+    }
+
+    fn function_of(callee: &TypedExpr) -> Option<BindingId> {
         match callee.kind {
             TypedExprKind::Leaf(TypedLeaf::Global(function) | TypedLeaf::Local(function)) => {
-                Some(self.program.bindings.get(function).name())
+                Some(function)
             }
             _ => None,
         }

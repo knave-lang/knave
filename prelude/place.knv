@@ -9,10 +9,6 @@
 
 (export set!)
 
-(def set-place!
-  (rust "*{0} = {1}"
-    (where (a) (fn ((mut a) a) unit))))
-
 (def at-form?
   (fn (form)
     (if (list? form)
@@ -80,8 +76,6 @@
   (let (total 1) (bump! total) total)
   => 2
   ```"
-  (if (at-form? target)
-    (concat (list (quote set-at!) (at-base target))
-            (at-indices target)
-            (list value))
-    (list (quote set-place!) target value)))
+  (concat (list (quote set-at!) (at-base target))
+          (at-indices target)
+          (list value)))

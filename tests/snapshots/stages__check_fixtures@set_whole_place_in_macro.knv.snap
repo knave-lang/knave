@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/set_whole_place_in_macro.knv
+---
+error[L0306]: `set!` belongs to the program, so macro code cannot run it
+  --> check/set_whole_place_in_macro.knv:1:27
+   |
+ 1 | (defmacro reset-entry (m) (set! m 1))
+   |                           ^^^^^^^^^^ macro code runs this
+   |
+  ::: prelude/place.knv:35:11
+   |
+35 | (defmacro set! (target value)
+   |           ---- `set!` expands to Rust code that runs in the program
+   |
+   = help: to compute this in the program, return it as code from the macro, for example with `quote`
+   = note: run `knave doc L0306` for an explanation

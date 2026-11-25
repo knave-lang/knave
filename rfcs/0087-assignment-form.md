@@ -1,6 +1,6 @@
 # RFC 0087: Assignment is a kernel form
 
-**Status:** Accepted. Decision 4 rests on the principle that a `rust` template is never an assignment, whatever its type, so only the assignment node counts as one.
+**Status:** Accepted. Decision 4 rests on the principle that a `rust` template is never an assignment, whatever its type, so only the assignment node counts as one. Amended 2026-11-25: the change to `WholeValueChanges` lands with the `set!` switch, not in a later pull request, because once `set!` writes the node, no call has the shape the old check matched.
 **Date:** 2026-11-24
 
 ## Problem

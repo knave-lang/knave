@@ -219,6 +219,50 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **If the workflow refused the default branch, dispatch it on the pull request's head branch.**
 
+## Heavy tests
+
+**Run each heavy test run with the `Heavy tests` workflow.** `AGENTS.md` defines a heavy test run. The workflow runs on a draft pull request and a ready one.
+
+**The workflow tests the head of the branch on GitHub, so push before you dispatch.** A newer run with the same branch, target, filter and glob cancels the older run.
+
+**Dispatch one run per filter.** NEVER build filters in a shell loop.
+
+**To run a heavy test run, follow these steps:**
+
+1. Dispatch the workflow on the branch with the test's filter:
+
+   ```sh
+   gh workflow run heavy-tests.yml --ref "$(git branch --show-current)" -f filter=<filter>
+   ```
+
+   To run every test of `tests/cli.rs`, dispatch `-f target=cli` with no filter. To narrow the fixtures, add `-f glob='<INSTA_GLOB_FILTER>'`, such as `-f glob='**/vector_*.knv'`.
+
+2. Read the run's ID from the end of the run URL that `gh workflow run` prints.
+3. Run `gh run watch <run id> --interval 60 --exit-status` as a background shell command. The command exits when the run ends. It exits nonzero when a test fails, and steps 4 to 6 still apply.
+4. Download the results with `gh run download <run id> --name heavy-tests --dir target/scratch/heavy-tests-<run id>`.
+5. Read `output.txt` in that directory. Its first lines name the commit, the test command and the glob. The rest holds the test output, with a diff for each snapshot that changed.
+6. If `pending.txt` lists a snapshot, take the snapshots back as the next section says.
+
+**Make no other GitHub call until `gh run watch` exits:** the watch spends the budget of one call a minute.
+
+**If `gh workflow run` cannot find the workflow at the ref, merge `origin/main` into the branch, push, and dispatch again.**
+
+**If `gh workflow run` prints no run URL, find the run's ID with `gh run list --workflow heavy-tests.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`.** If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the branch to the project owner.
+
+**If `gh run watch` reports the run cancelled, a newer run with the same target, filter and glob replaced it.** Find the newer run with `gh run list --workflow heavy-tests.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`, then watch it from step 3.
+
+**If the download finds no `heavy-tests` artifact, read the failure with `gh run view <run id> --log-failed`.**
+
+### Snapshots from a run
+
+**A run writes a `.snap.new` file for each snapshot that changed or is new.** The artifact holds each file at its repository path under `tests/`, and `pending.txt` lists them.
+
+1. Read each `.snap.new` file whole, and its diff in `output.txt`.
+2. If a snapshot is wrong, fix the cause, push, and dispatch again.
+3. If every snapshot is right, copy them into the repository with `cp -r target/scratch/heavy-tests-<run id>/tests/. tests/`.
+4. Run `cargo insta accept`.
+5. Commit the accepted snapshots.
+
 ## Mutants
 
 **Run the hand-written mutants of a pull request with the `Pull request mutants` workflow.** The workflow tests each mutant on GitHub's runners and reports a verdict for each.

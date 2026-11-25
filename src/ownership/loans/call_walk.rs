@@ -7,7 +7,6 @@ use super::passed_holdings::PassedHoldings;
 use super::point_id::PointId;
 use super::store_target::StoreTarget;
 use super::walked::Walked;
-use crate::ownership::whole_value_changes::WholeValueChanges;
 
 pub struct CallWalk<'c, 'w> {
     walk: &'c mut dyn ExpressionWalk<'w>,
@@ -36,7 +35,6 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         let point = self.walk.builder().join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));
         self.store_into_targets(point, &passed);
-        self.mark_a_replaced_local(point);
         Walked::holding(point, self.site.result_holdings(passed))
     }
 
@@ -55,13 +53,6 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         let argument = self.site.arguments().get(target);
         if let Some(target) = argument.and_then(StoreTarget::of) {
             target.receive(point, stored, &mut self.walk.builder().values());
-        }
-    }
-
-    fn mark_a_replaced_local(&mut self, point: PointId) {
-        let replaced = WholeValueChanges::replaced(self.site.callee(), self.site.arguments());
-        if let Some(local) = replaced {
-            self.walk.builder().values().replace(point, local);
         }
     }
 }

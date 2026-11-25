@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/store_target_recurred_keeps_its_stores.knv
+---
+error[L0518]: `t` changes while `ns` still borrows it
+  --> check/store_target_recurred_keeps_its_stores.knv:10:16
+   |
+10 |         (push! t (char "b"))
+   |                ^ `t` changes here
+11 |         (keep! ns (as-str t))
+   |                --         - `ns` borrows `t` here
+   |                |
+   |                `ns` is used here, after the change
+   |
+   = help: finish using `ns` before changing `t`, or copy what you need out of `t` first
+   = note: run `knave doc L0518` for an explanation

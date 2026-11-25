@@ -8,17 +8,12 @@ use crate::types::{TypedArgument, TypedExpr, TypedExprKind};
 
 pub struct StoreTarget {
     root: BindingId,
-    through_reference: bool,
 }
 
 impl StoreTarget {
     pub fn of(argument: &TypedArgument) -> Option<Self> {
-        let target = Self::borrowed(&argument.value);
-        let place = LoanPlace::of(target)?;
-        Some(Self {
-            root: place.root(),
-            through_reference: target.ty.is_reference(),
-        })
+        let place = LoanPlace::of(Self::borrowed(&argument.value))?;
+        Some(Self { root: place.root() })
     }
 
     fn borrowed(value: &TypedExpr) -> &TypedExpr {
@@ -29,15 +24,10 @@ impl StoreTarget {
     }
 
     pub fn receive(&self, point: PointId, stored: Holdings, values: &mut ValueFlow<'_>) {
-        let held = if self.through_reference {
-            stored.within()
-        } else {
-            stored
-        };
         values.store(RecordedStore {
             point,
             target: self.root,
-            held,
+            held: stored,
         });
     }
 }

@@ -1,0 +1,21 @@
+(defstruct tag
+  :label (ref str))
+
+(defn store-one! (names name others label)
+  (push! names name)
+  (local kept label)
+  (println (len others) (:label kept)))
+
+(defn main ()
+  (local ns (vec "x"))
+  (local t (str "a"))
+  (local u (str "u"))
+  (local w (str "w"))
+  (local us (vec (as-str u)))
+  (store-one! ns
+              (as-str t)
+              us
+              (->tag (as-str w)))
+  (push! u (char "v"))
+  (push! w (char "v"))
+  (println (len ns)))

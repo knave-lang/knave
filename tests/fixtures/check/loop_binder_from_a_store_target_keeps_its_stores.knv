@@ -1,0 +1,15 @@
+(defn keep! (names name) (push! names name))
+
+(defn main ()
+  (local ms (vec "y"))
+  (local t (str "a"))
+  (local u (str "u"))
+  (keep! ms (as-str t))
+  (loop (ns ms
+         i 0)
+    (if (= i 2)
+      (println (len ns))
+      (do
+        (keep! ns (as-str u))
+        (push! t (char "b"))
+        (recur ns (+ i 1))))))

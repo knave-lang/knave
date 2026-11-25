@@ -1,6 +1,5 @@
 use super::indexed_points::IndexedPoints;
 use super::loan_id::LoanId;
-use super::new_value::NewValue;
 use super::place_access::PlaceAccess;
 use super::point_graph::PointGraph;
 use super::point_id::PointId;
@@ -12,7 +11,6 @@ use crate::source::Span;
 pub struct ControlFlowGraph {
     points: usize,
     defined: PointLists<BindingId>,
-    replaced: PointLists<BindingId>,
     used: PointLists<ValueUse>,
     received: PointLists<LoanId>,
     accesses: PointLists<PlaceAccess>,
@@ -24,7 +22,6 @@ impl Default for ControlFlowGraph {
         Self {
             points: 1,
             defined: PointLists::default(),
-            replaced: PointLists::default(),
             used: PointLists::default(),
             received: PointLists::default(),
             accesses: PointLists::default(),
@@ -47,11 +44,8 @@ impl ControlFlowGraph {
         self.successors.push(before, after);
     }
 
-    pub fn define(&mut self, point: PointId, value: NewValue) {
-        match value {
-            NewValue::Bound(binding) => self.defined.push(point, binding),
-            NewValue::Replaced(binding) => self.replaced.push(point, binding),
-        }
+    pub fn define(&mut self, point: PointId, binding: BindingId) {
+        self.defined.push(point, binding);
     }
 
     pub fn using(&mut self, point: PointId, binding: BindingId, span: Span) {
@@ -72,7 +66,6 @@ impl ControlFlowGraph {
         let points = self.points;
         PointGraph::new(IndexedPoints {
             defined: self.defined.indexed(points),
-            replaced: self.replaced.indexed(points),
             used: self.used.indexed(points),
             received: self.received.indexed(points),
             accesses: self.accesses.indexed(points),

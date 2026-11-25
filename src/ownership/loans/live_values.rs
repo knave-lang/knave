@@ -45,7 +45,6 @@ mod tests {
     use super::LiveValues;
     use crate::core::BindingId;
     use crate::ownership::loans::control_flow_graph::ControlFlowGraph;
-    use crate::ownership::loans::new_value::NewValue;
     use crate::ownership::loans::point_id::PointId;
     use crate::source::{SourceId, Span};
 
@@ -54,7 +53,7 @@ mod tests {
         let value = BindingId::from_index(7);
         let mut graph = ControlFlowGraph::default();
         let defined = graph.join(&[PointId::ENTRY]);
-        graph.define(defined, NewValue::Bound(value));
+        graph.define(defined, value);
         let head = graph.join(&[defined]);
         let used = graph.join(&[head]);
         graph.using(used, value, Span::new(SourceId::new(0), 0..1));

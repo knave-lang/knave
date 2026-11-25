@@ -202,6 +202,10 @@ cargo test <narrowest test>
 
 **Run each heavy test run on the `Heavy tests` workflow, as `docs/pull-requests.md` says.** Run every light stage test and every named CLI test locally. NEVER loop over test filters in the shell: dispatch one run per filter.
 
+**Outside CI, the test harness refuses a heavy test run before it runs any fixture.**
+
+**NEVER set `KNAVE_OWNER_LOCAL_OVERRIDE`:** it is the project owner's override alone, and it lets a heavy test run run locally.
+
 **If `IN_NIX_SHELL` is set, run every command as written.**
 
 **If `IN_NIX_SHELL` is not set, prefix every command that runs a dev shell tool, such as `cargo`, with `direnv exec .`.** If direnv is missing or refuses, stop and ask the project owner.

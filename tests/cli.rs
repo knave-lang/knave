@@ -1,3 +1,5 @@
+mod heavy_run;
+
 use std::fs;
 use std::io::{BufRead, BufReader, ErrorKind};
 use std::os::unix::fs::PermissionsExt;
@@ -13,6 +15,8 @@ use knave::diagnostic::DiagnosticRenderer;
 use knave::language::Language;
 use knave::source::SourceMap;
 use serde_json::{Map, Value, json};
+
+use heavy_run::{HeavyTestRun, LocalEnvironment, Narrowing};
 
 const FAILING_GIT: &str = "#!/bin/sh\nexit 1\n";
 const NEW_PROJECT_CHECKS: [&[&str]; 3] = [&["fmt", "--check"], &["lint"], &["test"]];
@@ -364,6 +368,7 @@ impl Sandbox {
     const BUILD_PARENT: &str = "target";
 
     fn new(test_name: &str) -> Self {
+        HeavyTestRun::of(&TestFilters::from_arguments()).enforce();
         let directory = std::env::temp_dir().join(format!(
             "{}-cli-{}-{test_name}",
             Language::NAME,
@@ -14588,4 +14593,88 @@ impl ReferenceSources {
     fn sources(&self) -> &[(String, String)] {
         &self.pages
     }
+}
+
+struct TestFilters {
+    arguments: Vec<String>,
+}
+
+impl TestFilters {
+    const VALUED_OPTIONS: [&str; 7] = [
+        "--skip",
+        "--test-threads",
+        "--color",
+        "--format",
+        "--logfile",
+        "--shuffle-seed",
+        "-Z",
+    ];
+    const OPTION_PREFIX: char = '-';
+
+    fn from_arguments() -> Self {
+        Self::of(std::env::args().skip(1))
+    }
+
+    fn of(arguments: impl IntoIterator<Item = String>) -> Self {
+        Self {
+            arguments: arguments.into_iter().collect(),
+        }
+    }
+
+    fn filters(&self) -> Vec<&str> {
+        let mut filters = Vec::new();
+        let mut arguments = self.arguments.iter();
+        while let Some(argument) = arguments.next() {
+            if Self::VALUED_OPTIONS.contains(&argument.as_str()) {
+                arguments.next();
+            } else if !argument.starts_with(Self::OPTION_PREFIX) {
+                filters.push(argument.as_str());
+            }
+        }
+        filters
+    }
+}
+
+impl Narrowing for TestFilters {
+    fn narrows(&self) -> bool {
+        !self.filters().is_empty()
+    }
+}
+
+struct WholeCliRun;
+
+impl WholeCliRun {
+    const CI: &str = "CI";
+    const SKIP: &str = "--skip";
+    const PROBING_TEST: &str = "a_local_whole_cli_run_stops_with_the_refusal";
+
+    fn output() -> Output {
+        let executable = std::env::current_exe().expect("the test binary has a path");
+        Command::new(executable)
+            .args([Self::SKIP, Self::PROBING_TEST])
+            .env_remove(Self::CI)
+            .env_remove(LocalEnvironment::OWNER_OVERRIDE)
+            .output()
+            .expect("the test binary starts")
+    }
+}
+
+#[test]
+fn a_whole_cli_run_names_no_test() {
+    let arguments = ["--test-threads", "4", "--skip", "fmt", "--quiet"].map(String::from);
+    assert!(!TestFilters::of(arguments).narrows());
+}
+
+#[test]
+fn a_named_cli_test_narrows_the_run() {
+    let arguments = ["fmt_lays_out", "--exact"].map(String::from);
+    assert_eq!(TestFilters::of(arguments).filters(), ["fmt_lays_out"]);
+}
+
+#[test]
+fn a_local_whole_cli_run_stops_with_the_refusal() {
+    let output = WholeCliRun::output();
+    let errors = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(1), "{errors}");
+    assert!(errors.contains(HeavyTestRun::REFUSAL), "{errors}");
 }

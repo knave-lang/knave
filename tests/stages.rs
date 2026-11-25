@@ -1,3 +1,4 @@
+mod heavy_run;
 mod support;
 
 use std::collections::BTreeSet;
@@ -15,10 +16,11 @@ use knave::language::Language;
 use knave::stack::FreshStack;
 use knave_agree::LeftOutFixtures;
 
+use heavy_run::{HeavyTestRun, LocalEnvironment, LocalRun, Narrowing};
 use support::{
-    AgreementReport, ExplanationExamples, Fixture, FixtureReports, FormatFailures, GuideLinks,
-    HeaderAgreement, LintFixture, PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage,
-    SavedPreludeAgreement, SkillPage,
+    AgreementReport, ExplanationExamples, Fixture, FixtureGlob, FixtureReports, FormatFailures,
+    GuideLinks, HeaderAgreement, HeavyRunProbe, LintFixture, PreludePages, ReadBackAgreement,
+    ReferenceIndex, ReferencePage, SavedPreludeAgreement, SkillPage,
 };
 
 const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
@@ -131,6 +133,7 @@ fn expand_fixtures() {
 
 #[test]
 fn check_fixtures() {
+    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
     let fixtures = "fixtures/check/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -170,6 +173,7 @@ fn text_fixtures() {
 
 #[test]
 fn emit_fixtures() {
+    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
     let fixtures = "fixtures/emit/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -183,6 +187,7 @@ fn emit_fixtures() {
 
 #[test]
 fn run_fixtures() {
+    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
     let fixtures = "fixtures/run/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -407,6 +412,7 @@ fn saved_prelude_expand_fixtures() {
 
 #[test]
 fn saved_prelude_check_fixtures() {
+    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/check/*.knv", |path| paths
         .push(PathBuf::from(path)));
@@ -415,6 +421,7 @@ fn saved_prelude_check_fixtures() {
 
 #[test]
 fn saved_prelude_emit_fixtures() {
+    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/emit/*.knv", |path| paths
         .push(PathBuf::from(path)));
@@ -423,6 +430,7 @@ fn saved_prelude_emit_fixtures() {
 
 #[test]
 fn saved_prelude_run_fixtures() {
+    HeavyTestRun::of(&FixtureGlob::from_environment()).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/run/*.knv", |path| paths.push(PathBuf::from(path)));
     SavedPreludeAgreement::of(paths).assert_loaded_prelude_agrees();
@@ -605,7 +613,7 @@ fn an_explanation_with_both_example_headings_counts_two() {
 }
 
 #[test]
-fn each_described_example_holds_no_example_that_looks_runnable() {
+fn each_described_explanation_holds_no_example_that_looks_runnable() {
     for explanation in ExplanationExamples::written() {
         assert_eq!(
             explanation.described_fence_count(),
@@ -969,4 +977,103 @@ fn reference_link_from_the_guide_to_a_renamed_heading_names_the_link() {
             "docs/language.md links to `missing.md`, which names no heading of a reference page",
         ]
     );
+}
+
+const SMALL_CHECK_FIXTURE_BY_WILDCARD: &str = "**/malformed_enum.kn?";
+const SMALL_CHECK_FIXTURE_BY_NAME: &str = "**/malformed_enum.knv";
+
+#[test]
+fn a_heavy_stage_test_outside_ci_without_an_override_is_refused() {
+    let environment = LocalEnvironment {
+        in_ci: false,
+        owner_override: false,
+    };
+    let glob = FixtureGlob::of(None);
+    assert_eq!(
+        HeavyTestRun::within(environment, &glob).local_run(),
+        LocalRun::Refused
+    );
+}
+
+#[test]
+fn a_heavy_stage_test_on_the_owner_override_runs_and_says_so() {
+    let environment = LocalEnvironment {
+        in_ci: false,
+        owner_override: true,
+    };
+    let glob = FixtureGlob::of(None);
+    assert_eq!(
+        HeavyTestRun::within(environment, &glob).local_run(),
+        LocalRun::OnOwnerOverride
+    );
+}
+
+#[test]
+fn a_heavy_stage_test_in_ci_runs() {
+    let environment = LocalEnvironment {
+        in_ci: true,
+        owner_override: false,
+    };
+    let glob = FixtureGlob::of(None);
+    assert_eq!(
+        HeavyTestRun::within(environment, &glob).local_run(),
+        LocalRun::Allowed
+    );
+}
+
+#[test]
+fn a_glob_that_names_fixtures_lets_a_heavy_stage_test_run_locally() {
+    let environment = LocalEnvironment {
+        in_ci: false,
+        owner_override: false,
+    };
+    let glob = FixtureGlob::of(Some("**/a.knv;**/b.knv".to_string()));
+    assert_eq!(
+        HeavyTestRun::within(environment, &glob).local_run(),
+        LocalRun::Allowed
+    );
+}
+
+#[test]
+fn a_glob_with_a_wildcard_in_a_file_name_names_no_fixtures() {
+    assert!(!FixtureGlob::of(Some("**/a.knv;**/vector_*.knv".to_string())).narrows());
+    assert!(!FixtureGlob::of(Some("**/a.kn?".to_string())).narrows());
+    assert!(!FixtureGlob::of(Some(String::new())).narrows());
+    assert!(FixtureGlob::of(Some("check/*/a.knv".to_string())).narrows());
+}
+
+#[test]
+fn a_local_heavy_stage_test_stops_before_any_fixture_with_the_refusal() {
+    let output = HeavyRunProbe::of_test("check_fixtures").output();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains(HeavyTestRun::REFUSAL),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn a_local_heavy_stage_test_on_the_owner_override_prints_one_notice() {
+    let output = HeavyRunProbe::of_test("check_fixtures")
+        .on_owner_override()
+        .narrowed_by(SMALL_CHECK_FIXTURE_BY_WILDCARD)
+        .output();
+    let errors = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{errors}");
+    assert_eq!(
+        errors.matches(HeavyTestRun::OVERRIDE_NOTICE).count(),
+        1,
+        "{errors}"
+    );
+}
+
+#[test]
+fn a_local_heavy_stage_test_narrowed_to_named_fixtures_runs_without_a_notice() {
+    let output = HeavyRunProbe::of_test("check_fixtures")
+        .narrowed_by(SMALL_CHECK_FIXTURE_BY_NAME)
+        .output();
+    let errors = String::from_utf8_lossy(&output.stderr);
+    assert!(output.status.success(), "{errors}");
+    assert!(!errors.contains(HeavyTestRun::OVERRIDE_NOTICE), "{errors}");
 }

@@ -5,6 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::closure_facts::ClosureFacts;
 use super::display::TypeDisplay;
 use super::enums::{EnumDefinition, VariantDefinition, VariantPayload};
+use super::field_order::FieldOrder;
 use super::field_place::FieldPlace;
 use super::ownership_facts::OwnershipFacts;
 use super::template_clauses::TemplateClauses;
@@ -97,39 +98,6 @@ pub enum TypedExprKind {
     Variant(BindingId, Vec<TypedExpr>, FieldOrder),
     Assoc(Box<TypedExpr>, Vec<TypedExpr>, Box<TypedExpr>),
     TraitObject(Box<TypedExpr>, BindingId),
-}
-
-#[derive(Clone, Debug)]
-pub enum FieldOrder {
-    Declared,
-    Written(Rc<[usize]>),
-}
-
-impl FieldOrder {
-    pub fn of(fields: Vec<usize>) -> Self {
-        if fields.is_sorted() {
-            Self::Declared
-        } else {
-            Self::Written(fields.into())
-        }
-    }
-
-    pub fn field_of(&self, written: usize) -> usize {
-        match self {
-            Self::Declared => written,
-            Self::Written(fields) => fields[written],
-        }
-    }
-
-    pub fn in_field_order<'v, T>(&self, written: &'v [T]) -> Vec<&'v T> {
-        let mut values: Vec<(usize, &T)> = written
-            .iter()
-            .enumerate()
-            .map(|(position, value)| (self.field_of(position), value))
-            .collect();
-        values.sort_by_key(|(field, _)| *field);
-        values.into_iter().map(|(_, value)| value).collect()
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

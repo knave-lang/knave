@@ -28,9 +28,15 @@ warn_when_over_budget() {
   local shard_count=$1
   local total
   total=$(planned estimated_total)
-  if ((total > shard_count * SHARD_SECONDS)); then
-    echo "::warning::The mutants need about $((total / shard_count / 60)) minutes per shard, over the budget of $((SHARD_SECONDS / 60)), so a shard may not finish."
+  if ((total <= shard_count * SHARD_SECONDS)); then
+    return
   fi
+  local minutes=$((total / shard_count / 60))
+  if [[ -n ${BASE_INPUT:-} ]]; then
+    echo "::error::This slice needs about $minutes minutes per shard, over the budget of $((SHARD_SECONDS / 60)). Split it in two at a commit near its middle, and dispatch each half as its own slice."
+    exit 1
+  fi
+  echo "::warning::The mutants need about $minutes minutes per shard, over the budget of $((SHARD_SECONDS / 60)), so a shard may not finish."
 }
 
 write_mutants() {

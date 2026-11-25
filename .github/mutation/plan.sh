@@ -23,9 +23,9 @@ daily_slices() {
   local from=$1 to=$2
   TZ=UTC git log --first-parent --reverse --date=format-local:%F --format='%H %cd' "$from..$to" |
     awk -v from="$from" '
-      $2 != day && last { print from, last, day; from = last }
-      { day = $2; last = $1 }
-      END { if (last) print from, last, day }'
+      $2 > day && last != "" { print from, last, day; from = last }
+      { if ($2 > day) day = $2; last = $1 }
+      END { if (last != "") print from, last, day }'
 }
 
 is_recent() {

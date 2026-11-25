@@ -188,17 +188,21 @@ cargo test <narrowest test>
 
 **A stage test is a run of `cargo test --test stages`. A filter is a test name argument of the run.** A `--skip` argument is no filter.
 
-**A stage test is heavy in each of these cases, unless both of the conditions after them hold:**
+**A stage test is heavy in each of these cases, unless all of the conditions after them hold:**
 
 - The stage test has no filter.
-- Its filter is part of a heavy test's name, such as `check`, `run` or `fixtures`.
+- The stage test has several filters and no `--exact`.
+- A filter is part of a heavy test's name, such as `check`, `run` or `fixtures`.
 
-**These two conditions together keep a stage test light:**
+**These three conditions together keep a stage test light:**
 
 - `INSTA_GLOB_FILTER` names fixtures. Each of its globs compiles and holds none of `*`, `?`, `[` and `{` outside a leading `**/`.
-- The stage test has a filter, and the filter is part of no test name that starts with `each_explanation_`.
+- The stage test has one filter, or several filters and `--exact`.
+- No filter is part of a test name that starts with `each_explanation_`.
 
-**Every stage test that is not heavy is light.**
+**With a glob, give a filter whose stage tests share one fixture directory, such as `check_fixtures`.** A glob that keeps no fixture of a selected stage fails that stage.
+
+**Every stage test that is not heavy is light.** `StageRun` in `tests/support/stage_run.rs` holds this rule and the heavy test lists. Every fixture and explanation test enforces it.
 
 **A CLI run is a run of `cargo test --test cli`. A heavy test run is a heavy stage test, or a CLI run that names no test with `--exact`.**
 

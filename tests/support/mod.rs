@@ -8,7 +8,6 @@ mod formatting;
 mod guide_links;
 mod headers;
 mod heavy_run_probe;
-mod light_stage_run;
 mod lint_fixture;
 mod project_example;
 mod read_back_agreement;
@@ -17,6 +16,7 @@ mod reference_page;
 mod reports;
 mod saved_prelude;
 mod skill_page;
+mod stage_run;
 
 use std::fs;
 use std::io::{Read, Write};
@@ -47,13 +47,12 @@ use knave::types::TypedProgram;
 use rustc_hash::FxHashMap;
 
 pub use agreement::AgreementReport;
-pub use explanation_examples::{EveryExplanation, ExampleDiagnostic, ExplanationExamples};
+pub use explanation_examples::{ExampleDiagnostic, ExplanationExamples};
 pub use fixture_glob::FixtureGlob;
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use guide_links::GuideLinks;
 pub use headers::HeaderAgreement;
 pub use heavy_run_probe::HeavyRunProbe;
-pub use light_stage_run::LightStageRun;
 pub use lint_fixture::LintFixture;
 pub use read_back_agreement::ReadBackAgreement;
 pub use reference_index::ReferenceIndex;
@@ -61,6 +60,7 @@ pub use reference_page::{PreludePages, ReferencePage};
 pub use reports::FixtureReports;
 pub use saved_prelude::SavedPreludeAgreement;
 pub use skill_page::SkillPage;
+pub use stage_run::StageRun;
 
 pub struct Fixture {
     sources: SourceMap,

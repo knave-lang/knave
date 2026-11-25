@@ -1,19 +1,21 @@
 use super::fixture_glob::FixtureGlob;
 use crate::heavy_run::{Narrowing, Selection, TestArguments};
 
-pub struct LightStageRun {
+pub struct StageRun {
     arguments: TestArguments,
     glob: FixtureGlob,
 }
 
-impl LightStageRun {
-    pub const HEAVY_TESTS: [&str; 12] = [
+impl StageRun {
+    pub const FIXTURE_TESTS: [&str; 6] = [
         "check_fixtures",
         "emit_fixtures",
         "run_fixtures",
         "saved_prelude_check_fixtures",
         "saved_prelude_emit_fixtures",
         "saved_prelude_run_fixtures",
+    ];
+    pub const EXPLANATION_TESTS: [&str; 6] = [
         "each_explanation_erroneous_example_reports_its_code_first",
         "each_explanation_example_is_laid_out",
         "each_explanation_fix_builds_and_runs",
@@ -21,6 +23,8 @@ impl LightStageRun {
         "each_explanation_leaves_the_diagnostic_wording_to_its_problems_type",
         "each_explanation_that_describes_holds_no_runnable_example",
     ];
+    const HEAVY_FIXTURE_SUFFIXES: [&str; 3] = ["check_fixtures", "run_fixtures", "emit_fixtures"];
+    const EXPLANATION_PREFIX: &str = "each_explanation_";
 
     pub fn from_process() -> Self {
         Self::of(
@@ -33,7 +37,14 @@ impl LightStageRun {
         Self { arguments, glob }
     }
 
-    fn selects_a_heavy_test(selection: &Selection) -> bool {
+    pub fn is_heavy_name(test: &str) -> bool {
+        Self::HEAVY_FIXTURE_SUFFIXES
+            .iter()
+            .any(|suffix| test.ends_with(suffix))
+            || test.starts_with(Self::EXPLANATION_PREFIX)
+    }
+
+    fn selects_any(selection: &Selection, tests: &[&str]) -> bool {
         let selects = |test: &str, filter: &str| {
             if selection.exact {
                 test == filter
@@ -44,14 +55,17 @@ impl LightStageRun {
         selection
             .filters
             .iter()
-            .any(|filter| Self::HEAVY_TESTS.iter().any(|test| selects(test, filter)))
+            .any(|filter| tests.iter().any(|test| selects(test, filter)))
     }
 }
 
-impl Narrowing for LightStageRun {
+impl Narrowing for StageRun {
     fn narrows(&self) -> bool {
         let selection = self.arguments.selection();
+        let names_one_filter_or_exact_tests = selection.filters.len() == 1 || selection.exact;
         !selection.filters.is_empty()
-            && (self.glob.narrows() || !Self::selects_a_heavy_test(&selection))
+            && names_one_filter_or_exact_tests
+            && !Self::selects_any(&selection, &Self::EXPLANATION_TESTS)
+            && (self.glob.narrows() || !Self::selects_any(&selection, &Self::FIXTURE_TESTS))
     }
 }

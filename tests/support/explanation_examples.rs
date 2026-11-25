@@ -7,7 +7,6 @@ use super::Fixture;
 use super::example_folder::ExampleFolder;
 use super::example_layout::ExampleLayout;
 use super::project_example::ProjectExample;
-use crate::heavy_run::Narrowing;
 
 pub struct ExplanationExamples {
     code: String,
@@ -263,13 +262,5 @@ impl ExampleLayouts {
             )),
             Err(refusal) => self.skipped.push(format!("{place}: {refusal}")),
         }
-    }
-}
-
-pub struct EveryExplanation;
-
-impl Narrowing for EveryExplanation {
-    fn narrows(&self) -> bool {
-        false
     }
 }

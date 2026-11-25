@@ -19,10 +19,9 @@ use knave_agree::LeftOutFixtures;
 use heavy_run::admission::Admission;
 use heavy_run::{HeavyTestRun, Narrowing, RunEnvironment, TestArguments};
 use support::{
-    AgreementReport, EveryExplanation, ExplanationExamples, Fixture, FixtureGlob, FixtureReports,
-    FormatFailures, GuideLinks, HeaderAgreement, HeavyRunProbe, LightStageRun, LintFixture,
-    PreludePages, ReadBackAgreement, ReferenceIndex, ReferencePage, SavedPreludeAgreement,
-    SkillPage,
+    AgreementReport, ExplanationExamples, Fixture, FixtureGlob, FixtureReports, FormatFailures,
+    GuideLinks, HeaderAgreement, HeavyRunProbe, LintFixture, PreludePages, ReadBackAgreement,
+    ReferenceIndex, ReferencePage, SavedPreludeAgreement, SkillPage, StageRun,
 };
 
 const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
@@ -69,7 +68,7 @@ const FAILING_EXIT_FIX: &str = "## Fixes\n\n```knave\n(defn main ()\n  (local em
 
 #[test]
 fn reader_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/read/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -84,7 +83,7 @@ fn reader_fixtures() {
 
 #[test]
 fn project_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/project/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -99,7 +98,7 @@ fn project_fixtures() {
 
 #[test]
 fn format_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/format/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -128,7 +127,7 @@ fn every_repository_source_formats_to_the_same_forms_and_stays_formatted() {
 
 #[test]
 fn expand_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/expand/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -143,8 +142,8 @@ fn expand_fixtures() {
 
 #[test]
 fn check_fixtures() {
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let glob = FixtureGlob::from_environment();
-    HeavyTestRun::of(&glob).enforce();
     let fixtures = "fixtures/check/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -159,7 +158,7 @@ fn check_fixtures() {
 
 #[test]
 fn loan_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/loans/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -174,7 +173,7 @@ fn loan_fixtures() {
 
 #[test]
 fn text_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/text/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -189,8 +188,8 @@ fn text_fixtures() {
 
 #[test]
 fn emit_fixtures() {
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let glob = FixtureGlob::from_environment();
-    HeavyTestRun::of(&glob).enforce();
     let fixtures = "fixtures/emit/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -205,8 +204,8 @@ fn emit_fixtures() {
 
 #[test]
 fn run_fixtures() {
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let glob = FixtureGlob::from_environment();
-    HeavyTestRun::of(&glob).enforce();
     let fixtures = "fixtures/run/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -221,7 +220,7 @@ fn run_fixtures() {
 
 #[test]
 fn lint_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/lint/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -236,7 +235,7 @@ fn lint_fixtures() {
 
 #[test]
 fn needless_type_lint_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/lint/needless_type/*.knv";
     let project_file = Language::project_file_name();
     let is_fixture = |path: &Path| path.file_name() != Some(project_file.as_ref());
@@ -381,7 +380,7 @@ fn skill_name_matches_its_folder() {
 
 #[test]
 fn corpus_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/corpus/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -396,7 +395,7 @@ fn corpus_fixtures() {
 
 #[test]
 fn agree_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let fixtures = "fixtures/agree/*.knv";
     let mut paths = Vec::new();
     insta::glob!(fixtures, |path| paths.push(PathBuf::from(path)));
@@ -432,7 +431,7 @@ fn defrule_headers_agree() {
 
 #[test]
 fn saved_prelude_expand_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/expand/*.knv", |path| paths
         .push(PathBuf::from(path)));
@@ -442,8 +441,8 @@ fn saved_prelude_expand_fixtures() {
 
 #[test]
 fn saved_prelude_check_fixtures() {
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let glob = FixtureGlob::from_environment();
-    HeavyTestRun::of(&glob).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/check/*.knv", |path| paths
         .push(PathBuf::from(path)));
@@ -453,8 +452,8 @@ fn saved_prelude_check_fixtures() {
 
 #[test]
 fn saved_prelude_emit_fixtures() {
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let glob = FixtureGlob::from_environment();
-    HeavyTestRun::of(&glob).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/emit/*.knv", |path| paths
         .push(PathBuf::from(path)));
@@ -464,8 +463,8 @@ fn saved_prelude_emit_fixtures() {
 
 #[test]
 fn saved_prelude_run_fixtures() {
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let glob = FixtureGlob::from_environment();
-    HeavyTestRun::of(&glob).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/run/*.knv", |path| paths.push(PathBuf::from(path)));
     glob.assert_kept(&paths);
@@ -474,7 +473,7 @@ fn saved_prelude_run_fixtures() {
 
 #[test]
 fn saved_prelude_corpus_fixtures() {
-    HeavyTestRun::of(&LightStageRun::from_process()).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let mut paths = Vec::new();
     insta::glob!("fixtures/corpus/*.knv", |path| paths
         .push(PathBuf::from(path)));
@@ -592,7 +591,7 @@ fn exactly_one_check_fixture_is_left_out_as_slow() {
 
 #[test]
 fn each_explanation_erroneous_example_reports_its_code_first() {
-    HeavyTestRun::of(&EveryExplanation).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let shown = ExplanationExamples::written()
         .into_iter()
         .filter(|explanation| !explanation.is_described());
@@ -611,7 +610,7 @@ fn each_explanation_erroneous_example_reports_its_code_first() {
 
 #[test]
 fn each_explanation_fix_builds_and_runs() {
-    HeavyTestRun::of(&EveryExplanation).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     for explanation in ExplanationExamples::written() {
         assert!(
             explanation.fix_count() > 0 || explanation.is_described(),
@@ -635,7 +634,7 @@ fn a_code_outside_the_lints_needs_no_error_page_docstring() {
 
 #[test]
 fn each_explanation_holds_one_example_heading() {
-    HeavyTestRun::of(&EveryExplanation).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     for explanation in ExplanationExamples::written() {
         assert_eq!(
             explanation.example_heading_count(),
@@ -655,7 +654,7 @@ fn an_explanation_with_both_example_headings_counts_two() {
 
 #[test]
 fn each_explanation_that_describes_holds_no_runnable_example() {
-    HeavyTestRun::of(&EveryExplanation).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     for explanation in ExplanationExamples::written() {
         assert_eq!(
             explanation.described_fence_count(),
@@ -675,7 +674,7 @@ fn a_knave_fence_under_a_described_example_counts_as_runnable() {
 
 #[test]
 fn each_explanation_example_is_laid_out() {
-    HeavyTestRun::of(&EveryExplanation).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     let mut mislaid = Vec::new();
     for explanation in ExplanationExamples::written() {
         let layouts = explanation.layouts();
@@ -800,7 +799,7 @@ fn an_explanation_fix_that_exits_nonzero_fails_its_run() {
 
 #[test]
 fn each_explanation_leaves_the_diagnostic_wording_to_its_problems_type() {
-    HeavyTestRun::of(&EveryExplanation).enforce();
+    HeavyTestRun::of(&StageRun::from_process()).enforce();
     for explanation in ExplanationExamples::written() {
         assert_eq!(
             explanation.restated_titles(),
@@ -1125,14 +1124,14 @@ fn an_unset_glob_lets_a_stage_keep_no_fixture() {
 #[test]
 fn a_stage_run_without_a_filter_is_not_light() {
     let skipping = ["--skip", "check_fixtures", "--skip", "each_explanation_"].map(String::from);
-    let run = LightStageRun::of(TestArguments::of(skipping), FixtureGlob::of(None));
+    let run = StageRun::of(TestArguments::of(skipping), FixtureGlob::of(None));
     assert!(!run.narrows());
 }
 
 #[test]
 fn a_stage_filter_that_selects_a_heavy_test_is_not_light() {
     for filter in ["fixtures", "_", "", "prelude", "explanation"] {
-        let run = LightStageRun::of(
+        let run = StageRun::of(
             TestArguments::of([filter.to_string()]),
             FixtureGlob::of(None),
         );
@@ -1144,36 +1143,64 @@ fn a_stage_filter_that_selects_a_heavy_test_is_not_light() {
 fn a_stage_filter_that_selects_only_light_tests_is_light() {
     for arguments in [vec!["expand_fixtures"], vec!["lint_fixtures", "--exact"]] {
         let arguments = TestArguments::of(arguments.into_iter().map(String::from));
-        assert!(LightStageRun::of(arguments, FixtureGlob::of(None)).narrows());
+        assert!(StageRun::of(arguments, FixtureGlob::of(None)).narrows());
     }
 }
 
 #[test]
-fn a_heavy_stage_filter_with_a_naming_glob_is_light() {
-    let arguments = TestArguments::of(["fixtures".to_string()]);
+fn a_check_substring_filter_with_a_naming_glob_is_light() {
+    let arguments = TestArguments::of(["check_fixtures".to_string()]);
     let glob = FixtureGlob::of(Some(SMALL_CHECK_FIXTURE_BY_NAME.to_string()));
-    assert!(LightStageRun::of(arguments, glob).narrows());
+    assert!(StageRun::of(arguments, glob).narrows());
 }
 
 #[test]
-fn the_heavy_test_list_names_every_heavy_stage_test() {
+fn several_light_substring_filters_are_not_light() {
+    let arguments = TestArguments::of(["expand", "lint", "corpus"].map(String::from));
+    assert!(!StageRun::of(arguments, FixtureGlob::of(None)).narrows());
+}
+
+#[test]
+fn several_light_filters_under_exact_are_light() {
+    let arguments =
+        TestArguments::of(["expand_fixtures", "lint_fixtures", "--exact"].map(String::from));
+    assert!(StageRun::of(arguments, FixtureGlob::of(None)).narrows());
+}
+
+#[test]
+fn the_heavy_test_lists_name_every_heavy_stage_test() {
     let source = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stages.rs"))
         .expect("the stage tests read");
     let mut heavy: Vec<&str> = source
         .lines()
         .filter_map(|line| line.strip_prefix("fn "))
         .filter_map(|line| line.split('(').next())
-        .filter(|name| {
-            ["check_fixtures", "run_fixtures", "emit_fixtures"]
-                .iter()
-                .any(|stage| name.ends_with(stage))
-                || name.starts_with("each_explanation_")
-        })
+        .filter(|name| StageRun::is_heavy_name(name))
         .collect();
     heavy.sort_unstable();
-    let mut listed = LightStageRun::HEAVY_TESTS.to_vec();
+    let mut listed = [StageRun::FIXTURE_TESTS, StageRun::EXPLANATION_TESTS].concat();
     listed.sort_unstable();
     assert_eq!(heavy, listed);
+}
+
+#[test]
+fn an_explanation_filter_with_a_naming_glob_is_not_light() {
+    let arguments = TestArguments::of(["explanation".to_string()]);
+    let glob = FixtureGlob::of(Some(SMALL_CHECK_FIXTURE_BY_NAME.to_string()));
+    assert!(!StageRun::of(arguments, glob).narrows());
+}
+
+#[test]
+fn a_run_without_a_filter_is_not_light_even_with_a_naming_glob() {
+    let glob = FixtureGlob::of(Some(SMALL_CHECK_FIXTURE_BY_NAME.to_string()));
+    assert!(!StageRun::of(TestArguments::of(Vec::new()), glob).narrows());
+}
+
+#[test]
+fn a_heavy_fixture_filter_with_a_naming_glob_is_light() {
+    let arguments = TestArguments::of(["check_fixtures".to_string(), "--exact".to_string()]);
+    let glob = FixtureGlob::of(Some(SMALL_CHECK_FIXTURE_BY_NAME.to_string()));
+    assert!(StageRun::of(arguments, glob).narrows());
 }
 
 #[test]
@@ -1185,7 +1212,7 @@ fn a_local_heavy_stage_test_stops_before_any_fixture_with_the_refusal() {
 }
 
 #[test]
-fn a_local_heavy_stage_test_on_the_owner_override_prints_one_notice() {
+fn the_owner_override_probe_prints_one_notice() {
     let output = HeavyRunProbe::of_test("check_fixtures")
         .on_owner_override()
         .narrowed_by(SMALL_CHECK_FIXTURE_BY_WILDCARD)

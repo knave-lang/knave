@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use super::problems::{MacroFieldRead, OwnershipProblems};
+use super::needs_ownership_problems::{MacroFieldRead, NeedsOwnershipProblems};
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 use crate::types::{
@@ -90,11 +90,11 @@ impl<'a> OwnershipNeeds<'a> {
 
     fn needs_ownership(&self, callee: Option<&TypedExpr>, value: &TypedExpr) -> Diagnostic {
         if self.pipelines.is_pipeline(value.ty.referent()) {
-            return OwnershipProblems::needs_pipeline_ownership(value.span);
+            return NeedsOwnershipProblems::needs_pipeline_ownership(value.span);
         }
         match self.macro_field_read(callee, value) {
-            Some(read) => OwnershipProblems::macro_field_needs_ownership(&read),
-            None => OwnershipProblems::needs_ownership(value.span),
+            Some(read) => NeedsOwnershipProblems::macro_field_needs_ownership(&read),
+            None => NeedsOwnershipProblems::needs_ownership(value.span),
         }
     }
 

@@ -37,6 +37,7 @@ mod moved_values;
 mod moves;
 mod mutation;
 mod names;
+mod needs_ownership_problems;
 mod owned_values;
 mod parameter_adjustments;
 mod parameter_owner;

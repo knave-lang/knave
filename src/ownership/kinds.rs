@@ -1053,12 +1053,12 @@ impl<'a> ClosureKinds<'a> {
     ) {
         match &expr.kind {
             TypedExprKind::Fn(lambda) => self.require_lambda(lambda, lambda.kind, params, uses),
-            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
-                self.require_call(callee, arguments, params, nested, uses)
-            }
             TypedExprKind::Control(control) => self.require_control(control, params, nested, uses),
             TypedExprKind::Leaf(_) => {}
-            other => self.require_nested(other, params, nested, uses),
+            other => match PassedCall::of(expr) {
+                Some(call) => self.require_call(call.callee, call.arguments, params, nested, uses),
+                None => self.require_nested(other, params, nested, uses),
+            },
         }
     }
 

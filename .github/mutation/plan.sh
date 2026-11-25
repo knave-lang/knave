@@ -13,10 +13,19 @@ is_usable_base() {
 }
 
 announce_skipped_commits() {
-  if [[ -n $1 ]] && git merge-base --is-ancestor "$1" HEAD; then
+  if [[ -n $1 ]] && git merge-base --is-ancestor "$1" HEAD && (($(git rev-list --count "$1..$2") > 0)); then
     echo "::notice::The last tested commit is older than $OLDEST_BASE, so the commits from $1 to $2 are not tested."
-    skipped="$1 $2"
+    skipped=$(daily_slices "$1" "$2")
   fi
+}
+
+daily_slices() {
+  local from=$1 to=$2
+  TZ=UTC git log --first-parent --reverse --date=format-local:%F --format='%H %cd' "$from..$to" |
+    awk -v from="$from" '
+      $2 != day && last { print from, last, day; from = last }
+      { day = $2; last = $1 }
+      END { if (last) print from, last, day }'
 }
 
 is_recent() {
@@ -60,7 +69,9 @@ git diff --find-renames "$base" "$head" > "$DIFF"
 changed_sources=$(git diff --name-only "$base" "$head" -- 'src/*.rs' 'expand/src/*.rs' 'xtask/src/*.rs' 'xtask/agree/src/*.rs' | wc -l)
 {
   echo "base=$base"
-  echo "skipped=${skipped:-}"
+  echo "skipped<<SKIPPED_SLICES"
+  echo "${skipped:-}"
+  echo "SKIPPED_SLICES"
   echo "head=$head"
   echo "changed-sources=$changed_sources"
 } >> "$GITHUB_OUTPUT"

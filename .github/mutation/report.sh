@@ -13,22 +13,24 @@ main() {
   if ! every_shard_completed; then
     fail "A mutation shard did not finish, so the issue keeps its last tested commit."
   fi
-  local issue previous found survivors unviable skipped
+  local issue previous found survivors unviable skipped invalid
   issue=$(nightly_issue)
   previous=$(issue_body_text <<< "$issue")
   found=$(surviving_mutants)
   survivors=$(merged_unchecked "$SURVIVORS_HEADING" "$previous" "$found")
   unviable=$(merged_unchecked "$UNVIABLE_HEADING" "$previous" "$(functions_with_only_unviable_mutants)")
-  skipped=$(merged_unchecked "$SKIPPED_HEADING" "$previous" "$(skipped_range)")
-  publish "$(issue_number <<< "$issue")" "$(issue_body "$survivors" "$unviable" "$(invalid_mutants)" "$skipped")" "$survivors$unviable"
+  skipped=$(merged_unchecked "$SKIPPED_HEADING" "$previous" "$(skipped_slices)")
+  invalid=$(invalid_mutants)
+  publish "$(issue_number <<< "$issue")" "$(issue_body "$survivors" "$unviable" "$invalid" "$skipped")" "$survivors$unviable$invalid$skipped"
   require_no_new_survivor "$previous" "$found"
 }
 
-skipped_range() {
-  if [[ -n ${SKIPPED:-} ]]; then
-    read -r from to <<< "$SKIPPED"
-    echo "- [ ] \`$from\` to \`$to\`: test it with \`gh workflow run mutation.yml --ref main -f base=$from -f head=$to\`"
-  fi
+skipped_slices() {
+  local from to day
+  while read -r from to day; do
+    [[ -n $from ]] || continue
+    echo "- [ ] $day: \`$from\` to \`$to\`: test it with \`gh workflow run mutation.yml --ref main -f base=$from -f head=$to\`"
+  done <<< "${SKIPPED:-}"
 }
 
 merged_unchecked() {
@@ -40,7 +42,7 @@ merged_unchecked() {
 }
 
 unchecked_lines_under() {
-  awk -v heading="$1" '{ sub(/[ \t]+$/, "") } $0 == heading { inside = 1; next } /^## / { inside = 0 } inside && /^- \[ \] /'
+  awk -v heading="$1" '{ sub(/[ \t]+$/, "") } $0 == heading { inside = 1; next } /^## / || /^<!--/ { inside = 0 } inside && /^- \[ \] /'
 }
 
 functions_with_only_unviable_mutants() {

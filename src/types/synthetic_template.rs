@@ -17,6 +17,7 @@ impl SyntheticTemplate {
     pub const PUSH: Self = Self::untied("{0}.push({1})");
     pub const PUSH_TEXT: Self = Self::untied("{0}.push_str({1})");
     pub const SET_AT_KEY: Self = Self::untied("*{0}.get_mut({1}).unwrap() = {2}");
+    pub const ASSIGN: Self = Self::untied("*{0} = {1}");
     pub const MAP_UPDATE: Self = Self {
         text: "@map-update",
         lifetime: &[],

@@ -2,10 +2,17 @@ use super::Expander;
 use super::globals::CompileTimeCheck;
 use super::macro_call_lookup::MacroCallLookup;
 use super::problems::ExpandProblems;
-use crate::core::{BindingId, BindingKind, Control, Expr, ExprKind, Lambda, Leaf};
+use crate::core::{
+    BindingId, BindingKind, CollectionForm, Control, Expr, ExprKind, ExpressionForm, KernelForm,
+    Lambda, Leaf,
+};
 use crate::diagnostic::{Diagnostic, Label};
 use crate::interpret::InterpretProblems;
 use crate::source::Span;
+
+mod kernel_form_problems;
+
+use kernel_form_problems::KernelFormProblems;
 
 impl Expander<'_> {
     pub(super) fn check_compile_time(&mut self, lambda: &Lambda) -> Result<(), Diagnostic> {
@@ -30,6 +37,14 @@ impl Expander<'_> {
                 let problem = self
                     .macro_program_only(expr.span())
                     .unwrap_or_else(|| InterpretProblems::program_only(expr.span()));
+                Err(Self::routed(problem, through))
+            }
+            ExprKind::SetAt(path) if path.names_the_whole_place() => {
+                let set_at =
+                    KernelForm::Expression(ExpressionForm::Collection(CollectionForm::SetAt));
+                let problem = self.macro_program_only(expr.span()).unwrap_or_else(|| {
+                    KernelFormProblems::program_only(set_at.name(), expr.span())
+                });
                 Err(Self::routed(problem, through))
             }
             _ => self.check_value_form(expr, through),

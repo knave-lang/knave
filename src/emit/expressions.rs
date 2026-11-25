@@ -39,8 +39,8 @@ use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
     Borrow, BorrowedIndex, ClauseChoice, ClosureKind, Collection, CopiedOut, FieldOrder,
-    ParameterRole, PassedCall, RecordedClosures, SchemeBindings, SyntheticTemplate, Type,
-    TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    OwnedPlace, ParameterRole, PassedCall, RecordedClosures, SchemeBindings, SyntheticTemplate,
+    Type, TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
     TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
     TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion, WrittenBorrows,
 };
@@ -2222,22 +2222,7 @@ impl<'a> ExpressionEmitter<'a> {
     }
 
     fn is_mut_place(parsed: &Template, position: usize, argument: &TypedArgument) -> bool {
-        parsed.dereferences(position)
-            && (Self::written_mut_place(&argument.value) || Self::borrows_owned_place(argument))
-    }
-
-    fn borrows_owned_place(argument: &TypedArgument) -> bool {
-        argument.borrow == Borrow::Mutable
-            && argument.value.place_root().is_some()
-            && !matches!(argument.value.ty, Type::Mut(..))
-    }
-
-    fn written_mut_place(value: &TypedExpr) -> bool {
-        matches!(
-            &value.kind,
-            TypedExprKind::Borrow(ReferenceKind::Mutable, place)
-                if place.is_place() && !place.ty.is_reference()
-        )
+        parsed.dereferences(position) && OwnedPlace::of(argument).is_some()
     }
 
     fn argument(

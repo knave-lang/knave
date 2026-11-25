@@ -9,7 +9,7 @@ use super::forms::{
     ArgumentTyping, Association, Body, Borrowing, Conditional, Dereference, ExpressionForm,
     IfOperands, InlineRust, LiteralValue, MapWrite, Recurrence, Sequence, StringPush,
     TypeTextRequest, VariableReference, VariantConstruction, VectorPush, VectorWrite,
-    WriteCollection,
+    WholePlaceWrite, WriteCollection,
 };
 use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
@@ -2167,12 +2167,14 @@ impl TypeChecker {
     }
 
     fn infer_set_at(&mut self, path: &KeyedPath, span: Span) -> Result<TypedExpr, Diagnostic> {
-        let KeyedPath { value, keys, item } = path;
-        let value = self.infer(value)?;
-        if self.is_open_collection(&value, keys.len()) {
-            return self.infer_open_set_at(value, keys, item, span);
+        let value = self.infer(&path.value)?;
+        if path.names_the_whole_place() {
+            return WholePlaceWrite::new(path, span).type_with(self, value);
         }
-        let collection = WriteCollection::new(&value, keys.len()).resolve(self)?;
+        if self.is_open_collection(&value, path.keys.len()) {
+            return self.infer_open_set_at(value, &path.keys, &path.item, span);
+        }
+        let collection = WriteCollection::new(&value, path.keys.len()).resolve(self)?;
         if collection.is_map() {
             return MapWrite::new(path, span).type_with(self, value, collection);
         }

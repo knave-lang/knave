@@ -1,0 +1,105 @@
+name: Heavy tests
+run-name: Heavy tests ${{ inputs.target }} ${{ inputs.filter }} ${{ inputs.glob }} on ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: The test target to run
+        default: stages
+        type: choice
+        options: [stages, cli]
+      filter:
+        description: The test name filter, such as check_fixtures, or nothing to run the whole target
+        default: ""
+        type: string
+      glob:
+        description: An INSTA_GLOB_FILTER that narrows the fixtures, such as **/vector_*.knv
+        default: ""
+        type: string
+
+concurrency:
+  group: heavy-tests-${{ github.ref }}-${{ inputs.target }}-${{ inputs.filter }}-${{ inputs.glob }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CACHIX_CACHE: rslisp
+
+jobs:
+  heavy-tests:
+    name: heavy tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      RESULTS: target/heavy-tests
+      OUTPUT: target/heavy-tests/output.txt
+      PENDING: target/heavy-tests/pending.txt
+      SUMMARY_BYTES: 900000
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/dev-shell
+        with:
+          build-cache: test
+      - name: Build the tests
+        id: build
+        timeout-minutes: 25
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+          FILTER: ${{ inputs.filter }}
+          GLOB: ${{ inputs.glob }}
+        run: |
+          mkdir -p "$RESULTS"
+          {
+            echo "commit: $GITHUB_SHA"
+            echo "test: cargo test --test $TARGET $FILTER"
+            echo "INSTA_GLOB_FILTER: $GLOB"
+          } | tee "$OUTPUT"
+          nix develop .#ci -c cargo test --quiet --no-run --test "$TARGET" 2>&1 | tee -a "$OUTPUT"
+      - name: Run the tests
+        id: tests
+        timeout-minutes: 30
+        shell: bash
+        env:
+          TARGET: ${{ inputs.target }}
+          FILTER: ${{ inputs.filter }}
+          GLOB: ${{ inputs.glob }}
+          INSTA_UPDATE: new
+        run: |
+          if [ -n "$GLOB" ]; then export INSTA_GLOB_FILTER="$GLOB"; fi
+          nix develop .#ci -c cargo test --quiet --test "$TARGET" ${FILTER:+"$FILTER"} 2>&1 | tee -a "$OUTPUT"
+      - name: Collect the new snapshots
+        if: ${{ !cancelled() && steps.build.outcome != 'skipped' }}
+        shell: bash
+        env:
+          TEST_OUTCOME: ${{ steps.tests.outcome }}
+        run: |
+          find tests -name '*.snap.new' | sort > "$PENDING"
+          while IFS= read -r snapshot; do
+            cp --parents "$snapshot" "$RESULTS/"
+          done < "$PENDING"
+          if [ "$TEST_OUTCOME" = success ]; then outcome=pass; else outcome=fail; fi
+          {
+            echo "## Heavy tests at ${GITHUB_SHA::7} $outcome"
+            echo
+            echo "New snapshots: $(wc -l < "$PENDING")"
+            echo
+            echo '```text'
+            cat "$PENDING"
+            echo '```'
+            echo
+            echo '```text'
+            head -c "$SUMMARY_BYTES" "$OUTPUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() && steps.build.outcome != 'skipped' }}
+        with:
+          name: heavy-tests
+          path: target/heavy-tests/
+          retention-days: 7

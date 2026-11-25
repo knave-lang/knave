@@ -219,6 +219,24 @@ jobs:
       - name: Test
         run: nix develop .#ci -c cargo test --workspace
 
+  test-build-cache:
+    name: test build cache
+    needs: release-check
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.release-check.outputs.release != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/dev-shell
+        with:
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          build-cache: test
+          save-build-cache: ${{ env.SAVE_BUILD_CACHE }}
+      - name: Build the test binaries that the Heavy tests workflow runs
+        run: nix develop .#ci -c cargo test --no-run --test stages --test cli
+
   flake:
     needs: release-check
     if: ${{ !cancelled() && needs.release-check.outputs.release != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}

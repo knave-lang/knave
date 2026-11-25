@@ -142,6 +142,7 @@ The exceptions are:
 - If a fixture writes to standard error or exits nonzero, its snapshot appends the standard error and the exit code.
 - The standard error and the exit code follow the standard output in the snapshot.
 - Create or update snapshots with `INSTA_UPDATE=always`.
+- If a test runs on the `Heavy tests` workflow, take its new snapshots from the run's artifact, as `docs/pull-requests.md` says.
 - NEVER commit a snapshot that you have not read.
 - If a change adds or grows a corpus entry, build the compiler with `cargo build --profile local`.
 - Then time the entry's emission with `bash -c 'time cargo run --profile local --quiet -- emit <entry> > /dev/null'`.
@@ -183,6 +184,24 @@ cargo test <narrowest test>
 
 **Get the CRAP forecast from the `CRAP forecast` workflow on GitHub Actions, as `docs/pull-requests.md` says.**
 
+**A heavy test is a test of `tests/stages.rs` whose name ends in `check_fixtures`, `run_fixtures` or `emit_fixtures`, or contains `explanation`.**
+
+**A stage test is a run of `cargo test --test stages`. A stage test is heavy in each of these cases:**
+
+- The stage test has no filter.
+- Its filter is part of a heavy test's name, such as `check`, `run` or `fixtures`.
+
+**A stage test is not heavy if both of these hold:**
+
+- `INSTA_GLOB_FILTER` names fixtures: the last path part of each of its globs holds no `*` or `?`.
+- Its filter is part of no name of a test whose name contains `explanation`.
+
+**Every stage test that is not heavy is light.**
+
+**A heavy test run is a heavy stage test, or a run of `cargo test --test cli` without a test name.**
+
+**Run each heavy test run on the `Heavy tests` workflow, as `docs/pull-requests.md` says.** Run every light stage test and every named CLI test locally. NEVER loop over test filters in the shell: dispatch one run per filter.
+
 **If `IN_NIX_SHELL` is set, run every command as written.**
 
 **If `IN_NIX_SHELL` is not set, prefix every command that runs a dev shell tool, such as `cargo`, with `direnv exec .`.** If direnv is missing or refuses, stop and ask the project owner.
@@ -195,18 +214,22 @@ cargo test <narrowest test>
 | --- | --- |
 | a unit test in `src/` | `--lib <module::path>` |
 | a unit test in `expand/src/` | `-p knave-expand --lib <module::path>` |
-| one stage's fixtures | `--test stages <stage>_fixtures` |
+| the fixtures of `check`, `run` or `emit` | the `Heavy tests` workflow with `filter=<stage>_fixtures` |
+| named fixtures of `check`, `run` or `emit` | `--test stages <stage>_fixtures`, with `INSTA_GLOB_FILTER` naming the fixtures |
+| the fixtures of every other stage | `--test stages <stage>_fixtures` |
+| a diagnostic's explanation or its examples | the `Heavy tests` workflow with `filter=explanation` |
 | the project file's reader | `--test stages project_fixtures` |
 | a corpus entry | `--test stages corpus_fixtures` |
 | the harness of RFC 0065, or a known shape under `tests/fixtures/agree/` | `-p knave-agree`, then `--test stages agree_fixtures` |
 | the program generator or `cargo xtask agree` | `-p knave-agree`, then `cargo build --bin knave` and `cargo xtask agree`, which runs seeds 0 to 19 and compares their findings with the recorded list |
 | a CLI command | `--test cli <test name>` |
+| every test of `tests/cli.rs` | the `Heavy tests` workflow with `target=cli` |
 | a diagnostic code | `--test diagnostic_codes --test diagnostic_snapshots` |
 | a page of `docs/reference/` or its checks | `--test stages reference_` |
 | the agent skill under `skills/` or its checks | `--test stages skill_` |
 | `xtask/` | `-p xtask` |
 
-- To run one fixture of a stage, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
+- To run named fixtures of a stage locally, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
 
 **If a change touches a Rust file under `src/`, `expand/src/` or `xtask/src/`, run `cargo xtask file-sizes` and `cargo xtask design-rules`.** If either command fails, do what its message says for each item it names.
 
@@ -223,6 +246,7 @@ cargo test <narrowest test>
 - `git rebase -x` with a build command, or another loop that builds each commit
 - `cargo xtask coverage`
 - `cargo xtask crap-forecast`
+- a heavy test run
 - `nix flake check`
 - `nix build`, except the command below
 

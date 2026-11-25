@@ -11,6 +11,7 @@ use super::loan_place::LoanPlace;
 use super::loan_rules::LoanRules;
 use super::loop_walk::LoopWalk;
 use super::point_id::PointId;
+use super::replaced_local::ReplacedLocal;
 use super::walked::Walked;
 use crate::core::ReferenceKind;
 use crate::source::Span;
@@ -53,6 +54,12 @@ impl<'w> BodyWalk<'w> {
 
     fn computed(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
+            TypedExprKind::Assign(assignment) => {
+                let site = CallSite::new(&assignment.template, &assignment.arguments, self.rules());
+                CallWalk::new(self, site)
+                    .replacing(ReplacedLocal::of(assignment))
+                    .walk(at)
+            }
             _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 self.call(CallSite::new(callee, arguments, self.rules()), at)
             }
@@ -165,7 +172,9 @@ impl<'w> BodyWalk<'w> {
                         .move_out(place, matched.value.span);
                 }
                 for binder in arm.pattern.binders() {
-                    self.builder.values().define(bound, binder, &value.held);
+                    self.builder
+                        .values()
+                        .define(bound, binder.binding, &value.held);
                 }
                 self.block(&arm.body, bound)
             })
@@ -224,7 +233,9 @@ impl<'w> ExpressionWalk<'w> for BodyWalk<'w> {
                     {
                         self.builder.lender(defined).move_out(place, value.span);
                     }
-                    self.builder.values().define(defined, binder, &bound.held);
+                    self.builder
+                        .values()
+                        .define(defined, binder.binding, &bound.held);
                     Walked::at(defined)
                 }
                 TypedBodyItem::Expr(value) => self.expr(value, walked.end),

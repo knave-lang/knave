@@ -19,7 +19,7 @@ impl TypedAssignment {
         &self.arguments[Self::PLACE_POSITION + 1..self.value_position()]
     }
 
-    fn value_position(&self) -> usize {
+    pub(crate) fn value_position(&self) -> usize {
         self.arguments.len() - 1
     }
 }

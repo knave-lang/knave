@@ -53,6 +53,7 @@ mod point_lists;
 mod recorded_flow;
 mod recorded_store;
 mod region_flow;
+mod replaced_local;
 mod result_loans;
 mod sorted_set;
 mod store_target;

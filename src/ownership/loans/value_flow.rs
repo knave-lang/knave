@@ -3,7 +3,7 @@ use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
 use super::point_id::PointId;
 use super::recorded_store::RecordedStore;
-use crate::types::TypedBinder;
+use crate::core::BindingId;
 
 pub struct ValueFlow<'b> {
     graph: &'b mut ControlFlowGraph,
@@ -15,9 +15,9 @@ impl<'b> ValueFlow<'b> {
         Self { graph, regions }
     }
 
-    pub fn define(&mut self, point: PointId, binder: &TypedBinder, held: &Holdings) {
-        self.graph.define(point, binder.binding);
-        self.regions.flow_into(point, binder.binding, held);
+    pub fn define(&mut self, point: PointId, binding: BindingId, held: &Holdings) {
+        self.graph.define(point, binding);
+        self.regions.flow_into(point, binding, held);
     }
 
     pub fn store(&mut self, store: RecordedStore) {

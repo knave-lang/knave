@@ -5,17 +5,27 @@ use super::expression_walk::ExpressionWalk;
 use super::holdings::Holdings;
 use super::passed_holdings::PassedHoldings;
 use super::point_id::PointId;
+use super::replaced_local::ReplacedLocal;
 use super::store_target::StoreTarget;
 use super::walked::Walked;
 
 pub struct CallWalk<'c, 'w> {
     walk: &'c mut dyn ExpressionWalk<'w>,
     site: CallSite<'w>,
+    replaced: Option<ReplacedLocal>,
 }
 
 impl<'c, 'w> CallWalk<'c, 'w> {
     pub fn new(walk: &'c mut dyn ExpressionWalk<'w>, site: CallSite<'w>) -> Self {
-        Self { walk, site }
+        Self {
+            walk,
+            site,
+            replaced: None,
+        }
+    }
+
+    pub fn replacing(self, replaced: Option<ReplacedLocal>) -> Self {
+        Self { replaced, ..self }
     }
 
     pub fn walk(mut self, at: PointId) -> Walked {
@@ -34,7 +44,10 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         let evaluated = values.evaluate(self.walk, called.end);
         let point = self.walk.builder().join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));
-        self.store_into_targets(point, &passed);
+        match self.replaced {
+            Some(replaced) => replaced.renew(point, &passed, &mut self.walk.builder().values()),
+            None => self.store_into_targets(point, &passed),
+        }
         Walked::holding(point, self.site.result_holdings(passed))
     }
 

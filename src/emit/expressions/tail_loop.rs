@@ -280,14 +280,10 @@ impl ExpressionEmitter<'_> {
 
     fn loop_sure_arm(&mut self, value: &TypedExpr, arm: &TypedArm) -> Vec<Fragment> {
         let position = BoxPosition::of(&value.ty);
-        let value = self.expr(value);
+        let value = self.preceded(value, |emitter, value| emitter.expr(value));
         self.locals.enter();
         let pattern = self.pattern(&arm.pattern, position);
-        let mut fragments = vec![Fragment::Text("let ".to_string())];
-        fragments.extend(pattern.code.fragments);
-        fragments.push(Fragment::Text(" = ".to_string()));
-        fragments.extend(value.fragments);
-        fragments.push(Fragment::Text(";".to_string()));
+        let mut fragments = value.bind(&pattern.code.text());
         let body = self.loop_block(&arm.body);
         fragments.extend(Self::with_prologue(body, &pattern.prologue));
         self.locals.leave();

@@ -2446,11 +2446,11 @@ impl<'a> ExpressionEmitter<'a> {
                 continue;
             }
             let binding = self.bind_parameter(param, TypePosition::Value);
-            let value = self.annotated_binding_value(argument);
+            let value = self.preceded(argument, |emitter, argument| {
+                emitter.annotated_binding_value(argument)
+            });
             fragments.push(Fragment::Newline);
-            fragments.push(Fragment::Text(format!("let {binding} = ")));
-            fragments.extend(value.fragments);
-            fragments.push(Fragment::Text(";".to_string()));
+            fragments.extend(value.bind(&binding));
         }
         if self.tail_loop.is_some() {
             fragments.push(Fragment::Newline);

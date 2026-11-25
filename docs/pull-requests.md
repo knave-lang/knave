@@ -204,7 +204,7 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **Make no other GitHub call until `gh run watch` exits:** the watch spends the budget of one call a minute.
 
-**If `gh workflow run` cannot find the workflow at the ref, merge `origin/main` into the branch, push, and dispatch again.**
+**If `gh workflow run` fails with an HTTP 404 or 422 naming the workflow, merge `origin/main`, push, and dispatch again.**
 
 **If `gh workflow run` prints no run URL, find the run's ID with `gh run list --workflow crap-forecast.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`.** If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the branch to the project owner.
 
@@ -245,7 +245,7 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **Make no other GitHub call until `gh run watch` exits:** the watch spends the budget of one call a minute.
 
-**If `gh workflow run` cannot find the workflow at the ref, merge `origin/main` into the branch, push, and dispatch again.**
+**If `gh workflow run` fails with an HTTP 404 or 422 naming the workflow, merge `origin/main`, push, and dispatch again.**
 
 **If `gh workflow run` prints no run URL, find the run's ID with `gh run list --workflow heavy-tests.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`.** If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the branch to the project owner.
 

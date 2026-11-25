@@ -36,7 +36,7 @@ impl<'p> LentTemporary<'p> {
     ) -> Option<LentValue<'e>> {
         let walk = ArgumentWalk {
             lent: self,
-            bound: BoundLocals::in_argument(argument, &self.parts),
+            bound: BoundLocals::in_argument(self.program, argument, &self.parts),
         };
         let value =
             walk.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])?;

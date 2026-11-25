@@ -5,7 +5,7 @@ use super::changed_locals::ChangedLocals;
 use crate::core::BindingId;
 use crate::types::{
     TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
+    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram,
 };
 
 #[derive(Clone, Copy)]
@@ -17,14 +17,20 @@ pub enum BoundLocal<'e> {
 }
 
 pub struct BoundLocals<'b, 'p, 'e> {
+    program: &'p TypedProgram,
     parts: &'b BuiltParts<'p>,
     changed: ChangedLocals,
     locals: FxHashMap<BindingId, BoundLocal<'e>>,
 }
 
 impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
-    pub fn in_argument(argument: &'e TypedExpr, parts: &'b BuiltParts<'p>) -> Self {
+    pub fn in_argument(
+        program: &'p TypedProgram,
+        argument: &'e TypedExpr,
+        parts: &'b BuiltParts<'p>,
+    ) -> Self {
         let mut bound = Self {
+            program,
             parts,
             changed: ChangedLocals::in_value(argument),
             locals: FxHashMap::default(),
@@ -117,7 +123,7 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     fn loop_binders(&mut self, body: &'e TypedLambda, arguments: &'e [TypedArgument]) {
         for (parameter, argument) in body.params.iter().zip(arguments) {
             self.bind_local(
-                parameter.binding,
+                parameter,
                 BoundLocal::LoopBinder(parameter, &argument.value),
             );
         }
@@ -127,17 +133,21 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     fn lets(&mut self, block: &'e TypedBlock) {
         for item in &block.items {
             if let TypedBodyItem::Let(binder, value) = item {
-                self.bind_local(binder.binding, BoundLocal::Value(value));
+                self.bind_local(binder, BoundLocal::Value(value));
             }
         }
     }
 
-    fn bind_local(&mut self, binding: BindingId, local: BoundLocal<'e>) {
-        let local = if self.changed.contains(binding) {
+    fn bind_local(&mut self, binder: &TypedBinder, local: BoundLocal<'e>) {
+        let local = if self.changes_what_it_borrows(binder) {
             BoundLocal::Unresolved
         } else {
             local
         };
-        self.locals.insert(binding, local);
+        self.locals.insert(binder.binding, local);
+    }
+
+    fn changes_what_it_borrows(&self, binder: &TypedBinder) -> bool {
+        self.changed.contains(binder.binding) && self.program.type_holds_borrow(&binder.ty)
     }
 }

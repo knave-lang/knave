@@ -8,18 +8,18 @@ use crate::types::assumed_collections::CollectionAssumption;
 use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
-use crate::types::finished_call::FinishedCall;
 use crate::types::forms::{
-    AnnotationLowering, ArgumentPassing, ArgumentTyping, Bindings, ChildTyping,
-    CollectionAssumptions, CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves,
-    GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations,
-    OperandTyping, PlaceReads, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls,
-    TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns,
-    VariantArms, VariantSites,
+    AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionAssumptions,
+    CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves, GlobalReferences,
+    LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations, OperandTyping,
+    PlaceReads, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls, TemplateSchemes,
+    TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns, VariantArms,
+    VariantSites,
 };
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
 use crate::types::synthetic_call::SyntheticCall;
+use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::templates::TemplateName;
 use crate::types::ty::{Scheme, Type};
 use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
@@ -278,24 +278,37 @@ impl ArgumentTyping for TypeChecker {
 
 impl SyntheticCalls for TypeChecker {
     fn type_synthetic_call(&mut self, call: SyntheticCall<'_>) -> Result<TypedExpr, Diagnostic> {
+        let SyntheticSignature {
+            template,
+            parameters,
+            result,
+        } = call.signature;
         self.synthetic_call_with_value(
-            call.template,
-            call.parameters,
-            call.result,
+            template,
+            parameters,
+            result,
             call.value,
             call.arguments,
             call.span,
         )
     }
 
-    fn finish_call(&mut self, call: FinishedCall<'_>) -> TypedExpr {
-        self.finish_synthetic_call(
-            call.template,
-            &call.parameters,
-            &call.result,
-            call.arguments,
-            call.span,
-        )
+    fn pass_argument(
+        &mut self,
+        position: usize,
+        parameter: &Type,
+        value: &TypedExpr,
+    ) -> Result<Borrow, Diagnostic> {
+        self.pass_call_argument(None, position, parameter, value)
+    }
+
+    fn finish_call(
+        &mut self,
+        signature: SyntheticSignature<'_>,
+        arguments: Vec<TypedArgument>,
+        span: Span,
+    ) -> TypedExpr {
+        self.finish_synthetic_call(signature, arguments, span)
     }
 }
 
@@ -316,18 +329,7 @@ impl TypeDisplays for TypeChecker {
 }
 
 impl CollectionAssumptions for TypeChecker {
-    fn assume_collection(&mut self, target: &TypedExpr, assumption: CollectionAssumption) {
+    fn assume_unknown_collection(&mut self, target: &TypedExpr, assumption: CollectionAssumption) {
         self.note_unknown_collection(target, assumption);
-    }
-}
-
-impl ArgumentPassing for TypeChecker {
-    fn pass_argument(
-        &mut self,
-        position: usize,
-        parameter: &Type,
-        value: &TypedExpr,
-    ) -> Result<Borrow, Diagnostic> {
-        self.pass_call_argument(None, position, parameter, value)
     }
 }

@@ -5,6 +5,7 @@ use crate::source::Span;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::synthetic_call::SyntheticCall;
+use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::synthetic_template::SyntheticTemplate;
 use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
@@ -35,9 +36,11 @@ impl<'e> VectorWrite<'e> {
         let template = SyntheticTemplate::set_at(depth);
         let arguments = self.path.keys_and_item();
         context.type_synthetic_call(SyntheticCall {
-            template: &template,
-            parameters,
-            result: Type::unit(),
+            signature: SyntheticSignature {
+                template: &template,
+                parameters,
+                result: Type::unit(),
+            },
             value,
             arguments: &arguments,
             span: self.span,
@@ -60,15 +63,15 @@ mod tests {
     use crate::source::Span;
     use crate::types::collection::Collection;
     use crate::types::expectation::Expectation;
-    use crate::types::finished_call::FinishedCall;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{CollectionShapes, SyntheticCalls, TypeFitting, Unknowns};
     use crate::types::problems::TypeProblems;
     use crate::types::synthetic_call::SyntheticCall;
+    use crate::types::synthetic_signature::SyntheticSignature;
     use crate::types::synthetic_template::SyntheticTemplate;
     use crate::types::ty::Type;
-    use crate::types::typed::TypedExpr;
+    use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
 
     #[derive(Default)]
     struct VectorFixture {
@@ -149,13 +152,30 @@ mod tests {
             &mut self,
             call: SyntheticCall<'_>,
         ) -> Result<TypedExpr, Diagnostic> {
-            self.calls
-                .push((call.template.to_string(), call.parameters, call.result));
+            self.calls.push((
+                call.signature.template.to_string(),
+                call.signature.parameters,
+                call.signature.result,
+            ));
             Ok(call.value)
         }
 
-        fn finish_call(&mut self, call: FinishedCall<'_>) -> TypedExpr {
-            FormFixtures::typed_leaf(Literal::Bool(true), call.result)
+        fn pass_argument(
+            &mut self,
+            _position: usize,
+            _parameter: &Type,
+            _value: &TypedExpr,
+        ) -> Result<Borrow, Diagnostic> {
+            Ok(Borrow::None)
+        }
+
+        fn finish_call(
+            &mut self,
+            signature: SyntheticSignature<'_>,
+            _arguments: Vec<TypedArgument>,
+            _span: Span,
+        ) -> TypedExpr {
+            FormFixtures::typed_leaf(Literal::Bool(true), signature.result)
         }
     }
 

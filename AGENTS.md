@@ -22,6 +22,10 @@ This file and the reference files it names are the living reference for working 
 ### User experience first
 
 - The end user's experience wins every trade-off against an easier implementation.
+- Knave code reads and is written as if the language had a garbage collector: the compiler decides lifetimes and borrows.
+- Decide every lifetime and borrow statically wherever static analysis can, within Rust's performance and model below.
+- Expose borrowing to the user only where no static analysis can make the program safe.
+- NEVER make the user restructure code to satisfy a lifetime that the compiler could have decided.
 - User experience covers the emitted Rust, diagnostics, run output, compile speed and the predictability of the language's rules.
 - NEVER accept worse output because it is easier to build, such as a confusing page or a doubled diagnostic.
 - A language exception costs the user too: PREFER a uniform rule that gives the better output OVER a special case.

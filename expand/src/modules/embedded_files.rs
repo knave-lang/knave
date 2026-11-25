@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use crate::core::ModulePath;
 
 pub struct EmbeddedModules;
@@ -66,9 +64,6 @@ impl EmbeddedModules {
             include_str!("../../prelude/internal/links.knv"),
         ),
     ];
-    const FILE_COUNT: usize = Self::FILES_IN_PAGE_OWNER_ORDER.len();
-    const POSITIONS_IN_SEARCH_ORDER: [usize; Self::FILE_COUNT] = Self::positions_in_search_order();
-
     pub fn paths() -> impl Iterator<Item = &'static str> {
         Self::FILES_IN_PAGE_OWNER_ORDER
             .iter()
@@ -85,72 +80,7 @@ impl EmbeddedModules {
     }
 
     fn position(path: &ModulePath) -> Option<usize> {
-        let found = Self::POSITIONS_IN_SEARCH_ORDER
-            .binary_search_by(|position| {
-                Self::search_order(Self::path_at(*position), path.as_str())
-            })
-            .ok()?;
-        Some(Self::POSITIONS_IN_SEARCH_ORDER[found])
-    }
-
-    fn search_order(listed: &str, sought: &str) -> Ordering {
-        listed
-            .len()
-            .cmp(&sought.len())
-            .then_with(|| listed.cmp(sought))
-    }
-
-    const fn positions_in_search_order() -> [usize; Self::FILE_COUNT] {
-        let mut positions = Self::table_positions();
-        let mut sorted = 1;
-        while sorted < Self::FILE_COUNT {
-            Self::insert_in_search_order(&mut positions, sorted);
-            sorted += 1;
-        }
-        positions
-    }
-
-    const fn table_positions() -> [usize; Self::FILE_COUNT] {
-        let mut positions = [0; Self::FILE_COUNT];
-        let mut position = 0;
-        while position < Self::FILE_COUNT {
-            positions[position] = position;
-            position += 1;
-        }
-        positions
-    }
-
-    const fn insert_in_search_order(positions: &mut [usize; Self::FILE_COUNT], end: usize) {
-        let mut slot = end;
-        while slot > 0 && Self::precedes_in_search_order(positions[slot], positions[slot - 1]) {
-            let moved = positions[slot];
-            positions[slot] = positions[slot - 1];
-            positions[slot - 1] = moved;
-            slot -= 1;
-        }
-    }
-
-    const fn precedes_in_search_order(left: usize, right: usize) -> bool {
-        let (left, right) = (Self::path_at(left), Self::path_at(right));
-        if left.len() != right.len() {
-            return left.len() < right.len();
-        }
-        Self::text_precedes(left.as_bytes(), right.as_bytes())
-    }
-
-    const fn text_precedes(left: &[u8], right: &[u8]) -> bool {
-        let mut at = 0;
-        while at < left.len() && at < right.len() && left[at] == right[at] {
-            at += 1;
-        }
-        if at == left.len() || at == right.len() {
-            return left.len() < right.len();
-        }
-        left[at] < right[at]
-    }
-
-    const fn path_at(position: usize) -> &'static str {
-        Self::FILES_IN_PAGE_OWNER_ORDER[position].0
+        Self::paths().position(|listed| listed == path.as_str())
     }
 }
 
@@ -205,37 +135,6 @@ mod tests {
                 return ModulePath::new(ReservedModulePaths::PRELUDE);
             }
             path
-        }
-    }
-
-    #[test]
-    fn the_path_index_lists_every_file_once_in_search_order() {
-        let mut expected: Vec<usize> = (0..EmbeddedModules::FILE_COUNT).collect();
-        expected.sort_by(|left, right| {
-            EmbeddedModules::search_order(
-                EmbeddedModules::path_at(*left),
-                EmbeddedModules::path_at(*right),
-            )
-        });
-        assert_eq!(
-            EmbeddedModules::positions_in_search_order().to_vec(),
-            expected
-        );
-    }
-
-    #[test]
-    fn text_order_agrees_with_the_order_of_strings() {
-        let pairs = [
-            ("a", "b"),
-            ("b", "a"),
-            ("ab", "a"),
-            ("a", "ab"),
-            ("a", "a"),
-            ("ba", "ab"),
-        ];
-        for (left, right) in pairs {
-            let precedes = EmbeddedModules::text_precedes(left.as_bytes(), right.as_bytes());
-            assert_eq!(precedes, left < right, "{left} {right}");
         }
     }
 

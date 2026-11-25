@@ -41,7 +41,6 @@ pub use module_origin::ModuleOrigin;
 pub use module_scopes::ModuleScopes;
 pub use module_source::ModuleSource;
 pub use module_status::ModuleStatus;
-pub use prelude_index::PreludeIndex;
 pub use prelude_records::{BuiltPreludeRecords, PreludeRecords};
 pub use prelude_source_files::{PreludeSourceBytes, PreludeSourceFiles};
 pub use program_libraries::ProgramLibraries;

@@ -9,13 +9,15 @@ use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionAssumptions,
-    CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves, GlobalReferences,
+    AnnotationLowering, ArgumentTyping, Bindings, CalleeFunctions, ChildTyping,
+    CollectionAssumptions, CollectionLookups, ExpectedChildTyping, FieldMoves, GlobalReferences,
     LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations, OperandTyping,
-    PlaceReads, PlaceWrites, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls,
-    TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns,
-    VariantArms, VariantSites,
+    PairParts, PlaceReads, PlaceWrites, PreludeShapes, RecurTargets, SchemeInstantiation,
+    StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords,
+    TypeUnification, Unknowns, VariantArms, VariantSites,
 };
+use crate::types::function_shape::FunctionShape;
+use crate::types::positional_read::{PairPart, PositionalRead};
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
 use crate::types::synthetic_call::SyntheticCall;
@@ -30,6 +32,7 @@ use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
 
 const UNREAD_POSITION_WITHOUT_CALLEE: usize = 0;
+const FIRST_POSITION: usize = 0;
 
 impl ChildTyping for TypeChecker {
     fn type_child(&mut self, child: &Expr) -> Result<TypedExpr, Diagnostic> {
@@ -142,13 +145,21 @@ impl LocalTypes for TypeChecker {
     }
 }
 
-impl CollectionShapes for TypeChecker {
+impl PreludeShapes for TypeChecker {
     fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
         self.prelude_types().nested_vector_of(depth, element)
     }
 
     fn slice_of(&self, element: Type) -> Type {
         self.prelude_types().slice_of(element)
+    }
+
+    fn option_of(&self, value: Type) -> Type {
+        self.prelude_types().option_type(value)
+    }
+
+    fn iterator_of(&self, item: Type) -> Type {
+        self.prelude_types().iterator_type(item)
     }
 }
 
@@ -159,6 +170,10 @@ impl CollectionLookups for TypeChecker {
 
     fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
         Collection::of_referent(ty, &self.declarations.types().rust_types)
+    }
+
+    fn collection_item(&self, ty: &Type) -> Option<(Type, Type)> {
+        TypeChecker::collection_item(self, ty)
     }
 }
 
@@ -187,6 +202,10 @@ impl FieldMoves for TypeChecker {
 impl LiteralUnknowns for TypeChecker {
     fn fresh_literal(&mut self, kind: LiteralKind) -> Type {
         self.unifier.fresh_literal(kind)
+    }
+
+    fn is_literal(&self, value: &Type) -> bool {
+        TypeChecker::is_literal(self, value)
     }
 }
 
@@ -277,6 +296,40 @@ impl ArgumentTyping for TypeChecker {
         let mut typed_arguments = self.infer_arguments(callee, parameters, arguments, &shared)?;
         self.pass_shared_arguments(callee, &shared, &mut typed_arguments)?;
         Ok(typed_arguments)
+    }
+
+    fn pass_first_argument(
+        &mut self,
+        callee: &TypedExpr,
+        parameters: &[Type],
+        value: &TypedExpr,
+    ) -> Result<Borrow, Diagnostic> {
+        self.pass_call_argument(
+            Some(callee),
+            FIRST_POSITION,
+            &parameters[FIRST_POSITION],
+            value,
+        )
+    }
+}
+
+impl CalleeFunctions for TypeChecker {
+    fn expect_function(
+        &mut self,
+        callee: &TypedExpr,
+        argument_count: usize,
+    ) -> Result<FunctionShape, Diagnostic> {
+        self.function_shape(callee, argument_count)
+    }
+}
+
+impl PairParts for TypeChecker {
+    fn pair_part(&self, read: &PositionalRead, pair: &Type) -> Option<PairPart> {
+        read.pair_part(pair, &self.declarations.types().rust_types)
+    }
+
+    fn read_part(&self, part: PairPart, pair: TypedExpr) -> TypedExpr {
+        part.read(pair, |part| self.passing_facts().holds_copy_value(part))
     }
 }
 

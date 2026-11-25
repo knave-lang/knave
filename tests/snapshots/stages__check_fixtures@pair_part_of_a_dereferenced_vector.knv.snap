@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/pair_part_of_a_dereferenced_vector.knv
+---
+error[L0404]: `(vec int)` does not implement `copy`
+ --> check/pair_part_of_a_dereferenced_vector.knv:1:31
+  |
+1 | (defn head (r) (second (deref r)))
+  |                               ^ this needs `copy`
+  |
+  = note: `copy` is implemented for: bool, char, unit, i8, i16, i32, int, i128, isize, u8, u16, u32, u64, u128, usize, f32, float, infallible, duration, instant, (where (a) (ref a)), (where ((a copy)) (option a)), (where ((a copy) (b copy)) (result a b)), (where ((a copy) (b copy)) (pair a b))
+  = note: run `knave doc L0404` for an explanation

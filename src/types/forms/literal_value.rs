@@ -79,6 +79,10 @@ mod tests {
             self.kinds.push(kind);
             Type::Primitive(PrimitiveType::U8)
         }
+
+        fn is_literal(&self, _value: &Type) -> bool {
+            false
+        }
     }
 
     #[test]

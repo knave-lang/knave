@@ -41,7 +41,7 @@ mod tests {
     use crate::types::forms::{ArgumentTyping, ExpressionForm, RecurTargets};
     use crate::types::recur_target::RecurTarget;
     use crate::types::ty::Type;
-    use crate::types::typed::{TypedArgument, TypedExpr};
+    use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
 
     #[derive(Default)]
     struct RecurFixture {
@@ -81,6 +81,15 @@ mod tests {
         ) -> Result<Vec<TypedArgument>, Diagnostic> {
             self.typed_against.push(parameters.to_vec());
             Ok(Vec::new())
+        }
+
+        fn pass_first_argument(
+            &mut self,
+            _callee: &TypedExpr,
+            _parameters: &[Type],
+            _value: &TypedExpr,
+        ) -> Result<Borrow, Diagnostic> {
+            Ok(Borrow::None)
         }
     }
 

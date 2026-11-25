@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/map_update_result_mismatch.knv
+---
+error[L0401]: mismatched types
+ --> check/map_update_result_mismatch.knv:3:37
+  |
+3 |   (prn (update counts "cat" (fn (n) (str n)) 0)))
+  |                                     ^^^^^^^ expected an integer, found `string`
+  |
+  = note: run `knave doc L0401` for an explanation

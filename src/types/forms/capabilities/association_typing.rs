@@ -1,6 +1,6 @@
 use super::{
-    ChildTyping, CollectionLookups, CollectionShapes, FieldMoves, MapKeys, StructBases,
-    TypeFitting, Unknowns,
+    ChildTyping, CollectionLookups, FieldMoves, MapKeys, PreludeShapes, StructBases, TypeFitting,
+    Unknowns,
 };
 
 pub(in crate::types) trait AssociationTyping:
@@ -8,7 +8,7 @@ pub(in crate::types) trait AssociationTyping:
     + TypeFitting
     + Unknowns
     + CollectionLookups
-    + CollectionShapes
+    + PreludeShapes
     + MapKeys
     + StructBases
     + FieldMoves
@@ -20,7 +20,7 @@ impl<C> AssociationTyping for C where
         + TypeFitting
         + Unknowns
         + CollectionLookups
-        + CollectionShapes
+        + PreludeShapes
         + MapKeys
         + StructBases
         + FieldMoves

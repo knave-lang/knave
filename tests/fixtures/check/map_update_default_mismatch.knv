@@ -1,0 +1,5 @@
+(defn main ()
+  (local counts (hash-map "cat" 1))
+  (prn (update counts "dog"
+               (fn (n) (+ n 1))
+               "none")))

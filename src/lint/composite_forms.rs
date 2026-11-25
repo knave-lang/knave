@@ -157,11 +157,8 @@ impl CompositeForms {
             KernelForm::Expression(ExpressionForm::Collection(form)),
             span,
         );
-        let value = forms.expr(&path.value);
-        let keys_row = forms.writer().open();
-        let keys = path.keys.iter().map(|key| forms.expr(key)).collect();
-        let keys = forms.writer().close(keys_row, keys, span);
-        let parts = vec![head, value, keys, forms.expr(&path.item)];
+        let mut parts = vec![head];
+        parts.extend(path.children().into_iter().map(|part| forms.expr(part)));
         forms.writer().close(row, parts, span)
     }
 }

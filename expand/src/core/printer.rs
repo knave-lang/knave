@@ -192,12 +192,12 @@ impl<'a> CorePrinter<'a> {
     }
 
     fn keyed(&mut self, head: &str, path: &KeyedPath) -> String {
-        let keys: Vec<String> = path.keys.iter().map(|key| self.expr(key)).collect();
-        let keys = format!("({})", keys.join(" "));
-        Self::list(
-            head,
-            vec![self.expr(&path.value), keys, self.expr(&path.item)],
-        )
+        let parts = path
+            .children()
+            .into_iter()
+            .map(|part| self.expr(part))
+            .collect();
+        Self::list(head, parts)
     }
 
     fn map_at(&mut self, operation: MapOperation, value: &Expr, arguments: &[Expr]) -> String {

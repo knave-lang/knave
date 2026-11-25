@@ -136,7 +136,7 @@
       value
       (collection-updates (list (quote assoc-at)
                                 value
-                                (list (first pairs))
+                                (first pairs)
                                 (nth pairs 1))
                           (drop pairs 2)))))
 
@@ -260,7 +260,9 @@
   (fn (base path item)
     (local fields (keyword-steps path))
     (if (empty? fields)
-      (list (quote assoc-at) base path item)
+      (concat (list (quote assoc-at) base)
+              path
+              (list item))
       (if (keyword? (first path))
         (field-step base (first path) (rest path) item)
         (fail "a field step cannot follow an index step"

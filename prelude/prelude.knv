@@ -261,13 +261,13 @@
   (match (pair 1 2) ((pair left _) left))
   => 1")
 
-(document (assoc-at value (key ...) item)
+(document (assoc-at value key ... item)
   "Returns the collection with the item stored at a path of keys.
 
   The collection's inferred type picks the Rust, for a vector, a sorted map
   or a hash map. [assoc] and [assoc-in] expand to it.
 
-  (assoc-at (vec 1 2) (0) 9)
+  (assoc-at (vec 1 2) 0 9)
   => (vec 9 2)")
 
 (document (map-at operation value argument ...)
@@ -291,13 +291,13 @@
     items)
   => (vec 1 2)")
 
-(document (set-at! value (key ...) item)
+(document (set-at! place key ... item)
   "Assigns the item at a path of keys inside a place.
 
   It emits an assignment. [set!] expands to it.
 
   (let (items (vec 1 2))
-    (set-at! items (0) 9)
+    (set-at! items 0 9)
     items)
   => (vec 9 2)")
 

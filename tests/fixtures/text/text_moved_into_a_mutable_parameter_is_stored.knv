@@ -2,7 +2,7 @@
   (push! names name))
 
 (defn put! ((m (mut (hash-map string i64))) key)
-  (set-at! m (key) 1))
+  (set-at! m key 1))
 
 (defn main ()
   (local names (vec))

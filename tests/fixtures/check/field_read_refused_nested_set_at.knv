@@ -8,7 +8,7 @@
   :pet pet)
 
 (defn tag-pet! (x)
-  (set-at! (:tags (:pet x)) (0) 7)
+  (set-at! (:tags (:pet x)) 0 7)
   0)
 
 (defn main ()

@@ -129,7 +129,7 @@ impl KernelForm {
         KernelFormRow {
             form: KernelForm::Expression(ExpressionForm::Collection(CollectionForm::Assoc)),
             name: "assoc-at",
-            shape: "(assoc-at value (key ...) item)",
+            shape: "(assoc-at value key ... item)",
         },
         KernelFormRow {
             form: KernelForm::Expression(ExpressionForm::Collection(CollectionForm::MapAt)),
@@ -144,7 +144,7 @@ impl KernelForm {
         KernelFormRow {
             form: KernelForm::Expression(ExpressionForm::Collection(CollectionForm::SetAt)),
             name: "set-at!",
-            shape: "(set-at! value (key ...) item)",
+            shape: "(set-at! place key ... item)",
         },
         KernelFormRow {
             form: KernelForm::Expression(ExpressionForm::Struct(StructForm::New)),

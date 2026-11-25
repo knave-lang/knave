@@ -1,8 +1,9 @@
 use std::rc::Rc;
 
+use super::ty::Type;
+use super::typed::{TypedExpr, TypedExprKind, TypedLeaf};
 use crate::core::{RustTemplate, TypeExpr, TypeExprKind};
 use crate::source::Span;
-use crate::types::{Type, TypedExpr, TypedExprKind, TypedLeaf};
 
 pub struct RustLeaf {
     text: String,

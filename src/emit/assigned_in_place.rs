@@ -1,11 +1,12 @@
 use super::lift_placement::LiftPlacement;
 use super::lifted_temporary::LiftedTemporary;
-use super::rust_leaf::RustLeaf;
 use super::temporary_scope::TemporaryScope;
 use super::tree_position::TreePosition;
 #[cfg(test)]
 use crate::types::TypedLeaf;
-use crate::types::{Borrow, ClosureKind, Lifetime, Type, TypedArgument, TypedExpr, TypedExprKind};
+use crate::types::{
+    Borrow, ClosureKind, Lifetime, RustLeaf, Type, TypedArgument, TypedExpr, TypedExprKind,
+};
 
 pub struct AssignedInPlace {
     site: TreePosition,

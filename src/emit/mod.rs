@@ -58,7 +58,6 @@ mod reused_locals;
 mod runtime;
 mod runtime_part;
 mod rust_fallback;
-mod rust_leaf;
 mod scanned_part;
 mod short_form;
 mod signature_borrows;

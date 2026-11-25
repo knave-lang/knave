@@ -1,22 +1,37 @@
-use std::cell::RefCell;
+use rustc_hash::FxHashMap;
+use std::cell::{OnceCell, RefCell};
 use std::ops::Range;
 
-use rustc_hash::FxHashMap;
-
-use super::{LineStarts, SourceFile, SourceId, Span, TextPosition};
+use super::{EmbeddedSources, LineStarts, SourceFile, SourceId, Span, TextPosition};
 
 #[derive(Default)]
 pub struct SourceMap {
-    files: Vec<SourceFile>,
+    files: Vec<OnceCell<SourceFile>>,
     line_starts: RefCell<FxHashMap<SourceId, LineStarts>>,
+    embedded: Option<EmbeddedRange>,
+}
+
+struct EmbeddedRange {
+    first: SourceId,
+    sources: Box<dyn EmbeddedSources>,
 }
 
 impl SourceMap {
     pub fn add(&mut self, name: impl Into<String>, text: impl Into<String>) -> SourceId {
         let id = self.next_id();
-        self.files
-            .push(SourceFile::new(id, name.into(), text.into()));
-        id
+        let text: String = text.into();
+        self.push(SourceFile::new(id, name.into(), text))
+    }
+
+    pub fn add_embedded(&mut self, sources: Box<dyn EmbeddedSources>) {
+        assert!(
+            self.embedded.is_none(),
+            "a source map holds at most one embedded range"
+        );
+        let first = self.next_id();
+        let end = first.index() + sources.count();
+        self.files.resize_with(end, OnceCell::new);
+        self.embedded = Some(EmbeddedRange { first, sources });
     }
 
     pub fn add_inside(
@@ -37,7 +52,7 @@ impl SourceMap {
     }
 
     pub fn file(&self, id: SourceId) -> &SourceFile {
-        &self.files[id.index()]
+        self.files[id.index()].get_or_init(|| self.embedded_file(id))
     }
 
     pub fn start_position(&self, span: Span) -> TextPosition {
@@ -56,22 +71,50 @@ impl SourceMap {
 
     fn add_excerpt(&mut self, enclosing: SourceId, range: Range<usize>) -> SourceId {
         let id = self.next_id();
-        let enclosing = self.file(enclosing);
-        let excerpt = SourceFile::excerpt(
-            id,
-            enclosing.name().to_string(),
-            enclosing.text().to_string(),
-            range,
-        );
-        self.files.push(excerpt);
+        let excerpt = self.file(enclosing).excerpt(id, range);
+        self.push(excerpt)
+    }
+
+    fn push(&mut self, file: SourceFile) -> SourceId {
+        let id = file.id();
+        self.files.push(OnceCell::from(file));
         id
+    }
+
+    fn embedded_file(&self, id: SourceId) -> SourceFile {
+        let range = self
+            .embedded
+            .as_ref()
+            .expect("a source without a file is an embedded one");
+        let position = id.index() - range.first.index();
+        SourceFile::new(
+            id,
+            range.sources.name(position),
+            range.sources.text(position),
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::SourceMap;
-    use crate::source::{SourceId, Span, TextPosition};
+    use crate::source::{EmbeddedSources, SourceId, Span, TextPosition};
+
+    struct TwoEmbeddedFiles;
+
+    impl EmbeddedSources for TwoEmbeddedFiles {
+        fn count(&self) -> usize {
+            2
+        }
+
+        fn name(&self, position: usize) -> String {
+            format!("embedded-{position}.knv")
+        }
+
+        fn text(&self, _position: usize) -> &'static str {
+            "(embedded)"
+        }
+    }
 
     struct InsideFixture {
         sources: SourceMap,
@@ -168,5 +211,24 @@ mod tests {
             .expect("the text holds the line");
         let span = Span::new(fixture.enclosing, second_line..second_line);
         assert_eq!(fixture.sources.location(span), "geometry.knv:2:1");
+    }
+
+    #[test]
+    fn embedded_sources_fill_no_slot_until_a_file_is_read() {
+        let mut sources = SourceMap::default();
+        let entry = sources.add("geometry.knv", "(area 2 3)");
+        sources.add_embedded(Box::new(TwoEmbeddedFiles));
+        assert!(sources.files[1..].iter().all(|slot| slot.get().is_none()));
+        let second = SourceId::new(entry.index() + 2);
+        assert_eq!(sources.file(second).name(), "embedded-1.knv");
+        assert!(sources.files[1].get().is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "a source map holds at most one embedded range")]
+    fn a_second_embedded_range_is_refused() {
+        let mut sources = SourceMap::default();
+        sources.add_embedded(Box::new(TwoEmbeddedFiles));
+        sources.add_embedded(Box::new(TwoEmbeddedFiles));
     }
 }

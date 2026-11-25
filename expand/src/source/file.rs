@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::ops::Range;
 
 use super::SourceId;
@@ -5,21 +6,27 @@ use super::SourceId;
 pub struct SourceFile {
     id: SourceId,
     name: String,
-    text: String,
+    text: Cow<'static, str>,
     excerpt: Range<usize>,
 }
 
 impl SourceFile {
-    pub fn new(id: SourceId, name: String, text: String) -> Self {
-        let whole = 0..text.len();
-        Self::excerpt(id, name, text, whole)
-    }
-
-    pub fn excerpt(id: SourceId, name: String, text: String, excerpt: Range<usize>) -> Self {
+    pub fn new(id: SourceId, name: String, text: impl Into<Cow<'static, str>>) -> Self {
+        let text = text.into();
+        let excerpt = 0..text.len();
         Self {
             id,
             name,
             text,
+            excerpt,
+        }
+    }
+
+    pub fn excerpt(&self, id: SourceId, excerpt: Range<usize>) -> Self {
+        Self {
+            id,
+            name: self.name.clone(),
+            text: self.text.clone(),
             excerpt,
         }
     }

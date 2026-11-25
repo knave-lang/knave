@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::connected_flows::ConnectedFlows;
@@ -15,8 +17,20 @@ pub struct RegionFlow<H> {
 }
 
 struct RegionStore<H> {
-    regions: FxHashSet<usize>,
+    regions: FxHashSet<Region>,
     held: H,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct FlowId(usize);
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct Region(usize);
+
+impl FlowId {
+    fn fact(self) -> usize {
+        self.0
+    }
 }
 
 impl<H> RegionFlow<H> {
@@ -28,12 +42,11 @@ impl<H> RegionFlow<H> {
         } else {
             ReachingFacts::of(graph, ConnectedFlows::kept(flows, &targets), &store_points)
         };
-        let mut regions = RegionSets::new(reaching.flows.len());
-        reaching.unify_sources(&mut regions);
+        let regions = reaching.unified_regions(&targets);
         let stores = stores
             .into_iter()
             .map(|store| RegionStore {
-                regions: reaching.regions_of(store.target, store.point, &mut regions),
+                regions: reaching.regions_of(store.target, store.point, &regions),
                 held: store.held,
             })
             .collect();
@@ -48,19 +61,12 @@ impl<H> RegionFlow<H> {
         if self.stores.is_empty() {
             return Vec::new();
         }
-        let regions = self
-            .reaching
-            .known_regions_of(binding, point, &self.regions);
+        let regions = self.reaching.regions_of(binding, point, &self.regions);
         self.stores
             .iter()
             .enumerate()
             .filter(|(index, _)| self.reaching.store_reaches(*index, point))
-            .filter(|(_, store)| {
-                store
-                    .regions
-                    .iter()
-                    .any(|region| regions.contains(&self.regions.root(*region)))
-            })
+            .filter(|(_, store)| !store.regions.is_disjoint(&regions))
             .map(|(_, store)| &store.held)
             .collect()
     }
@@ -68,7 +74,7 @@ impl<H> RegionFlow<H> {
 
 struct ReachingFacts {
     flows: Vec<RecordedFlow>,
-    by_binding: FxHashMap<BindingId, Vec<usize>>,
+    by_binding: FxHashMap<BindingId, Vec<FlowId>>,
     rows: FactRows,
 }
 
@@ -89,9 +95,12 @@ struct PointFactChanges {
 
 impl ReachingFacts {
     fn of(graph: &PointGraph, flows: Vec<RecordedFlow>, store_points: &[PointId]) -> Self {
-        let mut by_binding: FxHashMap<BindingId, Vec<usize>> = FxHashMap::default();
+        let mut by_binding: FxHashMap<BindingId, Vec<FlowId>> = FxHashMap::default();
         for (index, flow) in flows.iter().enumerate() {
-            by_binding.entry(flow.binding).or_default().push(index);
+            by_binding
+                .entry(flow.binding)
+                .or_default()
+                .push(FlowId(index));
         }
         let rows = graph
             .points()
@@ -110,29 +119,34 @@ impl ReachingFacts {
     }
 
     fn changes(&self, store_points: &[PointId]) -> PointFactChanges {
-        let mut generated: FxHashMap<PointId, Vec<usize>> = FxHashMap::default();
-        for (index, flow) in self.flows.iter().enumerate() {
-            generated.entry(flow.point).or_default().push(index);
+        let mut defined: FxHashMap<PointId, Vec<FlowId>> = FxHashMap::default();
+        for (flow, recorded) in self.recorded() {
+            defined.entry(recorded.point).or_default().push(flow);
         }
-        let mut killed: FxHashMap<PointId, Vec<usize>> = FxHashMap::default();
-        for (point, defined) in &generated {
-            let bindings = defined.iter().map(|flow| self.flows[*flow].binding);
-            let same_binding =
-                bindings.flat_map(|binding| self.by_binding[&binding].iter().copied());
-            killed.insert(
-                *point,
-                same_binding
-                    .filter(|flow| !defined.contains(flow))
-                    .collect(),
-            );
-        }
+        let killed = defined
+            .iter()
+            .map(|(point, flows)| (*point, self.killed_by(flows)))
+            .collect();
+        let mut generated: FxHashMap<PointId, Vec<usize>> = defined
+            .into_iter()
+            .map(|(point, flows)| (point, flows.into_iter().map(FlowId::fact).collect()))
+            .collect();
         for (index, point) in store_points.iter().enumerate() {
             generated
                 .entry(*point)
                 .or_default()
-                .push(self.flows.len() + index);
+                .push(self.store_fact(index));
         }
         PointFactChanges { generated, killed }
+    }
+
+    fn killed_by(&self, defined: &[FlowId]) -> Vec<usize> {
+        defined
+            .iter()
+            .flat_map(|flow| &self.by_binding[&self.flows[flow.0].binding])
+            .filter(|other| !defined.contains(*other))
+            .map(|other| other.fact())
+            .collect()
     }
 
     fn grow(
@@ -144,8 +158,8 @@ impl ReachingFacts {
         let mut grew = false;
         for (point, facts) in graph.points() {
             self.rows.copy_row(point.index(), leaving);
-            for flow in changes.killed.get(&point).into_iter().flatten() {
-                FactRows::clear(leaving, *flow);
+            for fact in changes.killed.get(&point).into_iter().flatten() {
+                FactRows::clear(leaving, *fact);
             }
             for fact in changes.generated.get(&point).into_iter().flatten() {
                 FactRows::set(leaving, *fact);
@@ -158,98 +172,105 @@ impl ReachingFacts {
     }
 
     fn store_reaches(&self, store: usize, point: PointId) -> bool {
-        self.rows.contains(point.index(), self.flows.len() + store)
+        self.rows.contains(point.index(), self.store_fact(store))
     }
 
-    fn unify_sources(&self, regions: &mut RegionSets) {
-        for (index, flow) in self.flows.iter().enumerate() {
-            for source in flow.sources() {
-                for region in self.regions_of(source, flow.point, regions) {
-                    regions.unite(index, region);
-                }
+    fn store_fact(&self, store: usize) -> usize {
+        self.flows.len() + store
+    }
+
+    fn unified_regions(&self, targets: &[BindingId]) -> RegionSets {
+        let sources = self.flows.iter().flat_map(RecordedFlow::sources);
+        let mut regions =
+            RegionSets::starting_with(self.flows.len(), sources.chain(targets.iter().copied()));
+        for (flow, recorded) in self.recorded() {
+            let joined: Vec<Region> = recorded
+                .sources()
+                .flat_map(|source| self.regions_of(source, recorded.point, &regions))
+                .collect();
+            for region in joined {
+                regions.unite(regions.of_flow(flow), region);
             }
         }
+        regions
     }
 
     fn regions_of(
         &self,
         binding: BindingId,
         point: PointId,
-        regions: &mut RegionSets,
-    ) -> FxHashSet<usize> {
-        let reaching = self.reaching_flows(binding, point);
-        if reaching.is_empty() {
-            return [regions.entry_of(binding)].into_iter().collect();
-        }
-        reaching.into_iter().collect()
-    }
-
-    fn known_regions_of(
-        &self,
-        binding: BindingId,
-        point: PointId,
         regions: &RegionSets,
-    ) -> FxHashSet<usize> {
+    ) -> FxHashSet<Region> {
         let reaching = self.reaching_flows(binding, point);
         if reaching.is_empty() {
-            return regions
-                .known_entry_of(binding)
-                .map(|entry| regions.root(entry))
-                .into_iter()
-                .collect();
+            return regions.entry_of(binding).into_iter().collect();
         }
         reaching
             .into_iter()
-            .map(|flow| regions.root(flow))
+            .map(|flow| regions.of_flow(flow))
             .collect()
     }
 
-    fn reaching_flows(&self, binding: BindingId, point: PointId) -> Vec<usize> {
+    fn reaching_flows(&self, binding: BindingId, point: PointId) -> Vec<FlowId> {
         self.by_binding
             .get(&binding)
             .into_iter()
             .flatten()
-            .filter(|flow| self.rows.contains(point.index(), **flow))
+            .filter(|flow| self.rows.contains(point.index(), flow.fact()))
             .copied()
             .collect()
+    }
+
+    fn recorded(&self) -> impl Iterator<Item = (FlowId, &RecordedFlow)> {
+        self.flows
+            .iter()
+            .enumerate()
+            .map(|(index, recorded)| (FlowId(index), recorded))
     }
 }
 
 struct RegionSets {
-    parents: Vec<usize>,
-    entries: FxHashMap<BindingId, usize>,
+    parents: Vec<Region>,
+    entries: FxHashMap<BindingId, Region>,
 }
 
 impl RegionSets {
-    fn new(flows: usize) -> Self {
-        Self {
-            parents: (0..flows).collect(),
+    fn starting_with(flows: usize, entered: impl Iterator<Item = BindingId>) -> Self {
+        let mut regions = Self {
+            parents: (0..flows).map(Region).collect(),
             entries: FxHashMap::default(),
+        };
+        for binding in entered {
+            regions.enter(binding);
         }
+        regions
     }
 
-    fn entry_of(&mut self, binding: BindingId) -> usize {
-        let next = self.parents.len();
-        let entry = *self.entries.entry(binding).or_insert(next);
-        if entry == next {
+    fn enter(&mut self, binding: BindingId) {
+        let next = Region(self.parents.len());
+        if let Entry::Vacant(vacant) = self.entries.entry(binding) {
+            vacant.insert(next);
             self.parents.push(next);
         }
-        entry
     }
 
-    fn known_entry_of(&self, binding: BindingId) -> Option<usize> {
-        self.entries.get(&binding).copied()
+    fn of_flow(&self, flow: FlowId) -> Region {
+        self.root(Region(flow.0))
     }
 
-    fn unite(&mut self, first: usize, second: usize) {
+    fn entry_of(&self, binding: BindingId) -> Option<Region> {
+        self.entries.get(&binding).map(|entry| self.root(*entry))
+    }
+
+    fn unite(&mut self, first: Region, second: Region) {
         let (first, second) = (self.root(first), self.root(second));
-        self.parents[first] = second;
+        self.parents[first.0] = second;
     }
 
-    fn root(&self, region: usize) -> usize {
+    fn root(&self, region: Region) -> Region {
         let mut region = region;
-        while self.parents[region] != region {
-            region = self.parents[region];
+        while self.parents[region.0] != region {
+            region = self.parents[region.0];
         }
         region
     }

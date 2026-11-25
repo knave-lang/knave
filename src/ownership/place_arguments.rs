@@ -7,7 +7,7 @@ use super::whole_value_changes::WholeValueChanges;
 use crate::core::BindingId;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::types::{
-    CopyRules, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    CopyRules, PassedCall, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
 };
 
 pub struct PlaceArguments<'a> {
@@ -57,14 +57,7 @@ impl<'a> PlaceArguments<'a> {
         tail_calls: &[&[TypedArgument]],
         diagnostics: &mut Diagnostics,
     ) {
-        let call = match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => Some((callee.as_ref(), arguments)),
-            TypedExprKind::Assign(assignment) => {
-                Some((&assignment.template, &assignment.arguments))
-            }
-            _ => None,
-        };
-        if let Some((callee, arguments)) = call
+        if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr)
             && !Self::is_tail_call(arguments, tail_calls)
         {
             self.call(callee, arguments, diagnostics);

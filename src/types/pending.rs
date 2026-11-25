@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 
+use super::passed_call_mut::PassedCallMut;
 use super::ty::{Type, TypeVar};
 use super::typed::{Borrow, TypedExpr, TypedExprKind};
 use crate::source::Span;
@@ -21,9 +22,8 @@ impl DecidedBorrows {
 
     pub fn patch(&self, expr: &mut TypedExpr) {
         let arguments = match &mut expr.kind {
-            TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) => Some(arguments),
-            TypedExprKind::Assign(assignment) => Some(&mut assignment.arguments),
-            _ => None,
+            TypedExprKind::Recur(arguments) => Some(arguments.as_mut_slice()),
+            kind => PassedCallMut::of(kind).map(|call| call.arguments),
         };
         if let Some(arguments) = arguments {
             for argument in arguments.iter_mut() {

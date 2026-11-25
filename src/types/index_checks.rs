@@ -26,9 +26,6 @@ impl<'t> IndexChecks<'t> {
     pub(super) fn problems(&self, expr: &TypedExpr) -> Diagnostics {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => self.negative_literals(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.negative_literals(&assignment.template, &assignment.arguments)
-            }
             TypedExprKind::Assoc(_, keys, _) => self.assoc_key_problems(&expr.ty, keys),
             TypedExprKind::Leaf(TypedLeaf::Rust(template))
                 if !SyntheticTemplate::builds(template) =>

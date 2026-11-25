@@ -22,8 +22,8 @@ use super::try_flows::TryFlows;
 use super::walk_context::WalkContext;
 use crate::core::{BindingId, FieldLabel, Literal, ReferenceKind};
 use crate::types::{
-    TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
+    PassedCall, TryErrorConversion, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 pub struct BodyFlows<'b, 'p> {
@@ -89,9 +89,8 @@ impl<'b, 'p> BodyFlows<'b, 'p> {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr),
             TypedExprKind::Fn(lambda) => self.closure(lambda, expr, ClosureUse::Free),
-            TypedExprKind::Call(callee, arguments) => self.call(expr, callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(expr, &assignment.template, &assignment.arguments)
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.call(expr, callee, arguments)
             }
             TypedExprKind::Recur(arguments) => {
                 self.recur(arguments.iter().map(|argument| &argument.value))

@@ -1,4 +1,5 @@
 use super::field_reader::FieldReader;
+use super::passed_call::PassedCall;
 use super::ty::Type;
 use super::typed::{
     Borrow, TypedArgument, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr,
@@ -36,12 +37,9 @@ impl<'r> OwnerUses<'r> {
             {
                 false
             }
-            TypedExprKind::Call(callee, arguments) => {
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 Self::uses_by_value(callee, owner)
                     || (arguments.iter()).any(|argument| Self::passes_by_value(argument, owner))
-            }
-            TypedExprKind::Assign(assignment) => {
-                (assignment.arguments.iter()).any(|argument| Self::passes_by_value(argument, owner))
             }
             _ => (expr.children().into_iter()).any(|child| Self::uses_by_value(child, owner)),
         }

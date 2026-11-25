@@ -3,8 +3,8 @@ use rustc_hash::FxHashSet;
 use crate::core::{BindingId, ReferenceKind};
 use crate::ownership::ChangedValues;
 use crate::types::{
-    Borrow, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf,
+    Borrow, PassedCall, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf,
 };
 
 pub struct MutableLocals {
@@ -46,9 +46,8 @@ impl MutableLocals {
         match &expr.kind {
             TypedExprKind::Fn(lambda) => self.block(&lambda.body),
             TypedExprKind::Control(control) => self.control(control),
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments);
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.call(callee, arguments)
             }
             TypedExprKind::Recur(arguments) => self.arguments(arguments),
             TypedExprKind::Borrow(kind, value) => self.borrow(*kind, value),

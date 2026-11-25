@@ -1,4 +1,5 @@
 use super::field_reader::FieldReader;
+use super::passed_call::PassedCall;
 use super::ty::Type;
 use super::typed::{Borrow, TypedArgument, TypedExpr, TypedExprKind, TypedStructExpr};
 use super::unborrowed::Unborrowed;
@@ -20,9 +21,8 @@ impl<'r> FieldChanges<'r> {
     fn changes_here(&self, expr: &TypedExpr) -> bool {
         match &expr.kind {
             TypedExprKind::Borrow(ReferenceKind::Mutable, place) => self.reads_owner(place),
-            TypedExprKind::Call(callee, arguments) => self.passes_changed_field(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.passes_changed_field(&assignment.template, &assignment.arguments)
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.passes_changed_field(callee, arguments)
             }
             _ => false,
         }

@@ -15,8 +15,8 @@ use super::walked::Walked;
 use crate::core::ReferenceKind;
 use crate::source::Span;
 use crate::types::{
-    TypedArm, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedMatch, TypedStructExpr,
+    PassedCall, TypedArm, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
+    TypedLambda, TypedLeaf, TypedMatch, TypedStructExpr,
 };
 
 pub struct BodyWalk<'w> {
@@ -53,12 +53,8 @@ impl<'w> BodyWalk<'w> {
 
     fn computed(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => {
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 self.call(CallSite::new(callee, arguments, self.rules()), at)
-            }
-            TypedExprKind::Assign(assignment) => {
-                let (template, arguments) = (&assignment.template, &assignment.arguments);
-                self.call(CallSite::new(template, arguments, self.rules()), at)
             }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
             TypedExprKind::Control(control) => self.control(control, at),

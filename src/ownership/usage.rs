@@ -5,8 +5,8 @@ use super::recurrence::Recurrence;
 use super::value_kinds::ValueKind;
 use crate::core::{BindingId, ReferenceKind};
 use crate::types::{
-    Borrow, CopyRules, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedPattern, TypedStructExpr,
+    Borrow, CopyRules, PassedCall, Type, TypedArgument, TypedBlock, TypedBodyItem, TypedControl,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedPattern, TypedStructExpr,
 };
 
 pub struct UsageCollector<'a> {
@@ -60,9 +60,8 @@ impl<'a> UsageCollector<'a> {
     fn expr(&mut self, expr: &TypedExpr, context: ParamMode) {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, context),
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments);
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.call(callee, arguments)
             }
             TypedExprKind::Control(control) => self.control(control, context),
             other => self.nested_expr(expr, other, context),

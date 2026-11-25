@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use super::loan::Loan;
 use super::temporary_scope::TemporaryScope;
 use crate::types::{
-    Borrow, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedStructExpr,
+    Borrow, PassedCall, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedStructExpr,
 };
 
 #[derive(Clone, Copy)]
@@ -58,11 +58,7 @@ impl<'e> LendingExpression<'e> {
         lend: &mut impl FnMut(Loan<'e>) -> ControlFlow<B>,
     ) -> ControlFlow<B> {
         match &self.expr.kind {
-            TypedExprKind::Call(_, arguments) => arguments
-                .iter()
-                .try_for_each(|argument| lend(Self::argument_loan(argument))),
-            TypedExprKind::Assign(assignment) => assignment
-                .arguments
+            _ if let Some(PassedCall { arguments, .. }) = PassedCall::of(self.expr) => arguments
                 .iter()
                 .try_for_each(|argument| lend(Self::argument_loan(argument))),
             TypedExprKind::Borrow(_, value) => lend(Loan::Operand(value, scope)),

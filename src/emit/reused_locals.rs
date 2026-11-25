@@ -3,8 +3,8 @@ use rustc_hash::FxHashMap;
 use super::expressions::{ExpressionEmitter, TailLoop};
 use crate::core::BindingId;
 use crate::types::{
-    Borrow, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
+    Borrow, PassedCall, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedProgram,
 };
 
 pub struct ReusedLocals {
@@ -191,17 +191,12 @@ impl<'a> InlineCall<'a> {
     }
 
     fn borrows(expr: &TypedExpr, local: BindingId) -> bool {
-        let direct = match &expr.kind {
-            TypedExprKind::Borrow(_, value) => value.mentions_local(local),
-            TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) => arguments
-                .iter()
-                .any(|argument| Self::borrowed_argument(argument, local)),
-            TypedExprKind::Assign(assignment) => assignment
-                .arguments
-                .iter()
-                .any(|argument| Self::borrowed_argument(argument, local)),
-            _ => false,
+        let arguments = match &expr.kind {
+            TypedExprKind::Recur(arguments) => arguments.as_slice(),
+            _ => PassedCall::of(expr).map_or(&[][..], |call| call.arguments),
         };
+        let direct = matches!(&expr.kind, TypedExprKind::Borrow(_, value) if value.mentions_local(local))
+            || (arguments.iter()).any(|argument| Self::borrowed_argument(argument, local));
         direct
             || expr
                 .children()

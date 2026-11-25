@@ -2,8 +2,8 @@ use super::constant_values::ConstantValues;
 use super::local_borrows::LocalBorrows;
 use crate::core::{Division, Operand, ParsedTemplate, PrimitiveType, TemplateOperation};
 use crate::types::{
-    ClauseChoice, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
-    TypedProgram,
+    ClauseChoice, PassedCall, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind,
+    TypedLeaf, TypedProgram,
 };
 
 #[derive(Clone, Copy)]
@@ -24,15 +24,15 @@ impl<'p> PromotedConstants<'p> {
     }
 
     pub fn is_temporary(&self, borrowed: &TypedExpr) -> bool {
-        matches!(
-            borrowed.kind,
-            TypedExprKind::Call(..) | TypedExprKind::Assign(_) | TypedExprKind::Control(_)
-        ) && !self.is_promoted(borrowed)
+        (PassedCall::of(borrowed).is_some() || matches!(borrowed.kind, TypedExprKind::Control(_)))
+            && !self.is_promoted(borrowed)
     }
 
     pub fn is_promoted(&self, value: &TypedExpr) -> bool {
         match &value.kind {
-            TypedExprKind::Call(callee, arguments) => self.promotes_operation(callee, arguments),
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(value) => {
+                self.promotes_operation(callee, arguments)
+            }
             TypedExprKind::Leaf(TypedLeaf::Rust(template)) => {
                 ParsedTemplate::parse(&template.template)
                     .is_ok_and(|parsed| self.promotes_template(&parsed, &[]))

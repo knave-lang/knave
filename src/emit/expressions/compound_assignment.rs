@@ -6,7 +6,7 @@ use crate::emit::fragment::Code;
 use crate::emit::type_context::TypeContext;
 use crate::source::Span;
 use crate::types::{
-    Borrow, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr,
+    Borrow, PassedCall, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr,
 };
 
 pub(super) struct CompoundAssignment {
@@ -171,14 +171,11 @@ impl ExpressionEmitter<'_> {
 
     fn leaves_places_alone(expr: &TypedExpr) -> bool {
         let changes = match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => {
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 !matches!(
                     callee.kind,
                     TypedExprKind::Leaf(TypedLeaf::Global(_) | TypedLeaf::Rust(_))
                 ) || !arguments.iter().all(Self::passes_unchanged)
-            }
-            TypedExprKind::Assign(assignment) => {
-                !assignment.arguments.iter().all(Self::passes_unchanged)
             }
             _ => false,
         };

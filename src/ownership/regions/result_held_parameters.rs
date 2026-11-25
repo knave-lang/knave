@@ -4,9 +4,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::BindingId;
 use crate::types::{
-    BorrowingTypes, DefinitionTable, ReturnedValues, Type, TypedArgument, TypedBinder, TypedBlock,
-    TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch,
-    TypedProgram, TypedStructExpr,
+    BorrowingTypes, DefinitionTable, PassedCall, ReturnedValues, Type, TypedArgument, TypedBinder,
+    TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
+    TypedMatch, TypedProgram, TypedStructExpr,
 };
 
 pub(super) struct ResultHeldParameters<'a> {
@@ -162,9 +162,8 @@ impl<'l> FunctionScope<'l> {
             {
                 self.enter_loop(body, arguments)
             }
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments);
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.call(callee, arguments)
             }
             TypedExprKind::Recur(arguments) => self.recur(arguments),
             TypedExprKind::Fn(lambda) => self.closure(lambda, expr),

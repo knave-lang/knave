@@ -10,8 +10,8 @@ use crate::core::{BindingId, BindingKind, Conversion, FieldLabel, Literal, Varia
 use crate::reader::Number;
 use crate::source::Span;
 use crate::types::{
-    TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLeaf, TypedProgram, TypedStructExpr,
+    PassedCall, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLeaf, TypedProgram, TypedStructExpr,
 };
 
 #[derive(Default)]
@@ -52,9 +52,8 @@ impl OpenLiteralSearch<'_> {
                 self.literal(expr, number, context)
             }
             TypedExprKind::Fn(lambda) => self.block(&lambda.body, context),
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, context),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments, context);
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.call(callee, arguments, context)
             }
             TypedExprKind::Control(control) => self.control(control, context),
             TypedExprKind::Struct(structure) => self.structure(structure, context),

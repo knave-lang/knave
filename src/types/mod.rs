@@ -182,6 +182,7 @@ mod parameter_role;
 mod parameter_usage;
 mod parameterized;
 mod passed_call;
+mod passed_call_mut;
 mod passed_types;
 mod passing_facts;
 #[cfg(test)]
@@ -379,6 +380,7 @@ pub use parameter_modes::{ParamMode, ParameterModes};
 pub use parameter_role::ParameterRole;
 pub use parameterized::Parameterized;
 pub use passed_call::PassedCall;
+pub use passed_call_mut::PassedCallMut;
 pub use payload_position::PayloadPosition;
 pub use pinning::{InstantiationReport, LiteralDefaults, Pinning};
 pub use pipelines::Pipelines;

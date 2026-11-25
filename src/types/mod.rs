@@ -81,6 +81,7 @@ mod field_bound;
 mod field_bound_problems;
 mod field_changes;
 mod field_getter_name;
+mod field_order;
 mod field_owner_problems;
 mod field_parameters;
 mod field_place;
@@ -361,6 +362,7 @@ pub use enum_cases::EnumCases;
 pub use enum_table::EnumTable;
 pub use enums::{EnumDefinition, VariantDefinition, VariantPayload};
 pub use field_getter_name::FieldGetterName;
+pub use field_order::FieldOrder;
 pub use field_place::FieldPlace;
 pub use field_read_settlement::FieldReadSettlement;
 pub use field_traits::{FieldTraitPlan, FieldTraits};
@@ -407,7 +409,7 @@ pub use ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type, TypeVar};
 pub use type_declarations::TypeDeclarations;
 pub use type_lifetimes::TypeLifetimes;
 pub use typed::{
-    Borrow, ClosureType, FieldOrder, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm,
+    Borrow, ClosureType, PendingModeCheck, TryErrorConversion, TypedArgument, TypedArm,
     TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedConversion, TypedDefinition,
     TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedModule, TypedPattern,
     TypedPatternKind, TypedProgram, TypedStructExpr,

@@ -3,9 +3,10 @@ use crate::core::{BindingId, Expr};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::expectation::Expectation;
+use crate::types::field_order::FieldOrder;
 use crate::types::problems::TypeProblems;
 use crate::types::ty::Type;
-use crate::types::typed::{FieldOrder, TryErrorConversion, TypedExpr, TypedExprKind};
+use crate::types::typed::{TryErrorConversion, TypedExpr, TypedExprKind};
 
 pub(in crate::types) struct VariantConstruction<'e> {
     binding: BindingId,

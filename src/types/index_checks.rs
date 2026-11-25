@@ -6,7 +6,7 @@ use super::template_signature::TemplateSignature;
 use super::templates::TemplateBorrows;
 use super::ty::Type;
 use super::type_declarations::TypeDeclarations;
-use super::typed::{TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
+use super::typed::{AssignmentPath, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf};
 use crate::core::RustTemplate;
 use crate::diagnostic::Diagnostics;
 
@@ -26,6 +26,9 @@ impl<'t> IndexChecks<'t> {
     pub(super) fn problems(&self, expr: &TypedExpr) -> Diagnostics {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => self.negative_literals(callee, arguments),
+            TypedExprKind::Assign(assignment) if assignment.path == AssignmentPath::Elements => {
+                NegativeIndexLiterals::in_values(assignment.keys().iter().map(|key| &key.value))
+            }
             TypedExprKind::Assoc(_, keys, _) => self.assoc_key_problems(&expr.ty, keys),
             TypedExprKind::Leaf(TypedLeaf::Rust(template))
                 if !SyntheticTemplate::builds(template) =>

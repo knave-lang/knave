@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/store_from_a_mut_parameter_holds_its_elements.knv
+---
+error[L0518]: `t` changes while `ds` still borrows it
+  --> check/store_from_a_mut_parameter_holds_its_elements.knv:10:10
+   |
+ 8 |   (local ss (vec (as-str t)))
+   |                          - `ds` borrows `t` here
+ 9 |   (move-one! ds ss)
+10 |   (push! t (char "b"))
+   |          ^ `t` changes here
+11 |   (println (len ds)))
+   |                 -- `ds` is used here, after the change
+   |
+   = help: finish using `ds` before changing `t`, or copy what you need out of `t` first
+   = note: run `knave doc L0518` for an explanation

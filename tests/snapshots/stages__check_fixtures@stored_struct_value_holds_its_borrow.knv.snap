@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/stored_struct_value_holds_its_borrow.knv
+---
+error[L0518]: `t` changes while `ts` still borrows it
+  --> check/stored_struct_value_holds_its_borrow.knv:10:10
+   |
+ 9 |   (keep! ts (->tag (as-str t)))
+   |                            - `ts` borrows `t` here
+10 |   (push! t (char "b"))
+   |          ^ `t` changes here
+11 |   (println (len ts)))
+   |                 -- `ts` is used here, after the change
+   |
+   = help: finish using `ts` before changing `t`, or copy what you need out of `t` first
+   = note: run `knave doc L0518` for an explanation

@@ -1,4 +1,5 @@
 use super::holdings::Holdings;
+use crate::ownership::stored_layer::StoredLayer;
 
 pub struct PassedHoldings {
     held: Holdings,
@@ -23,5 +24,12 @@ impl PassedHoldings {
 
     pub fn all(&self) -> Holdings {
         self.held.clone().merged(self.lent.clone())
+    }
+
+    pub fn stored(&self, layer: StoredLayer) -> Holdings {
+        match layer {
+            StoredLayer::Whole => self.all(),
+            StoredLayer::Referent => self.held.referent(),
+        }
     }
 }

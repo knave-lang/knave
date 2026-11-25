@@ -43,8 +43,8 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         for (target, values) in stores.stores() {
             let stored = values
                 .iter()
-                .filter_map(|value| passed.get(*value))
-                .fold(Holdings::default(), |held, value| held.merged(value.all()));
+                .filter_map(|(value, layer)| Some(passed.get(*value)?.stored(*layer)))
+                .fold(Holdings::default(), Holdings::merged);
             self.store_into(target, stored);
         }
     }

@@ -1,0 +1,6 @@
+(defn main ()
+  (let (s (str "a"))
+    (println (loop (i 0)
+               (let-match ((pair a b) (pair (as-str (str "zz" i)) (as-str s)))
+                 (println a " " b)
+                 (if (< i 2) (recur (+ i 1)) i))))))

@@ -15,11 +15,11 @@ main() {
   issue=$(nightly_issue)
   previous=$(issue_body_text <<< "$issue")
   found=$(surviving_mutants)
-  survivors=$(merged_unchecked "$SURVIVORS_HEADING" "$previous" "$(printf '%s\n%s' "$found" "$(unfinished_mutants)")")
+  survivors=$(merged_lines "$(carried_survivors "$previous")" "$(printf '%s\n%s' "$found" "$(unfinished_mutants)")")
   unviable=$(merged_unchecked "$UNVIABLE_HEADING" "$previous" "$(functions_with_only_unviable_mutants)")
   skipped=$(merged_unchecked "$SKIPPED_HEADING" "$previous" "$(skipped_slices)")
   invalid=$(invalid_mutants)
-  publish "$(issue_number <<< "$issue")" "$(issue_body "$(tested_commit "$previous")" "$survivors" "$unviable" "$invalid" "$skipped")" "$survivors$unviable$invalid$skipped"
+  publish "$(issue_number <<< "$issue")" "$(issue_body "$(tested_commit "$previous")" "$survivors" "$unviable" "$invalid" "$skipped")" "$survivors$unviable$invalid$skipped$(unfinished_shards)"
   require_every_shard_completed
   require_no_new_survivor "$previous" "$found"
 }
@@ -46,10 +46,24 @@ skipped_slices() {
 
 merged_unchecked() {
   local heading=$1 previous=$2 found=$3
-  {
-    unchecked_lines_under "$heading" <<< "$previous"
-    echo "$found"
-  } | awk 'NF && !seen[$0]++'
+  merged_lines "$(unchecked_lines_under "$heading" <<< "$previous")" "$found"
+}
+
+merged_lines() {
+  printf '%s\n%s\n' "$1" "$2" | awk 'NF && !seen[$0]++'
+}
+
+carried_survivors() {
+  unchecked_lines_under "$SURVIVORS_HEADING" <<< "$1" | without_retested_unfinished "$(recorded_mutant_keys)"
+}
+
+without_retested_unfinished() {
+  local retested=$1 line
+  while IFS= read -r line; do
+    if [[ $line != *'` not finished:'* ]] || ! grep -qxF -- "$(item_keys <<< "$line")" <<< "$retested"; then
+      echo "$line"
+    fi
+  done
 }
 
 unchecked_lines_under() {
@@ -73,8 +87,21 @@ mutant_functions() {
 require_no_new_survivor() {
   local previous=$1 found=$2
   local new
-  new=$(comm -13 <(unchecked_items <<< "$previous" | sort -u) <(unchecked_items <<< "$found" | grep -F '` missed:' | sort -u))
+  new=$(missed_lines <<< "$found" | lines_with_keys_outside "$(item_keys <<< "$previous")" | unchecked_items)
   [[ -z $new ]] || fail "These mutants are missed and were not open in the issue: $new"
+}
+
+missed_lines() {
+  grep -F '` missed:' || true
+}
+
+lines_with_keys_outside() {
+  local known=$1 line
+  while IFS= read -r line; do
+    if ! grep -qxF -- "$(item_keys <<< "$line")" <<< "$known"; then
+      echo "$line"
+    fi
+  done
 }
 
 unchecked_items() {
@@ -119,7 +146,16 @@ tested_line() {
   fi
   if [[ -n ${DEFERRED_HEAD:-} ]]; then
     echo
-    echo "The commits after \`$HEAD_COMMIT\` up to \`$DEFERRED_HEAD\` did not fit the shard budget, so the next run tests them."
+    deferred_line
+  fi
+}
+
+deferred_line() {
+  local deferred="The commits after \`$HEAD_COMMIT\` up to \`$DEFERRED_HEAD\` did not fit the shard budget"
+  if every_shard_completed; then
+    echo "$deferred, so the next run tests them."
+  else
+    echo "$deferred. They wait for a completed run that starts at or after \`$HEAD_COMMIT\`."
   fi
 }
 

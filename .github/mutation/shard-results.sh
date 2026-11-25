@@ -19,6 +19,17 @@ unfinished_mutants() {
   done | sed 's/^/not finished\t/' | sort -u | as_issue_items
 }
 
+recorded_mutant_keys() {
+  cut -f 1 /dev/null results/mutants-shard-*/results.tsv | sort -u |
+    while IFS=: read -r file line _ description; do
+      echo "\`$file:$line\`:$description"
+    done
+}
+
+item_keys() {
+  sed -n 's/^- \[ \] \(`[^`]*`\) [^:]*:/\1:/p'
+}
+
 as_issue_items() {
   while IFS=$'\t' read -r outcome name; do
     IFS=: read -r file line _ description <<< "$name"

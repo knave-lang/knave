@@ -85,6 +85,7 @@ jobs:
           BASE_INPUT: ${{ inputs.base }}
           BASE: ${{ steps.plan.outputs.base }}
           HEAD_COMMIT: ${{ steps.plan.outputs.head }}
+          PLAN_ONLY: ${{ inputs.plan_only }}
         run: nix develop .#mutation -c bash "$TOOLS/.github/mutation/write-generated-mutants.sh"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: steps.plan.outputs.changed-sources != '0'

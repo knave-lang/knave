@@ -62,13 +62,27 @@ refuse_backfill_slice() {
 fit_nightly_range() {
   local commits fitted
   mapfile -t commits < <(git rev-list --first-parent --reverse "$BASE..$HEAD_COMMIT")
-  if ((${#commits[@]} < 2)); then
-    return
+  list_mutants_up_to "${commits[0]}"
+  if is_over_budget; then
+    refuse_unfittable_range "${commits[0]}"
   fi
   fitted=$(last_fitting_commit "${commits[@]}")
   list_mutants_up_to "$fitted"
   echo "deferred-head=$HEAD_COMMIT" >> "$GITHUB_OUTPUT"
-  echo "::notice::The range up to $HEAD_COMMIT is over the shard budget, so this run tests up to $fitted and the next run tests the rest."
+  echo "::notice::The range up to $HEAD_COMMIT is over the shard budget, so this run $(testing_verb) up to $fitted and the next run tests the rest."
+}
+
+refuse_unfittable_range() {
+  echo "::error::No commit fits the shard budget: the first commit after the base, $1, alone needs about $(minutes_per_shard "$MOST_SHARDS") minutes per shard, over the packing of $(($(packed_shard_seconds) / 60)). Test that commit apart, then move the issue's tested marker past it."
+  exit 1
+}
+
+testing_verb() {
+  if [[ ${PLAN_ONLY:-false} == true ]]; then
+    echo "would test"
+  else
+    echo "tests"
+  fi
 }
 
 last_fitting_commit() {

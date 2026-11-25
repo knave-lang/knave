@@ -136,6 +136,10 @@ mod tests {
         fn option_of(&self, _value: Type) -> Type {
             unreachable!("this form builds no option")
         }
+
+        fn iterator_of(&self, _item: Type) -> Type {
+            unreachable!("this form builds no iterator")
+        }
     }
 
     impl TypeFitting for VectorFixture {

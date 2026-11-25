@@ -2,6 +2,9 @@ use super::argument_passing::Passing;
 use super::argument_values::ArgumentValues;
 use super::call_site::CallSite;
 use super::expression_walk::ExpressionWalk;
+use super::holdings::Holdings;
+use super::loan_place::LoanPlace;
+use super::passed_holdings::PassedHoldings;
 use super::point_id::PointId;
 use super::walked::Walked;
 
@@ -15,7 +18,7 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         Self { walk, site }
     }
 
-    pub fn walk(self, at: PointId) -> Walked {
+    pub fn walk(mut self, at: PointId) -> Walked {
         let rules = self.walk.rules();
         let called = self.walk.expr(self.site.callee(), at);
         let passings = self
@@ -31,6 +34,33 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         let evaluated = values.evaluate(self.walk, called.end);
         let point = self.walk.builder().join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));
+        self.store_into_targets(&passed);
         Walked::holding(point, self.site.result_holdings(passed))
+    }
+
+    fn store_into_targets(&mut self, passed: &[PassedHoldings]) {
+        let stores = self.walk.rules().stores(self.site.callee());
+        for (target, values) in stores.stores() {
+            let stored = values
+                .iter()
+                .filter_map(|value| passed.get(*value))
+                .fold(Holdings::default(), |held, value| held.merged(value.all()));
+            self.store_into(target, stored);
+        }
+    }
+
+    fn store_into(&mut self, target: usize, stored: Holdings) {
+        let Some(argument) = self.site.arguments().get(target) else {
+            return;
+        };
+        let Some(place) = LoanPlace::of(&argument.value) else {
+            return;
+        };
+        let held = if argument.value.ty.is_reference() {
+            stored.within()
+        } else {
+            stored
+        };
+        self.walk.builder().values().store(place.root(), &held);
     }
 }

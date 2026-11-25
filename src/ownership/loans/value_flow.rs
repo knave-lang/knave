@@ -2,6 +2,7 @@ use super::control_flow_graph::ControlFlowGraph;
 use super::holdings::Holdings;
 use super::point_id::PointId;
 use super::value_regions::ValueRegions;
+use crate::core::BindingId;
 use crate::types::TypedBinder;
 
 pub struct ValueFlow<'b> {
@@ -17,5 +18,9 @@ impl<'b> ValueFlow<'b> {
     pub fn define(&mut self, point: PointId, binder: &TypedBinder, held: &Holdings) {
         self.graph.define(point, binder.binding);
         self.regions.flow_into(binder.binding, held);
+    }
+
+    pub fn store(&mut self, target: BindingId, held: &Holdings) {
+        self.regions.flow_into(target, held);
     }
 }

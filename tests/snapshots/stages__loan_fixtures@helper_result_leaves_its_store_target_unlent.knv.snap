@@ -7,5 +7,5 @@ store-and-name!
   2:10 change `names`: no live loan
 main
   8:40 borrow `t`: no live loan
-  8:29 change `ns`: `t` lent at 8:40, passed to the call
-  9:10 change `ns`: `t` lent at 8:40, held by `r`
+  8:29 change `ns`: `t` lent at 8:40, held by `ns`
+  9:10 change `ns`: `t` lent at 8:40, held by `ns`

@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/loans/store_targets_hold_only_the_borrows_stored_in_them.knv
+---
+store-both!
+  2:10 change `first`: no live loan
+  3:10 change `second`: no live loan
+main
+  11:30 borrow `t`: no live loan
+  11:41 borrow `u`: `t` lent at 11:30, held by `xs`
+  11:16 change `xs`: mut `ys` lent at 11:19, passed to the call; `t` lent at 11:30, held by `xs`; `u` lent at 11:41, passed to the call
+  11:19 change `ys`: mut `xs` lent at 11:16, passed to the call; `t` lent at 11:30, held by `xs`; `u` lent at 11:41, passed to the call
+  12:10 change `u`: `t` lent at 11:30, held by `xs`
+  13:10 change `xs`: `t` lent at 11:30, held by `xs`
+  14:10 change `ys`: `t` lent at 11:30, held by `xs`
+  15:17 borrow `xs`: `t` lent at 11:30, held by `xs`
+  15:26 borrow `ys`: `t` lent at 11:30, held by `ys`
+  15:30 borrow `t`: no live loan

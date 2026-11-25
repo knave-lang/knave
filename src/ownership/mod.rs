@@ -65,6 +65,8 @@ mod rewrite;
 mod shrunk_parameters;
 mod slices;
 mod slots;
+mod store_pairs;
+mod store_ties;
 mod stored;
 mod stored_definitions;
 mod subtree;

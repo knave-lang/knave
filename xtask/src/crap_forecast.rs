@@ -131,7 +131,7 @@ mod tests {
         assert!(!forecast.passes());
         assert_eq!(
             forecast.details(),
-            "  src/a.rs:1 area scores 9.0 because the tests prepush ran miss src/a.rs: 3. CI fails it unless another test covers those lines. If `cargo test --test stages emit_fixtures` covers them, run `cargo xtask prepush --also '--test stages emit_fixtures'`; otherwise test them.\n"
+            "  src/a.rs:1 area scores 9.0 because the tests the forecast ran miss src/a.rs: 3. CI fails it unless another test covers those lines. If `cargo test --test stages emit_fixtures` covers them, dispatch the forecast again with `-f also='--test stages emit_fixtures'`; otherwise test them.\n"
         );
     }
 
@@ -140,7 +140,7 @@ mod tests {
         let function = ForecastCase::function_in("", 8, None);
         let details = CrapForecast::new(ForecastCase::MAXIMUM, vec![function]).details();
         assert!(
-            details.starts_with("  src/a.rs:1 area scores 72.0 with no coverage record, so none of the tests prepush ran reached it."),
+            details.starts_with("  src/a.rs:1 area scores 72.0 with no coverage record, so none of the tests the forecast ran reached it."),
             "{details}"
         );
     }
@@ -148,7 +148,12 @@ mod tests {
     #[test]
     fn an_unproven_function_without_a_broader_run_asks_for_its_test() {
         let details = ForecastCase::forecast(8, None).details();
-        assert!(details.ends_with("Name the test that covers them with `cargo xtask prepush --also '<cargo test arguments>'`, or test them.\n"), "{details}");
+        assert!(
+            details.ends_with(
+                "Name the test that covers them in the forecast's `also` input, or test them.\n"
+            ),
+            "{details}"
+        );
     }
 
     #[test]

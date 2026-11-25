@@ -35,14 +35,14 @@ impl ChangedFunction {
     pub fn unproven_advice(&self) -> String {
         if self.missed.is_empty() {
             return format!(
-                "  {} scores {:.1} with no coverage record, so none of the tests prepush ran reached it. {}\n",
+                "  {} scores {:.1} with no coverage record, so none of the tests the forecast ran reached it. {}\n",
                 self.scored.function,
                 self.scored.crap,
                 self.clearing_step()
             );
         }
         format!(
-            "  {} scores {:.1} because the tests prepush ran miss {}. CI fails it unless another test covers those lines. {}\n",
+            "  {} scores {:.1} because the tests the forecast ran miss {}. CI fails it unless another test covers those lines. {}\n",
             self.scored.function,
             self.scored.crap,
             self.missed,
@@ -53,9 +53,10 @@ impl ChangedFunction {
     fn clearing_step(&self) -> String {
         match &self.broader {
             Some(run) => format!(
-                "If `cargo test {run}` covers them, run `cargo xtask prepush --also '{run}'`; otherwise test them."
+                "If `cargo test {run}` covers them, dispatch the forecast again with `-f also='{run}'`; otherwise test them."
             ),
-            None => "Name the test that covers them with `cargo xtask prepush --also '<cargo test arguments>'`, or test them.".to_string(),
+            None => "Name the test that covers them in the forecast's `also` input, or test them."
+                .to_string(),
         }
     }
 }

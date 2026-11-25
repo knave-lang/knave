@@ -11,6 +11,7 @@ mod complexity;
 mod coverage;
 mod crap;
 mod crap_forecast;
+mod crap_forecast_task;
 mod design;
 mod emitted_lints;
 mod failure;
@@ -51,6 +52,7 @@ use clap::{Args, Parser, Subcommand};
 
 use agree::AgreeTask;
 use bench::BenchTask;
+use crap_forecast_task::CrapForecastTask;
 use design::DesignRules;
 use failure::TaskFailure;
 use gate::QualityGate;
@@ -85,9 +87,13 @@ enum Task {
     )]
     DesignRules(RatchetTask),
     #[command(
-        about = "Before a push, run CI's gates where they judge the changes since the branch forked: the CRAP of the changed functions, the layout of every checked source, file sizes and design rules"
+        about = "Before a push, run CI's cheap gates where they judge the changes since the branch forked: the layout of every checked source, file sizes and design rules"
     )]
     Prepush(PrepushTask),
+    #[command(
+        about = "Run the tests that reach the functions changed since the branch forked under coverage, and forecast CI's CRAP gate on them. The `CRAP forecast` workflow runs it"
+    )]
+    CrapForecast(CrapForecastTask),
     #[command(
         subcommand,
         about = "Measure the compiler's front end under callgrind, or compare two measurements"
@@ -181,6 +187,7 @@ impl Task {
                 .check_design_rules(workspace_root)
                 .unwrap_or_else(|failure| failure.report()),
             Task::Prepush(prepush) => prepush.run(workspace_root),
+            Task::CrapForecast(forecast) => forecast.run(workspace_root),
             Task::Bench(task) => task.run(workspace_root),
             Task::NextRelease(release) => release.run(),
             Task::SetVersion(version) => version.run(workspace_root),
@@ -260,10 +267,17 @@ mod tests {
     }
 
     #[test]
-    fn prepush_takes_a_base_and_repeated_extra_runs() {
+    fn prepush_takes_a_base() {
+        let command_line = ["xtask", "prepush", "--base", "HEAD^1"];
+        let parsed = Tasks::try_parse_from(command_line).expect("the command line parses");
+        assert!(matches!(parsed.task, Task::Prepush(_)));
+    }
+
+    #[test]
+    fn crap_forecast_takes_a_base_and_repeated_extra_runs() {
         let command_line = [
             "xtask",
-            "prepush",
+            "crap-forecast",
             "--base",
             "HEAD^1",
             "--also",
@@ -272,7 +286,7 @@ mod tests {
             "--lib",
         ];
         let parsed = Tasks::try_parse_from(command_line).expect("the command line parses");
-        assert!(matches!(parsed.task, Task::Prepush(_)));
+        assert!(matches!(parsed.task, Task::CrapForecast(_)));
     }
 
     #[test]

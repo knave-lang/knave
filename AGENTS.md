@@ -181,6 +181,8 @@ cargo test <narrowest test>
 
 **Before every push, run `cargo xtask prepush` and do what its message says for each item it names.**
 
+**Get the CRAP forecast from the `CRAP forecast` workflow on GitHub Actions, as `docs/pull-requests.md` says.**
+
 **If `IN_NIX_SHELL` is set, run every command as written.**
 
 **If `IN_NIX_SHELL` is not set, prefix every command that runs a dev shell tool, such as `cargo`, with `direnv exec .`.** If direnv is missing or refuses, stop and ask the project owner.
@@ -220,6 +222,7 @@ cargo test <narrowest test>
 - `cargo build --release` or `cargo build --profile local` to probe a pull request's unedited code: download the binaries, as `docs/pull-requests.md` says
 - `git rebase -x` with a build command, or another loop that builds each commit
 - `cargo xtask coverage`
+- `cargo xtask crap-forecast`
 - `nix flake check`
 - `nix build`, except the command below
 

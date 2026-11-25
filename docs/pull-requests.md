@@ -172,6 +172,47 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **If `gh run download` finds no artifact, run `gh pr checks <number> --watch --interval 60`, then rerun the block.** If the second run finds no artifact, stop and report the pull request to the project owner.
 
+## CRAP forecast
+
+**The CRAP forecast predicts which of the branch's changed functions fail CI's CRAP gate.** The `CRAP forecast` workflow runs the forecast on GitHub's runners. NEVER run the forecast locally.
+
+**Dispatch the workflow at these times:**
+
+- once before `gh pr ready`
+- after each push that holds a commit that adds or changes a function
+- after each push that answers a verdict that named a function
+
+**NEVER dispatch the workflow on any other push.**
+
+**The workflow forecasts the head of the branch on GitHub, so push before you dispatch.** A newer run on the same branch cancels the older run.
+
+**To get the forecast, follow these steps:**
+
+1. Dispatch the workflow on the branch with a tag that no other run uses:
+
+   ```sh
+   branch=$(git branch --show-current)
+   tag=forecast-$(date +%s)
+   gh workflow run crap-forecast.yml --ref "$branch" -f tag="$tag"
+   ```
+
+   If a test outside the forecast's selection covers a changed function, add `-f also='<cargo test arguments>'`, such as `-f also='--test stages emit_fixtures'`. For several sets of arguments, put one set per line, such as `-f also="$(printf '%s\n' '--test stages emit_fixtures' '--lib emit::')"`.
+
+2. Find the run's ID with `gh run list --workflow crap-forecast.yml --branch "$branch" --limit 20 --json databaseId,displayTitle --jq ".[] | select(.displayTitle | endswith(\" $tag\")) | .databaseId"`. If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the tag to the project owner.
+3. Run `gh run watch <run id> --interval 60 --exit-status` as a background shell command. The command exits when the run ends.
+4. Download the verdict with `gh run download <run id> --name crap-forecast --dir target/scratch/crap-forecast-<run id>`.
+5. Read `verdict.txt` in that directory. The run's summary page shows the same verdict.
+6. If the verdict names a function, do what its line says.
+
+**If `gh run watch` reports the run cancelled, a newer run on the branch replaced it.** Watch the newer run.
+
+**If the forecast stopped before its verdict, read the failure with `gh run view <run id> --log-failed`.** The forecast stopped in each of these cases:
+
+- The download finds no `crap-forecast` artifact.
+- `verdict.txt` says the forecast stopped.
+
+**If the workflow refused the default branch, dispatch it on the pull request's head branch.**
+
 ## Mutants
 
 **Run the hand-written mutants of a pull request with the `Pull request mutants` workflow.** The workflow tests each mutant on GitHub's runners and reports a verdict for each.

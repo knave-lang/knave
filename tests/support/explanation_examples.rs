@@ -7,7 +7,7 @@ use super::Fixture;
 use super::example_folder::ExampleFolder;
 use super::example_layout::ExampleLayout;
 use super::project_example::ProjectExample;
-use crate::heavy_run::{HeavyTestRun, Narrowing};
+use crate::heavy_run::Narrowing;
 
 pub struct ExplanationExamples {
     code: String,
@@ -56,7 +56,6 @@ impl ExplanationExamples {
     }
 
     pub fn written() -> Vec<Self> {
-        HeavyTestRun::of(&EveryExplanation).enforce();
         let pages = ExampleFolder::holding([]);
         pages.run(&Self::ERROR_PAGES_COMMAND.map(String::from), "");
         Explanation::all()
@@ -267,7 +266,7 @@ impl ExampleLayouts {
     }
 }
 
-struct EveryExplanation;
+pub struct EveryExplanation;
 
 impl Narrowing for EveryExplanation {
     fn narrows(&self) -> bool {

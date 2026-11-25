@@ -1,5 +1,5 @@
 name: Heavy tests
-run-name: Heavy tests ${{ inputs.target }} ${{ inputs.filter }} ${{ inputs.glob }} on ${{ github.ref_name }}
+run-name: Heavy tests target=${{ inputs.target }} filter=${{ inputs.filter }} glob=${{ inputs.glob }} on ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
@@ -71,9 +71,14 @@ jobs:
           GLOB: ${{ inputs.glob }}
           INSTA_UPDATE: new
           GLOB_SKIP_LINE: '^Skipping .* due to glob filter$'
+          NO_TEST_RAN: '^test result: ok\. 0 passed'
         run: |
           if [ -n "$GLOB" ]; then export INSTA_GLOB_FILTER="$GLOB"; fi
           nix develop .#ci -c cargo test --quiet --test "$TARGET" ${FILTER:+"$FILTER"} 2>&1 | sed -u "/$GLOB_SKIP_LINE/d" | tee -a "$OUTPUT"
+          if grep -qE "$NO_TEST_RAN" "$OUTPUT"; then
+            echo "error: the filter selected no test, so the run proves nothing" | tee -a "$OUTPUT"
+            exit 1
+          fi
       - name: Collect the new snapshots
         if: ${{ !cancelled() && steps.build.outcome != 'skipped' }}
         shell: bash

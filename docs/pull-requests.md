@@ -227,6 +227,8 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **Dispatch one run per filter.** NEVER build filters in a shell loop.
 
+**A run's title is `Heavy tests target=<target> filter=<filter> glob=<glob> on <branch>`.** An input you leave out stays empty in the title, such as `filter= glob=`.
+
 **To run a heavy test run, follow these steps:**
 
 1. Dispatch the workflow on the branch with the test's filter:
@@ -245,11 +247,15 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **Make no other GitHub call until `gh run watch` exits:** the watch spends the budget of one call a minute.
 
+**A run fails when its filter selects no test, or when its glob keeps no fixture of a stage the filter selects.** `output.txt` says which. With a glob, `output.txt` says how many fixtures the glob kept in each stage. Fix the filter or the glob, and dispatch again.
+
 **If `gh workflow run` fails with an HTTP 404 or 422 naming the workflow, merge `origin/main`, push, and dispatch again.**
 
-**If `gh workflow run` prints no run URL, find the run's ID with `gh run list --workflow heavy-tests.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`.** If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the branch to the project owner.
+**To find a run by its inputs, run `gh run list --workflow heavy-tests.yml --branch <branch> --limit 20 --json databaseId,displayTitle --jq '[.[] | select(.displayTitle == "<title>")][0].databaseId'`.** Write the run's title in place of `<title>`.
 
-**If `gh run watch` reports the run cancelled, a newer run with the same target, filter and glob replaced it.** Find the newer run with `gh run list --workflow heavy-tests.yml --branch <branch> --limit 1 --json databaseId --jq '.[0].databaseId'`, then watch it from step 3.
+**If `gh workflow run` prints no run URL, find the run by its inputs.** If the command prints nothing, rerun it after 60 seconds, at most six times. If the sixth run prints nothing, report the branch to the project owner.
+
+**If `gh run watch` reports the run cancelled, a newer run with the same target, filter and glob replaced it.** Find the newer run by its inputs, then watch it from step 3.
 
 **If the download finds no `heavy-tests` artifact, read the failure with `gh run view <run id> --log-failed`.**
 
@@ -257,11 +263,13 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 **A run writes a `.snap.new` file for each snapshot that changed or is new.** The artifact holds each file at its repository path under `tests/`, and `pending.txt` lists them.
 
-1. Read each `.snap.new` file whole, and its diff in `output.txt`.
-2. If a snapshot is wrong, fix the cause, push, and dispatch again.
-3. If every snapshot is right, copy them into the repository with `cp -r target/scratch/heavy-tests-<run id>/tests/. tests/`.
-4. Run `cargo insta accept`.
-5. Commit the accepted snapshots.
+1. Check that the `commit:` line of `output.txt` names the commit that `git rev-parse HEAD` prints. If it names another commit, push and dispatch again.
+2. Read each `.snap.new` file whole, and its diff in `output.txt`.
+3. If a snapshot is wrong, fix the cause, push, and dispatch again.
+4. Delete every pending snapshot already in `tests/` with `find tests -name '*.snap.new' -delete`.
+5. Copy the run's snapshots into the repository with `cp -r target/scratch/heavy-tests-<run id>/tests/. tests/`.
+6. Run `cargo insta accept`.
+7. Commit the accepted snapshots.
 
 ## Mutants
 

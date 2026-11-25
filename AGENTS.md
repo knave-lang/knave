@@ -184,27 +184,29 @@ cargo test <narrowest test>
 
 **Get the CRAP forecast from the `CRAP forecast` workflow on GitHub Actions, as `docs/pull-requests.md` says.**
 
-**A heavy test is a test of `tests/stages.rs` whose name ends in `check_fixtures`, `run_fixtures` or `emit_fixtures`, or contains `explanation`.**
+**A heavy test is a test of `tests/stages.rs` whose name ends in `check_fixtures`, `run_fixtures` or `emit_fixtures`, or starts with `each_explanation_`.**
 
-**A stage test is a run of `cargo test --test stages`. A stage test is heavy in each of these cases:**
+**A stage test is a run of `cargo test --test stages`. A filter is a test name argument of the run.** A `--skip` argument is no filter.
+
+**A stage test is heavy in each of these cases, unless both of the conditions after them hold:**
 
 - The stage test has no filter.
 - Its filter is part of a heavy test's name, such as `check`, `run` or `fixtures`.
 
-**A stage test is not heavy if both of these hold:**
+**These two conditions together keep a stage test light:**
 
-- `INSTA_GLOB_FILTER` names fixtures: the last path part of each of its globs holds no `*` or `?`.
-- Its filter is part of no name of a test whose name contains `explanation`.
+- `INSTA_GLOB_FILTER` names fixtures. Each of its globs compiles, and the last path part of each holds none of `*`, `?`, `[` and `{`.
+- The stage test has a filter, and the filter is part of no test name that starts with `each_explanation_`.
 
 **Every stage test that is not heavy is light.**
 
-**A heavy test run is a heavy stage test, or a run of `cargo test --test cli` without a test name.**
+**A CLI run is a run of `cargo test --test cli`. A heavy test run is a heavy stage test, or a CLI run that names no test with `--exact`.**
 
-**Run each heavy test run on the `Heavy tests` workflow, as `docs/pull-requests.md` says.** Run every light stage test and every named CLI test locally. NEVER loop over test filters in the shell: dispatch one run per filter.
+**Run each heavy test run on the `Heavy tests` workflow, as `docs/pull-requests.md` says.** Run every light stage test and every CLI test named with `--exact` locally. NEVER loop over test filters in the shell: dispatch one run per filter.
 
-**Outside CI, the test harness refuses a heavy test run before it runs any fixture.**
+**Off GitHub Actions, the test harness fails each heavy test before the test runs any fixture.**
 
-**NEVER set `KNAVE_OWNER_LOCAL_OVERRIDE`:** it is the project owner's override alone, and it lets a heavy test run run locally.
+**NEVER set `KNAVE_OWNER_LOCAL_OVERRIDE` or `GITHUB_ACTIONS`:** either variable lets a heavy test run run locally. The override is the project owner's alone.
 
 **If `IN_NIX_SHELL` is set, run every command as written.**
 
@@ -219,21 +221,21 @@ cargo test <narrowest test>
 | a unit test in `src/` | `--lib <module::path>` |
 | a unit test in `expand/src/` | `-p knave-expand --lib <module::path>` |
 | the fixtures of `check`, `run` or `emit` | the `Heavy tests` workflow with `filter=<stage>_fixtures` |
-| named fixtures of `check`, `run` or `emit` | `--test stages <stage>_fixtures`, with `INSTA_GLOB_FILTER` naming the fixtures |
+| named fixtures of `check`, `run` or `emit` | `--test stages <stage>_fixtures -- --exact`, with `INSTA_GLOB_FILTER` naming the fixtures |
 | the fixtures of every other stage | `--test stages <stage>_fixtures` |
-| a diagnostic's explanation or its examples | the `Heavy tests` workflow with `filter=explanation` |
+| a diagnostic's explanation or its examples | the `Heavy tests` workflow with `filter=each_explanation_` |
 | the project file's reader | `--test stages project_fixtures` |
 | a corpus entry | `--test stages corpus_fixtures` |
 | the harness of RFC 0065, or a known shape under `tests/fixtures/agree/` | `-p knave-agree`, then `--test stages agree_fixtures` |
 | the program generator or `cargo xtask agree` | `-p knave-agree`, then `cargo build --bin knave` and `cargo xtask agree`, which runs seeds 0 to 19 and compares their findings with the recorded list |
-| a CLI command | `--test cli <test name>` |
+| a CLI command | `--test cli <test name> -- --exact` |
 | every test of `tests/cli.rs` | the `Heavy tests` workflow with `target=cli` |
 | a diagnostic code | `--test diagnostic_codes --test diagnostic_snapshots` |
 | a page of `docs/reference/` or its checks | `--test stages reference_` |
 | the agent skill under `skills/` or its checks | `--test stages skill_` |
 | `xtask/` | `-p xtask` |
 
-- To run named fixtures of a stage locally, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'`.
+- To run named fixtures of a stage locally, prefix the stage's command with `INSTA_GLOB_FILTER='**/<fixture file name>'` and end it with `-- --exact`.
 
 **If a change touches a Rust file under `src/`, `expand/src/` or `xtask/src/`, run `cargo xtask file-sizes` and `cargo xtask design-rules`.** If either command fails, do what its message says for each item it names.
 
@@ -244,7 +246,7 @@ cargo test <narrowest test>
 **NEVER run these commands locally:** CI does the same work.
 
 - `cargo test` without a test target
-- `cargo test --test cli` without a test name
+- `cargo test --test cli` without `--exact` and a test name
 - `cargo clippy --workspace`
 - `cargo build --release` or `cargo build --profile local` to probe a pull request's unedited code: download the binaries, as `docs/pull-requests.md` says
 - `git rebase -x` with a build command, or another loop that builds each commit

@@ -7,6 +7,7 @@ use crate::base_revision::BaseRevision;
 use crate::checks::Check;
 use crate::design::DesignRules;
 use crate::failure::TaskFailure;
+use crate::fork_point::ForkPoint;
 use crate::production_lines::ProductionLineCensus;
 use crate::ratchet_gate::RatchetGate;
 use crate::source_format::SourceFormat;
@@ -42,7 +43,7 @@ impl PrepushTask {
 
     fn attempt(&self, root: &Path) -> Result<ExitCode, TaskFailure> {
         let fork_point = self.base.fork_point(root)?;
-        let ratchets = Self::ratchet_checks(root, &fork_point)?;
+        let ratchets = Self::ratchet_checks(root, fork_point)?;
         let checks = Self::checks(SourceFormat::check(root)?, ratchets);
         let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
         Ok(Verdict::announce(&checks))
@@ -54,7 +55,10 @@ impl PrepushTask {
         checks
     }
 
-    fn ratchet_checks(root: &Path, fork_point: &str) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
+    fn ratchet_checks(
+        root: &Path,
+        fork_point: ForkPoint,
+    ) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
         RatchetGate::new(root, fork_point).checks(&[&DesignRules, &ProductionLineCensus])
     }
 }
@@ -66,6 +70,8 @@ mod tests {
     use super::PrepushTask;
     use crate::base_revision::BaseRevision;
     use crate::checks::Check;
+    use crate::fork_point::ForkPoint;
+    use crate::git::Git;
     use crate::source_format::{FormatOutputs, SourceFormat};
     use crate::workspace::WorkspaceFixture;
 
@@ -98,7 +104,8 @@ mod tests {
     #[test]
     fn the_ratchets_hold_file_sizes_and_refuse_raises_since_the_fork_point() {
         let root = WorkspaceFixture::repository_root();
-        let checks = PrepushTask::ratchet_checks(root, "HEAD").expect("the ratchets read");
+        let head = ForkPoint::resolve(&Git::new(root), "HEAD").expect("HEAD resolves");
+        let checks = PrepushTask::ratchet_checks(root, head).expect("the ratchets read");
         let summaries = PrepushCase::summaries(&checks);
         assert!(
             summaries

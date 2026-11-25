@@ -3,6 +3,7 @@ use std::path::Path;
 use clap::Args;
 
 use crate::failure::TaskFailure;
+use crate::fork_point::ForkPoint;
 use crate::git::Git;
 
 #[derive(Args, Debug, PartialEq)]
@@ -23,8 +24,8 @@ impl BaseRevision {
         }
     }
 
-    pub fn fork_point(&self, root: &Path) -> Result<String, TaskFailure> {
-        Git::new(root).merge_base(&self.revision)
+    pub fn fork_point(&self, root: &Path) -> Result<ForkPoint, TaskFailure> {
+        ForkPoint::resolve(&Git::new(root), &self.revision)
     }
 }
 
@@ -38,7 +39,7 @@ mod tests {
         let failure = match BaseRevision::named("no-such-revision")
             .fork_point(WorkspaceFixture::repository_root())
         {
-            Ok(fork_point) => panic!("found a fork point {fork_point}"),
+            Ok(fork_point) => panic!("found a fork point {}", fork_point.as_str()),
             Err(failure) => failure.to_string(),
         };
         assert_eq!(failure, "cannot find the revision `no-such-revision`");

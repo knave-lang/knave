@@ -1,4 +1,5 @@
 mod agreement;
+mod any_filter;
 mod example_folder;
 mod example_layout;
 mod explanation_examples;
@@ -46,7 +47,8 @@ use knave::types::TypedProgram;
 use rustc_hash::FxHashMap;
 
 pub use agreement::AgreementReport;
-pub use explanation_examples::{ExampleDiagnostic, ExplanationExamples};
+pub use any_filter::StageFilters;
+pub use explanation_examples::{EveryExplanation, ExampleDiagnostic, ExplanationExamples};
 pub use fixture_glob::FixtureGlob;
 pub use formatting::{FormatFailures, ShapeLookup};
 pub use guide_links::GuideLinks;

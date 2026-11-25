@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::failure::TaskFailure;
+use crate::fork_point::ForkPoint;
 use crate::functions::LineSpan;
 use crate::git::Git;
 
@@ -16,7 +17,7 @@ impl ChangedLines {
     const NEW_SIDE_RANGE: char = '+';
     const RANGE_SEPARATOR: char = ',';
 
-    pub fn since(root: &Path, base: &str) -> Result<Self, TaskFailure> {
+    pub fn since(root: &Path, fork_point: &ForkPoint) -> Result<Self, TaskFailure> {
         let output = Git::new(root).run(&[
             "diff",
             "-U0",
@@ -24,7 +25,7 @@ impl ChangedLines {
             "--no-ext-diff",
             "--src-prefix=a/",
             "--dst-prefix=b/",
-            base,
+            fork_point.as_str(),
         ])?;
         if !output.status.success() {
             return Err(TaskFailure::tool_failed("git diff", &output.stderr));
@@ -80,7 +81,9 @@ impl ChangedLines {
 #[cfg(test)]
 mod tests {
     use super::ChangedLines;
+    use crate::fork_point::ForkPoint;
     use crate::functions::LineSpan;
+    use crate::git::Git;
     use crate::temporary_repository::TemporaryRepository;
 
     struct DiffCase;
@@ -142,14 +145,17 @@ mod tests {
         repository.commit_all();
         repository.git(&["config", "diff.noprefix", "true"]);
         repository.write("src/a.rs", "fn a() {\n    2\n}\n");
-        let changed = ChangedLines::since(repository.root(), "HEAD").expect("git diff runs");
+        let head = ForkPoint::resolve(&Git::new(repository.root()), "HEAD").expect("HEAD resolves");
+        let changed = ChangedLines::since(repository.root(), &head).expect("git diff runs");
         assert!(changed.touches("src/a.rs", LineSpan { first: 2, last: 2 }));
     }
 
     #[test]
     fn a_failed_diff_is_a_failure() {
         let root = crate::workspace::WorkspaceFixture::repository_root();
-        assert!(ChangedLines::since(root, "no-such-revision").is_err());
+        let head = ForkPoint::resolve(&Git::new(root), "HEAD").expect("HEAD resolves");
+        let outside = TemporaryRepository::outside_git("failed-diff");
+        assert!(ChangedLines::since(outside.root(), &head).is_err());
     }
 
     #[test]

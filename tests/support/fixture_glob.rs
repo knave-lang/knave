@@ -1,16 +1,22 @@
 use std::env;
+use std::path::PathBuf;
+use std::thread;
+
+use globset::Glob;
 
 use crate::heavy_run::Narrowing;
+use crate::heavy_run::uncaptured::Uncaptured;
 
 pub struct FixtureGlob {
     filter: Option<String>,
 }
 
 impl FixtureGlob {
-    const VARIABLE: &str = "INSTA_GLOB_FILTER";
+    pub const VARIABLE: &str = "INSTA_GLOB_FILTER";
     const SEPARATOR: char = ';';
     const PATH_SEPARATOR: char = '/';
-    const WILDCARDS: [char; 2] = ['*', '?'];
+    const METACHARACTERS: [char; 4] = ['*', '?', '[', '{'];
+    const UNNAMED_TEST: &str = "this test";
 
     pub fn from_environment() -> Self {
         Self::of(env::var(Self::VARIABLE).ok())
@@ -18,6 +24,27 @@ impl FixtureGlob {
 
     pub fn of(filter: Option<String>) -> Self {
         Self { filter }
+    }
+
+    pub fn report_kept(&self, kept: &[PathBuf]) {
+        let test = thread::current()
+            .name()
+            .unwrap_or(Self::UNNAMED_TEST)
+            .to_string();
+        if let Some(line) = self.kept_line(kept.len(), &test) {
+            Uncaptured::write(&line);
+        }
+        assert!(
+            self.filter.is_none() || !kept.is_empty(),
+            "{} keeps no fixture of {test}",
+            Self::VARIABLE
+        );
+    }
+
+    pub fn kept_line(&self, kept: usize, test: &str) -> Option<String> {
+        self.filter
+            .as_ref()
+            .map(|_| format!("{} kept {kept} fixtures in {test}", Self::VARIABLE))
     }
 
     fn globs(&self) -> Vec<&str> {
@@ -30,7 +57,7 @@ impl FixtureGlob {
 
     fn names_a_file(glob: &str) -> bool {
         let file = glob.rsplit(Self::PATH_SEPARATOR).next().unwrap_or(glob);
-        !file.contains(Self::WILDCARDS)
+        Glob::new(glob).is_ok() && !file.contains(Self::METACHARACTERS)
     }
 }
 

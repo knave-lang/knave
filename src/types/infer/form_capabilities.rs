@@ -22,7 +22,9 @@ use crate::types::synthetic_call::SyntheticCall;
 use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::templates::TemplateName;
 use crate::types::ty::{Scheme, Type};
-use crate::types::typed::{AssignmentPath, Borrow, TypedArgument, TypedAssignment, TypedExpr};
+use crate::types::typed::{
+    AssignmentPath, Borrow, TypedArgument, TypedAssignment, TypedExpr, TypedExprKind,
+};
 use crate::types::unifier::{LiteralKind, UnifyError};
 use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
@@ -316,7 +318,14 @@ impl PlaceWrites for TypeChecker {
         path: AssignmentPath,
     ) -> Result<TypedExpr, Diagnostic> {
         let written = self.type_synthetic_call(call)?;
-        Ok(TypedAssignment::written(written, path))
+        let TypedExprKind::Call(template, arguments) = written.kind else {
+            unreachable!("a synthetic call types as a call")
+        };
+        Ok(TypedExpr {
+            kind: TypedExprKind::Assign(Box::new(TypedAssignment::new(path, *template, arguments))),
+            ty: written.ty,
+            span: written.span,
+        })
     }
 }
 

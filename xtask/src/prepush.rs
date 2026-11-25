@@ -2,20 +2,14 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use clap::Args;
-use knave_agree::LeftOutFixtures;
 
-use crate::changed_functions::ChangedFunctions;
-use crate::changed_lines::ChangedLines;
 use crate::checks::Check;
-use crate::crap_forecast::CrapForecast;
 use crate::design::DesignRules;
 use crate::failure::TaskFailure;
 use crate::git::Git;
-use crate::instrumented_tests::InstrumentedTests;
 use crate::production_lines::ProductionLineCensus;
 use crate::ratchet_gate::RatchetGate;
 use crate::source_format::SourceFormat;
-use crate::test_selection::TestRun;
 use crate::verdict::Verdict;
 
 #[derive(Args)]
@@ -26,78 +20,37 @@ pub struct PrepushTask {
         help = "Check the changes since this branch forked from this revision"
     )]
     base: String,
-    #[arg(
-        long,
-        allow_hyphen_values = true,
-        help = "Also run these `cargo test` arguments under coverage, such as '--test stages emit_fixtures'. CI's coverage runs no features, release builds or ignored tests, so lines that only such a run covers do not count there"
-    )]
-    also: Vec<String>,
 }
 
 impl PrepushTask {
     const MEASURED_TREE: &str = "prepush measures the working tree, uncommitted edits included. Git's diff leaves out untracked files, so add new files to the index first.";
+    const FORECAST_ON_GITHUB: &str = "prepush leaves out the CRAP forecast. Dispatch the `CRAP forecast` workflow on the pushed branch, as the CRAP forecast section of docs/pull-requests.md says.";
 
     pub fn run(&self, root: &Path) -> ExitCode {
         let verdict = self
             .attempt(root)
             .unwrap_or_else(|failure| failure.report());
         println!("{}", Self::MEASURED_TREE);
+        println!("{}", Self::FORECAST_ON_GITHUB);
         verdict
     }
 
     fn attempt(&self, root: &Path) -> Result<ExitCode, TaskFailure> {
         let fork_point = self.fork_point(root)?;
-        let changed = ChangedLines::since(root, &fork_point)?;
         let ratchets = Self::ratchet_checks(root, &fork_point)?;
-        let checks = Self::checks(
-            self.crap_forecast(root, &changed)?,
-            SourceFormat::check(root)?,
-            ratchets,
-        );
+        let checks = Self::checks(SourceFormat::check(root)?, ratchets);
         let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
         Ok(Verdict::announce(&checks))
     }
 
-    fn checks(
-        forecast: CrapForecast,
-        format: SourceFormat,
-        ratchets: Vec<Box<dyn Check>>,
-    ) -> Vec<Box<dyn Check>> {
-        let mut checks: Vec<Box<dyn Check>> = vec![Box::new(forecast), Box::new(format)];
+    fn checks(format: SourceFormat, ratchets: Vec<Box<dyn Check>>) -> Vec<Box<dyn Check>> {
+        let mut checks: Vec<Box<dyn Check>> = vec![Box::new(format)];
         checks.extend(ratchets);
         checks
     }
 
     fn fork_point(&self, root: &Path) -> Result<String, TaskFailure> {
         Git::new(root).merge_base(&self.base)
-    }
-
-    fn crap_forecast(
-        &self,
-        root: &Path,
-        changed: &ChangedLines,
-    ) -> Result<CrapForecast, TaskFailure> {
-        let functions = ChangedFunctions::find(root, changed)?;
-        let also: Vec<TestRun> = self
-            .also
-            .iter()
-            .map(|arguments| TestRun::parse(arguments))
-            .collect();
-        let runs = functions.test_runs(&also);
-        Self::announce_left_out_fixtures(&runs);
-        let report = InstrumentedTests::new(root).run_selected(&runs)?;
-        Ok(functions.forecast(&report))
-    }
-
-    fn announce_left_out_fixtures(runs: &[TestRun]) {
-        for note in Self::left_out_fixture_notes(runs) {
-            println!("note: {note}");
-        }
-    }
-
-    fn left_out_fixture_notes(runs: &[TestRun]) -> Vec<String> {
-        LeftOutFixtures::slow()
-            .notes_for_stage_tests(|test| runs.iter().any(|run| run.selects_stage_test(test)))
     }
 
     fn ratchet_checks(root: &Path, fork_point: &str) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
@@ -107,13 +60,9 @@ impl PrepushTask {
 
 #[cfg(test)]
 mod tests {
-    use knave_agree::LeftOutFixtures;
-
     use super::PrepushTask;
     use crate::checks::Check;
-    use crate::crap_forecast::CrapForecast;
     use crate::source_format::{FormatOutputs, SourceFormat};
-    use crate::test_selection::TestRun;
     use crate::workspace::WorkspaceFixture;
 
     struct PrepushCase;
@@ -125,55 +74,20 @@ mod tests {
     }
 
     #[test]
-    fn a_selection_with_stage_fixtures_notes_each_left_out_fixture() {
-        let runs = [
-            TestRun::parse("--lib emit::"),
-            TestRun::parse("--test stages check_fixtures"),
-        ];
-        let notes = PrepushTask::left_out_fixture_notes(&runs);
-        assert!(!notes.is_empty());
-        assert_eq!(
-            notes,
-            LeftOutFixtures::slow().notes_for_stage_tests(|test| test == "check_fixtures")
-        );
-    }
-
-    #[test]
-    fn a_selection_without_stage_fixtures_notes_nothing() {
-        let runs = [
-            TestRun::parse("--lib emit::"),
-            TestRun::parse("--test cli fmt"),
-        ];
-        assert!(PrepushTask::left_out_fixture_notes(&runs).is_empty());
-    }
-
-    #[test]
-    fn a_selection_of_other_stage_fixtures_notes_nothing() {
-        let runs = [
-            TestRun::parse("--test stages reader_fixtures"),
-            TestRun::parse("--test stages expand_fixtures"),
-        ];
-        assert!(PrepushTask::left_out_fixture_notes(&runs).is_empty());
-    }
-
-    #[test]
-    fn prepush_runs_the_forecast_the_layout_and_each_ratchet() {
-        let forecast = CrapForecast::new(8.0, Vec::new());
+    fn prepush_runs_the_layout_and_each_ratchet() {
         let format = SourceFormat::finished(1, FormatOutputs::passed());
         let ratchet = Box::new(SourceFormat::finished(2, FormatOutputs::passed()));
-        let summaries =
-            PrepushCase::summaries(&PrepushTask::checks(forecast, format, vec![ratchet]));
-        assert_eq!(summaries.len(), 3, "{summaries:?}");
-        assert!(summaries[0].contains("CRAP"), "{}", summaries[0]);
+        let summaries = PrepushCase::summaries(&PrepushTask::checks(format, vec![ratchet]));
+        assert_eq!(summaries.len(), 2, "{summaries:?}");
         assert!(
-            summaries[1].starts_with("1 source files"),
+            summaries[0].starts_with("1 source files"),
             "{}",
-            summaries[1]
+            summaries[0]
         );
         assert!(
-            summaries[2].starts_with("2 source files"),
+            summaries[1].starts_with("2 source files"),
             "{}",
-            summaries[2]
+            summaries[1]
         );
     }
 
@@ -198,7 +112,6 @@ mod tests {
     fn an_unknown_base_fails_before_any_check() {
         let task = PrepushTask {
             base: "no-such-revision".to_string(),
-            also: Vec::new(),
         };
         let failure = match task.fork_point(WorkspaceFixture::repository_root()) {
             Ok(fork_point) => panic!("found a fork point {fork_point}"),

@@ -1,0 +1,79 @@
+name: CRAP forecast
+run-name: CRAP forecast of ${{ github.ref_name }} ${{ inputs.tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      also:
+        description: More `cargo test` arguments to run under coverage, one set per line, such as --test stages emit_fixtures
+        default: ""
+        type: string
+      tag:
+        description: A word that tells this run apart in the run list
+        default: ""
+        type: string
+
+concurrency:
+  group: crap-forecast-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CACHIX_CACHE: rslisp
+
+jobs:
+  forecast:
+    name: CRAP forecast
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CARGO_PROFILE_DEV_OPT_LEVEL: 1
+    steps:
+      - name: Refuse the default branch
+        if: github.ref_name == github.event.repository.default_branch
+        run: |
+          echo "::error::Dispatch the forecast on a pull request's head branch, not on the default branch."
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: ./.github/actions/dev-shell
+        with:
+          build-cache: coverage
+      - name: Forecast CI's CRAP gate on the changed functions
+        shell: bash
+        env:
+          ALSO: ${{ inputs.also }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          VERDICT: ${{ runner.temp }}/crap-forecast/verdict.txt
+        run: |
+          also=()
+          while IFS= read -r run; do
+            if [ -n "$run" ]; then also+=("--also=$run"); fi
+          done <<< "$ALSO"
+          mkdir -p "$(dirname "$VERDICT")"
+          status=0
+          nix develop .#ci -c cargo xtask crap-forecast --base "origin/$DEFAULT_BRANCH" "${also[@]}" | tee "$VERDICT" || status=$?
+          if [ "$status" -eq 0 ]; then outcome=passes; else outcome=fails; fi
+          {
+            echo "## The CRAP forecast of ${GITHUB_SHA::7} $outcome"
+            echo
+            if [ -s "$VERDICT" ]; then
+              echo '```text'
+              cat "$VERDICT"
+              echo '```'
+            else
+              echo "The forecast stopped before its verdict. Read the step's log with \`gh run view $GITHUB_RUN_ID --log-failed\`."
+              echo "The forecast stopped before its verdict. Read the step's log." > "$VERDICT"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: crap-forecast
+          path: ${{ runner.temp }}/crap-forecast/
+          retention-days: 7

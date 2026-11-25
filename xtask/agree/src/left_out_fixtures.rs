@@ -12,7 +12,7 @@ impl LeftOutFixtures {
     const LEAVE_OUT: &str = "1";
     const SLOW_UNDER_COVERAGE: &[&str] = &["check/macro_vec_of_twenty_thousand_elements.knv"];
     const STAGE_TEST_SUFFIX: &str = "_fixtures";
-    const REASON: &str = "it runs too slowly under prepush's coverage build; CI still runs it";
+    const REASON: &str = "it runs too slowly under the CRAP forecast's coverage build; CI's coverage gate still runs it";
 
     pub fn leave_out_slow_fixtures(command: &mut Command) -> &mut Command {
         command.env(Self::VARIABLE, Self::LEAVE_OUT)

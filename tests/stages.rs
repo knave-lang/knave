@@ -21,7 +21,7 @@ use heavy_run::{HeavyTestRun, Narrowing, RunEnvironment, TestArguments};
 use support::{
     AgreementReport, ExplanationExamples, Fixture, FixtureGlob, FixtureReports, FormatFailures,
     GuideLinks, HeaderAgreement, HeavyRunProbe, LintFixture, PreludePages, ReadBackAgreement,
-    ReferenceIndex, ReferencePage, SavedPreludeAgreement, SkillPage, StageRun,
+    ReferenceIndex, ReferencePage, SavedPreludeAgreement, SkillPage, StageRun, StageTestSource,
 };
 
 const REFERENCE_INDEX_OF_ONE_PAGE: &str = "# Language reference\n\n- [Bindings](reference/bindings.md): names.\n- [Types](reference/types.md): types.\n";
@@ -1079,7 +1079,7 @@ fn a_glob_that_names_fixtures_lets_a_heavy_stage_test_run_locally() {
 }
 
 #[test]
-fn a_glob_with_a_metacharacter_in_a_file_name_names_no_fixtures() {
+fn a_glob_with_a_metacharacter_in_a_file_name_names_no_fixture() {
     for glob in [
         "**/a.knv;**/vector_*.knv",
         "**/a.kn?",
@@ -1094,7 +1094,7 @@ fn a_glob_with_a_metacharacter_in_a_file_name_names_no_fixtures() {
 }
 
 #[test]
-fn a_glob_that_does_not_compile_names_no_fixtures() {
+fn a_glob_that_does_not_compile_names_no_fixture() {
     for glob in ["**/{a.knv", "**/[x/b.knv", "**/{a/b.knv"] {
         assert!(!FixtureGlob::of(Some(glob.to_string())).narrows(), "{glob}");
     }
@@ -1169,29 +1169,20 @@ fn several_light_filters_under_exact_are_light() {
 
 #[test]
 fn the_heavy_test_lists_name_every_heavy_stage_test() {
-    let source = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stages.rs"))
-        .expect("the stage tests read");
-    let mut heavy: Vec<&str> = source
-        .lines()
-        .filter_map(|line| line.strip_prefix("fn "))
-        .filter_map(|line| line.split('(').next())
-        .filter(|name| StageRun::is_heavy_name(name))
-        .collect();
+    let source = StageTestSource::read();
+    let mut heavy = source.heavy_test_names();
     heavy.sort_unstable();
-    let mut listed = [StageRun::FIXTURE_TESTS, StageRun::EXPLANATION_TESTS].concat();
+    let mut listed = StageRun::heavy_tests();
     listed.sort_unstable();
     assert_eq!(heavy, listed);
 }
 
 #[test]
-fn each_heavy_stage_test_opens_with_the_guard() {
-    let source = fs::read_to_string(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/stages.rs"))
-        .expect("the stage tests read");
-    let guard = "    HeavyTestRun::of(&StageRun::from_process()).enforce();";
-    for test in [StageRun::FIXTURE_TESTS, StageRun::EXPLANATION_TESTS].concat() {
-        let opening = format!("fn {test}() {{\n{guard}\n");
+fn each_fixture_and_explanation_test_opens_with_the_guard() {
+    let source = StageTestSource::read();
+    for test in source.guarded_test_names() {
         assert!(
-            source.contains(&opening),
+            source.opens_with_guard(test),
             "{test} does not open with the guard"
         );
     }

@@ -200,9 +200,9 @@ cargo test <narrowest test>
 - The stage test has one filter, or several filters and `--exact`.
 - No filter selects a test whose name starts with `each_explanation_`.
 
-**With a glob, give a filter whose tests all read one fixture directory, such as `check_fixtures`.** A glob that keeps no fixture of a selected test fails that test. Locally, also end the command with `-- --exact`.
+**With a glob, give a filter that selects only one stage's fixture tests, such as `check_fixtures` and not `check`.** A glob that keeps no fixture of a selected test fails that test. Locally, also end the command with `-- --exact`.
 
-**Every stage test that is not heavy is light.** `StageRun` in `tests/support/stage_run.rs` holds this rule and the heavy test lists. Every fixture and explanation test enforces it.
+**Every stage test that is not heavy is light.** `StageRun` in `tests/support/stage_run.rs` holds this rule and the heavy test lists. Every test of `tests/stages.rs` whose name ends in `_fixtures` or starts with `each_explanation_` enforces it.
 
 **A CLI run is a run of `cargo test --test cli`. A heavy test run is a heavy stage test, or a CLI run that names no test with `--exact`.**
 

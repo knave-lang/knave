@@ -66,7 +66,7 @@ impl ModuleRegistry {
         })
     }
 
-    pub fn adopt_saved(&mut self, records: Vec<ModuleRecord>, paths: SavedModulePaths) {
+    pub(super) fn adopt_saved(&mut self, records: Vec<ModuleRecord>, paths: SavedModulePaths) {
         let first = ModuleId::new(self.records.len());
         let prelude = PreludeIndex::new(first, paths);
         self.by_path.retain(|path, _| prelude.find(path).is_none());

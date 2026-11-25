@@ -16,7 +16,7 @@ use crate::modules::{
     BuiltPreludeRecords, ModuleSources, PreludeRecords, PreludeSourceBytes, PreludeSourceFiles,
 };
 use crate::reader::Form;
-use crate::scope::{NameTables, SavedNames};
+use crate::scope::{NameTables, SavedNames, SavedPositions};
 use crate::source::{SourceId, SourceMap, Span};
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -52,7 +52,7 @@ struct BuiltTables {
 #[serde(bound(deserialize = "'de: 'static"))]
 struct LoadedTables {
     modules: PreludeRecords,
-    sources: PreludeSourceFiles,
+    sources: SavedPositions,
     bindings: SavedBindings,
     names: SavedNames,
     origins: SavedOrigins,
@@ -140,7 +140,8 @@ impl PreludeState {
         let PreludeDefinitions::Loaded(tables) = self.definitions else {
             panic!("a built prelude state installs only after a save and a load")
         };
-        expander.add_prelude_sources(self.first_source, tables.sources);
+        let sources = PreludeSourceFiles::new(tables.modules.paths(), tables.sources);
+        expander.add_prelude_sources(self.first_source, sources);
         tables.modules.install_into(&mut expander.modules);
         expander.saved_definitions = tables.definitions;
         expander.saved_macros = tables.macros;
@@ -183,7 +184,7 @@ impl Expander<'_> {
             OriginTables::of_own_layers(std::mem::take(&mut self.tables.macro_origins));
         let note_tables = self.tables.module_notes.take_saved();
         let records = self.modules.into_records_after(placeholder);
-        let sources = PreludeSourceFiles::of(&records);
+        let sources = PreludeSourceBytes::of(&records);
         let modules = BuiltPreludeRecords::of(records);
         PreludeState {
             first_source,

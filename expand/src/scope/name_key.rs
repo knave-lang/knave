@@ -1,4 +1,6 @@
+use super::saved_key::SavedKey;
 use super::saved_namespace::SavedNamespace;
+use super::text_hash::TextHash;
 use crate::core::Namespace;
 
 #[derive(Clone, Copy)]
@@ -8,52 +10,32 @@ pub(super) struct NameKey<'a> {
     hash: u64,
 }
 
-impl<'a> NameKey<'a> {
-    const HASH_FACTOR: u64 = 0x517c_c1b7_2722_0a95;
-    const HASH_ROTATION: u32 = 5;
-    const HASH_FINAL_ROTATION: u32 = 26;
-    const HASH_CHUNK: usize = size_of::<u64>();
+impl NameKey<'_> {
+    pub(super) const ROW_WIDTH: usize = 3;
+    pub(super) const NAMESPACE_WORD: usize = 2;
+}
 
+impl<'a> NameKey<'a> {
     pub(super) fn new(name: &'a str, namespace: Namespace) -> Self {
         Self {
             name,
             namespace,
-            hash: Self::hash(name, namespace),
+            hash: TextHash::of(name, SavedNamespace::of(namespace).code()),
         }
-    }
-
-    pub(super) fn name(self) -> &'a str {
-        self.name
     }
 
     pub(super) fn namespace(self) -> Namespace {
         self.namespace
     }
+}
 
-    pub(super) fn first_slot(self, mask: usize) -> usize {
-        let wide_mask = u64::try_from(mask).expect("a table's mask fits 64 bits");
-        usize::try_from(self.hash & wide_mask).expect("a slot fits its mask")
+impl<'a> SavedKey<'a> for NameKey<'a> {
+    fn text(self) -> &'a str {
+        self.name
     }
 
-    fn hash(name: &str, namespace: Namespace) -> u64 {
-        let chunks = name.as_bytes().chunks(Self::HASH_CHUNK);
-        let hash = chunks.fold(0, |hash, chunk| Self::mix(hash, Self::chunk_word(chunk)));
-        Self::mix(hash, Self::closing_word(name.len(), namespace))
-            .rotate_left(Self::HASH_FINAL_ROTATION)
-    }
-
-    fn closing_word(length: usize, namespace: Namespace) -> u64 {
-        (length as u64) << u32::BITS | u64::from(SavedNamespace::of(namespace).code())
-    }
-
-    fn mix(hash: u64, word: u64) -> u64 {
-        (hash.rotate_left(Self::HASH_ROTATION) ^ word).wrapping_mul(Self::HASH_FACTOR)
-    }
-
-    fn chunk_word(chunk: &[u8]) -> u64 {
-        let mut word = [0; Self::HASH_CHUNK];
-        word[..chunk.len()].copy_from_slice(chunk);
-        u64::from_le_bytes(word)
+    fn first_slot(self, mask: usize) -> usize {
+        TextHash::first_slot(self.hash, mask)
     }
 }
 

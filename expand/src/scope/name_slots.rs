@@ -1,4 +1,4 @@
-use super::name_key::NameKey;
+use super::saved_key::SavedKey;
 use super::saved_words::{SavedWords, SavedWordsBuilder};
 
 #[derive(Clone, Copy)]
@@ -15,9 +15,9 @@ impl NameSlots {
         }
     }
 
-    pub(super) fn find(
+    pub(super) fn find<'a>(
         &self,
-        key: NameKey<'_>,
+        key: impl SavedKey<'a>,
         holds_key: impl Fn(usize) -> bool,
     ) -> Option<usize> {
         let count = self.positions.rows();
@@ -55,7 +55,7 @@ impl NameSlotsBuilder {
         }
     }
 
-    pub(super) fn claim(&mut self, key: NameKey<'_>, position: usize) {
+    pub(super) fn claim<'a>(&mut self, key: impl SavedKey<'a>, position: usize) {
         let mask = self.claimed.len() - 1;
         let mut slot = key.first_slot(mask);
         while self.claimed[slot] != NameSlots::EMPTY {

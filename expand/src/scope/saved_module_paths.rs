@@ -1,17 +1,16 @@
-use super::name_key::NameKey;
-use super::saved_keys::{SavedKeys, SavedKeysBuilder};
-use crate::core::Namespace;
+use super::path_key::PathKey;
+use super::saved_texts::{SavedTexts, SavedTextsBuilder};
 
 #[derive(serde::Serialize)]
 pub struct ModulePathBytes {
-    keys: SavedKeysBuilder,
+    keys: SavedTextsBuilder<{ PathKey::ROW_WIDTH }>,
 }
 
 impl ModulePathBytes {
     pub fn of<'a>(paths: impl ExactSizeIterator<Item = &'a str>) -> Self {
-        let mut keys = SavedKeysBuilder::for_count(paths.len());
+        let mut keys = SavedTextsBuilder::for_count(paths.len());
         for path in paths {
-            keys.add(SavedModulePaths::key(path));
+            keys.add(PathKey::new(path), [0; PathKey::ROW_WIDTH]);
         }
         Self { keys }
     }
@@ -20,27 +19,20 @@ impl ModulePathBytes {
 #[derive(Clone, Copy, Default, serde::Deserialize)]
 #[serde(bound(deserialize = "'de: 'static"))]
 pub struct SavedModulePaths {
-    keys: SavedKeys,
+    keys: SavedTexts<{ PathKey::ROW_WIDTH }>,
 }
 
 impl SavedModulePaths {
-    const PATH_NAMESPACE: Namespace = Namespace::Value;
-
     pub fn position(&self, path: &str) -> Option<usize> {
-        self.keys.position(Self::key(path))
+        self.keys.position(PathKey::new(path), |_| true)
     }
 
     pub fn path(&self, position: usize) -> &'static str {
-        let (path, _) = self.keys.key(position);
-        path
+        self.keys.text(position)
     }
 
     pub fn count(&self) -> usize {
         self.keys.count()
-    }
-
-    fn key(path: &str) -> NameKey<'_> {
-        NameKey::new(path, Self::PATH_NAMESPACE)
     }
 }
 

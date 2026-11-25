@@ -1,76 +1,51 @@
 use super::name_key::NameKey;
-use super::name_slots::{NameSlots, NameSlotsBuilder};
 use super::saved_namespace::SavedNamespace;
-use super::saved_words::{SavedWords, SavedWordsBuilder};
+use super::saved_texts::{SavedTexts, SavedTextsBuilder};
 use crate::core::Namespace;
 
 #[derive(Clone, Copy, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(bound(deserialize = "'de: 'static"))]
 pub(super) struct SavedKeys {
-    #[serde(borrow)]
-    slots: &'static [u8],
-    #[serde(borrow)]
-    rows: &'static [u8],
-    #[serde(borrow)]
-    names: &'static [u8],
+    texts: SavedTexts<{ NameKey::ROW_WIDTH }>,
 }
 
 impl SavedKeys {
     pub(super) fn position(&self, key: NameKey<'_>) -> Option<usize> {
-        NameSlots::new(self.slots).find(key, |position| self.holds(position, key))
+        let namespace = SavedNamespace::of(key.namespace());
+        self.texts
+            .position(key, |row| Self::namespace(row) == namespace)
     }
 
     pub(super) fn key(&self, position: usize) -> (&'static str, Namespace) {
-        let [name_start, name_end, namespace] = self.rows().row(position);
-        let name = &self.names[name_start as usize..name_end as usize];
-        let name = std::str::from_utf8(name).expect("a saved name is text");
-        (name, SavedNamespace::read(namespace).namespace())
+        let namespace = Self::namespace(self.texts.row(position));
+        (self.texts.text(position), namespace.namespace())
     }
 
     pub(super) fn count(&self) -> usize {
-        self.rows().rows()
+        self.texts.count()
     }
 
-    fn holds(&self, position: usize, key: NameKey<'_>) -> bool {
-        let [name_start, name_end, namespace] = self.rows().row(position);
-        SavedNamespace::read(namespace) == SavedNamespace::of(key.namespace())
-            && &self.names[name_start as usize..name_end as usize] == key.name().as_bytes()
-    }
-
-    fn rows(&self) -> SavedWords<3> {
-        SavedWords::new(self.rows)
+    fn namespace(row: [u32; NameKey::ROW_WIDTH]) -> SavedNamespace {
+        SavedNamespace::read(row[NameKey::NAMESPACE_WORD])
     }
 }
 
+#[derive(serde::Serialize)]
 pub(super) struct SavedKeysBuilder {
-    slots: NameSlotsBuilder,
-    rows: SavedWordsBuilder<3>,
-    names: Vec<u8>,
-    count: usize,
+    texts: SavedTextsBuilder<{ NameKey::ROW_WIDTH }>,
 }
 
 impl SavedKeysBuilder {
     pub(super) fn for_count(count: usize) -> Self {
         Self {
-            slots: NameSlotsBuilder::for_count(count),
-            rows: SavedWordsBuilder::default(),
-            names: Vec::new(),
-            count: 0,
+            texts: SavedTextsBuilder::for_count(count),
         }
     }
 
     pub(super) fn add(&mut self, key: NameKey<'_>) {
-        let name_start = self.names.len();
-        self.names.extend(key.name().as_bytes());
-        let namespace = SavedNamespace::of(key.namespace()).code() as usize;
-        self.rows.push([name_start, self.names.len(), namespace]);
-        self.slots.claim(key, self.count);
-        self.count += 1;
-    }
-}
-
-impl serde::Serialize for SavedKeysBuilder {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        (&self.slots.words(), &self.rows, &self.names).serialize(serializer)
+        let mut row = [0; NameKey::ROW_WIDTH];
+        row[NameKey::NAMESPACE_WORD] = SavedNamespace::of(key.namespace()).code() as usize;
+        self.texts.add(key, row);
     }
 }
 
@@ -108,11 +83,9 @@ mod tests {
     }
 
     #[test]
-    fn a_key_holds_only_a_lookup_in_its_own_namespace() {
+    fn a_key_of_the_same_length_and_namespace_is_not_found() {
         let keys = KeysFixture::saved(&[("map", Namespace::Value)]);
-        assert!(keys.holds(0, NameKey::new("map", Namespace::Value)));
-        assert!(!keys.holds(0, NameKey::new("map", Namespace::Type)));
-        assert!(!keys.holds(0, NameKey::new("mop", Namespace::Value)));
+        assert_eq!(KeysFixture::position(&keys, "mop", Namespace::Value), None);
     }
 
     #[test]
@@ -150,6 +123,16 @@ mod tests {
                 .enumerate()
                 .all(|(position, found)| found == Some(position))
         );
+    }
+
+    #[test]
+    fn a_name_is_not_found_in_the_other_namespace_even_at_its_own_slot() {
+        let names: Vec<String> = (0..64).map(|index| format!("name-{index}")).collect();
+        let found_as_type = names.iter().filter(|name| {
+            let keys = KeysFixture::saved(&[(name.as_str(), Namespace::Value)]);
+            KeysFixture::position(&keys, name, Namespace::Type).is_some()
+        });
+        assert_eq!(found_as_type.count(), 0);
     }
 
     #[test]

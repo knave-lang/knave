@@ -335,7 +335,7 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 
 ## Nightly mutants backfill
 
-**The `Nightly mutants` workflow tests the mutants of one range of `main` per run.** A scheduled run starts at the last tested commit that the `Nightly mutants` issue records. It moves that record when every shard finishes.
+**The `Nightly mutants` workflow tests the mutants of one range of `main` per run.** A scheduled run starts at the last tested commit that the `Nightly mutants` issue records. It moves that record when every shard finishes. If a shard does not finish, the run still writes its findings. It lists that shard's untested mutants as not finished.
 
 **A backfill slice is a run with an explicit range.** It leaves the `Nightly mutants` issue alone. It adds one comment to the `Mutants backfill` issue, with these parts:
 

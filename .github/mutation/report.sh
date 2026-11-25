@@ -8,21 +8,32 @@ readonly SURVIVORS_HEADING='## Missed or timed out'
 readonly UNVIABLE_HEADING='## Functions whose only mutants were unviable'
 readonly SKIPPED_HEADING='## Nightly ranges left untested'
 readonly INVALID_HEADING='## Invalid in the last run, because a test set failed without the mutant'
+readonly CHECK_INSTRUCTION='Check a box once a test covers the line or the code is simplified. Checked lines drop off on the next run.'
 
 main() {
-  if ! every_shard_completed; then
-    fail "A mutation shard did not finish, so the issue keeps its last tested commit."
-  fi
   local issue previous found survivors unviable skipped invalid
   issue=$(nightly_issue)
   previous=$(issue_body_text <<< "$issue")
   found=$(surviving_mutants)
-  survivors=$(merged_unchecked "$SURVIVORS_HEADING" "$previous" "$found")
+  survivors=$(merged_unchecked "$SURVIVORS_HEADING" "$previous" "$(printf '%s\n%s' "$found" "$(unfinished_mutants)")")
   unviable=$(merged_unchecked "$UNVIABLE_HEADING" "$previous" "$(functions_with_only_unviable_mutants)")
   skipped=$(merged_unchecked "$SKIPPED_HEADING" "$previous" "$(skipped_slices)")
   invalid=$(invalid_mutants)
-  publish "$(issue_number <<< "$issue")" "$(issue_body "$survivors" "$unviable" "$invalid" "$skipped")" "$survivors$unviable$invalid$skipped"
+  publish "$(issue_number <<< "$issue")" "$(issue_body "$(tested_commit "$previous")" "$survivors" "$unviable" "$invalid" "$skipped")" "$survivors$unviable$invalid$skipped"
+  require_every_shard_completed
   require_no_new_survivor "$previous" "$found"
+}
+
+tested_commit() {
+  if every_shard_completed; then
+    echo "$HEAD_COMMIT"
+  else
+    tested_commit_in <<< "$1"
+  fi
+}
+
+require_every_shard_completed() {
+  every_shard_completed || fail "Not every shard finished: $(unfinished_shards_phrase) did not, so the issue keeps its last tested commit."
 }
 
 skipped_slices() {
@@ -76,25 +87,40 @@ fail() {
 }
 
 issue_body() {
-  echo "Last tested: \`main\` from \`$BASE\` to \`$HEAD_COMMIT\`, by [this run]($RUN_URL). Check a box once a test covers the line or the code is simplified. Checked lines drop off on the next run."
+  local tested=$1
+  tested_line "$tested"
   echo
   echo "$SURVIVORS_HEADING"
   echo
-  echo "${1:-None.}"
+  echo "${2:-None.}"
   echo
   echo "$UNVIABLE_HEADING"
   echo
-  echo "${2:-None.}"
+  echo "${3:-None.}"
   echo
   echo "$INVALID_HEADING"
   echo
-  echo "${3:-None.}"
+  echo "${4:-None.}"
   echo
   echo "$SKIPPED_HEADING"
   echo
-  echo "${4:-None.}"
-  echo
-  echo "<!-- tested: $HEAD_COMMIT -->"
+  echo "${5:-None.}"
+  if [[ -n $tested ]]; then
+    echo
+    echo "<!-- tested: $tested -->"
+  fi
+}
+
+tested_line() {
+  if every_shard_completed; then
+    echo "Last tested: \`main\` from \`$BASE\` to \`$HEAD_COMMIT\`, by [this run]($RUN_URL). $CHECK_INSTRUCTION"
+  else
+    echo "[This run]($RUN_URL) tested \`main\` from \`$BASE\` to \`$HEAD_COMMIT\`, but $(unfinished_shards_phrase) did not finish, so the last tested commit stays \`${1:-none}\`. $CHECK_INSTRUCTION"
+  fi
+  if [[ -n ${DEFERRED_HEAD:-} ]]; then
+    echo
+    echo "The commits after \`$HEAD_COMMIT\` up to \`$DEFERRED_HEAD\` did not fit the shard budget, so the next run tests them."
+  fi
 }
 
 publish() {

@@ -20,6 +20,7 @@ impl RustType {
     pub const ITERATOR_TEMPLATE: &'static str = "impl Iterator<Item = {0}>";
     const SORTED_MAP_TEMPLATE: &'static str = "std::collections::BTreeMap<{0}, {1}>";
     const HASH_MAP_TEMPLATE: &'static str = "std::collections::HashMap<{0}, {1}>";
+    const PAIR_TEMPLATE: &'static str = "({0}, {1})";
     const MAP_TEMPLATES: [&'static str; 2] = [Self::SORTED_MAP_TEMPLATE, Self::HASH_MAP_TEMPLATE];
     const OPAQUE_PREFIX: &'static str = "impl ";
 
@@ -31,6 +32,11 @@ impl RustType {
     #[cfg(test)]
     pub(in crate::types) fn vector() -> Self {
         Self::spelled(Self::VECTOR_TEMPLATE)
+    }
+
+    #[cfg(test)]
+    pub(in crate::types) fn pair() -> Self {
+        Self::spelled(Self::PAIR_TEMPLATE)
     }
 
     #[cfg(test)]
@@ -141,7 +147,7 @@ impl RustTypeTable {
     }
 
     pub fn pair_binding(&self) -> Option<BindingId> {
-        self.binding_with_template("({0}, {1})")
+        self.binding_with_template(RustType::PAIR_TEMPLATE)
     }
 
     pub fn box_binding(&self) -> Option<BindingId> {

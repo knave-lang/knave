@@ -1,0 +1,9 @@
+(defn head (r) (second (deref r)))
+
+(type head
+  (fn ((ref (vec int)))
+    (option (ref int))))
+
+(defn main ()
+  (local v (vec 1 2))
+  (prn (head (ref v))))

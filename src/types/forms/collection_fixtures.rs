@@ -1,5 +1,6 @@
 use crate::core::{BindingId, PrimitiveType};
 use crate::types::collection::Collection;
+use crate::types::positional_read::{PairPart, PositionalRead};
 use crate::types::rust_types::{RustType, RustTypeTable};
 use crate::types::ty::Type;
 
@@ -11,11 +12,13 @@ impl CollectionFixtures {
     const MAP: BindingId = BindingId::from_index(1);
     const VECTOR: BindingId = BindingId::from_index(2);
     const SLICE: BindingId = BindingId::from_index(3);
+    const PAIR: BindingId = BindingId::from_index(4);
 
     pub(in crate::types) fn new() -> Self {
         let mut rust_types = RustTypeTable::default();
         rust_types.add(Self::MAP, RustType::hash_map());
         rust_types.add(Self::VECTOR, RustType::vector());
+        rust_types.add(Self::PAIR, RustType::pair());
         Self { rust_types }
     }
 
@@ -25,6 +28,18 @@ impl CollectionFixtures {
 
     pub(in crate::types) fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
         Collection::of_referent(ty, &self.rust_types)
+    }
+
+    pub(in crate::types) fn pair_of(first: Type, second: Type) -> Type {
+        Type::Named(Self::PAIR, vec![first, second])
+    }
+
+    pub(in crate::types) fn pair_part(
+        &self,
+        read: &PositionalRead,
+        pair: &Type,
+    ) -> Option<PairPart> {
+        read.pair_part(pair, &self.rust_types)
     }
 
     pub(in crate::types) fn collection(&self, ty: &Type) -> Collection {
@@ -54,5 +69,11 @@ impl CollectionFixtures {
 
     pub(in crate::types) fn element() -> Type {
         Type::Primitive(PrimitiveType::U8)
+    }
+}
+
+impl Default for CollectionFixtures {
+    fn default() -> Self {
+        Self::new()
     }
 }

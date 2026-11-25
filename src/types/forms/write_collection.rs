@@ -52,7 +52,7 @@ mod tests {
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{
-        CollectionLookups, CollectionShapes, TypeDisplays, TypeUnification, Unknowns,
+        CollectionLookups, PreludeShapes, TypeDisplays, TypeUnification, Unknowns,
     };
     use crate::types::ty::{Type, TypeVar};
     use crate::types::unifier::{LiteralKind, UnifyError};
@@ -103,13 +103,21 @@ mod tests {
         }
     }
 
-    impl CollectionShapes for CollectionFixture {
+    impl PreludeShapes for CollectionFixture {
         fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
             CollectionFixtures::nested_vector_of(depth, element)
         }
 
         fn slice_of(&self, element: Type) -> Type {
             CollectionFixtures::slice_of(element)
+        }
+
+        fn option_of(&self, _value: Type) -> Type {
+            unreachable!("this form builds no option")
+        }
+
+        fn iterator_of(&self, _item: Type) -> Type {
+            unreachable!("this form builds no iterator")
         }
     }
 
@@ -120,6 +128,10 @@ mod tests {
 
         fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
             self.collections.collection_of_referent(ty)
+        }
+
+        fn collection_item(&self, _ty: &Type) -> Option<(Type, Type)> {
+            None
         }
     }
 

@@ -6,11 +6,13 @@ mod short_pattern;
 mod variant_target;
 
 use super::forms::{
-    ArgumentTyping, Association, Body, Borrowing, Conditional, Dereference, ExpressionForm,
-    IfOperands, InlineRust, LiteralValue, MapWrite, Recurrence, Sequence, StringPush,
-    TypeTextRequest, VariableReference, VariantConstruction, VectorPush, VectorWrite,
-    WholePlaceWrite, WriteCollection,
+    ArgumentTyping, Association, Body, Borrowing, CollectionIteration, Conditional, Dereference,
+    ExpressionForm, IfOperands, InlineRust, LiteralValue, MapIteration, MapLookup, MapUpdate,
+    MapWrite, PairPartRead, Recurrence, Sequence, SliceGet, StringPush, TypeTextRequest,
+    VariableReference, VariantConstruction, VectorPush, VectorWrite, WholePlaceWrite,
+    WriteCollection,
 };
+use super::function_shape::FunctionShape;
 use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
 use super::rust_leaf::RustLeaf;
@@ -54,11 +56,6 @@ use crate::source::Span;
 use shared_variables::SharedVariables;
 use short_pattern::ShortPattern;
 use variant_target::VariantTarget;
-
-enum MapIterator {
-    Keys,
-    Vals,
-}
 
 struct ExpectedFunction<'a> {
     parameters: &'a [Type],
@@ -1067,7 +1064,7 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         let callee = self.infer(callee)?;
-        let (parameters, result) = self.function_shape(&callee, arguments.len())?;
+        let FunctionShape { parameters, result } = self.function_shape(&callee, arguments.len())?;
         if parameters.len() != arguments.len() {
             return Err(TypeProblems::wrong_argument_count(
                 parameters.len(),
@@ -1665,9 +1662,12 @@ impl TypeChecker {
         &mut self,
         callee: &TypedExpr,
         argument_count: usize,
-    ) -> Result<(Vec<Type>, Type), Diagnostic> {
+    ) -> Result<FunctionShape, Diagnostic> {
         match self.unifier.shallow(&callee.ty) {
-            Type::Function(_, parameters, result) => Ok((parameters, *result)),
+            Type::Function(_, parameters, result) => Ok(FunctionShape {
+                parameters,
+                result: *result,
+            }),
             Type::Var(var) if self.unifier.literal_kind(var).is_none() => {
                 let parameters: Vec<Type> =
                     (0..argument_count).map(|_| self.unifier.fresh()).collect();
@@ -1679,7 +1679,7 @@ impl TypeChecker {
                 );
                 self.unification()
                     .expect(Expectation::plain(&shape), &callee.ty, callee.span)?;
-                Ok((parameters, result))
+                Ok(FunctionShape { parameters, result })
             }
             other => Err(TypeProblems::not_a_function(
                 &self.unification().describe(&other),
@@ -1871,10 +1871,14 @@ impl TypeChecker {
     ) -> Result<TypedExpr, Diagnostic> {
         let value = self.infer(value)?;
         match operation {
-            MapOperation::Iter => self.infer_iter(value, arguments, span),
+            MapOperation::Iter => CollectionIteration::new(arguments, span).type_with(self, value),
             MapOperation::Get => self.infer_get(value, arguments, span),
-            MapOperation::First => self.infer_part(PositionalRead::first(span), value, arguments),
-            MapOperation::Second => self.infer_part(PositionalRead::second(span), value, arguments),
+            MapOperation::First => {
+                PairPartRead::new(PositionalRead::first(span), arguments).type_with(self, value)
+            }
+            MapOperation::Second => {
+                PairPartRead::new(PositionalRead::second(span), arguments).type_with(self, value)
+            }
             _ => self.infer_map_only(operation, value, arguments, span),
         }
     }
@@ -1889,47 +1893,14 @@ impl TypeChecker {
         let collection = self.map_collection(&value)?;
         self.check_map_key(&collection, value.span);
         match operation {
-            MapOperation::Update => self.infer_map_update(value, collection, arguments, span),
+            MapOperation::Update => {
+                MapUpdate::new(arguments, span).type_with(self, value, collection)
+            }
             MapOperation::Keys => {
-                self.infer_map_iterator(value, collection, MapIterator::Keys, arguments, span)
+                MapIteration::keys(arguments, span).type_with(self, value, collection)
             }
-            _ => self.infer_map_iterator(value, collection, MapIterator::Vals, arguments, span),
+            _ => MapIteration::values(arguments, span).type_with(self, value, collection),
         }
-    }
-
-    fn infer_iter(
-        &mut self,
-        value: TypedExpr,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if !arguments.is_empty() {
-            return Err(TypeProblems::wrong_argument_count(0, arguments.len(), span));
-        }
-        let Some((item, collection_type)) = self.collection_item(&value.ty) else {
-            let resolved = self.unifier.resolve(&value.ty);
-            if resolved.is_unknown() && !self.is_literal(&resolved) {
-                return self.infer_iter_slice(value, span);
-            }
-            return Err(TypeProblems::iter_needs_collection(
-                &self.unification().describe(&resolved),
-                value.span,
-            ));
-        };
-        if let Some(collection) =
-            Collection::of(&collection_type, &self.declarations.types().rust_types)
-        {
-            if collection.kind() == CollectionKind::Vector {
-                return self.infer_iter_slice(value, span);
-            }
-            if collection.is_map() {
-                self.check_map_key(&collection, value.span);
-            }
-        }
-        let result = self.prelude_types().iterator_type(item);
-        let parameters = vec![Type::shared(collection_type)];
-        let template = SyntheticTemplate::ITERATE.text();
-        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
     fn infer_get(
@@ -1942,51 +1913,9 @@ impl TypeChecker {
         match Collection::of_referent(&resolved, &self.declarations.types().rust_types)
             .filter(Collection::is_map)
         {
-            Some(collection) => {
-                self.check_map_key(&collection, value.span);
-                self.infer_map_lookup(value, collection, arguments, span)
-            }
-            None => self.infer_slice_get(value, arguments, span),
+            Some(map) => MapLookup::new(arguments, span).type_with(self, value, map),
+            None => SliceGet::new(arguments, span).type_with(self, value),
         }
-    }
-
-    fn infer_slice_get(
-        &mut self,
-        value: TypedExpr,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if arguments.len() != 1 {
-            return Err(TypeProblems::wrong_argument_count(1, arguments.len(), span));
-        }
-        self.note_unknown_collection(&value, CollectionAssumption::GetCollection);
-        let element = self.unifier.fresh();
-        let parameters = vec![
-            Type::shared(self.prelude_types().slice_of(element.clone())),
-            Collection::INDEX,
-        ];
-        let result = self.prelude_types().option_type(element);
-        let template = SyntheticTemplate::SLICE_LOOK_UP.text();
-        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
-    }
-
-    fn infer_part(
-        &mut self,
-        read: PositionalRead,
-        value: TypedExpr,
-        arguments: &[Expr],
-    ) -> Result<TypedExpr, Diagnostic> {
-        let (reader, span) = (read.reader(arguments)?, read.span());
-        let types = &self.declarations.types().rust_types;
-        if let Some(found) = read.pair_part(&self.unifier.resolve(&value.ty), types) {
-            return Ok(found.read(value, |part| self.passing_facts().holds_copy_value(part)));
-        }
-        self.note_unknown_collection(&value, read.slice_assumption());
-        let callee = self.infer(reader)?;
-        let (parameters, ty) = self.function_shape(&callee, 1)?;
-        let borrow = self.pass_call_argument(Some(&callee), 0, &parameters[0], &value)?;
-        let kind = TypedExprKind::Call(Box::new(callee), vec![TypedArgument { value, borrow }]);
-        Ok(TypedExpr { kind, ty, span })
     }
 
     fn infer_push(&mut self, push: &Push, span: Span) -> Result<TypedExpr, Diagnostic> {
@@ -2004,13 +1933,6 @@ impl TypeChecker {
         if matches!(referent, Type::Var(_)) {
             self.assumed_collections.assume(target, assumption);
         }
-    }
-
-    fn infer_iter_slice(&mut self, value: TypedExpr, span: Span) -> Result<TypedExpr, Diagnostic> {
-        let (template, element) = (SyntheticTemplate::ITERATE.text(), self.unifier.fresh());
-        let parameter = Type::shared(self.prelude_types().slice_of(element.clone()));
-        let result = self.prelude_types().iterator_type(Type::shared(element));
-        self.synthetic_call_with_value(template, vec![parameter], result, value, &[], span)
     }
 
     fn map_collection(&self, value: &TypedExpr) -> Result<Collection, Diagnostic> {
@@ -2058,42 +1980,6 @@ impl TypeChecker {
         }
     }
 
-    fn infer_map_lookup(
-        &mut self,
-        value: TypedExpr,
-        collection: Collection,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if arguments.len() != 1 {
-            return Err(TypeProblems::wrong_argument_count(1, arguments.len(), span));
-        }
-        let query_type = self.unifier.fresh();
-        let parameters = vec![
-            Type::shared(collection.ty().clone()),
-            Type::shared(query_type),
-        ];
-        let result = self.prelude_types().option_type(collection.value().clone());
-        let call = self.synthetic_call_with_value(
-            SyntheticTemplate::LOOK_UP.text(),
-            parameters,
-            result,
-            value,
-            arguments,
-            span,
-        )?;
-        let query = match &call.kind {
-            TypedExprKind::Call(_, arguments) => {
-                arguments.get(1).map(|argument| argument.value.ty.clone())
-            }
-            _ => None,
-        };
-        if let Some(query) = query {
-            self.check_borrow(&collection, &query, arguments[0].span());
-        }
-        Ok(call)
-    }
-
     fn check_borrow(&mut self, collection: &Collection, query: &Type, span: Span) {
         let key = self.unifier.resolve(collection.key());
         let query = self.unifier.resolve(query).without_reference();
@@ -2117,53 +2003,6 @@ impl TypeChecker {
         {
             self.report_missing_trait(&bound, &key, span);
         }
-    }
-
-    fn infer_map_iterator(
-        &mut self,
-        value: TypedExpr,
-        collection: Collection,
-        iterator: MapIterator,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if !arguments.is_empty() {
-            return Err(TypeProblems::wrong_argument_count(0, arguments.len(), span));
-        }
-        let (item, template) = match iterator {
-            MapIterator::Keys => (collection.key().clone(), SyntheticTemplate::KEYS.text()),
-            MapIterator::Vals => (collection.value().clone(), SyntheticTemplate::VALUES.text()),
-        };
-        let result = self.prelude_types().iterator_type(Type::shared(item));
-        let parameters = vec![Type::shared(collection.ty().clone())];
-        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
-    }
-
-    fn infer_map_update(
-        &mut self,
-        value: TypedExpr,
-        collection: Collection,
-        arguments: &[Expr],
-        span: Span,
-    ) -> Result<TypedExpr, Diagnostic> {
-        if arguments.len() != 3 {
-            return Err(TypeProblems::wrong_argument_count(3, arguments.len(), span));
-        }
-        let value_type = collection.value().clone();
-        let function_type = Type::Function(
-            crate::types::ClosureKind::Fn,
-            vec![value_type.clone()],
-            Box::new(value_type.clone()),
-        );
-        let parameters = vec![
-            collection.ty().clone(),
-            collection.key().clone(),
-            function_type,
-            value_type,
-        ];
-        let result = collection.ty().clone();
-        let template = SyntheticTemplate::MAP_UPDATE.text();
-        self.synthetic_call_with_value(template, parameters, result, value, arguments, span)
     }
 
     fn infer_set_at(&mut self, path: &KeyedPath, span: Span) -> Result<TypedExpr, Diagnostic> {

@@ -1,0 +1,59 @@
+(use warehouse/model category entry)
+
+(export print-tally)
+
+(defn count! (passes)
+  (set! passes (+ passes 1)))
+
+(type seed-kinds
+  (fn ((ref (vec entry))
+       int
+       (sorted-map string int))
+    (sorted-map string int)))
+
+(defn seed-kinds (entries index kinds)
+  (match (get entries index)
+    ((some current)
+     (seed-kinds entries
+                 (+ index 1)
+                 (assoc kinds
+                        (category (as-str (:sku current)))
+                        0)))
+    (none kinds)))
+
+(type print-tally
+  (fn ((ref (vec entry))) unit))
+
+(defn print-tally (entries)
+  (local moved 0)
+  (local largest 0)
+  (local passes 0)
+  (local bins (vec 0 0 0 0))
+  (local halves (vec (vec 0 0) (vec 0 0)))
+  (local kinds
+    (seed-kinds entries 0 (sorted-map (str "misc") 0)))
+  (for-each (iter entries)
+    (fn (current)
+      (local delta (:delta current))
+      (local bin (rem (:sequence current) 4))
+      (local half (rem (:sequence current) 2))
+      (local kind
+        (category (as-str (:sku current))))
+      (count! passes)
+      (set! moved (+ moved delta))
+      (when (> delta largest) (set! largest delta))
+      (set! (at bins bin) (+ (at bins bin) 1))
+      (set! (at (at halves half) 0)
+            (+ (at (at halves half) 0) delta))
+      (set! (at (at halves half) 1)
+            (+ (at (at halves half) 1) 1))
+      (local earlier
+        (match (get kinds (as-str kind))
+          ((some seen) seen)
+          (none 0)))
+      (set! (at kinds kind) (+ earlier delta))))
+  (println (str "tally: " passes " entries, moved " moved
+                ", largest " largest))
+  (prn bins)
+  (prn halves)
+  (prn kinds))

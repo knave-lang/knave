@@ -42,6 +42,10 @@ top value:
   GEAR-04 medium gear x93 @ $39.72 = $3693.96
   NUT-03 medium nut x97 @ $32.70 = $3171.90
 busiest: VALVE-02 with 3 moves
+tally: 32 entries, moved 79, largest 48
+(vec 8 8 8 8)
+(vec (vec -55 16) (vec 134 16))
+(sorted-map "BOLT" 54 "GEAR" -52 "HOSE" 60 "NUT" 34 "PIPE" -82 "VALVE" 65 "misc" 0)
 == full day
 entries: 77, rejected: 15
   rejected: cannot ship 22 of PIPE-02, only 8 left
@@ -85,6 +89,10 @@ top value:
   VALVE-02 small valve x79 @ $39.99 = $3159.21
   GEAR-03 short gear x112 @ $27.81 = $3114.72
 busiest: PIPE-05 with 6 moves
+tally: 77 entries, moved -55, largest 58
+(vec 19 20 19 19)
+(vec (vec -143 38) (vec 88 39))
+(sorted-map "BOLT" 8 "GEAR" -106 "HOSE" 52 "NUT" 0 "PIPE" 37 "VALVE" -46 "misc" 0)
 == broken events
 failed: bad number: invalid digit found in string
 == broken stock

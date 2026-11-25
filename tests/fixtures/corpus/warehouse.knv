@@ -6,6 +6,8 @@
                        print-low-stock print-summary
                        print-top-value)
 
+(use warehouse/tally print-tally)
+
 (def stock-text
   (str "BOLT-01,short bolt,32,3043,25\n"
        "BOLT-02,short bolt,3,3447,40\n"
@@ -143,4 +145,5 @@
   (print-categories (:stock finished))
   (println "top value:")
   (print-top-value (:stock finished) 3)
-  (print-activity (:entries finished)))
+  (print-activity (:entries finished))
+  (print-tally (ref (:entries finished))))

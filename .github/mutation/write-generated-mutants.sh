@@ -31,7 +31,8 @@ warn_when_over_budget() {
   if ((total <= shard_count * SHARD_SECONDS)); then
     return
   fi
-  local minutes=$((total / shard_count / 60))
+  local seconds_of_a_minute_on_every_shard=$((shard_count * 60))
+  local minutes=$(((total + seconds_of_a_minute_on_every_shard - 1) / seconds_of_a_minute_on_every_shard))
   if [[ -n ${BASE_INPUT:-} ]]; then
     echo "::error::This slice needs about $minutes minutes per shard, over the budget of $((SHARD_SECONDS / 60)). Split it in two at a commit near its middle, and dispatch each half as its own slice."
     exit 1

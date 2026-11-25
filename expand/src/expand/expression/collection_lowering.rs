@@ -9,7 +9,7 @@ pub(super) struct CollectionLowering<'e, 'x> {
 }
 
 impl<'e, 'x> CollectionLowering<'e, 'x> {
-    const HEAD_VALUE_AND_ITEM: usize = 3;
+    const MINIMUM_KEYED_FORM_LENGTH: usize = 3;
 
     pub(super) fn new(expander: &'e mut Expander<'x>) -> Self {
         Self { expander }
@@ -29,16 +29,10 @@ impl<'e, 'x> CollectionLowering<'e, 'x> {
     }
 
     fn keyed(&mut self, shape: &Shape) -> Result<KeyedPath, Diagnostic> {
-        let items = shape.at_least(Self::HEAD_VALUE_AND_ITEM)?;
-        let last = items.len() - 1;
+        let items = shape.at_least(Self::MINIMUM_KEYED_FORM_LENGTH)?;
         let value = self.expander.lower_expr(&items[1])?;
-        let keys = self.expressions(&items[2..last])?;
-        let item = self.expander.lower_expr(&items[last])?;
-        Ok(KeyedPath {
-            value: Box::new(value),
-            keys,
-            item: Box::new(item),
-        })
+        let keys_and_item = self.expressions(&items[2..])?;
+        Ok(KeyedPath::from_arguments(value, keys_and_item))
     }
 
     fn map_at(&mut self, shape: &Shape) -> Result<ExprKind, Diagnostic> {

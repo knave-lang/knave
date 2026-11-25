@@ -150,10 +150,7 @@ impl NameComparison for RuleHost<'_> {
 
 impl SourceQueries for RuleHost<'_> {
     fn form_location(&self, form: &Form) -> String {
-        let span = form.span();
-        let file = self.program.sources.file(span.source());
-        let position = self.program.sources.start_position(span);
-        format!("{}:{position}", file.name())
+        self.program.sources.location(form.span())
     }
 
     fn project_folders(&self, _form: &Form) -> Vec<ProjectFolder> {

@@ -31,7 +31,7 @@ env:
 
 jobs:
   plan:
-    if: github.ref == 'refs/heads/main' || (inputs.base || '') != ''
+    if: github.ref == 'refs/heads/main' || (inputs.base || '') != '' || (inputs.head || '') != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -39,6 +39,7 @@ jobs:
       issues: read
     outputs:
       base: ${{ steps.plan.outputs.base }}
+      skipped: ${{ steps.plan.outputs.skipped }}
       head: ${{ steps.plan.outputs.head }}
       changed-sources: ${{ steps.plan.outputs.changed-sources }}
       shards: ${{ steps.mutants.outputs.shards }}
@@ -211,6 +212,7 @@ jobs:
           BASE: ${{ needs.plan.outputs.base }}
           HEAD_COMMIT: ${{ needs.plan.outputs.head }}
           SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
+          CHANGED_SOURCES: ${{ needs.plan.outputs.changed-sources }}
           MUTANTS: mutants
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: bash .github/mutation/report-backfill.sh
@@ -220,6 +222,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ needs.plan.outputs.base }}
+          SKIPPED: ${{ needs.plan.outputs.skipped }}
           HEAD_COMMIT: ${{ needs.plan.outputs.head }}
           SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
           MUTANTS: mutants

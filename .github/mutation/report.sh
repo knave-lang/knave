@@ -6,19 +6,29 @@ source .github/mutation/shard-results.sh
 
 readonly SURVIVORS_HEADING='## Missed or timed out'
 readonly UNVIABLE_HEADING='## Functions whose only mutants were unviable'
+readonly SKIPPED_HEADING='## Nightly ranges left untested'
+readonly INVALID_HEADING='## Invalid in the last run, because a test set failed without the mutant'
 
 main() {
   if ! every_shard_completed; then
     fail "A mutation shard did not finish, so the issue keeps its last tested commit."
   fi
-  local issue previous found survivors unviable
+  local issue previous found survivors unviable skipped
   issue=$(nightly_issue)
   previous=$(issue_body_text <<< "$issue")
   found=$(surviving_mutants)
   survivors=$(merged_unchecked "$SURVIVORS_HEADING" "$previous" "$found")
   unviable=$(merged_unchecked "$UNVIABLE_HEADING" "$previous" "$(functions_with_only_unviable_mutants)")
-  publish "$(issue_number <<< "$issue")" "$(issue_body "$survivors" "$unviable")" "$survivors$unviable"
+  skipped=$(merged_unchecked "$SKIPPED_HEADING" "$previous" "$(skipped_range)")
+  publish "$(issue_number <<< "$issue")" "$(issue_body "$survivors" "$unviable" "$(invalid_mutants)" "$skipped")" "$survivors$unviable"
   require_no_new_survivor "$previous" "$found"
+}
+
+skipped_range() {
+  if [[ -n ${SKIPPED:-} ]]; then
+    read -r from to <<< "$SKIPPED"
+    echo "- [ ] \`$from\` to \`$to\`: test it with \`gh workflow run mutation.yml --ref main -f base=$from -f head=$to\`"
+  fi
 }
 
 merged_unchecked() {
@@ -73,6 +83,14 @@ issue_body() {
   echo "$UNVIABLE_HEADING"
   echo
   echo "${2:-None.}"
+  echo
+  echo "$INVALID_HEADING"
+  echo
+  echo "${3:-None.}"
+  echo
+  echo "$SKIPPED_HEADING"
+  echo
+  echo "${4:-None.}"
   echo
   echo "<!-- tested: $HEAD_COMMIT -->"
 }

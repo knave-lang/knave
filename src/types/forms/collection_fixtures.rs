@@ -20,11 +20,15 @@ impl CollectionFixtures {
     }
 
     pub(in crate::types) fn collection_of(&self, ty: &Type) -> Option<Collection> {
+        Collection::of(ty, &self.rust_types)
+    }
+
+    pub(in crate::types) fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
         Collection::of_referent(ty, &self.rust_types)
     }
 
     pub(in crate::types) fn collection(&self, ty: &Type) -> Collection {
-        self.collection_of(ty)
+        self.collection_of_referent(ty)
             .unwrap_or_else(|| panic!("the fixture types name collections"))
     }
 

@@ -2,7 +2,6 @@ use super::WriteCollectionTyping;
 use crate::diagnostic::Diagnostic;
 use crate::types::collection::Collection;
 use crate::types::problems::{MismatchContext, TypeProblems};
-use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
 
 pub(in crate::types) struct WriteCollection<'e> {
@@ -20,9 +19,10 @@ impl<'e> WriteCollection<'e> {
         context: &mut C,
     ) -> Result<Collection, Diagnostic> {
         let resolved = context.resolve(&self.base.ty);
-        let collection = match resolved {
-            Type::Var(var) if context.literal_kind(var).is_none() => self.unknown_vector(context),
-            _ => context.collection_of_referent(&resolved),
+        let collection = if context.is_open(&resolved) {
+            self.unknown_vector(context)
+        } else {
+            context.collection_of_referent(&resolved)
         };
         collection.ok_or_else(|| {
             TypeProblems::mismatch(
@@ -52,8 +52,7 @@ mod tests {
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{
-        CollectionShapes, LiteralKinds, ReferentCollections, TypeDisplays, TypeUnification,
-        Unknowns,
+        CollectionLookups, CollectionShapes, TypeDisplays, TypeUnification, Unknowns,
     };
     use crate::types::ty::{Type, TypeVar};
     use crate::types::unifier::{LiteralKind, UnifyError};
@@ -91,11 +90,9 @@ mod tests {
         fn resolve(&self, value: &Type) -> Type {
             value.clone()
         }
-    }
 
-    impl LiteralKinds for CollectionFixture {
-        fn literal_kind(&self, _var: TypeVar) -> Option<LiteralKind> {
-            self.literal
+        fn is_open(&self, value: &Type) -> bool {
+            matches!(value, Type::Var(_)) && self.literal.is_none()
         }
     }
 
@@ -107,18 +104,22 @@ mod tests {
     }
 
     impl CollectionShapes for CollectionFixture {
+        fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
+            CollectionFixtures::nested_vector_of(depth, element)
+        }
+
+        fn slice_of(&self, element: Type) -> Type {
+            CollectionFixtures::slice_of(element)
+        }
+    }
+
+    impl CollectionLookups for CollectionFixture {
         fn collection_of(&self, ty: &Type) -> Option<Collection> {
             self.collections.collection_of(ty)
         }
 
-        fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
-            CollectionFixtures::nested_vector_of(depth, element)
-        }
-    }
-
-    impl ReferentCollections for CollectionFixture {
         fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
-            self.collections.collection_of(ty)
+            self.collections.collection_of_referent(ty)
         }
     }
 

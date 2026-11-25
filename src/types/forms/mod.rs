@@ -29,12 +29,11 @@ pub(super) use body::Body;
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
     AnnotationLowering, ArgumentTyping, AssociationTyping, Bindings, BodyTyping, ChildTyping,
-    CollectionShapes, ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralKinds,
-    LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapBorrows, MapKeys, MapWriteTyping,
-    Obligations, OperandTyping, PlaceReads, RecurTargets, ReferentCollections, SchemeInstantiation,
-    SliceShapes, StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting,
-    TypeTextRecords, TypeUnification, Unknowns, VariableTyping, VariantArms, VariantSites,
-    VectorWriteTyping, WriteCollectionTyping,
+    CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves, GlobalReferences,
+    LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, MapWriteTyping, Obligations,
+    OperandTyping, PlaceReads, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls,
+    TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns,
+    VariableTyping, VariantArms, VariantSites, VectorWriteTyping, WriteCollectionTyping,
 };
 pub(super) use conditional::Conditional;
 pub(super) use dereference::Dereference;

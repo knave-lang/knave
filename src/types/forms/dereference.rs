@@ -117,6 +117,10 @@ mod tests {
         fn resolve(&self, value: &Type) -> Type {
             value.clone()
         }
+
+        fn is_open(&self, _value: &Type) -> bool {
+            false
+        }
     }
 
     impl Obligations for DereferenceFixture {

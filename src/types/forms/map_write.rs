@@ -45,7 +45,7 @@ impl<'e> MapWrite<'e> {
             span: self.span,
         })?;
         let query = context.resolve(&query_type);
-        context.check_borrow(&map, &query, key.span());
+        context.require_key_borrow(&map, &query, key.span());
         Ok(call)
     }
 
@@ -61,7 +61,7 @@ mod tests {
     use crate::types::collection::Collection;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{MapBorrows, MapKeys, SyntheticCalls, Unknowns};
+    use crate::types::forms::{MapKeys, SyntheticCalls, Unknowns};
     use crate::types::synthetic_call::SyntheticCall;
     use crate::types::ty::Type;
     use crate::types::typed::TypedExpr;
@@ -94,6 +94,10 @@ mod tests {
         fn require_map_key(&mut self, _map: &Collection, _span: Span) {
             self.required_keys += 1;
         }
+
+        fn require_key_borrow(&mut self, _map: &Collection, query: &Type, _span: Span) {
+            self.borrows_checked.push(query.clone());
+        }
     }
 
     impl Unknowns for MapFixture {
@@ -104,6 +108,10 @@ mod tests {
         fn resolve(&self, value: &Type) -> Type {
             value.clone()
         }
+
+        fn is_open(&self, _value: &Type) -> bool {
+            false
+        }
     }
 
     impl SyntheticCalls for MapFixture {
@@ -113,12 +121,6 @@ mod tests {
         ) -> Result<TypedExpr, Diagnostic> {
             self.parameters.push(call.parameters);
             Ok(call.value)
-        }
-    }
-
-    impl MapBorrows for MapFixture {
-        fn check_borrow(&mut self, _map: &Collection, query: &Type, _span: Span) {
-            self.borrows_checked.push(query.clone());
         }
     }
 

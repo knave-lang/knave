@@ -1,18 +1,11 @@
-use super::{
-    CollectionShapes, LiteralKinds, ReferentCollections, TypeDisplays, TypeUnification, Unknowns,
-};
+use super::{CollectionLookups, CollectionShapes, TypeDisplays, TypeUnification, Unknowns};
 
 pub(in crate::types) trait WriteCollectionTyping:
-    Unknowns + LiteralKinds + TypeUnification + CollectionShapes + ReferentCollections + TypeDisplays
+    Unknowns + TypeUnification + CollectionLookups + CollectionShapes + TypeDisplays
 {
 }
 
 impl<C> WriteCollectionTyping for C where
-    C: Unknowns
-        + LiteralKinds
-        + TypeUnification
-        + CollectionShapes
-        + ReferentCollections
-        + TypeDisplays
+    C: Unknowns + TypeUnification + CollectionLookups + CollectionShapes + TypeDisplays
 {
 }

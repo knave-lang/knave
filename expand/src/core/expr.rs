@@ -405,6 +405,10 @@ impl KeyedPath {
             .collect()
     }
 
+    pub fn names_the_whole_place(&self) -> bool {
+        self.keys.is_empty()
+    }
+
     pub fn keys_and_item(&self) -> Vec<Expr> {
         self.keys
             .iter()

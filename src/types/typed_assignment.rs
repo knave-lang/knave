@@ -11,9 +11,16 @@ impl TypedAssignment {
         }
     }
 
+    pub fn place(&self) -> &TypedArgument {
+        &self.arguments[Self::PLACE_POSITION]
+    }
+
     pub fn keys(&self) -> &[TypedArgument] {
-        let value_position = self.arguments.len() - 1;
-        &self.arguments[Self::PLACE_POSITION + 1..value_position]
+        &self.arguments[Self::PLACE_POSITION + 1..self.value_position()]
+    }
+
+    fn value_position(&self) -> usize {
+        self.arguments.len() - 1
     }
 }
 
@@ -72,8 +79,9 @@ mod tests {
     }
 
     #[test]
-    fn an_assignment_s_keys_lie_between_its_place_and_its_value() {
+    fn an_assignment_names_its_place_and_keys() {
         let assignment = WriteFixture::assignment(AssignmentPath::Elements);
+        assert_eq!(assignment.place().value.span.range().start, 0);
         assert_eq!(WriteFixture::starts(assignment.keys()), [1]);
     }
 }

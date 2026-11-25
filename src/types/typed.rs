@@ -193,6 +193,7 @@ pub enum Borrow {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AssignmentPath {
+    Whole,
     Elements,
     MapEntry,
 }

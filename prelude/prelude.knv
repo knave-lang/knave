@@ -294,12 +294,16 @@
 (document (set-at! place key ... item)
   "Assigns the item at a path of keys inside a place.
 
-  It emits an assignment. [set!] expands to it.
+  With no keys, it assigns the whole place. It emits an assignment. [set!]
+  expands to it.
 
   (let (items (vec 1 2))
     (set-at! items 0 9)
     items)
-  => (vec 9 2)")
+  => (vec 9 2)
+
+  (let (total 1) (set-at! total 2) total)
+  => 2")
 
 (document (new name (field value) ...)
   "Builds a struct value from its fields.

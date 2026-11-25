@@ -36,6 +36,7 @@ mod variant_arms;
 mod variant_sites;
 mod vector_push_typing;
 mod vector_write_typing;
+mod whole_place_write_typing;
 mod write_collection_typing;
 
 pub(in crate::types) use annotation_lowering::AnnotationLowering;
@@ -76,4 +77,5 @@ pub(in crate::types) use variant_arms::VariantArms;
 pub(in crate::types) use variant_sites::VariantSites;
 pub(in crate::types) use vector_push_typing::VectorPushTyping;
 pub(in crate::types) use vector_write_typing::VectorWriteTyping;
+pub(in crate::types) use whole_place_write_typing::WholePlaceWriteTyping;
 pub(in crate::types) use write_collection_typing::WriteCollectionTyping;

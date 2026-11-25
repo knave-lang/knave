@@ -200,6 +200,9 @@ impl<'e> Store<'e> {
                 Self::payloads(*variant, payloads, order, slots)
             }
             TypedExprKind::Call(callee, arguments) => Self::arguments(callee, arguments, storing),
+            TypedExprKind::Assign(assignment) => {
+                Self::arguments(&assignment.template, &assignment.arguments, storing)
+            }
             _ => Vec::new(),
         }
     }

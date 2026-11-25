@@ -97,6 +97,7 @@ pub enum TypedExprKind {
     Struct(TypedStructExpr),
     Variant(BindingId, Vec<TypedExpr>, FieldOrder),
     Assoc(Box<TypedExpr>, Vec<TypedExpr>, Box<TypedExpr>),
+    Assign(Box<TypedAssignment>),
     TraitObject(Box<TypedExpr>, BindingId),
 }
 
@@ -193,6 +194,19 @@ pub enum Borrow {
     Deref(usize),
     Collapse(usize),
     Pending(usize),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AssignmentPath {
+    Elements,
+    MapEntry,
+}
+
+#[derive(Clone, Debug)]
+pub struct TypedAssignment {
+    pub path: AssignmentPath,
+    pub template: TypedExpr,
+    pub arguments: Vec<TypedArgument>,
 }
 
 #[derive(Clone, Debug)]

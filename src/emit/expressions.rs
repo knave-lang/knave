@@ -39,10 +39,10 @@ use crate::reader::{Number, NumberValue};
 use crate::source::Span;
 use crate::types::{
     Borrow, BorrowedIndex, ClauseChoice, ClosureKind, Collection, CopiedOut, FieldOrder,
-    ParameterRole, RecordedClosures, SchemeBindings, SyntheticTemplate, Type, TypedArgument,
-    TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram,
-    TypedStructExpr, VariantPayload, ViewCoercion, WrittenBorrows,
+    ParameterRole, PassedCall, RecordedClosures, SchemeBindings, SyntheticTemplate, Type,
+    TypedArgument, TypedArm, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
+    TypedProgram, TypedStructExpr, VariantPayload, ViewCoercion, WrittenBorrows,
 };
 
 mod compound_assignment;
@@ -406,7 +406,7 @@ impl<'a> ExpressionEmitter<'a> {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, expr, context),
             TypedExprKind::Fn(lambda) => self.closure(lambda, &expr.ty),
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, expr.span),
+            _ if let Some(call) = PassedCall::of(expr) => self.call(call, expr.span),
             TypedExprKind::Recur(_) => {
                 unreachable!("expansion allows `recur` only in tail position")
             }
@@ -1629,7 +1629,7 @@ impl<'a> ExpressionEmitter<'a> {
         Code::atom("unreachable!()")
     }
 
-    fn call(&mut self, callee: &TypedExpr, arguments: &[TypedArgument], span: Span) -> Code {
+    fn call(&mut self, PassedCall { callee, arguments }: PassedCall, span: Span) -> Code {
         if let TypedExprKind::Fn(lambda) = &callee.kind
             && !Self::contains_try(&lambda.body)
         {

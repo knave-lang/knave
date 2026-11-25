@@ -12,9 +12,9 @@ use crate::types::forms::{
     AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionAssumptions,
     CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves, GlobalReferences,
     LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations, OperandTyping,
-    PlaceReads, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls, TemplateSchemes,
-    TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns, VariantArms,
-    VariantSites,
+    PlaceReads, PlaceWrites, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls,
+    TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns,
+    VariantArms, VariantSites,
 };
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
@@ -22,7 +22,7 @@ use crate::types::synthetic_call::SyntheticCall;
 use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::templates::TemplateName;
 use crate::types::ty::{Scheme, Type};
-use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
+use crate::types::typed::{AssignmentPath, Borrow, TypedArgument, TypedAssignment, TypedExpr};
 use crate::types::unifier::{LiteralKind, UnifyError};
 use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
@@ -306,6 +306,17 @@ impl SyntheticCalls for TypeChecker {
         span: Span,
     ) -> TypedExpr {
         self.finish_synthetic_call(signature, arguments, span)
+    }
+}
+
+impl PlaceWrites for TypeChecker {
+    fn type_place_write(
+        &mut self,
+        call: SyntheticCall<'_>,
+        path: AssignmentPath,
+    ) -> Result<TypedExpr, Diagnostic> {
+        let written = self.type_synthetic_call(call)?;
+        Ok(TypedAssignment::written(written, path))
     }
 }
 

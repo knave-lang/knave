@@ -53,6 +53,9 @@ impl OpenLiteralSearch<'_> {
             }
             TypedExprKind::Fn(lambda) => self.block(&lambda.body, context),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, context),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments, context);
+            }
             TypedExprKind::Control(control) => self.control(control, context),
             TypedExprKind::Struct(structure) => self.structure(structure, context),
             TypedExprKind::Variant(binding, payloads, order) => {

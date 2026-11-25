@@ -1,8 +1,8 @@
-use super::{MapKeys, SyntheticCalls, Unknowns};
+use super::{MapKeys, PlaceWrites, Unknowns};
 
 pub(in crate::types) trait MapWriteTyping:
-    MapKeys + Unknowns + SyntheticCalls
+    MapKeys + Unknowns + PlaceWrites
 {
 }
 
-impl<C> MapWriteTyping for C where C: MapKeys + Unknowns + SyntheticCalls {}
+impl<C> MapWriteTyping for C where C: MapKeys + Unknowns + PlaceWrites {}

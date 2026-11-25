@@ -1,6 +1,6 @@
 use super::result_source::ResultSource;
 use super::result_ties::ResultTies;
-use crate::types::{TypedExpr, TypedExprKind, TypedProgram};
+use crate::types::{TypedArgument, TypedExpr, TypedExprKind, TypedProgram};
 
 pub struct CallResultSources<'p> {
     program: &'p TypedProgram,
@@ -16,9 +16,20 @@ impl<'p> CallResultSources<'p> {
     }
 
     pub fn of<'e>(&self, call: &'e TypedExpr) -> Option<Vec<ResultSource<'e>>> {
-        let TypedExprKind::Call(callee, arguments) = &call.kind else {
-            return None;
-        };
+        match &call.kind {
+            TypedExprKind::Call(callee, arguments) => self.kept_by(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.kept_by(&assignment.template, &assignment.arguments)
+            }
+            _ => None,
+        }
+    }
+
+    fn kept_by<'e>(
+        &self,
+        callee: &TypedExpr,
+        arguments: &'e [TypedArgument],
+    ) -> Option<Vec<ResultSource<'e>>> {
         let ties = self.ties.of(callee)?;
         let sources = arguments
             .iter()

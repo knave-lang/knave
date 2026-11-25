@@ -215,6 +215,9 @@ impl TypedExprKind {
                 .chain(keys)
                 .chain(std::iter::once(item.as_ref()))
                 .collect(),
+            TypedExprKind::Assign(assignment) => std::iter::once(&assignment.template)
+                .chain(assignment.arguments.iter().map(|argument| &argument.value))
+                .collect(),
             _ => Vec::new(),
         }
     }
@@ -234,6 +237,14 @@ impl TypedExprKind {
             TypedExprKind::Assoc(value, keys, item) => std::iter::once(value.as_mut())
                 .chain(keys.iter_mut())
                 .chain(std::iter::once(item.as_mut()))
+                .collect(),
+            TypedExprKind::Assign(assignment) => std::iter::once(&mut assignment.template)
+                .chain(
+                    assignment
+                        .arguments
+                        .iter_mut()
+                        .map(|argument| &mut argument.value),
+                )
                 .collect(),
             _ => Vec::new(),
         }

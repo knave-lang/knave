@@ -42,8 +42,12 @@ impl<'a> AliasedChanges<'a> {
     }
 
     fn visit(&self, expr: &TypedExpr, diagnostics: &mut Diagnostics) {
-        if let TypedExprKind::Call(callee, arguments) = &expr.kind {
-            self.call(callee, arguments, diagnostics);
+        match &expr.kind {
+            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, diagnostics),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments, diagnostics);
+            }
+            _ => {}
         }
         for child in expr.children() {
             self.visit(child, diagnostics);

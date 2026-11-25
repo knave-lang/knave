@@ -26,7 +26,7 @@ impl<'p> PromotedConstants<'p> {
     pub fn is_temporary(&self, borrowed: &TypedExpr) -> bool {
         matches!(
             borrowed.kind,
-            TypedExprKind::Call(..) | TypedExprKind::Control(_)
+            TypedExprKind::Call(..) | TypedExprKind::Assign(_) | TypedExprKind::Control(_)
         ) && !self.is_promoted(borrowed)
     }
 

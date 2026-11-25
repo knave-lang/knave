@@ -196,6 +196,10 @@ impl<'a> InlineCall<'a> {
             TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) => arguments
                 .iter()
                 .any(|argument| Self::borrowed_argument(argument, local)),
+            TypedExprKind::Assign(assignment) => assignment
+                .arguments
+                .iter()
+                .any(|argument| Self::borrowed_argument(argument, local)),
             _ => false,
         };
         direct

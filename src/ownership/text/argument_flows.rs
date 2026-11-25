@@ -85,8 +85,10 @@ impl<'c, 'w, 'p> ArgumentFlows<'c, 'w, 'p> {
     }
 
     fn passes_mutably(&self, index: usize) -> bool {
-        let TypedExprKind::Call(_, arguments) = &self.call.kind else {
-            return false;
+        let arguments = match &self.call.kind {
+            TypedExprKind::Call(_, arguments) => arguments,
+            TypedExprKind::Assign(assignment) => &assignment.arguments,
+            _ => return false,
         };
         arguments
             .get(index)

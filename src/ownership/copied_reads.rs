@@ -101,6 +101,9 @@ impl CopyOut<'_> {
     fn visit(&self, expr: &mut TypedExpr) {
         match &mut expr.kind {
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&mut assignment.template, &mut assignment.arguments);
+            }
             TypedExprKind::Recur(arguments) => self.recur(arguments),
             TypedExprKind::Borrow(ReferenceKind::Mutable, value)
             | TypedExprKind::Deref(value)

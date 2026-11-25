@@ -163,6 +163,9 @@ impl<'l> FunctionScope<'l> {
                 self.enter_loop(body, arguments)
             }
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments);
+            }
             TypedExprKind::Recur(arguments) => self.recur(arguments),
             TypedExprKind::Fn(lambda) => self.closure(lambda, expr),
             TypedExprKind::Control(TypedControl::Block(block)) => self.block(block),

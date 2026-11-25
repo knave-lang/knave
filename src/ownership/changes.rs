@@ -33,11 +33,14 @@ impl InPlaceChanges {
         for binder in expr.binders() {
             Self::written_mut_types(&binder.ty, changed);
         }
-        if let TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) = &expr.kind {
-            for argument in arguments {
-                if matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow) {
-                    Self::place(&argument.value, changed);
-                }
+        let arguments = match &expr.kind {
+            TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) => arguments,
+            TypedExprKind::Assign(assignment) => &assignment.arguments,
+            _ => &Vec::new(),
+        };
+        for argument in arguments {
+            if matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow) {
+                Self::place(&argument.value, changed);
             }
         }
         if let TypedExprKind::Borrow(ReferenceKind::Mutable, value) = &expr.kind {

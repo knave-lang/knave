@@ -61,6 +61,9 @@ impl<'a> UsageCollector<'a> {
         match &expr.kind {
             TypedExprKind::Leaf(leaf) => self.leaf(leaf, context),
             TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.call(&assignment.template, &assignment.arguments);
+            }
             TypedExprKind::Control(control) => self.control(control, context),
             other => self.nested_expr(expr, other, context),
         }

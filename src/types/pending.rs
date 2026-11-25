@@ -22,6 +22,7 @@ impl DecidedBorrows {
     pub fn patch(&self, expr: &mut TypedExpr) {
         let arguments = match &mut expr.kind {
             TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) => Some(arguments),
+            TypedExprKind::Assign(assignment) => Some(&mut assignment.arguments),
             _ => None,
         };
         if let Some(arguments) = arguments {

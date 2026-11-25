@@ -8,12 +8,15 @@ use crate::types::check_round::{CheckRound, RoundGrowth};
 use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
-use crate::types::forms::Unknowns;
+use crate::types::forms::{PlaceWrites, Unknowns};
 use crate::types::graph::DefinitionGraph;
 use crate::types::open_set_at::OpenSetAt;
 use crate::types::pinning::InstantiationReport;
 use crate::types::problems::{MismatchContext, TypeProblems};
+use crate::types::synthetic_call::SyntheticCall;
+use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::synthetic_template::SyntheticTemplate;
+use crate::types::typed::AssignmentPath;
 use crate::types::{GenericId, Type, TypedExpr, TypedProgram};
 
 pub(in crate::types) struct OpenCollections {
@@ -156,14 +159,18 @@ impl TypeChecker {
         let mut arguments = keys.to_vec();
         arguments.push(item.clone());
         self.deferred.open_set_ats.push(open);
-        self.synthetic_call_with_value(
-            &SyntheticTemplate::set_at(1),
-            parameters,
-            Type::unit(),
+        let template = SyntheticTemplate::set_at(1);
+        let call = SyntheticCall {
+            signature: SyntheticSignature {
+                template: &template,
+                parameters,
+                result: Type::unit(),
+            },
             value,
-            &arguments,
+            arguments: &arguments,
             span,
-        )
+        };
+        self.type_place_write(call, AssignmentPath::Elements)
     }
 
     pub(super) fn is_open_collection(&self, value: &TypedExpr, depth: usize) -> bool {

@@ -7,8 +7,8 @@ use super::shrunk_parameters::ShrunkParameters;
 use super::trait_slices::{TraitSlot, TraitSlotCollector};
 use crate::core::{BindingId, PrimitiveType};
 use crate::types::{
-    GenericId, Lifetime, RustType, Type, TypedArgument, TypedBlock, TypedExpr, TypedExprKind,
-    TypedLeaf, TypedProgram,
+    GenericId, Lifetime, PassedCall, RustType, Type, TypedArgument, TypedBlock, TypedExpr,
+    TypedExprKind, TypedLeaf, TypedProgram,
 };
 
 #[derive(Clone)]
@@ -460,7 +460,7 @@ impl<'a, 'b> BodyUses<'a, 'b> {
             {
                 self.refusals.refuse(*binding);
             }
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
+            _ if let Some(call) = PassedCall::of(expr) => self.call(call.callee, call.arguments),
             TypedExprKind::Recur(arguments) => self.recur(arguments),
             _ => self.children(expr),
         }

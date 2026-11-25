@@ -40,6 +40,9 @@ impl<'r> OwnerUses<'r> {
                 Self::uses_by_value(callee, owner)
                     || (arguments.iter()).any(|argument| Self::passes_by_value(argument, owner))
             }
+            TypedExprKind::Assign(assignment) => {
+                (assignment.arguments.iter()).any(|argument| Self::passes_by_value(argument, owner))
+            }
             _ => (expr.children().into_iter()).any(|child| Self::uses_by_value(child, owner)),
         }
     }

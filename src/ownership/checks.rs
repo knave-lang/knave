@@ -46,6 +46,9 @@ impl<'a> OwnershipNeeds<'a> {
     fn value(&mut self, expr: &TypedExpr, current: Option<&[Type]>) {
         match &expr.kind {
             TypedExprKind::Call(callee, arguments) => self.check_arguments(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.check_arguments(&assignment.template, &assignment.arguments);
+            }
             TypedExprKind::Recur(arguments) => self.check_recur(arguments, current),
             _ => {}
         }

@@ -21,6 +21,9 @@ impl<'r> FieldChanges<'r> {
         match &expr.kind {
             TypedExprKind::Borrow(ReferenceKind::Mutable, place) => self.reads_owner(place),
             TypedExprKind::Call(callee, arguments) => self.passes_changed_field(callee, arguments),
+            TypedExprKind::Assign(assignment) => {
+                self.passes_changed_field(&assignment.template, &assignment.arguments)
+            }
             _ => false,
         }
     }

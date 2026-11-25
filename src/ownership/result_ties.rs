@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::tied_parts::TiedParts;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, ParameterRole, Regions, ResultRegions, TemplateTies, Type, TypeLifetimes,
+    DefinitionTable, ParameterRole, Regions, ResultRegions, SharedLifetime, TemplateTies, Type, TypeLifetimes,
     TypedDefinition, TypedExpr, TypedLambda, TypedProgram,
 };
 
@@ -103,9 +103,9 @@ impl<'p> ResultTies<'p> {
 
     fn sharing_while_borrowing(&self, lambda: &TypedLambda, result: &Type) -> FxHashSet<BindingId> {
         if self.program.type_holds_borrow(result) {
-            let regions = ResultRegions::of(self.regions(), lambda);
-            let store_only = regions.store_only_targets();
-            let mut sharing = regions.sharing();
+            let shared_lifetime = SharedLifetime::of(self.regions(), lambda);
+            let store_only = shared_lifetime.store_only_targets();
+            let mut sharing = shared_lifetime.sharing();
             sharing.retain(|binding| !store_only.contains(binding));
             sharing
         } else {

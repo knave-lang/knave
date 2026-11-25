@@ -5,7 +5,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::store_pairs::StorePairs;
 use crate::core::BindingId;
 use crate::types::{
-    DefinitionTable, Lifetime, ParameterRole, ResultRegions, Type, TypeLifetimes, TypedDefinition,
+    DefinitionTable, Lifetime, SharedLifetime, Type, TypeLifetimes, TypedDefinition,
     TypedExpr, TypedLambda, TypedProgram,
 };
 
@@ -51,17 +51,17 @@ impl<'p> StoreTies<'p> {
         };
         let lifetimes = SignatureLifetimes {
             declared,
-            shared: self.shared_positions(lambda),
+            shared: self.store_forced_positions(lambda),
         };
         lifetimes.store_pairs()
     }
 
-    fn shared_positions(&self, lambda: &TypedLambda) -> FxHashSet<usize> {
-        let regions = &self.program.ownership.regions;
-        if regions.of(ParameterRole::StoredTarget, lambda).is_empty() {
+    fn store_forced_positions(&self, lambda: &TypedLambda) -> FxHashSet<usize> {
+        let shared_lifetime = SharedLifetime::of(&self.program.ownership.regions, lambda);
+        if !shared_lifetime.forced_by_stores() {
             return FxHashSet::default();
         }
-        let sharing = ResultRegions::of(regions, lambda).sharing();
+        let sharing = shared_lifetime.sharing();
         lambda
             .params
             .iter()

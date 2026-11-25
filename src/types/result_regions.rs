@@ -22,23 +22,6 @@ impl<'r, L: Parameterized> ResultRegions<'r, L> {
         ])
     }
 
-    pub fn sharing(&self) -> FxHashSet<BindingId> {
-        self.union_of(&[
-            ParameterRole::FlowsToResult,
-            ParameterRole::StoredValue,
-            ParameterRole::StoredTarget,
-            ParameterRole::Reassigned,
-        ])
-    }
-
-    pub fn store_only_targets(&self) -> FxHashSet<BindingId> {
-        let flows = self.role(ParameterRole::FlowsToResult);
-        self.role(ParameterRole::StoredTarget)
-            .difference(&flows)
-            .copied()
-            .collect()
-    }
-
     pub fn lending_positions(&self) -> Vec<usize> {
         let left_out = self.role(ParameterRole::LeftOutOfResult);
         self.lambda

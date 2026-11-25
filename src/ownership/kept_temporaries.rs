@@ -2,6 +2,7 @@ use super::built_parts::BuiltParts;
 use super::call_result_sources::CallResultSources;
 use super::kept_temporary_problems::{KeptBorrow, KeptTemporary, KeptTemporaryProblems, KeptUntil};
 use super::lent_temporary::{LentTemporary, LentValue};
+use super::returned_local_borrows::ReturnedLocalBorrows;
 use crate::diagnostic::Diagnostic;
 use crate::modules::ModuleSources;
 use crate::types::{
@@ -15,6 +16,7 @@ pub struct KeptTemporaries<'p> {
     definitions: &'p DefinitionTable<'p>,
     regions: &'p Regions,
     temporaries: LentTemporary<'p>,
+    returned_local_borrows: ReturnedLocalBorrows,
     problems: Vec<Diagnostic>,
 }
 
@@ -24,7 +26,11 @@ struct OutlivingCall<'p> {
 }
 
 impl<'p> KeptTemporaries<'p> {
-    pub fn new(program: &'p TypedProgram, definitions: &'p DefinitionTable<'p>) -> Self {
+    pub fn new(
+        program: &'p TypedProgram,
+        definitions: &'p DefinitionTable<'p>,
+        returned_local_borrows: ReturnedLocalBorrows,
+    ) -> Self {
         Self {
             program,
             definitions,
@@ -34,6 +40,7 @@ impl<'p> KeptTemporaries<'p> {
                 CallResultSources::new(program),
                 BuiltParts::new(program, definitions),
             ),
+            returned_local_borrows,
             problems: Vec::new(),
         }
     }
@@ -118,13 +125,17 @@ impl<'p> KeptTemporaries<'p> {
         }
         let kept = ResultRegions::of(self.regions, lambda).kept();
         for (parameter, argument) in lambda.params.iter().zip(call.called.arguments) {
-            if !kept.contains(&parameter.binding) {
+            if !kept.contains(&parameter.binding) || self.returns_a_local_borrow(&argument.value) {
                 continue;
             }
             if let Some(lent) = self.temporaries.lent_in(parameter, &argument.value) {
                 self.report(&call, parameter, lent);
             }
         }
+    }
+
+    fn returns_a_local_borrow(&self, argument: &TypedExpr) -> bool {
+        self.returned_local_borrows.any_within(argument.span)
     }
 
     fn report(&mut self, call: &OutlivingCall, parameter: &TypedBinder, lent: LentValue) {

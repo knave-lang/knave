@@ -1,5 +1,4 @@
 mod annotation_lowering;
-mod argument_passing;
 mod argument_typing;
 mod association_typing;
 mod bindings;
@@ -39,7 +38,6 @@ mod vector_write_typing;
 mod write_collection_typing;
 
 pub(in crate::types) use annotation_lowering::AnnotationLowering;
-pub(in crate::types) use argument_passing::ArgumentPassing;
 pub(in crate::types) use argument_typing::ArgumentTyping;
 pub(in crate::types) use association_typing::AssociationTyping;
 pub(in crate::types) use bindings::Bindings;

@@ -32,6 +32,7 @@ use super::parameter_call_request::ParameterCallRequest;
 use super::pending::DecidedBorrows;
 use super::positional_read::PositionalRead;
 use super::problems::{MismatchContext, TypeProblems};
+use super::synthetic_signature::SyntheticSignature;
 use super::synthetic_template::SyntheticTemplate;
 use super::ty::{Bound, Type};
 use super::typed::{
@@ -2201,23 +2202,27 @@ impl TypeChecker {
             let borrow = self.pass_call_argument(None, index, parameter, &value)?;
             typed_arguments.push(TypedArgument { value, borrow });
         }
-        Ok(self.finish_synthetic_call(template, &parameters, &result, typed_arguments, span))
+        let signature = SyntheticSignature {
+            template,
+            parameters,
+            result,
+        };
+        Ok(self.finish_synthetic_call(signature, typed_arguments, span))
     }
 
     fn finish_synthetic_call(
         &mut self,
-        template: &str,
-        parameters: &[Type],
-        result: &Type,
+        signature: SyntheticSignature<'_>,
         typed_arguments: Vec<TypedArgument>,
         span: Span,
     ) -> TypedExpr {
-        let parameters: Vec<Type> = parameters
+        let parameters: Vec<Type> = signature
+            .parameters
             .iter()
             .map(|parameter| self.unifier.resolve(parameter))
             .collect();
-        let result = self.unifier.resolve(result);
-        let callee = self.rust_template(template, parameters, result.clone(), span);
+        let result = self.unifier.resolve(&signature.result);
+        let callee = self.rust_template(signature.template, parameters, result.clone(), span);
         TypedExpr {
             kind: TypedExprKind::Call(Box::new(callee), typed_arguments),
             ty: result,

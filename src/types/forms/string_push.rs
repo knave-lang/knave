@@ -1,9 +1,9 @@
-use super::StringPushTyping;
+use super::{StringPushTyping, Unknowns};
 use crate::core::PrimitiveType;
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
-use crate::types::finished_call::FinishedCall;
 use crate::types::problems::TypeProblems;
+use crate::types::synthetic_signature::SyntheticSignature;
 use crate::types::synthetic_template::SyntheticTemplate;
 use crate::types::ty::Type;
 use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
@@ -13,18 +13,15 @@ pub(in crate::types) struct StringPush {
 }
 
 impl StringPush {
+    const TARGET_POSITION: usize = 0;
     const ITEM_POSITION: usize = 1;
 
     pub(in crate::types) fn new(span: Span) -> Self {
         Self { span }
     }
 
-    pub(in crate::types) fn targets<C: StringPushTyping>(context: &C, target: &Type) -> bool {
-        let referent = match context.resolve(target) {
-            Type::Ref(_, inner) | Type::Mut(_, inner) => *inner,
-            other => other,
-        };
-        referent == Self::string()
+    pub(in crate::types) fn targets<C: Unknowns>(context: &C, target: &Type) -> bool {
+        context.resolve(target).without_reference() == Self::string()
     }
 
     pub(in crate::types) fn type_with<C: StringPushTyping>(
@@ -40,7 +37,8 @@ impl StringPush {
             (SyntheticTemplate::PUSH_TEXT.text(), Type::str_ref())
         };
         let parameters = vec![Type::mutable(Self::string()), parameter];
-        let target_borrow = context.pass_argument(0, &parameters[0], &target)?;
+        let target_borrow =
+            context.pass_argument(Self::TARGET_POSITION, &parameters[0], &target)?;
         let pushed = Self::pass_item(context, &parameters[1], &item)?;
         let arguments = vec![
             TypedArgument {
@@ -52,13 +50,12 @@ impl StringPush {
                 borrow: pushed,
             },
         ];
-        Ok(context.finish_call(FinishedCall {
+        let signature = SyntheticSignature {
             template,
             parameters,
             result: Type::unit(),
-            arguments,
-            span: self.span,
-        }))
+        };
+        Ok(context.finish_call(signature, arguments, self.span))
     }
 
     fn pass_item<C: StringPushTyping>(
@@ -89,14 +86,15 @@ mod tests {
     use super::StringPush;
     use crate::core::{Literal, PrimitiveType};
     use crate::diagnostic::{Diagnostic, Help};
-    use crate::types::finished_call::FinishedCall;
+    use crate::source::Span;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{ArgumentPassing, SyntheticCalls, TypeDisplays, Unknowns};
+    use crate::types::forms::{SyntheticCalls, TypeDisplays, Unknowns};
     use crate::types::problems::TypeProblems;
     use crate::types::synthetic_call::SyntheticCall;
+    use crate::types::synthetic_signature::SyntheticSignature;
     use crate::types::synthetic_template::SyntheticTemplate;
     use crate::types::ty::Type;
-    use crate::types::typed::{Borrow, TypedExpr};
+    use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
 
     #[derive(Default)]
     struct StringFixture {
@@ -136,7 +134,14 @@ mod tests {
         }
     }
 
-    impl ArgumentPassing for StringFixture {
+    impl SyntheticCalls for StringFixture {
+        fn type_synthetic_call(
+            &mut self,
+            call: SyntheticCall<'_>,
+        ) -> Result<TypedExpr, Diagnostic> {
+            Ok(call.value)
+        }
+
         fn pass_argument(
             &mut self,
             position: usize,
@@ -149,20 +154,16 @@ mod tests {
             }
             Ok(Borrow::None)
         }
-    }
 
-    impl SyntheticCalls for StringFixture {
-        fn type_synthetic_call(
+        fn finish_call(
             &mut self,
-            call: SyntheticCall<'_>,
-        ) -> Result<TypedExpr, Diagnostic> {
-            Ok(call.value)
-        }
-
-        fn finish_call(&mut self, call: FinishedCall<'_>) -> TypedExpr {
+            signature: SyntheticSignature<'_>,
+            _arguments: Vec<TypedArgument>,
+            _span: Span,
+        ) -> TypedExpr {
             self.calls
-                .push((call.template.to_string(), call.parameters));
-            FormFixtures::typed_leaf(Literal::Bool(true), call.result)
+                .push((signature.template.to_string(), signature.parameters));
+            FormFixtures::typed_leaf(Literal::Bool(true), signature.result)
         }
     }
 

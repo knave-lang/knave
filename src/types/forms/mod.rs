@@ -30,9 +30,9 @@ pub(super) use association::Association;
 pub(super) use body::Body;
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
-    AnnotationLowering, ArgumentPassing, ArgumentTyping, AssociationTyping, Bindings, BodyTyping,
-    ChildTyping, CollectionAssumptions, CollectionLookups, CollectionShapes, ExpectedChildTyping,
-    FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys,
+    AnnotationLowering, ArgumentTyping, AssociationTyping, Bindings, BodyTyping, ChildTyping,
+    CollectionAssumptions, CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves,
+    GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys,
     MapWriteTyping, Obligations, OperandTyping, PlaceReads, RecurTargets, SchemeInstantiation,
     StringPushTyping, StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting,
     TypeTextRecords, TypeUnification, Unknowns, VariableTyping, VariantArms, VariantSites,

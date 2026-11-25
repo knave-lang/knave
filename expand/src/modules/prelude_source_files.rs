@@ -10,6 +10,19 @@ pub struct PreludeSourceBytes {
     positions: PositionBytes,
 }
 
+impl PreludeSourceBytes {
+    pub fn of(records: &[ModuleRecord]) -> Self {
+        let embedded = records
+            .iter()
+            .enumerate()
+            .filter(|(_, record)| EmbeddedModules::contains(record.path()))
+            .map(|(position, _)| position);
+        Self {
+            positions: PositionBytes::of(embedded),
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct PreludeSourceFiles {
     paths: SavedModulePaths,
@@ -21,17 +34,6 @@ impl PreludeSourceFiles {
 
     pub fn new(paths: SavedModulePaths, positions: SavedPositions) -> Self {
         Self { paths, positions }
-    }
-
-    pub fn of(records: &[ModuleRecord]) -> PreludeSourceBytes {
-        let embedded = records
-            .iter()
-            .enumerate()
-            .filter(|(_, record)| EmbeddedModules::contains(record.path()))
-            .map(|(position, _)| position);
-        PreludeSourceBytes {
-            positions: PositionBytes::of(embedded),
-        }
     }
 
     pub fn first_name(&self) -> String {

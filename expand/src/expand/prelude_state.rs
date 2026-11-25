@@ -184,7 +184,7 @@ impl Expander<'_> {
             OriginTables::of_own_layers(std::mem::take(&mut self.tables.macro_origins));
         let note_tables = self.tables.module_notes.take_saved();
         let records = self.modules.into_records_after(placeholder);
-        let sources = PreludeSourceFiles::of(&records);
+        let sources = PreludeSourceBytes::of(&records);
         let modules = BuiltPreludeRecords::of(records);
         PreludeState {
             first_source,

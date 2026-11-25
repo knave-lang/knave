@@ -5,6 +5,7 @@ readonly LIST=$RUNNER_TEMP/mutants.json
 readonly MODULES=$(dirname "${BASH_SOURCE[0]}")
 readonly SHARD_SECONDS=2700
 readonly MOST_SHARDS=48
+readonly NIGHTLY_PACKING_PERCENT=80
 
 main() {
   list_mutants_up_to "$HEAD_COMMIT"
@@ -36,11 +37,19 @@ planned() {
 }
 
 planned_shard_count() {
-  planned "shard_count($SHARD_SECONDS; $MOST_SHARDS)"
+  planned "shard_count($(packed_shard_seconds); $MOST_SHARDS)"
+}
+
+packed_shard_seconds() {
+  if [[ -n ${BASE_INPUT:-} ]]; then
+    echo "$SHARD_SECONDS"
+  else
+    echo $((SHARD_SECONDS * NIGHTLY_PACKING_PERCENT / 100))
+  fi
 }
 
 is_over_budget() {
-  (($(planned estimated_total) > MOST_SHARDS * SHARD_SECONDS))
+  (($(planned estimated_total) > MOST_SHARDS * $(packed_shard_seconds)))
 }
 
 refuse_backfill_slice() {
@@ -80,7 +89,7 @@ last_fitting_commit() {
 warn_when_over_budget() {
   local shard_count=$1
   if is_over_budget; then
-    echo "::warning::The mutants need about $(minutes_per_shard "$shard_count") minutes per shard, over the budget of $((SHARD_SECONDS / 60)), so a shard may not finish."
+    echo "::warning::The mutants need about $(minutes_per_shard "$shard_count") minutes per shard, over the packing of $(($(packed_shard_seconds) / 60)), so a shard may not finish."
   fi
 }
 

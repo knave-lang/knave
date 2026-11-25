@@ -13,9 +13,6 @@ pub(in crate::types) struct StringPush {
 }
 
 impl StringPush {
-    const TARGET_POSITION: usize = 0;
-    const ITEM_POSITION: usize = 1;
-
     pub(in crate::types) fn new(span: Span) -> Self {
         Self { span }
     }
@@ -37,8 +34,7 @@ impl StringPush {
             (SyntheticTemplate::PUSH_TEXT.text(), Type::str_ref())
         };
         let parameters = vec![Type::mutable(Self::string()), parameter];
-        let target_borrow =
-            context.pass_argument(Self::TARGET_POSITION, &parameters[0], &target)?;
+        let target_borrow = context.pass_argument(&parameters[0], &target)?;
         let pushed = Self::pass_item(context, &parameters[1], &item)?;
         let arguments = vec![
             TypedArgument {
@@ -64,7 +60,7 @@ impl StringPush {
         item: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
         context
-            .pass_argument(Self::ITEM_POSITION, parameter, item)
+            .pass_argument(parameter, item)
             .map_err(|_| Self::item_problem(context, item))
     }
 
@@ -85,7 +81,7 @@ impl StringPush {
 mod tests {
     use super::StringPush;
     use crate::core::{Literal, PrimitiveType};
-    use crate::diagnostic::{Diagnostic, Help};
+    use crate::diagnostic::Diagnostic;
     use crate::source::Span;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{SyntheticCalls, TypeDisplays, Unknowns};
@@ -99,11 +95,13 @@ mod tests {
     #[derive(Default)]
     struct StringFixture {
         refuses_item: bool,
-        passed: Vec<usize>,
+        passed: Vec<Type>,
         calls: Vec<(String, Vec<Type>)>,
     }
 
     impl StringFixture {
+        const ITEM_PASS: usize = 2;
+
         fn push(&mut self, item: Type) -> Result<TypedExpr, Diagnostic> {
             let target = FormFixtures::typed_leaf(Literal::Bool(true), StringPush::string());
             let item = FormFixtures::typed_leaf(Literal::Bool(true), item);
@@ -114,9 +112,9 @@ mod tests {
             Type::Primitive(PrimitiveType::Char)
         }
 
-        fn refusal_helps(&mut self, item: Type) -> Option<Vec<Help>> {
+        fn refusal(&mut self, item: Type) -> Option<String> {
             self.refuses_item = true;
-            Some(self.push(item).err()?.helps().to_vec())
+            Some(format!("{:?}", self.push(item).err()?))
         }
     }
 
@@ -144,12 +142,11 @@ mod tests {
 
         fn pass_argument(
             &mut self,
-            position: usize,
             _parameter: &Type,
             value: &TypedExpr,
         ) -> Result<Borrow, Diagnostic> {
-            self.passed.push(position);
-            if self.refuses_item && position == 1 {
+            self.passed.push(value.ty.clone());
+            if self.refuses_item && self.passed.len() == Self::ITEM_PASS {
                 return Err(TypeProblems::wrong_argument_count(1, 0, value.span));
             }
             Ok(Borrow::None)
@@ -220,20 +217,20 @@ mod tests {
     fn a_string_push_passes_its_target_then_its_item() {
         let mut fixture = StringFixture::default();
         let _ = fixture.push(Type::str_ref());
-        assert_eq!(fixture.passed, [0, 1]);
+        assert_eq!(fixture.passed, [StringPush::string(), Type::str_ref()]);
     }
 
     #[test]
     fn an_owned_string_item_is_refused_as_owned() {
-        let helps = StringFixture::default().refusal_helps(StringPush::string());
+        let refusal = StringFixture::default().refusal(StringPush::string());
         let expected = TypeProblems::owned_string_push_item(FormFixtures::span());
-        assert_eq!(helps, Some(expected.helps().to_vec()));
+        assert_eq!(refusal, Some(format!("{expected:?}")));
     }
 
     #[test]
     fn another_item_is_refused_as_no_text() {
-        let helps = StringFixture::default().refusal_helps(Type::bool());
+        let refusal = StringFixture::default().refusal(Type::bool());
         let expected = TypeProblems::string_push_item("described", FormFixtures::span());
-        assert_eq!(helps, Some(expected.helps().to_vec()));
+        assert_eq!(refusal, Some(format!("{expected:?}")));
     }
 }

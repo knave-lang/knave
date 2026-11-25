@@ -7,12 +7,7 @@ use crate::types::typed::{Borrow, TypedArgument, TypedExpr};
 
 pub(in crate::types) trait SyntheticCalls {
     fn type_synthetic_call(&mut self, call: SyntheticCall<'_>) -> Result<TypedExpr, Diagnostic>;
-    fn pass_argument(
-        &mut self,
-        position: usize,
-        parameter: &Type,
-        value: &TypedExpr,
-    ) -> Result<Borrow, Diagnostic>;
+    fn pass_argument(&mut self, parameter: &Type, value: &TypedExpr) -> Result<Borrow, Diagnostic>;
     fn finish_call(
         &mut self,
         signature: SyntheticSignature<'_>,

@@ -9,13 +9,14 @@ use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, ArgumentTyping, Bindings, ChildTyping, CollectionAssumptions,
+    AnnotationLowering, ArgumentTyping, Bindings, CalleeShapes, ChildTyping, CollectionAssumptions,
     CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves, GlobalReferences,
     LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations, OperandTyping,
-    PlaceReads, PlaceWrites, RecurTargets, SchemeInstantiation, StructBases, SyntheticCalls,
-    TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification, Unknowns,
-    VariantArms, VariantSites,
+    OptionShapes, PairParts, PlaceReads, PlaceWrites, RecurTargets, SchemeInstantiation,
+    StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords,
+    TypeUnification, Unknowns, VariantArms, VariantSites,
 };
+use crate::types::positional_read::{PairPart, PositionalRead};
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
 use crate::types::synthetic_call::SyntheticCall;
@@ -277,6 +278,44 @@ impl ArgumentTyping for TypeChecker {
         let mut typed_arguments = self.infer_arguments(callee, parameters, arguments, &shared)?;
         self.pass_shared_arguments(callee, &shared, &mut typed_arguments)?;
         Ok(typed_arguments)
+    }
+
+    fn pass_first_argument(
+        &mut self,
+        callee: &TypedExpr,
+        parameter: &Type,
+        value: &TypedExpr,
+    ) -> Result<Borrow, Diagnostic> {
+        self.pass_call_argument(Some(callee), 0, parameter, value)
+    }
+}
+
+impl CalleeShapes for TypeChecker {
+    fn function_shape(
+        &mut self,
+        callee: &TypedExpr,
+        argument_count: usize,
+    ) -> Result<(Vec<Type>, Type), Diagnostic> {
+        TypeChecker::function_shape(self, callee, argument_count)
+    }
+}
+
+impl OptionShapes for TypeChecker {
+    fn option_of(&self, value: Type) -> Type {
+        self.prelude_types().option_type(value)
+    }
+}
+
+impl PairParts for TypeChecker {
+    fn pair_part(&self, read: &PositionalRead, pair: &Type) -> Option<PairPart> {
+        read.pair_part(
+            &self.unifier.resolve(pair),
+            &self.declarations.types().rust_types,
+        )
+    }
+
+    fn read_part(&self, part: PairPart, pair: TypedExpr) -> TypedExpr {
+        part.read(pair, |part| self.passing_facts().holds_copy_value(part))
     }
 }
 

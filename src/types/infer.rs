@@ -11,6 +11,7 @@ use super::forms::{
     SliceGet, StringPush, TypeTextRequest, VariableReference, VariantConstruction, VectorPush,
     VectorWrite, WholePlaceWrite, WriteCollection,
 };
+use super::function_shape::FunctionShape;
 use super::recur_target::RecurTarget;
 use super::result_span::ResultSpan;
 use super::rust_leaf::RustLeaf;
@@ -1067,7 +1068,7 @@ impl TypeChecker {
         span: Span,
     ) -> Result<TypedExpr, Diagnostic> {
         let callee = self.infer(callee)?;
-        let (parameters, result) = self.function_shape(&callee, arguments.len())?;
+        let FunctionShape { parameters, result } = self.function_shape(&callee, arguments.len())?;
         if parameters.len() != arguments.len() {
             return Err(TypeProblems::wrong_argument_count(
                 parameters.len(),
@@ -1665,9 +1666,12 @@ impl TypeChecker {
         &mut self,
         callee: &TypedExpr,
         argument_count: usize,
-    ) -> Result<(Vec<Type>, Type), Diagnostic> {
+    ) -> Result<FunctionShape, Diagnostic> {
         match self.unifier.shallow(&callee.ty) {
-            Type::Function(_, parameters, result) => Ok((parameters, *result)),
+            Type::Function(_, parameters, result) => Ok(FunctionShape {
+                parameters,
+                result: *result,
+            }),
             Type::Var(var) if self.unifier.literal_kind(var).is_none() => {
                 let parameters: Vec<Type> =
                     (0..argument_count).map(|_| self.unifier.fresh()).collect();
@@ -1679,7 +1683,7 @@ impl TypeChecker {
                 );
                 self.unification()
                     .expect(Expectation::plain(&shape), &callee.ty, callee.span)?;
-                Ok((parameters, result))
+                Ok(FunctionShape { parameters, result })
             }
             other => Err(TypeProblems::not_a_function(
                 &self.unification().describe(&other),

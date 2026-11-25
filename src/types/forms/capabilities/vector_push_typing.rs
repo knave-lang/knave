@@ -1,11 +1,11 @@
-use super::{CollectionAssumptions, CollectionShapes, SyntheticCalls, Unknowns};
+use super::{CollectionAssumptions, PreludeShapes, SyntheticCalls, Unknowns};
 
 pub(in crate::types) trait VectorPushTyping:
-    Unknowns + CollectionShapes + CollectionAssumptions + SyntheticCalls
+    Unknowns + PreludeShapes + CollectionAssumptions + SyntheticCalls
 {
 }
 
 impl<C> VectorPushTyping for C where
-    C: Unknowns + CollectionShapes + CollectionAssumptions + SyntheticCalls
+    C: Unknowns + PreludeShapes + CollectionAssumptions + SyntheticCalls
 {
 }

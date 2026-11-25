@@ -67,7 +67,7 @@ mod tests {
     use crate::types::expectation::Expectation;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{CollectionShapes, PlaceWrites, TypeFitting, Unknowns};
+    use crate::types::forms::{PlaceWrites, PreludeShapes, TypeFitting, Unknowns};
     use crate::types::problems::TypeProblems;
     use crate::types::synthetic_call::SyntheticCall;
     use crate::types::synthetic_template::SyntheticTemplate;
@@ -124,13 +124,17 @@ mod tests {
         }
     }
 
-    impl CollectionShapes for VectorFixture {
+    impl PreludeShapes for VectorFixture {
         fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
             CollectionFixtures::nested_vector_of(depth, element)
         }
 
         fn slice_of(&self, element: Type) -> Type {
             CollectionFixtures::slice_of(element)
+        }
+
+        fn option_of(&self, _value: Type) -> Type {
+            unreachable!("this form builds no option")
         }
     }
 

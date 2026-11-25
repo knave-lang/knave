@@ -1,8 +1,8 @@
-use super::{MapKeys, OptionShapes, SyntheticCalls, Unknowns};
+use super::{MapKeys, PreludeShapes, SyntheticCalls, Unknowns};
 
 pub(in crate::types) trait MapLookupTyping:
-    MapKeys + Unknowns + OptionShapes + SyntheticCalls
+    MapKeys + Unknowns + PreludeShapes + SyntheticCalls
 {
 }
 
-impl<C> MapLookupTyping for C where C: MapKeys + Unknowns + OptionShapes + SyntheticCalls {}
+impl<C> MapLookupTyping for C where C: MapKeys + Unknowns + PreludeShapes + SyntheticCalls {}

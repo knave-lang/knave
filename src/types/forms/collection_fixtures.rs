@@ -30,13 +30,16 @@ impl CollectionFixtures {
         Collection::of_referent(ty, &self.rust_types)
     }
 
+    pub(in crate::types) fn pair_of(first: Type, second: Type) -> Type {
+        Type::Named(Self::PAIR, vec![first, second])
+    }
+
     pub(in crate::types) fn pair_part(
         &self,
         read: &PositionalRead,
-        part: &Type,
+        pair: &Type,
     ) -> Option<PairPart> {
-        let pair = Type::Named(Self::PAIR, vec![part.clone(), part.clone()]);
-        read.pair_part(&pair, &self.rust_types)
+        read.pair_part(pair, &self.rust_types)
     }
 
     pub(in crate::types) fn collection(&self, ty: &Type) -> Collection {

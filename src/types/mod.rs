@@ -100,6 +100,7 @@ mod finalize;
 mod first_positions;
 mod form_results;
 mod forms;
+mod function_shape;
 mod generalization;
 #[cfg(test)]
 mod generalization_fixture;

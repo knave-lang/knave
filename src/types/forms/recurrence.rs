@@ -86,7 +86,7 @@ mod tests {
         fn pass_first_argument(
             &mut self,
             _callee: &TypedExpr,
-            _parameter: &Type,
+            _parameters: &[Type],
             _value: &TypedExpr,
         ) -> Result<Borrow, Diagnostic> {
             Ok(Borrow::None)

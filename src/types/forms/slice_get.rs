@@ -26,10 +26,10 @@ impl<'e> SliceGet<'e> {
         context: &mut C,
         value: TypedExpr,
     ) -> Result<TypedExpr, Diagnostic> {
-        if self.arguments.len() != 1 {
+        let [_index] = self.arguments else {
             let found = self.arguments.len();
             return Err(TypeProblems::wrong_argument_count(1, found, self.span));
-        }
+        };
         context.assume_unknown_collection(&value, CollectionAssumption::GetCollection);
         let element = context.fresh();
         let parameters = vec![
@@ -60,9 +60,7 @@ mod tests {
     use crate::types::collection::Collection;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{
-        CollectionAssumptions, CollectionShapes, OptionShapes, SyntheticCalls, Unknowns,
-    };
+    use crate::types::forms::{CollectionAssumptions, PreludeShapes, SyntheticCalls, Unknowns};
     use crate::types::synthetic_call::SyntheticCall;
     use crate::types::synthetic_signature::SyntheticSignature;
     use crate::types::ty::Type;
@@ -102,13 +100,17 @@ mod tests {
         }
     }
 
-    impl CollectionShapes for SliceFixture {
+    impl PreludeShapes for SliceFixture {
         fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
             CollectionFixtures::nested_vector_of(depth, element)
         }
 
         fn slice_of(&self, element: Type) -> Type {
             CollectionFixtures::slice_of(element)
+        }
+
+        fn option_of(&self, value: Type) -> Type {
+            Self::option_of(value)
         }
     }
 
@@ -119,12 +121,6 @@ mod tests {
             assumption: CollectionAssumption,
         ) {
             self.assumptions.push(assumption);
-        }
-    }
-
-    impl OptionShapes for SliceFixture {
-        fn option_of(&self, value: Type) -> Type {
-            Self::option_of(value)
         }
     }
 

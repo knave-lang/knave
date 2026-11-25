@@ -9,13 +9,14 @@ use crate::types::checker::TypeChecker;
 use crate::types::collection::Collection;
 use crate::types::expectation::Expectation;
 use crate::types::forms::{
-    AnnotationLowering, ArgumentTyping, Bindings, CalleeShapes, ChildTyping, CollectionAssumptions,
-    CollectionLookups, CollectionShapes, ExpectedChildTyping, FieldMoves, GlobalReferences,
+    AnnotationLowering, ArgumentTyping, Bindings, CalleeFunctions, ChildTyping,
+    CollectionAssumptions, CollectionLookups, ExpectedChildTyping, FieldMoves, GlobalReferences,
     LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys, Obligations, OperandTyping,
-    OptionShapes, PairParts, PlaceReads, PlaceWrites, RecurTargets, SchemeInstantiation,
+    PairParts, PlaceReads, PlaceWrites, PreludeShapes, RecurTargets, SchemeInstantiation,
     StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords,
     TypeUnification, Unknowns, VariantArms, VariantSites,
 };
+use crate::types::function_shape::FunctionShape;
 use crate::types::positional_read::{PairPart, PositionalRead};
 use crate::types::problems::TypeProblems;
 use crate::types::recur_target::RecurTarget;
@@ -31,6 +32,7 @@ use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
 
 const UNREAD_POSITION_WITHOUT_CALLEE: usize = 0;
+const FIRST_POSITION: usize = 0;
 
 impl ChildTyping for TypeChecker {
     fn type_child(&mut self, child: &Expr) -> Result<TypedExpr, Diagnostic> {
@@ -143,13 +145,17 @@ impl LocalTypes for TypeChecker {
     }
 }
 
-impl CollectionShapes for TypeChecker {
+impl PreludeShapes for TypeChecker {
     fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
         self.prelude_types().nested_vector_of(depth, element)
     }
 
     fn slice_of(&self, element: Type) -> Type {
         self.prelude_types().slice_of(element)
+    }
+
+    fn option_of(&self, value: Type) -> Type {
+        self.prelude_types().option_type(value)
     }
 }
 
@@ -283,35 +289,31 @@ impl ArgumentTyping for TypeChecker {
     fn pass_first_argument(
         &mut self,
         callee: &TypedExpr,
-        parameter: &Type,
+        parameters: &[Type],
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic> {
-        self.pass_call_argument(Some(callee), 0, parameter, value)
+        self.pass_call_argument(
+            Some(callee),
+            FIRST_POSITION,
+            &parameters[FIRST_POSITION],
+            value,
+        )
     }
 }
 
-impl CalleeShapes for TypeChecker {
-    fn function_shape(
+impl CalleeFunctions for TypeChecker {
+    fn expect_function(
         &mut self,
         callee: &TypedExpr,
         argument_count: usize,
-    ) -> Result<(Vec<Type>, Type), Diagnostic> {
-        TypeChecker::function_shape(self, callee, argument_count)
-    }
-}
-
-impl OptionShapes for TypeChecker {
-    fn option_of(&self, value: Type) -> Type {
-        self.prelude_types().option_type(value)
+    ) -> Result<FunctionShape, Diagnostic> {
+        self.function_shape(callee, argument_count)
     }
 }
 
 impl PairParts for TypeChecker {
     fn pair_part(&self, read: &PositionalRead, pair: &Type) -> Option<PairPart> {
-        read.pair_part(
-            &self.unifier.resolve(pair),
-            &self.declarations.types().rust_types,
-        )
+        read.pair_part(pair, &self.declarations.types().rust_types)
     }
 
     fn read_part(&self, part: PairPart, pair: TypedExpr) -> TypedExpr {

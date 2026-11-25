@@ -1,11 +1,11 @@
-use super::{CollectionAssumptions, CollectionShapes, OptionShapes, SyntheticCalls, Unknowns};
+use super::{CollectionAssumptions, PreludeShapes, SyntheticCalls, Unknowns};
 
 pub(in crate::types) trait SliceGetTyping:
-    Unknowns + CollectionShapes + CollectionAssumptions + OptionShapes + SyntheticCalls
+    Unknowns + PreludeShapes + CollectionAssumptions + SyntheticCalls
 {
 }
 
 impl<C> SliceGetTyping for C where
-    C: Unknowns + CollectionShapes + CollectionAssumptions + OptionShapes + SyntheticCalls
+    C: Unknowns + PreludeShapes + CollectionAssumptions + SyntheticCalls
 {
 }

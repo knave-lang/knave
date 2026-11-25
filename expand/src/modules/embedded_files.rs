@@ -77,16 +77,20 @@ impl EmbeddedModules {
     }
 
     pub fn contains(path: &ModulePath) -> bool {
-        Self::position(path).is_some()
+        Self::position(path.as_str()).is_some()
     }
 
     pub fn text(path: &ModulePath) -> Option<&'static str> {
+        Self::text_of_path(path.as_str())
+    }
+
+    pub fn text_of_path(path: &str) -> Option<&'static str> {
         let (_, text) = Self::FILES_IN_PAGE_OWNER_ORDER[Self::position(path)?];
         Some(text)
     }
 
-    fn position(path: &ModulePath) -> Option<usize> {
-        Self::paths().position(|listed| listed == path.as_str())
+    fn position(path: &str) -> Option<usize> {
+        Self::paths().position(|listed| listed == path)
     }
 }
 

@@ -1,6 +1,5 @@
 use super::embedded_files::EmbeddedModules;
 use super::registry::ModuleRecord;
-use crate::core::ModulePath;
 use crate::language::Language;
 use crate::scope::{PositionBytes, SavedModulePaths, SavedPositions};
 use crate::source::EmbeddedSources;
@@ -55,7 +54,7 @@ impl EmbeddedSources for PreludeSourceFiles {
     }
 
     fn text(&self, index: usize) -> &'static str {
-        let path = ModulePath::new(self.path(index));
-        EmbeddedModules::text(&path).expect("a saved prelude source is an embedded module")
+        EmbeddedModules::text_of_path(self.path(index))
+            .expect("a saved prelude source is an embedded module")
     }
 }

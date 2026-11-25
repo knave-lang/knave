@@ -31,18 +31,43 @@ slice_comment() {
   local survivors=$1
   echo "## \`$BASE\` to \`$HEAD_COMMIT\`"
   echo
-  if ((${SHARD_COUNT:-0} == 0)); then
+  if ((${CHANGED_SOURCES:-0} == 0)); then
     echo "[This run]($RUN_URL) found no Rust source change in the slice, so it has no mutants."
     return
+  elif ((${SHARD_COUNT:-0} == 0)); then
+    echo "[This run]($RUN_URL) found no mutant in the slice's Rust changes."
+    return
   fi
-  echo "[This run]($RUN_URL) tested the slice: $(verdict_counts)."
+  echo "[This run]($RUN_URL) $(tested_line)"
+  every_shard_completed || echo "Some shards did not finish, so the slice needs a rerun."
   echo
   if [[ -n $survivors ]]; then
     echo "$survivors"
   elif every_shard_completed; then
     echo "No mutant survived."
   fi
-  every_shard_completed || echo "Some shards did not finish, so the slice needs a rerun."
+  invalid_section
+}
+
+invalid_section() {
+  local invalid
+  invalid=$(invalid_mutants)
+  if [[ -n $invalid ]]; then
+    echo
+    echo "Invalid, because a test set failed without the mutant:"
+    echo
+    echo "$invalid"
+  fi
+}
+
+tested_line() {
+  local counts
+  counts=$(verdict_counts)
+  if [[ -n $counts ]]; then
+    echo "tested the slice: $counts."
+  else
+    echo "ran no mutant of the slice."
+  fi
 }
 
 fit_to_comment_limit() {

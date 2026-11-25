@@ -15,6 +15,7 @@ is_usable_base() {
 announce_skipped_commits() {
   if [[ -n $1 ]] && git merge-base --is-ancestor "$1" HEAD; then
     echo "::notice::The last tested commit is older than $OLDEST_BASE, so the commits from $1 to $2 are not tested."
+    skipped="$1 $2"
   fi
 }
 
@@ -59,6 +60,7 @@ git diff --find-renames "$base" "$head" > "$DIFF"
 changed_sources=$(git diff --name-only "$base" "$head" -- 'src/*.rs' 'expand/src/*.rs' 'xtask/src/*.rs' 'xtask/agree/src/*.rs' | wc -l)
 {
   echo "base=$base"
+  echo "skipped=${skipped:-}"
   echo "head=$head"
   echo "changed-sources=$changed_sources"
 } >> "$GITHUB_OUTPUT"

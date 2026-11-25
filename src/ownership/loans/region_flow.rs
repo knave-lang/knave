@@ -1,5 +1,7 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::connected_flows::ConnectedFlows;
+use super::fact_rows::FactRows;
 use super::point_graph::PointGraph;
 use super::point_id::PointId;
 use super::recorded_flow::RecordedFlow;
@@ -7,23 +9,24 @@ use super::recorded_store::RecordedStore;
 use crate::core::BindingId;
 
 pub struct RegionFlow<H> {
-    reaching: ReachingFlows,
+    reaching: ReachingFacts,
     regions: RegionSets,
     stores: Vec<RegionStore<H>>,
 }
 
 struct RegionStore<H> {
     regions: FxHashSet<usize>,
-    reached: FxHashSet<PointId>,
     held: H,
 }
 
 impl<H> RegionFlow<H> {
     pub fn of(graph: &PointGraph, flows: Vec<RecordedFlow>, stores: Vec<RecordedStore<H>>) -> Self {
+        let targets: Vec<BindingId> = stores.iter().map(|store| store.target).collect();
+        let store_points: Vec<PointId> = stores.iter().map(|store| store.point).collect();
         let reaching = if stores.is_empty() {
-            ReachingFlows::default()
+            ReachingFacts::default()
         } else {
-            ReachingFlows::of(graph, flows)
+            ReachingFacts::of(graph, ConnectedFlows::kept(flows, &targets), &store_points)
         };
         let mut regions = RegionSets::new(reaching.flows.len());
         reaching.unify_sources(&mut regions);
@@ -31,7 +34,6 @@ impl<H> RegionFlow<H> {
             .into_iter()
             .map(|store| RegionStore {
                 regions: reaching.regions_of(store.target, store.point, &mut regions),
-                reached: graph.reachable_after(store.point),
                 held: store.held,
             })
             .collect();
@@ -51,65 +53,112 @@ impl<H> RegionFlow<H> {
             .known_regions_of(binding, point, &self.regions);
         self.stores
             .iter()
-            .filter(|store| store.reached.contains(&point))
-            .filter(|store| {
+            .enumerate()
+            .filter(|(index, _)| self.reaching.store_reaches(*index, point))
+            .filter(|(_, store)| {
                 store
                     .regions
                     .iter()
                     .any(|region| regions.contains(&self.regions.root(*region)))
             })
-            .map(|store| &store.held)
+            .map(|(_, store)| &store.held)
             .collect()
     }
 }
 
-#[derive(Default)]
-struct ReachingFlows {
+struct ReachingFacts {
     flows: Vec<RecordedFlow>,
     by_binding: FxHashMap<BindingId, Vec<usize>>,
-    reaching: Vec<FxHashSet<usize>>,
+    rows: FactRows,
 }
 
-impl ReachingFlows {
-    fn of(graph: &PointGraph, flows: Vec<RecordedFlow>) -> Self {
+impl Default for ReachingFacts {
+    fn default() -> Self {
+        Self {
+            flows: Vec::new(),
+            by_binding: FxHashMap::default(),
+            rows: FactRows::new(0, 0),
+        }
+    }
+}
+
+struct PointFactChanges {
+    generated: FxHashMap<PointId, Vec<usize>>,
+    killed: FxHashMap<PointId, Vec<usize>>,
+}
+
+impl ReachingFacts {
+    fn of(graph: &PointGraph, flows: Vec<RecordedFlow>, store_points: &[PointId]) -> Self {
         let mut by_binding: FxHashMap<BindingId, Vec<usize>> = FxHashMap::default();
-        let mut at_point: FxHashMap<PointId, Vec<usize>> = FxHashMap::default();
         for (index, flow) in flows.iter().enumerate() {
             by_binding.entry(flow.binding).or_default().push(index);
-            at_point.entry(flow.point).or_default().push(index);
         }
+        let rows = graph
+            .points()
+            .map(|(point, _)| point.index() + 1)
+            .max()
+            .unwrap_or_default();
         let mut reaching = Self {
-            reaching: graph.points().map(|_| FxHashSet::default()).collect(),
+            rows: FactRows::new(rows, flows.len() + store_points.len()),
             flows,
             by_binding,
         };
-        while reaching.grow(graph, &at_point) {}
+        let changes = reaching.changes(store_points);
+        let mut leaving = Vec::new();
+        while reaching.grow(graph, &changes, &mut leaving) {}
         reaching
     }
 
-    fn grow(&mut self, graph: &PointGraph, at_point: &FxHashMap<PointId, Vec<usize>>) -> bool {
+    fn changes(&self, store_points: &[PointId]) -> PointFactChanges {
+        let mut generated: FxHashMap<PointId, Vec<usize>> = FxHashMap::default();
+        for (index, flow) in self.flows.iter().enumerate() {
+            generated.entry(flow.point).or_default().push(index);
+        }
+        let mut killed: FxHashMap<PointId, Vec<usize>> = FxHashMap::default();
+        for (point, defined) in &generated {
+            let bindings = defined.iter().map(|flow| self.flows[*flow].binding);
+            let same_binding =
+                bindings.flat_map(|binding| self.by_binding[&binding].iter().copied());
+            killed.insert(
+                *point,
+                same_binding
+                    .filter(|flow| !defined.contains(flow))
+                    .collect(),
+            );
+        }
+        for (index, point) in store_points.iter().enumerate() {
+            generated
+                .entry(*point)
+                .or_default()
+                .push(self.flows.len() + index);
+        }
+        PointFactChanges { generated, killed }
+    }
+
+    fn grow(
+        &mut self,
+        graph: &PointGraph,
+        changes: &PointFactChanges,
+        leaving: &mut Vec<u64>,
+    ) -> bool {
         let mut grew = false;
         for (point, facts) in graph.points() {
-            let defined = at_point.get(&point).map(Vec::as_slice).unwrap_or_default();
-            let leaving: Vec<usize> = self.reaching[point.index()]
-                .iter()
-                .filter(|flow| {
-                    let binding = self.flows[**flow].binding;
-                    !defined
-                        .iter()
-                        .any(|new| self.flows[*new].binding == binding)
-                })
-                .chain(defined)
-                .copied()
-                .collect();
+            self.rows.copy_row(point.index(), leaving);
+            for flow in changes.killed.get(&point).into_iter().flatten() {
+                FactRows::clear(leaving, *flow);
+            }
+            for fact in changes.generated.get(&point).into_iter().flatten() {
+                FactRows::set(leaving, *fact);
+            }
             for successor in facts.successors() {
-                let entering = &mut self.reaching[successor.index()];
-                for flow in &leaving {
-                    grew |= entering.insert(*flow);
-                }
+                grew |= self.rows.absorb(successor.index(), leaving);
             }
         }
         grew
+    }
+
+    fn store_reaches(&self, store: usize, point: PointId) -> bool {
+        self.rows.contains(point.index(), self.flows.len() + store)
     }
 
     fn unify_sources(&self, regions: &mut RegionSets) {
@@ -156,14 +205,11 @@ impl ReachingFlows {
     }
 
     fn reaching_flows(&self, binding: BindingId, point: PointId) -> Vec<usize> {
-        let Some(reaching) = self.reaching.get(point.index()) else {
-            return Vec::new();
-        };
         self.by_binding
             .get(&binding)
             .into_iter()
             .flatten()
-            .filter(|flow| reaching.contains(flow))
+            .filter(|flow| self.rows.contains(point.index(), **flow))
             .copied()
             .collect()
     }
@@ -430,6 +476,20 @@ mod tests {
         assert!(held(&flow, bound, NS).is_empty());
         assert_eq!(held(&flow, inner, NS), [0]);
         assert_eq!(held(&flow, outer, NS), [0]);
+    }
+
+    #[test]
+    fn a_binding_apart_from_every_target_holds_no_store() {
+        let mut fixture = FlowFixture::default();
+        let bound = fixture.defined_after(PointId::ENTRY, NS, &[]);
+        let apart = fixture.defined_after(bound, FIRST, &[]);
+        let copied = fixture.defined_after(apart, MS, &[FIRST]);
+        let stored = fixture.stored_after(copied, NS);
+        let later = fixture.after(stored);
+        let flow = fixture.flow();
+        assert!(held(&flow, later, MS).is_empty());
+        assert!(held(&flow, later, FIRST).is_empty());
+        assert_eq!(held(&flow, later, NS), [0]);
     }
 
     #[test]

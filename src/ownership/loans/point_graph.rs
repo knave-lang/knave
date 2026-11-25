@@ -40,14 +40,6 @@ impl PointGraph {
         None
     }
 
-    pub fn reachable_after(&self, start: PointId) -> FxHashSet<PointId> {
-        let mut reached = FxHashSet::default();
-        for successor in self.facts(start).successors() {
-            reached.extend(self.reachable_from(successor));
-        }
-        reached
-    }
-
     pub fn reachable_from(&self, start: PointId) -> FxHashSet<PointId> {
         let mut reached = FxHashSet::default();
         let mut pending = vec![start];

@@ -74,13 +74,13 @@ impl TypedExpr {
         match &self.kind {
             TypedExprKind::Leaf(_) => Vec::new(),
             TypedExprKind::Fn(lambda) => lambda.body.expressions().collect(),
-            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(self) => {
-                std::iter::once(callee)
-                    .chain(arguments.iter().map(|argument| &argument.value))
-                    .collect()
-            }
             TypedExprKind::Control(control) => control.children(),
-            other => other.nested_children(),
+            other => match PassedCall::of(self) {
+                Some(PassedCall { callee, arguments }) => std::iter::once(callee)
+                    .chain(arguments.iter().map(|argument| &argument.value))
+                    .collect(),
+                None => other.nested_children(),
+            },
         }
     }
 

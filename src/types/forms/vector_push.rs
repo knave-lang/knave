@@ -122,7 +122,6 @@ mod tests {
 
         fn pass_argument(
             &mut self,
-            _position: usize,
             _parameter: &Type,
             _value: &TypedExpr,
         ) -> Result<Borrow, Diagnostic> {

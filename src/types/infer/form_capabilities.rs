@@ -27,6 +27,8 @@ use crate::types::unifier::{LiteralKind, UnifyError};
 use crate::types::variant_arm_reference::VariantArmReference;
 use crate::types::variant_site::VariantSite;
 
+const UNREAD_POSITION_WITHOUT_CALLEE: usize = 0;
+
 impl ChildTyping for TypeChecker {
     fn type_child(&mut self, child: &Expr) -> Result<TypedExpr, Diagnostic> {
         self.infer(child)
@@ -293,13 +295,8 @@ impl SyntheticCalls for TypeChecker {
         )
     }
 
-    fn pass_argument(
-        &mut self,
-        position: usize,
-        parameter: &Type,
-        value: &TypedExpr,
-    ) -> Result<Borrow, Diagnostic> {
-        self.pass_call_argument(None, position, parameter, value)
+    fn pass_argument(&mut self, parameter: &Type, value: &TypedExpr) -> Result<Borrow, Diagnostic> {
+        self.pass_call_argument(None, UNREAD_POSITION_WITHOUT_CALLEE, parameter, value)
     }
 
     fn finish_call(

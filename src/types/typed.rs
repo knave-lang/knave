@@ -10,6 +10,7 @@ use super::field_place::FieldPlace;
 use super::ownership_facts::OwnershipFacts;
 use super::template_clauses::TemplateClauses;
 use super::templates::TemplateBorrows;
+pub use super::try_error_conversion::TryErrorConversion;
 use super::ty::{Bound, GenericId, GenericParam, Lifetime, Scheme, Type};
 use super::typed_trait_method::TypedTraitMethod;
 use super::unifier::LiteralKind;
@@ -99,12 +100,6 @@ pub enum TypedExprKind {
     Assoc(Box<TypedExpr>, Vec<TypedExpr>, Box<TypedExpr>),
     Assign(Box<TypedAssignment>),
     TraitObject(Box<TypedExpr>, BindingId),
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TryErrorConversion {
-    Identity,
-    Converted,
 }
 
 #[derive(Clone, Debug)]

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/map_update_default_mismatch.knv
+---
+error[L0401]: mismatched types
+ --> check/map_update_default_mismatch.knv:5:16
+  |
+5 |                "none")))
+  |                ^^^^^^ expected an integer, found `(ref str)`
+  |
+  = note: run `knave doc L0401` for an explanation

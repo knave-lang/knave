@@ -1,0 +1,11 @@
+(defstruct float-key
+  :value f64)
+
+(def make-items
+  (rust "std::collections::HashMap::new()"
+    (fn () (hash-map float-key i64))))
+
+(defn main ()
+  (local items (make-items))
+  (for-each (iter items)
+    (fn (entry) (prn entry))))

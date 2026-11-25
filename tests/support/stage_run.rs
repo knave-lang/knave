@@ -25,6 +25,7 @@ impl StageRun {
     ];
     const HEAVY_FIXTURE_SUFFIXES: [&str; 3] = ["check_fixtures", "run_fixtures", "emit_fixtures"];
     const EXPLANATION_PREFIX: &str = "each_explanation_";
+    const FIXTURE_TEST_SUFFIX: &str = "_fixtures";
 
     pub fn from_process() -> Self {
         Self::of(
@@ -37,11 +38,19 @@ impl StageRun {
         Self { arguments, glob }
     }
 
+    pub fn heavy_tests() -> Vec<&'static str> {
+        [Self::FIXTURE_TESTS, Self::EXPLANATION_TESTS].concat()
+    }
+
     pub fn is_heavy_name(test: &str) -> bool {
         Self::HEAVY_FIXTURE_SUFFIXES
             .iter()
             .any(|suffix| test.ends_with(suffix))
             || test.starts_with(Self::EXPLANATION_PREFIX)
+    }
+
+    pub fn is_guarded_name(test: &str) -> bool {
+        test.ends_with(Self::FIXTURE_TEST_SUFFIX) || test.starts_with(Self::EXPLANATION_PREFIX)
     }
 
     fn selects_any(selection: &Selection, tests: &[&str]) -> bool {

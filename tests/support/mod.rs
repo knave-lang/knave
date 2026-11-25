@@ -17,6 +17,7 @@ mod reports;
 mod saved_prelude;
 mod skill_page;
 mod stage_run;
+mod stage_test_source;
 
 use std::fs;
 use std::io::{Read, Write};
@@ -61,6 +62,7 @@ pub use reports::FixtureReports;
 pub use saved_prelude::SavedPreludeAgreement;
 pub use skill_page::SkillPage;
 pub use stage_run::StageRun;
+pub use stage_test_source::StageTestSource;
 
 pub struct Fixture {
     sources: SourceMap,

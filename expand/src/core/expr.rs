@@ -389,6 +389,22 @@ pub struct KeyedPath {
 }
 
 impl KeyedPath {
+    pub fn from_arguments(value: Expr, mut keys_and_item: Vec<Expr>) -> Self {
+        let item = keys_and_item.remove(keys_and_item.len() - 1);
+        Self {
+            value: Box::new(value),
+            keys: keys_and_item,
+            item: Box::new(item),
+        }
+    }
+
+    pub fn arguments(&self) -> Vec<&Expr> {
+        std::iter::once(self.value.as_ref())
+            .chain(&self.keys)
+            .chain(std::iter::once(self.item.as_ref()))
+            .collect()
+    }
+
     pub fn keys_and_item(&self) -> Vec<Expr> {
         self.keys
             .iter()
@@ -397,11 +413,8 @@ impl KeyedPath {
             .collect()
     }
 
-    pub fn children(&self) -> Vec<&Expr> {
-        std::iter::once(self.value.as_ref())
-            .chain(&self.keys)
-            .chain(std::iter::once(self.item.as_ref()))
-            .collect()
+    fn children(&self) -> Vec<&Expr> {
+        self.arguments()
     }
 }
 

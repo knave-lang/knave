@@ -193,7 +193,7 @@ impl<'a> CorePrinter<'a> {
 
     fn keyed(&mut self, head: &str, path: &KeyedPath) -> String {
         let parts = path
-            .children()
+            .arguments()
             .into_iter()
             .map(|part| self.expr(part))
             .collect();

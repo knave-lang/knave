@@ -158,7 +158,7 @@ impl CompositeForms {
             span,
         );
         let mut parts = vec![head];
-        parts.extend(path.children().into_iter().map(|part| forms.expr(part)));
+        parts.extend(path.arguments().into_iter().map(|part| forms.expr(part)));
         forms.writer().close(row, parts, span)
     }
 }

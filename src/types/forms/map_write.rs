@@ -5,6 +5,7 @@ use crate::source::Span;
 use crate::types::collection::Collection;
 use crate::types::problems::TypeProblems;
 use crate::types::synthetic_call::SyntheticCall;
+use crate::types::synthetic_template::SyntheticTemplate;
 use crate::types::ty::Type;
 use crate::types::typed::TypedExpr;
 
@@ -37,7 +38,7 @@ impl<'e> MapWrite<'e> {
         ];
         let arguments = self.path.keys_and_item();
         let call = context.type_synthetic_call(SyntheticCall {
-            template: Self::TEMPLATE,
+            template: SyntheticTemplate::SET_AT_KEY.text(),
             parameters,
             result: Type::unit(),
             value,
@@ -48,8 +49,6 @@ impl<'e> MapWrite<'e> {
         context.require_key_borrow(&map, &query, key.span());
         Ok(call)
     }
-
-    const TEMPLATE: &'static str = "*{0}.get_mut({1}).unwrap() = {2}";
 }
 
 #[cfg(test)]

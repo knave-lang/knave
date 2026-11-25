@@ -2,10 +2,9 @@
 
 (defn write-local ()
   (local count 1)
-  (set-at! count (0) 9))
+  (set-at! count 0 9))
 
-(defn write-temporary ()
-  (set-at! 2.5 (0) 9))
+(defn write-temporary () (set-at! 2.5 0 9))
 
 (defn write-call-result ()
-  (set-at! (same 1) (0) 9))
+  (set-at! (same 1) 0 9))

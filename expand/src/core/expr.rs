@@ -397,7 +397,7 @@ impl KeyedPath {
             .collect()
     }
 
-    fn children(&self) -> Vec<&Expr> {
+    pub fn children(&self) -> Vec<&Expr> {
         std::iter::once(self.value.as_ref())
             .chain(&self.keys)
             .chain(std::iter::once(self.item.as_ref()))

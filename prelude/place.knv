@@ -81,8 +81,7 @@
   => 2
   ```"
   (if (at-form? target)
-    (list (quote set-at!)
-          (at-base target)
-          (at-indices target)
-          value)
+    (concat (list (quote set-at!) (at-base target))
+            (at-indices target)
+            (list value))
     (list (quote set-place!) target value)))

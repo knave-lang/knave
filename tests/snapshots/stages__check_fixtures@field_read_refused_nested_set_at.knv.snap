@@ -6,7 +6,7 @@ input_file: tests/fixtures/check/field_read_refused_nested_set_at.knv
 error[L0407]: type annotations needed
   --> check/field_read_refused_nested_set_at.knv:11:20
    |
-11 |   (set-at! (:tags (:pet x)) (0) 7)
+11 |   (set-at! (:tags (:pet x)) 0 7)
    |                    ^^^^ this read of `:pet` infers a `has` bound
    |
    = note: a `has` bound inferred from this read cannot be kept: this function changes `:pet` through a `has` bound

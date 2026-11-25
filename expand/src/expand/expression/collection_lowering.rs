@@ -9,6 +9,8 @@ pub(super) struct CollectionLowering<'e, 'x> {
 }
 
 impl<'e, 'x> CollectionLowering<'e, 'x> {
+    const HEAD_VALUE_AND_ITEM: usize = 3;
+
     pub(super) fn new(expander: &'e mut Expander<'x>) -> Self {
         Self { expander }
     }
@@ -27,10 +29,11 @@ impl<'e, 'x> CollectionLowering<'e, 'x> {
     }
 
     fn keyed(&mut self, shape: &Shape) -> Result<KeyedPath, Diagnostic> {
-        let items = shape.exactly(4)?;
+        let items = shape.at_least(Self::HEAD_VALUE_AND_ITEM)?;
+        let last = items.len() - 1;
         let value = self.expander.lower_expr(&items[1])?;
-        let keys = self.expressions(shape.list(&items[2])?)?;
-        let item = self.expander.lower_expr(&items[3])?;
+        let keys = self.expressions(&items[2..last])?;
+        let item = self.expander.lower_expr(&items[last])?;
         Ok(KeyedPath {
             value: Box::new(value),
             keys,

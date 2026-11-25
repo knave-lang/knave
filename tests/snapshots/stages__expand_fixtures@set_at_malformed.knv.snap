@@ -1,0 +1,13 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/expand/set_at_malformed.knv
+---
+error[L0210]: malformed `set-at!`
+ --> expand/set_at_malformed.knv:3:3
+  |
+3 |   (set-at! cells))
+  |   ^^^^^^^^^^^^^^^ this does not fit the shape of `set-at!`
+  |
+  = help: write it as `(set-at! place key ... item)`
+  = note: run `knave doc L0210` for an explanation

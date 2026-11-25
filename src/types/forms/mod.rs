@@ -6,6 +6,7 @@ mod borrowing;
 mod capabilities;
 #[cfg(test)]
 mod collection_fixtures;
+mod collection_iteration;
 mod conditional;
 mod dereference;
 mod expression_form;
@@ -15,12 +16,15 @@ mod if_operands;
 mod inline_rust;
 mod literal_value;
 mod local_binding;
+mod map_iteration;
 mod map_lookup;
+mod map_update;
 mod map_write;
 mod pair_part_read;
 mod recurrence;
 mod sequence;
 mod slice_get;
+mod slice_iteration;
 mod string_push;
 mod type_text_request;
 mod variable_reference;
@@ -35,26 +39,31 @@ pub(super) use body::Body;
 pub(super) use borrowing::Borrowing;
 pub(super) use capabilities::{
     AnnotationLowering, ArgumentTyping, AssociationTyping, Bindings, BodyTyping, CalleeFunctions,
-    ChildTyping, CollectionAssumptions, CollectionLookups, ExpectedChildTyping, FieldMoves,
-    GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes, MacroOrigins, MapKeys,
-    MapLookupTyping, MapWriteTyping, Obligations, OperandTyping, PairPartTyping, PairParts,
-    PlaceReads, PlaceWrites, PreludeShapes, RecurTargets, SchemeInstantiation, SliceGetTyping,
-    StringPushTyping, StructBases, SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting,
-    TypeTextRecords, TypeUnification, Unknowns, VariableTyping, VariantArms, VariantSites,
-    VectorPushTyping, VectorWriteTyping, WholePlaceWriteTyping, WriteCollectionTyping,
+    ChildTyping, CollectionAssumptions, CollectionIterationTyping, CollectionLookups,
+    ExpectedChildTyping, FieldMoves, GlobalReferences, LiteralUnknowns, LocalScope, LocalTypes,
+    MacroOrigins, MapIterationTyping, MapKeys, MapLookupTyping, MapWriteTyping, Obligations,
+    OperandTyping, PairPartTyping, PairParts, PlaceReads, PlaceWrites, PreludeShapes, RecurTargets,
+    SchemeInstantiation, SliceGetTyping, SliceIterationTyping, StringPushTyping, StructBases,
+    SyntheticCalls, TemplateSchemes, TypeDisplays, TypeFitting, TypeTextRecords, TypeUnification,
+    Unknowns, VariableTyping, VariantArms, VariantSites, VectorPushTyping, VectorWriteTyping,
+    WholePlaceWriteTyping, WriteCollectionTyping,
 };
+pub(super) use collection_iteration::CollectionIteration;
 pub(super) use conditional::Conditional;
 pub(super) use dereference::Dereference;
 pub(super) use expression_form::ExpressionForm;
 pub(super) use if_operands::IfOperands;
 pub(super) use inline_rust::InlineRust;
 pub(super) use literal_value::LiteralValue;
+pub(super) use map_iteration::MapIteration;
 pub(super) use map_lookup::MapLookup;
+pub(super) use map_update::MapUpdate;
 pub(super) use map_write::MapWrite;
 pub(super) use pair_part_read::PairPartRead;
 pub(super) use recurrence::Recurrence;
 pub(super) use sequence::Sequence;
 pub(super) use slice_get::SliceGet;
+pub(super) use slice_iteration::SliceIteration;
 pub(super) use string_push::StringPush;
 pub(super) use type_text_request::TypeTextRequest;
 pub(super) use variable_reference::VariableReference;

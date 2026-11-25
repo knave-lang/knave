@@ -205,6 +205,10 @@ mod tests {
         fn collection_of_referent(&self, ty: &Type) -> Option<Collection> {
             self.collections.collection_of_referent(ty)
         }
+
+        fn collection_item(&self, _ty: &Type) -> Option<(Type, Type)> {
+            None
+        }
     }
 
     impl PreludeShapes for AssociationFixture {
@@ -218,6 +222,10 @@ mod tests {
 
         fn option_of(&self, _value: Type) -> Type {
             unreachable!("this form builds no option")
+        }
+
+        fn iterator_of(&self, _item: Type) -> Type {
+            unreachable!("this form builds no iterator")
         }
     }
 

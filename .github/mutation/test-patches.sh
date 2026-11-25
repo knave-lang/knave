@@ -25,7 +25,10 @@ mutants_of_shard() {
 
 record_baseline_failures() {
   if [[ -n ${BASELINE_FAILURES:-} ]]; then
-    cp "$BASELINE_FAILURES" "$(baseline_failures)"
+    cp "$BASELINE_FAILURES" "$(baseline_failures)" || {
+      echo "::error::The baseline failures file $BASELINE_FAILURES is missing, so the shard cannot tell a caught mutant from a test set that fails without one."
+      exit 1
+    }
   else
     test_sets_of_shard | record_failing_test_sets "$(baseline_log)" "$(baseline_failures)"
   fi

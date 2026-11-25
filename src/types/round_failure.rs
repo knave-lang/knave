@@ -34,7 +34,7 @@ impl RoundFailure {
             trailing,
         } = self;
         let explained = reported.has_errors() || !open.missing.is_empty();
-        match verdicts.first_failure() {
+        match verdicts.into_failure() {
             Some(SettlementFailure::Refused(refusals)) => reported.extend(refusals),
             _ if explained => reported.extend(open.missing),
             Some(SettlementFailure::Waiting(waiting)) => reported.extend(waiting),

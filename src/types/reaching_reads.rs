@@ -1,9 +1,9 @@
 use super::copy::CopyRules;
-use super::display::TypeDisplay;
 use super::field_reader::FieldReader;
 use super::open_read::OpenRead;
 use super::pinning::InstantiationReport;
 use super::reaching_read::ReachingRead;
+use super::reaching_read_set::ReachingReadSet;
 use super::reaching_structs::ReachingStructs;
 use super::ty::Type;
 use super::typed::TypedProgram;
@@ -19,20 +19,7 @@ impl<'r> ReachingReads<'r> {
         Self { report, program }
     }
 
-    pub(super) fn shown(typed: &TypedProgram, reads: &[ReachingRead]) -> Vec<(String, String)> {
-        let display = TypeDisplay::new(&typed.bindings, &typed.generics);
-        let mut shown: Vec<(String, String)> = Vec::new();
-        for reached in reads {
-            let owner = Type::Named(reached.owner, reached.arguments.clone());
-            let entry = (display.show(&owner), display.show(&reached.read.read));
-            if !shown.contains(&entry) {
-                shown.push(entry);
-            }
-        }
-        shown
-    }
-
-    pub(super) fn of(&self, reader: &FieldReader) -> Result<Vec<ReachingRead>, WrittenRefusal> {
+    pub(super) fn of(&self, reader: &FieldReader) -> Result<ReachingReadSet, WrittenRefusal> {
         let open_struct = WrittenRefusal::Read(ReadRefusal::OpenStruct);
         let structs = ReachingStructs::new(self.report)
             .of(reader.binding, reader.owner)
@@ -55,6 +42,6 @@ impl<'r> ReachingReads<'r> {
                 });
             }
         }
-        Ok(found)
+        Ok(ReachingReadSet::new(found))
     }
 }

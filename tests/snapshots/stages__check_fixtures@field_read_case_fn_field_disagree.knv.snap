@@ -9,6 +9,6 @@ error[L0407]: type annotations needed
 7 | (defn call (x) ((:f x) 1))
   |                  ^^ this read of `:f` infers a `has` bound
   |
-  = note: the structs that reach this function read `:f` as different types: `user` as `(fn (int) int)`, `animal` as `(fn (int) bool)`
-  = help: write one function for each struct, or declare the field with one type in every struct
+  = note: a `has` bound inferred from this read cannot be kept: a `has` bound cannot read the function field `:f`
+  = help: write one function for each struct to read or call its function field
   = note: run `knave doc L0407` for an explanation

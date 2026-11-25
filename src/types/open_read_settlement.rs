@@ -2,13 +2,13 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::check_round::{CheckRound, RoundGrowth};
 use super::display::TypeDisplay;
+use super::failure_kind::FailureKind;
 use super::field_reader::FieldReader;
 use super::field_readers::FieldReaders;
 use super::graph::DefinitionGraph;
 use super::inferred_bound_problems::InferredBoundProblems;
 use super::pinned_owners::PinnedOwners;
 use super::pinning::InstantiationReport;
-use super::reaching_read::ReachingRead;
 use super::reaching_reads::ReachingReads;
 use super::reader_shape::ReaderShape;
 use super::round_failure::RoundFailure;
@@ -74,7 +74,7 @@ impl<'p> OpenReadSettlement<'p> {
     fn round(&self, typed: Box<TypedProgram>) -> CheckRound {
         match self.settle(&typed) {
             OpenReadOutcome::Settled(reads) => Self::grown(&typed, reads),
-            OpenReadOutcome::Unsettled(verdicts) => match verdicts.first_failure() {
+            OpenReadOutcome::Unsettled(verdicts) => match verdicts.into_failure() {
                 Some(SettlementFailure::Refused(failure) | SettlementFailure::Waiting(failure)) => {
                     CheckRound::Failed(failure)
                 }
@@ -134,32 +134,23 @@ impl<'p> OpenReadSettlement<'p> {
             return ReaderRead::Unreached;
         };
         let problems = InferredBoundProblems::new(&reader.field, read);
-        let Ok(mut reads) = ReachingReads::new(report, typed).of(reader) else {
+        let Ok(reads) = ReachingReads::new(report, typed).of(reader) else {
             let open_struct = WrittenRefusal::Read(ReadRefusal::OpenStruct);
             return ReaderRead::Waiting(problems.unkept(open_struct, None));
         };
-        reads.sort_by_key(|reached| reached.owner);
-        match Self::distinct(&reads).as_slice() {
+        match reads.distinct().as_slice() {
             [] => ReaderRead::Unreached,
             [_] if ReaderShape::new(typed).changes_a_field(reader) => {
                 let changes = WrittenRefusal::Use(UseRefusal::ChangesField);
                 ReaderRead::Refused(problems.unkept(changes, None))
             }
             [reached] => ReaderRead::Agreed(reached.read.read.clone()),
-            _ => {
-                ReaderRead::Refused(problems.differing_reads(&ReachingReads::shown(typed, &reads)))
+            _ if reads.reads_function() => {
+                let function = WrittenRefusal::Read(ReadRefusal::Function);
+                ReaderRead::Refused(problems.unkept(function, None))
             }
+            _ => ReaderRead::Refused(problems.differing_reads(&reads.shown(typed))),
         }
-    }
-
-    fn distinct(reads: &[ReachingRead]) -> Vec<&ReachingRead> {
-        let mut found: Vec<&ReachingRead> = Vec::new();
-        for reached in reads {
-            if !found.iter().any(|known| known.read == reached.read) {
-                found.push(reached);
-            }
-        }
-        found
     }
 }
 
@@ -201,10 +192,7 @@ impl ReadTally {
                 .into_iter()
                 .map(|(span, read)| (span, SettledRead::Read(read))),
         );
-        let refused = matches!(
-            self.verdicts.first_failure(),
-            Some(SettlementFailure::Refused(_))
-        );
+        let refused = self.verdicts.failure_kind() == Some(FailureKind::Refused);
         if !refused && self.settled.len() > known {
             OpenReadOutcome::Settled(self.settled)
         } else {

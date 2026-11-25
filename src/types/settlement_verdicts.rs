@@ -1,5 +1,6 @@
 use rustc_hash::FxHashMap;
 
+use super::failure_kind::FailureKind;
 use super::settlement_failure::SettlementFailure;
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::source::Span;
@@ -32,13 +33,21 @@ impl SettlementVerdicts {
         (reads.iter()).find_map(|read| self.agreed.get(read).map(String::as_str))
     }
 
-    pub(super) fn first_failure(&self) -> Option<SettlementFailure> {
+    pub(super) fn failure_kind(&self) -> Option<FailureKind> {
         if !self.refused.is_empty() {
-            let refusals = self.refused.iter().map(|(_, refusal)| refusal.clone());
-            Some(SettlementFailure::Refused(refusals.collect()))
+            Some(FailureKind::Refused)
         } else {
-            let waiting = (!self.waiting.is_empty()).then(|| self.waiting.clone());
-            waiting.map(SettlementFailure::Waiting)
+            (!self.waiting.is_empty()).then_some(FailureKind::Waiting)
+        }
+    }
+
+    pub(super) fn into_failure(self) -> Option<SettlementFailure> {
+        match self.failure_kind()? {
+            FailureKind::Refused => {
+                let refusals = self.refused.into_iter().map(|(_, refusal)| refusal);
+                Some(SettlementFailure::Refused(refusals.collect()))
+            }
+            FailureKind::Waiting => Some(SettlementFailure::Waiting(self.waiting)),
         }
     }
 }

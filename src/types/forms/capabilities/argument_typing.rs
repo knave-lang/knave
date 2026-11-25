@@ -13,7 +13,7 @@ pub(in crate::types) trait ArgumentTyping {
     fn pass_first_argument(
         &mut self,
         callee: &TypedExpr,
-        parameter: &Type,
+        parameters: &[Type],
         value: &TypedExpr,
     ) -> Result<Borrow, Diagnostic>;
 }

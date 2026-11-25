@@ -1,11 +1,18 @@
-use super::{ArgumentTyping, CalleeShapes, ChildTyping, CollectionAssumptions, PairParts};
+use super::{
+    ArgumentTyping, CalleeFunctions, ChildTyping, CollectionAssumptions, PairParts, Unknowns,
+};
 
 pub(in crate::types) trait PairPartTyping:
-    PairParts + CollectionAssumptions + ChildTyping + CalleeShapes + ArgumentTyping
+    Unknowns + PairParts + CollectionAssumptions + ChildTyping + CalleeFunctions + ArgumentTyping
 {
 }
 
 impl<C> PairPartTyping for C where
-    C: PairParts + CollectionAssumptions + ChildTyping + CalleeShapes + ArgumentTyping
+    C: Unknowns
+        + PairParts
+        + CollectionAssumptions
+        + ChildTyping
+        + CalleeFunctions
+        + ArgumentTyping
 {
 }

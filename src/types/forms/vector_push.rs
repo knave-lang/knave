@@ -52,7 +52,7 @@ mod tests {
     use crate::types::assumed_collections::CollectionAssumption;
     use crate::types::forms::collection_fixtures::CollectionFixtures;
     use crate::types::forms::form_fixtures::FormFixtures;
-    use crate::types::forms::{CollectionAssumptions, CollectionShapes, SyntheticCalls, Unknowns};
+    use crate::types::forms::{CollectionAssumptions, PreludeShapes, SyntheticCalls, Unknowns};
     use crate::types::synthetic_call::SyntheticCall;
     use crate::types::synthetic_signature::SyntheticSignature;
     use crate::types::synthetic_template::SyntheticTemplate;
@@ -87,13 +87,17 @@ mod tests {
         }
     }
 
-    impl CollectionShapes for PushFixture {
+    impl PreludeShapes for PushFixture {
         fn nested_vector_of(&self, depth: usize, element: &Type) -> Type {
             CollectionFixtures::nested_vector_of(depth, element)
         }
 
         fn slice_of(&self, element: Type) -> Type {
             CollectionFixtures::slice_of(element)
+        }
+
+        fn option_of(&self, _value: Type) -> Type {
+            unreachable!("this form builds no option")
         }
     }
 

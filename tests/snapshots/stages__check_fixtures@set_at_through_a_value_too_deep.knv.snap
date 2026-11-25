@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/set_at_through_a_value_too_deep.knv
+---
+error[L0401]: mismatched types
+ --> check/set_at_through_a_value_too_deep.knv:4:12
+  |
+4 |   (set-at! (vec 1 2) (0 0) 9))
+  |            ^^^^^^^^^ expected `(slice (vec _))`, found `(vec _)`
+  |
+  = note: run `knave doc L0401` for an explanation
+
+error[L0401]: mismatched types
+ --> check/set_at_through_a_value_too_deep.knv:7:12
+  |
+7 |   (set-at! (make-row) (0 0) 9))
+  |            ^^^^^^^^^^ expected `(slice (vec _))`, found `(vec _)`
+  |
+  = note: run `knave doc L0401` for an explanation

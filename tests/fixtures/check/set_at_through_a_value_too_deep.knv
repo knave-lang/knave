@@ -1,0 +1,7 @@
+(defn make-row () (vec 1 2))
+
+(defn write-temporary ()
+  (set-at! (vec 1 2) (0 0) 9))
+
+(defn write-call-result ()
+  (set-at! (make-row) (0 0) 9))

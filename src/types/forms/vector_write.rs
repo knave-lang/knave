@@ -84,7 +84,7 @@ mod tests {
                 item: Box::new(Self::truth()),
             };
             let collections = CollectionFixtures::new();
-            let base = CollectionFixtures::nested_vector_of(keys, &Type::bool());
+            let base = CollectionFixtures::vector_of(Type::bool());
             let value = FormFixtures::typed_leaf(Literal::Bool(true), base.clone());
             VectorWrite::new(&path, FormFixtures::span()).type_with(
                 self,
@@ -170,9 +170,18 @@ mod tests {
     }
 
     #[test]
-    fn a_refused_base_refuses_the_write() {
+    fn a_zero_key_write_fits_the_base_to_the_item() {
         let mut fixture = VectorFixture::default();
-        fixture.refuses_base = true;
+        let _ = fixture.write(0);
+        assert_eq!(fixture.fitted, [CollectionFixtures::element()]);
+    }
+
+    #[test]
+    fn a_refused_base_refuses_the_write() {
+        let mut fixture = VectorFixture {
+            refuses_base: true,
+            ..Default::default()
+        };
         assert!(fixture.write(1).is_err());
     }
 

@@ -1,0 +1,12 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/set_at_with_no_keys.knv
+---
+error[L0401]: mismatched types
+ --> check/set_at_with_no_keys.knv:3:21
+  |
+3 |   (set-at! cells () 9)
+  |                     ^ expected `(vec _)`, found an integer
+  |
+  = note: run `knave doc L0401` for an explanation

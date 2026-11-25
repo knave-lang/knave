@@ -1,0 +1,36 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(struct (one) (x (ref str)))
+
+(struct (two 'a 'b)
+        (x (ref 'a string))
+        (y (ref 'b str)))
+
+(struct (mixed)
+        (name string)
+        (tag (ref str)))
+
+(defn main ()
+  (let (s (str "a")
+        outer-one (new one (x (as-str s)))
+        let-field (greeter (let (o (new one (x (as-str s))))
+                             (:x o)))
+        two-lifetimes (greeter (loop (o (new two
+                                          (x (ref (str "zz")))
+                                          (y (as-str s))))
+                                 (:y o)))
+        borrowed-local (greeter (loop ((o (ref one)) (ref outer-one))
+                                  (:x o)))
+        changed (greeter (loop (o (new one (x (as-str (str "zz")))))
+                           (set! o (new one (x (as-str s))))
+                           (:x o)))
+        borrowed-tag (greeter (let (m (new mixed
+                                        (name (str "zz"))
+                                        (tag (as-str s))))
+                                (:tag m))))
+    (let-field)
+    (two-lifetimes)
+    (borrowed-local)
+    (changed)
+    (borrowed-tag)))

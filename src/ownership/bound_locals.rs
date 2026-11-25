@@ -2,10 +2,11 @@ use rustc_hash::FxHashMap;
 
 use super::built_parts::BuiltParts;
 use super::changed_locals::ChangedLocals;
-use crate::core::BindingId;
+use crate::core::{BindingId, FieldLabel};
 use crate::types::{
     TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
     TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram,
+    TypedStructExpr,
 };
 
 #[derive(Clone, Copy)]
@@ -38,9 +39,12 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
         bound
     }
 
-    pub fn of(&self, value: &TypedExpr) -> Option<BoundLocal<'e>> {
-        match value.kind {
-            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.locals.get(&binding).copied(),
+    pub fn of(&self, value: &'e TypedExpr) -> Option<BoundLocal<'e>> {
+        match &value.kind {
+            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.locals.get(binding).copied(),
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => {
+                self.field(value, owner, label)
+            }
             _ => None,
         }
     }
@@ -49,6 +53,42 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
         self.locals
             .values()
             .any(|local| matches!(local, BoundLocal::Value(bound) if std::ptr::eq(*bound, value)))
+    }
+
+    fn field(
+        &self,
+        read: &TypedExpr,
+        owner: &'e TypedExpr,
+        label: &FieldLabel,
+    ) -> Option<BoundLocal<'e>> {
+        match self.of(owner)? {
+            BoundLocal::Value(bound) => self.field_of_value(read, self.built_value(bound), label),
+            BoundLocal::Within(whole) if self.program.type_holds_borrow(&read.ty) => {
+                Some(BoundLocal::Within(whole))
+            }
+            BoundLocal::Within(_) | BoundLocal::Unresolved => None,
+        }
+    }
+
+    fn field_of_value(
+        &self,
+        read: &TypedExpr,
+        built: &'e TypedExpr,
+        label: &FieldLabel,
+    ) -> Option<BoundLocal<'e>> {
+        let TypedExprKind::Struct(TypedStructExpr::New(structure, fields)) = &built.kind else {
+            return None;
+        };
+        let (_, field) = fields
+            .iter()
+            .find(|(written, _)| written.name == label.name)?;
+        let shares_the_struct_lifetime = self.program.type_holds_borrow(&read.ty)
+            && self.parts.whole_struct(built, *structure).is_some();
+        Some(if shares_the_struct_lifetime {
+            BoundLocal::Within(built)
+        } else {
+            BoundLocal::Value(field)
+        })
     }
 
     fn collect(&mut self, expr: &'e TypedExpr) {
@@ -115,6 +155,14 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     fn bound_value(&self, value: &'e TypedExpr) -> &'e TypedExpr {
         match self.of(value) {
             Some(BoundLocal::Value(bound)) => self.bound_value(bound),
+            _ => value,
+        }
+    }
+
+    fn built_value(&self, value: &'e TypedExpr) -> &'e TypedExpr {
+        let value = self.bound_value(value);
+        match &value.kind {
+            TypedExprKind::Borrow(_, referent) => self.built_value(referent),
             _ => value,
         }
     }

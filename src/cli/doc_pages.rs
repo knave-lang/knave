@@ -13,7 +13,7 @@ use crate::core::{BindingId, Expr, ModulePath};
 use crate::diagnostic::Diagnostics;
 use crate::expand::{ExpansionSession, Program};
 use crate::format::ModuleLookup;
-use crate::modules::{ModuleSources, PublicPrelude};
+use crate::modules::{EmbeddedModules, PublicPrelude};
 use crate::ownership::EnforcedOwnership;
 use crate::reader::{Form, StringLiteral};
 use crate::types::TypedProgram;
@@ -264,7 +264,7 @@ impl DocumentedModules {
 
     fn expand(session: &mut ExpansionSession<'_>, call: &str) -> Result<Expr, Diagnostics> {
         let form = Self::read(session, call)?;
-        session.expression_in(&ModulePath::new(ModuleSources::DOCUMENTATION), form)
+        session.expression_in(&ModulePath::new(EmbeddedModules::DOCUMENTATION), form)
     }
 
     fn read(session: &mut ExpansionSession<'_>, text: &str) -> Result<Form, Diagnostics> {

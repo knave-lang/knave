@@ -8,7 +8,7 @@ use crate::core::{
 };
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::modules::ReservedModulePaths;
-use crate::modules::{ModuleRecord, ModuleSources};
+use crate::modules::{EmbeddedModules, ModuleRecord, ModuleSources};
 use crate::reader::{Form, Reader, Symbol};
 use crate::scope::ScopeKind;
 use crate::source::{SourceId, Span, TextPosition};
@@ -80,12 +80,12 @@ impl ExpansionSession<'_> {
 
     pub fn test_runner_entry(&mut self, source: SourceId) -> Result<GeneratedEntry, Diagnostics> {
         self.check_library_examples();
-        let runner = self.runner_forms(ModuleSources::TEST, source)?;
+        let runner = self.runner_forms(EmbeddedModules::TEST, source)?;
         self.entry_lowered_in(runner.module, &runner.forms, runner.span)
     }
 
     pub fn task_runner_entry(&mut self, source: SourceId) -> Result<GeneratedEntry, Diagnostics> {
-        let runner = self.runner_forms(ModuleSources::TASK, source)?;
+        let runner = self.runner_forms(EmbeddedModules::TASK, source)?;
         let lowered = self.lower_in(runner.module, |expander| expander.lower_body(&runner.forms));
         let body = self.collect_diagnostics(lowered)?;
         Ok(GeneratedEntry::new(

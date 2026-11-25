@@ -11,7 +11,7 @@ use super::rule_global::RuleGlobal;
 use crate::core::{BindingArena, BindingId, BindingKind, Expr, ModulePath};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::expand::{Expander, PreludeState, Program};
-use crate::modules::ModuleSources;
+use crate::modules::{EmbeddedModules, ModuleSources};
 use crate::source::{SourceId, SourceMap, Span};
 
 pub struct RuleProgram {
@@ -50,7 +50,7 @@ impl RuleProgram {
         let mut sources = SourceMap::default();
         let uses = format!(
             "(use {} {} {} {} {})",
-            ModuleSources::LINT,
+            EmbeddedModules::LINT,
             Self::CHECK,
             Self::CHECK_MODULE,
             Self::KEPT,
@@ -99,7 +99,7 @@ impl RuleProgram {
         program
             .modules
             .iter()
-            .filter(|module| module.path.as_str() == ModuleSources::LINT)
+            .filter(|module| module.path.as_str() == EmbeddedModules::LINT)
             .find_map(|module| module.exports().binding_named(name, &program.bindings))
             .expect("the lint module exports its entries")
     }

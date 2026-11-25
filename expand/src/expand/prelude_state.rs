@@ -256,6 +256,7 @@ mod tests {
         BindingArena, BindingKind, ExprKind, Item, ItemKind, KernelConstants, KernelForm,
         KernelType, Leaf, Literal, Namespace,
     };
+    use crate::modules::EmbeddedModules;
     use crate::scope::ImportedCounts;
 
     struct UserProgram {
@@ -623,7 +624,7 @@ mod tests {
     #[test]
     fn a_loaded_state_reads_a_note_of_a_prelude_module() {
         let state = UserProgram::loaded_state();
-        let module = ModulePath::new(ModuleSources::DOCSTRINGS);
+        let module = ModulePath::new(EmbeddedModules::DOCSTRINGS);
         assert!(state.module_note(&module, "docstring-syntax").is_some());
         assert!(state.module_note(&module, "no-such-note").is_none());
     }

@@ -1,0 +1,4 @@
+(defn main ()
+  (local cells (vec 1))
+  (set-at! cells () 9)
+  (prn cells))

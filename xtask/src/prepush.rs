@@ -3,10 +3,10 @@ use std::process::ExitCode;
 
 use clap::Args;
 
+use crate::base_revision::BaseRevision;
 use crate::checks::Check;
 use crate::design::DesignRules;
 use crate::failure::TaskFailure;
-use crate::git::Git;
 use crate::production_lines::ProductionLineCensus;
 use crate::ratchet_gate::RatchetGate;
 use crate::source_format::SourceFormat;
@@ -14,29 +14,34 @@ use crate::verdict::Verdict;
 
 #[derive(Args)]
 pub struct PrepushTask {
-    #[arg(
-        long,
-        default_value = "origin/main",
-        help = "Check the changes since this branch forked from this revision"
-    )]
-    base: String,
+    #[command(flatten)]
+    base: BaseRevision,
 }
 
 impl PrepushTask {
     const MEASURED_TREE: &str = "prepush measures the working tree, uncommitted edits included. Git's diff leaves out untracked files, so add new files to the index first.";
-    const FORECAST_ON_GITHUB: &str = "prepush leaves out the CRAP forecast. Dispatch the `CRAP forecast` workflow on the pushed branch, as the CRAP forecast section of docs/pull-requests.md says.";
+    const FORECAST_ON_GITHUB: &str = "prepush does not run the CRAP forecast. After this push, dispatch the `CRAP forecast` workflow if the push adds or changes a function, answers a forecast verdict, or comes before `gh pr ready`, as the CRAP forecast section of docs/pull-requests.md says.";
 
     pub fn run(&self, root: &Path) -> ExitCode {
         let verdict = self
             .attempt(root)
             .unwrap_or_else(|failure| failure.report());
-        println!("{}", Self::MEASURED_TREE);
-        println!("{}", Self::FORECAST_ON_GITHUB);
+        for line in Self::closing_lines(verdict) {
+            println!("{line}");
+        }
         verdict
     }
 
+    fn closing_lines(verdict: ExitCode) -> Vec<&'static str> {
+        let mut lines = vec![Self::MEASURED_TREE];
+        if verdict == ExitCode::SUCCESS {
+            lines.push(Self::FORECAST_ON_GITHUB);
+        }
+        lines
+    }
+
     fn attempt(&self, root: &Path) -> Result<ExitCode, TaskFailure> {
-        let fork_point = self.fork_point(root)?;
+        let fork_point = self.base.fork_point(root)?;
         let ratchets = Self::ratchet_checks(root, &fork_point)?;
         let checks = Self::checks(SourceFormat::check(root)?, ratchets);
         let checks: Vec<&dyn Check> = checks.iter().map(Box::as_ref).collect();
@@ -49,10 +54,6 @@ impl PrepushTask {
         checks
     }
 
-    fn fork_point(&self, root: &Path) -> Result<String, TaskFailure> {
-        Git::new(root).merge_base(&self.base)
-    }
-
     fn ratchet_checks(root: &Path, fork_point: &str) -> Result<Vec<Box<dyn Check>>, TaskFailure> {
         RatchetGate::new(root, fork_point).checks(&[&DesignRules, &ProductionLineCensus])
     }
@@ -60,7 +61,10 @@ impl PrepushTask {
 
 #[cfg(test)]
 mod tests {
+    use std::process::ExitCode;
+
     use super::PrepushTask;
+    use crate::base_revision::BaseRevision;
     use crate::checks::Check;
     use crate::source_format::{FormatOutputs, SourceFormat};
     use crate::workspace::WorkspaceFixture;
@@ -109,12 +113,28 @@ mod tests {
     }
 
     #[test]
+    fn a_passing_prepush_points_at_the_forecast_workflow() {
+        assert_eq!(
+            PrepushTask::closing_lines(ExitCode::SUCCESS),
+            [PrepushTask::MEASURED_TREE, PrepushTask::FORECAST_ON_GITHUB]
+        );
+    }
+
+    #[test]
+    fn a_failing_prepush_names_no_dispatch() {
+        assert_eq!(
+            PrepushTask::closing_lines(ExitCode::FAILURE),
+            [PrepushTask::MEASURED_TREE]
+        );
+    }
+
+    #[test]
     fn an_unknown_base_fails_before_any_check() {
         let task = PrepushTask {
-            base: "no-such-revision".to_string(),
+            base: BaseRevision::named("no-such-revision"),
         };
-        let failure = match task.fork_point(WorkspaceFixture::repository_root()) {
-            Ok(fork_point) => panic!("found a fork point {fork_point}"),
+        let failure = match task.attempt(WorkspaceFixture::repository_root()) {
+            Ok(_) => panic!("prepush ran its checks"),
             Err(failure) => failure.to_string(),
         };
         assert_eq!(failure, "cannot find the revision `no-such-revision`");

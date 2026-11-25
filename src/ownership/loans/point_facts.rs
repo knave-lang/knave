@@ -30,6 +30,11 @@ impl<'p> PointFacts<'p> {
         );
     }
 
+    pub fn renews(&self, binding: BindingId) -> bool {
+        self.facts.defined.at(self.point).contains(&binding)
+            || self.facts.replaced.at(self.point).contains(&binding)
+    }
+
     pub fn use_of(&self, binding: BindingId) -> Option<Span> {
         self.facts
             .used

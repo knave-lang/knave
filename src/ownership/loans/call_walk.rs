@@ -36,7 +36,7 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         let point = self.walk.builder().join(&[evaluated.end]);
         let passed = values.pass(evaluated.held, &mut self.walk.builder().lender(point));
         self.store_into_targets(point, &passed);
-        self.renew_a_replaced_local(point);
+        self.mark_a_replaced_local(point);
         Walked::holding(point, self.site.result_holdings(passed))
     }
 
@@ -58,10 +58,10 @@ impl<'c, 'w> CallWalk<'c, 'w> {
         }
     }
 
-    fn renew_a_replaced_local(&mut self, point: PointId) {
+    fn mark_a_replaced_local(&mut self, point: PointId) {
         let replaced = WholeValueChanges::replaced(self.site.callee(), self.site.arguments());
         if let Some(local) = replaced {
-            self.walk.builder().values().renew(point, local);
+            self.walk.builder().values().replace(point, local);
         }
     }
 }

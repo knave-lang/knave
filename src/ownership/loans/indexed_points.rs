@@ -7,6 +7,7 @@ use crate::core::BindingId;
 
 pub struct IndexedPoints {
     pub defined: PointIndex<BindingId>,
+    pub replaced: PointIndex<BindingId>,
     pub used: PointIndex<ValueUse>,
     pub received: PointIndex<LoanId>,
     pub accesses: PointIndex<PlaceAccess>,

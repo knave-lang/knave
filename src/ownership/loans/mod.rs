@@ -43,6 +43,7 @@ mod loan_table;
 mod loop_heads;
 mod loop_scope;
 mod loop_walk;
+mod new_value;
 mod passed_holdings;
 mod place_access;
 mod point_facts;

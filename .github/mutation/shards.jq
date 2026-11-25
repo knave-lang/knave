@@ -1,13 +1,13 @@
 def seconds:
   if startswith("expand/src/format/") then 450
-  elif startswith("src/types/") then 190
-  elif startswith("src/ownership/") then 150
-  elif startswith("src/emit/") then 135
-  elif startswith("src/cli/") then 50
+  elif startswith("src/types/") then 150
+  elif startswith("src/ownership/") then 205
+  elif startswith("src/emit/") then 270
+  elif startswith("src/cli/") then 75
   elif startswith("xtask/agree/") then 90
-  elif startswith("xtask/") then 5
-  elif startswith("expand/src/") then 80
-  else 120
+  elif startswith("xtask/") then 20
+  elif startswith("expand/src/") then 35
+  else 70
   end;
 
 def estimated_seconds: [.[] | .file | seconds];

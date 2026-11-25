@@ -1,0 +1,40 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_part_of_a_loop_binder_that_borrows_a_temporary.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+ --> check/returned_closure_keeps_a_part_of_a_loop_binder_that_borrows_a_temporary.knv:6:52
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+6 |         extended-half (greeter (loop (p (pair (ref (str "zz")) (as-str s)))
+  |                                                    ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+ --> check/returned_closure_keeps_a_part_of_a_loop_binder_that_borrows_a_temporary.knv:8:60
+  |
+1 | (defn greeter (name)
+  |                ---- the returned closure keeps this borrow of `name`
+...
+8 |         receiver-half (greeter (loop (p (pair (ref (as-str (str "yy")))
+  |                                                            ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+  |
+  = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+  = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+  --> check/returned_closure_keeps_a_part_of_a_loop_binder_that_borrows_a_temporary.knv:12:52
+   |
+ 1 | (defn greeter (name)
+   |                ---- the returned closure keeps this borrow of `name`
+...
+12 |                                            (as-str (str "ww"))))
+   |                                                    ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+   |
+   = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation

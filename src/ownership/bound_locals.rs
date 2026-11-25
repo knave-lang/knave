@@ -2,29 +2,35 @@ use rustc_hash::FxHashMap;
 
 use super::built_parts::BuiltParts;
 use super::changed_locals::ChangedLocals;
-use crate::core::BindingId;
+use crate::core::{BindingId, FieldLabel};
 use crate::types::{
     TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind,
+    TypedLambda, TypedLeaf, TypedMatch, TypedPattern, TypedPatternKind, TypedProgram,
+    TypedStructExpr,
 };
 
 #[derive(Clone, Copy)]
 pub enum BoundLocal<'e> {
     Value(&'e TypedExpr),
-    LoopBinder(&'e TypedBinder, &'e TypedExpr),
     Within(&'e TypedExpr),
     Unresolved,
 }
 
 pub struct BoundLocals<'b, 'p, 'e> {
+    program: &'p TypedProgram,
     parts: &'b BuiltParts<'p>,
     changed: ChangedLocals,
     locals: FxHashMap<BindingId, BoundLocal<'e>>,
 }
 
 impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
-    pub fn in_argument(argument: &'e TypedExpr, parts: &'b BuiltParts<'p>) -> Self {
+    pub fn in_argument(
+        program: &'p TypedProgram,
+        argument: &'e TypedExpr,
+        parts: &'b BuiltParts<'p>,
+    ) -> Self {
         let mut bound = Self {
+            program,
             parts,
             changed: ChangedLocals::in_value(argument),
             locals: FxHashMap::default(),
@@ -33,9 +39,12 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
         bound
     }
 
-    pub fn of(&self, value: &TypedExpr) -> Option<BoundLocal<'e>> {
-        match value.kind {
-            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.locals.get(&binding).copied(),
+    pub fn of(&self, value: &'e TypedExpr) -> Option<BoundLocal<'e>> {
+        match &value.kind {
+            TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.locals.get(binding).copied(),
+            TypedExprKind::Struct(TypedStructExpr::Field(owner, label)) => {
+                self.field(value, owner, label)
+            }
             _ => None,
         }
     }
@@ -43,7 +52,51 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     pub fn owns(&self, value: &TypedExpr) -> bool {
         self.locals
             .values()
-            .any(|local| matches!(local, BoundLocal::Value(bound) if std::ptr::eq(*bound, value)))
+            .any(|local| matches!(local, BoundLocal::Value(bound) if Self::holds(bound, value)))
+    }
+
+    fn holds(bound: &TypedExpr, value: &TypedExpr) -> bool {
+        std::ptr::eq(bound, value)
+            || bound
+                .children()
+                .into_iter()
+                .any(|child| Self::holds(child, value))
+    }
+
+    fn field(
+        &self,
+        read: &TypedExpr,
+        owner: &'e TypedExpr,
+        label: &FieldLabel,
+    ) -> Option<BoundLocal<'e>> {
+        match self.of(owner)? {
+            BoundLocal::Value(bound) => self.field_of_value(read, self.built_value(bound), label),
+            BoundLocal::Within(whole) if self.program.type_holds_borrow(&read.ty) => {
+                Some(BoundLocal::Within(whole))
+            }
+            BoundLocal::Within(_) | BoundLocal::Unresolved => None,
+        }
+    }
+
+    fn field_of_value(
+        &self,
+        read: &TypedExpr,
+        built: &'e TypedExpr,
+        label: &FieldLabel,
+    ) -> Option<BoundLocal<'e>> {
+        let TypedExprKind::Struct(TypedStructExpr::New(structure, fields)) = &built.kind else {
+            return None;
+        };
+        let (_, field) = fields
+            .iter()
+            .find(|(written, _)| written.name == label.name)?;
+        let shares_the_struct_lifetime = self.program.type_holds_borrow(&read.ty)
+            && self.parts.whole_struct(built, *structure).is_some();
+        Some(if shares_the_struct_lifetime {
+            BoundLocal::Within(built)
+        } else {
+            BoundLocal::Value(field)
+        })
     }
 
     fn collect(&mut self, expr: &'e TypedExpr) {
@@ -114,12 +167,17 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
         }
     }
 
+    fn built_value(&self, value: &'e TypedExpr) -> &'e TypedExpr {
+        let value = self.bound_value(value);
+        match &value.kind {
+            TypedExprKind::Borrow(_, referent) => self.built_value(referent),
+            _ => value,
+        }
+    }
+
     fn loop_binders(&mut self, body: &'e TypedLambda, arguments: &'e [TypedArgument]) {
         for (parameter, argument) in body.params.iter().zip(arguments) {
-            self.bind_local(
-                parameter.binding,
-                BoundLocal::LoopBinder(parameter, &argument.value),
-            );
+            self.bind_value(parameter, &argument.value);
         }
         self.lets(&body.body);
     }
@@ -127,17 +185,21 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     fn lets(&mut self, block: &'e TypedBlock) {
         for item in &block.items {
             if let TypedBodyItem::Let(binder, value) = item {
-                self.bind_local(binder.binding, BoundLocal::Value(value));
+                self.bind_value(binder, value);
             }
         }
     }
 
-    fn bind_local(&mut self, binding: BindingId, local: BoundLocal<'e>) {
-        let local = if self.changed.contains(binding) {
+    fn bind_value(&mut self, binder: &TypedBinder, value: &'e TypedExpr) {
+        let local = if self.changes_what_it_borrows(binder) {
             BoundLocal::Unresolved
         } else {
-            local
+            BoundLocal::Value(value)
         };
-        self.locals.insert(binding, local);
+        self.locals.insert(binder.binding, local);
+    }
+
+    fn changes_what_it_borrows(&self, binder: &TypedBinder) -> bool {
+        self.changed.contains(binder.binding) && self.program.type_holds_borrow(&binder.ty)
     }
 }

@@ -1,0 +1,52 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/returned_closure_keeps_a_field_of_a_local_that_borrows_a_temporary.knv
+---
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+  --> check/returned_closure_keeps_a_field_of_a_local_that_borrows_a_temporary.knv:10:56
+   |
+ 1 | (defn greeter (name)
+   |                ---- the returned closure keeps this borrow of `name`
+...
+10 |         let-field (greeter (let (o (new one (x (as-str (str "zz")))))
+   |                                                        ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+   |
+   = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+  --> check/returned_closure_keeps_a_field_of_a_local_that_borrows_a_temporary.knv:12:58
+   |
+ 1 | (defn greeter (name)
+   |                ---- the returned closure keeps this borrow of `name`
+...
+12 |         loop-field (greeter (loop (o (new one (x (as-str (str "xx")))))
+   |                                                          ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+   |
+   = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+  --> check/returned_closure_keeps_a_field_of_a_local_that_borrows_a_temporary.knv:16:62
+   |
+ 1 | (defn greeter (name)
+   |                ---- the returned closure keeps this borrow of `name`
+...
+16 |                                                   (x (as-str (str "ww")))))))
+   |                                                              ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+   |
+   = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation
+
+error[L0520]: the result of `greeter` keeps a borrow of a local of its argument
+  --> check/returned_closure_keeps_a_field_of_a_local_that_borrows_a_temporary.knv:19:66
+   |
+ 1 | (defn greeter (name)
+   |                ---- the returned closure keeps this borrow of `name`
+...
+19 |                                                       (x (as-str (str "vv"))))))
+   |                                                                  ^^^^^^^^^^ this value is dropped at the end of its block, while the result still borrows it
+   |
+   = help: bind the argument with `let` before the statement that binds the result, so it lives as long as the result
+   = note: run `knave doc L0520` for an explanation

@@ -1,0 +1,9 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/one_arm_match_in_a_loop_body_keeps_its_scrutinee_temporaries.knv
+---
+zz0 a
+zz1 a
+zz2 a
+2

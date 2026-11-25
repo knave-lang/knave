@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/loop_start_keeps_its_temporaries_to_the_block_end.knv
+---
+q
+zz
+hi a
+hi a
+hi a
+hi a
+hi a
+hi a
+a

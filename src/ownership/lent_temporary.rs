@@ -5,7 +5,7 @@ use super::kept_temporary_problems::KeptValue;
 use super::promoted_constants::PromotedConstants;
 use super::result_source::ResultSource;
 use crate::types::{
-    PositionTie, ReturnedValues, Type, TypedBinder, TypedExpr, TypedExprKind, TypedProgram,
+    PositionTie, ReturnedValues, TypedBinder, TypedExpr, TypedExprKind, TypedProgram,
 };
 
 pub struct LentTemporary<'p> {
@@ -36,7 +36,7 @@ impl<'p> LentTemporary<'p> {
     ) -> Option<LentValue<'e>> {
         let walk = ArgumentWalk {
             lent: self,
-            bound: BoundLocals::in_argument(argument, &self.parts),
+            bound: BoundLocals::in_argument(self.program, argument, &self.parts),
         };
         let value =
             walk.first_temporary([ResultSource::kept_by_closure(&parameter.ty, argument)])?;
@@ -119,17 +119,9 @@ impl<'w, 'p, 'e> ArgumentWalk<'w, 'p, 'e> {
     ) -> Option<Option<&'e TypedExpr>> {
         match self.bound.of(value)? {
             BoundLocal::Value(bound) => Some(same_mode(self, bound)),
-            BoundLocal::LoopBinder(binder, _) if self.binder_owns_its_value(&binder.ty) => {
-                Some(None)
-            }
-            BoundLocal::LoopBinder(_, start) => Some(same_mode(self, start)),
             BoundLocal::Within(scrutinee) => Some(self.held_in(scrutinee)),
             BoundLocal::Unresolved => Some(None),
         }
-    }
-
-    fn binder_owns_its_value(&self, ty: &Type) -> bool {
-        !self.lent.program.type_holds_borrow(ty)
     }
 
     fn chosen_values(&self, value: &'e TypedExpr) -> Option<Vec<&'e TypedExpr>> {

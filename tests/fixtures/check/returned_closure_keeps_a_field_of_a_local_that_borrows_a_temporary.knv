@@ -1,0 +1,24 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(struct (one) (x (ref str)))
+
+(struct (outer) (inner (one)))
+
+(defn main ()
+  (let (s (str "a")
+        let-field (greeter (let (o (new one (x (as-str (str "zz")))))
+                             (:x o)))
+        loop-field (greeter (loop (o (new one (x (as-str (str "xx")))))
+                              (:x o)))
+        nested-field (greeter (loop (o (new outer
+                                         (inner (new one
+                                                  (x (as-str (str "ww")))))))
+                                (:x (:inner o))))
+        borrowed (greeter (loop ((o (ref one)) (ref (new one
+                                                      (x (as-str (str "vv"))))))
+                            (:x o))))
+    (let-field)
+    (loop-field)
+    (nested-field)
+    (borrowed)))

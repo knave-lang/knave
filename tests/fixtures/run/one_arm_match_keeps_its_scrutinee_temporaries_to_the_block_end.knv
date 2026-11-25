@@ -1,0 +1,22 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(struct (holder a) (v a))
+
+(type wrap
+  (where (a) (fn (a) (holder a))))
+
+(defn wrap (x) (new holder (v x)))
+
+(defn main ()
+  (let (s (str "a")
+        nested (greeter (match (wrap (pair (as-str (str "zz")) (as-str s)))
+                          ((holder (pair a b)) b)))
+        rebound (greeter (match (wrap (pair (as-str (str "zz")) (as-str s)))
+                           ((holder p) (let-match ((pair a b) p) b))))
+        whole (let-match ((holder p) (wrap (pair (as-str (str "zz"))
+                                                 (as-str s))))
+                (let-match ((pair a b) p) (str a b))))
+    (nested)
+    (rebound)
+    (println whole)))

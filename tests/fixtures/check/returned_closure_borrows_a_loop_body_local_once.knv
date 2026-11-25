@@ -1,0 +1,13 @@
+(defn greeter (name)
+  (fn () (println (str "hi " name))))
+
+(defn main ()
+  (let (kept (greeter (loop (i 0)
+                        (let (t (str "x"))
+                          (if (< i 1) (recur (+ i 1)) (as-str t)))))
+        changed (greeter (loop (i 0)
+                           (let (t (str "x"))
+                             (set! t (str "y"))
+                             (if (< i 1) (recur (+ i 1)) (as-str t))))))
+    (kept)
+    (changed)))

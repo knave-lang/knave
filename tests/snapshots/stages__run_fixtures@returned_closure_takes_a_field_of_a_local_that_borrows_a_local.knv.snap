@@ -1,0 +1,10 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/run/returned_closure_takes_a_field_of_a_local_that_borrows_a_local.knv
+---
+hi a
+hi a
+hi a
+hi a
+hi a

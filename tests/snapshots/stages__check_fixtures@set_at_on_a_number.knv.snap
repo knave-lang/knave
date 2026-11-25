@@ -1,0 +1,28 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/set_at_on_a_number.knv
+---
+error[L0401]: mismatched types
+ --> check/set_at_on_a_number.knv:5:12
+  |
+5 |   (set-at! count (0) 9))
+  |            ^^^^^ expected a collection, found _
+  |
+  = note: run `knave doc L0401` for an explanation
+
+error[L0401]: mismatched types
+ --> check/set_at_on_a_number.knv:8:12
+  |
+8 |   (set-at! 2.5 (0) 9))
+  |            ^^^ expected a collection, found _
+  |
+  = note: run `knave doc L0401` for an explanation
+
+error[L0401]: mismatched types
+  --> check/set_at_on_a_number.knv:11:12
+   |
+11 |   (set-at! (same 1) (0) 9))
+   |            ^^^^^^^^ expected a collection, found _
+   |
+   = note: run `knave doc L0401` for an explanation

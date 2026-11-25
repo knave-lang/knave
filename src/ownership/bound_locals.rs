@@ -52,7 +52,15 @@ impl<'b, 'p, 'e> BoundLocals<'b, 'p, 'e> {
     pub fn owns(&self, value: &TypedExpr) -> bool {
         self.locals
             .values()
-            .any(|local| matches!(local, BoundLocal::Value(bound) if std::ptr::eq(*bound, value)))
+            .any(|local| matches!(local, BoundLocal::Value(bound) if Self::holds(bound, value)))
+    }
+
+    fn holds(bound: &TypedExpr, value: &TypedExpr) -> bool {
+        std::ptr::eq(bound, value)
+            || bound
+                .children()
+                .into_iter()
+                .any(|child| Self::holds(child, value))
     }
 
     fn field(

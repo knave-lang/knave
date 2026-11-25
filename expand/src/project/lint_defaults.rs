@@ -71,32 +71,22 @@ impl LintDefaults {
     pub(crate) const NOTE: &'static str = "lint-defaults";
 
     pub(super) fn read(notes: &[Form], words: &LevelWords) -> Result<Self, LintDefaultProblem> {
-        let mut defaults = Self::default();
-        for (position, note) in notes.iter().enumerate() {
-            defaults.add(note, &notes[..position], words)?;
+        let mut reading = LintDefaultsReading::default();
+        for note in notes {
+            reading.add(note, words)?;
         }
-        Ok(defaults)
+        Ok(reading.defaults)
     }
 
     pub(super) fn level_of(&self, code: &DiagnosticCode) -> Option<LintLevel> {
-        self.levels
-            .iter()
-            .find(|(default_code, _)| default_code == code)
-            .map(|(_, level)| *level)
+        let (_, level) = self.levels[self.position_of(code)?];
+        Some(level)
     }
 
-    fn add(
-        &mut self,
-        note: &Form,
-        earlier: &[Form],
-        words: &LevelWords,
-    ) -> Result<(), LintDefaultProblem> {
-        let (code, level) = Self::entry_of(note, words)?;
-        if self.level_of(&code).is_some() {
-            return Err(Self::repeated(note, earlier, &code));
-        }
-        self.levels.push((code, level));
-        Ok(())
+    fn position_of(&self, code: &DiagnosticCode) -> Option<usize> {
+        self.levels
+            .iter()
+            .position(|(default_code, _)| default_code == code)
     }
 
     fn entry_of(
@@ -128,19 +118,11 @@ impl LintDefaults {
         LintDefaultProblem::UnknownLevel(level.span(), name.to_string(), closest)
     }
 
-    fn repeated(note: &Form, earlier: &[Form], code: &DiagnosticCode) -> LintDefaultProblem {
+    fn repeated(note: &Form, code: &DiagnosticCode, first: Span) -> LintDefaultProblem {
         let lint = CodeStage::LINTS
             .name_of(code)
             .expect("a lint default names a lint");
-        let first = earlier
-            .iter()
-            .find(|entry| Self::lint_name_of(entry) == Some(lint.as_str()))
-            .expect("a repeated lint has a first default");
-        LintDefaultProblem::Repeated(Self::site_of(note), lint, Self::site_of(first))
-    }
-
-    fn lint_name_of(entry: &Form) -> Option<&str> {
-        entry.as_list()?.first().and_then(Self::name_of)
+        LintDefaultProblem::Repeated(Self::site_of(note), lint, first)
     }
 
     fn malformed(note: &Form) -> LintDefaultProblem {
@@ -156,6 +138,28 @@ impl LintDefaults {
 
     fn name_of(form: &Form) -> Option<&str> {
         form.as_symbol().map(|symbol| symbol.name())
+    }
+}
+
+#[derive(Default)]
+struct LintDefaultsReading {
+    defaults: LintDefaults,
+    first_sites: Vec<Span>,
+}
+
+impl LintDefaultsReading {
+    fn add(&mut self, note: &Form, words: &LevelWords) -> Result<(), LintDefaultProblem> {
+        let (code, level) = LintDefaults::entry_of(note, words)?;
+        if let Some(position) = self.defaults.position_of(&code) {
+            return Err(LintDefaults::repeated(
+                note,
+                &code,
+                self.first_sites[position],
+            ));
+        }
+        self.defaults.levels.push((code, level));
+        self.first_sites.push(LintDefaults::site_of(note));
+        Ok(())
     }
 }
 

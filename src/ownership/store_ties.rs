@@ -4,7 +4,8 @@ use super::store_pairs::StorePairs;
 use super::stored_layer::StoredLayer;
 use crate::core::BindingId;
 use crate::types::{
-    EmittedLifetimes, Lifetime, SharedLifetime, Type, TypedDefinition, TypedLambda, TypedProgram,
+    EmittedLifetimes, Lifetime, SharedLifetime, Type, TypeLifetimes, TypedDefinition, TypedLambda,
+    TypedProgram,
 };
 
 pub struct StoreTies<'p> {
@@ -135,8 +136,8 @@ impl SignatureLifetimes<'_> {
     }
 
     fn named(&self, position: usize, ty: &Type) -> Vec<TieLifetime> {
-        self.emitted
-            .of(ty)
+        TypeLifetimes::of(ty)
+            .all_with(&self.emitted)
             .into_iter()
             .filter_map(|lifetime| self.tied(position, lifetime))
             .collect()

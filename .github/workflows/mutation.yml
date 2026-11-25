@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
+    inputs:
+      base:
+        description: The commit a backfill slice starts after. Leave it empty for the nightly range
+        default: ""
+        type: string
+      head:
+        description: The commit a backfill slice ends at. Defaults to the ref's head
+        default: ""
+        type: string
 
 concurrency:
   group: nightly-mutants
@@ -16,11 +25,13 @@ env:
   CACHIX_CACHE: rslisp
   DIFF: git.diff
   ISSUE_TITLE: Nightly mutants
+  BACKFILL_ISSUE_TITLE: Mutants backfill
   INSTA_UPDATE: "no"
+  TOOLS: ${{ github.workspace }}/mutation-tools
 
 jobs:
   plan:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || (inputs.base || '') != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -38,27 +49,84 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+          path: mutation-tools
+          sparse-checkout: |
+            .github/mutation
+            .github/actions
       - id: plan
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash .github/mutation/plan.sh
-      - uses: ./.github/actions/dev-shell
+          BASE_INPUT: ${{ inputs.base }}
+          HEAD_INPUT: ${{ inputs.head }}
+        run: bash "$TOOLS/.github/mutation/plan.sh"
+      - name: Check out the head of the range
+        if: steps.plan.outputs.changed-sources != '0'
+        env:
+          HEAD_COMMIT: ${{ steps.plan.outputs.head }}
+        run: git checkout --quiet "$HEAD_COMMIT"
+      - uses: ./mutation-tools/.github/actions/dev-shell
         if: steps.plan.outputs.changed-sources != '0'
       - id: mutants
         name: List the mutants of the diff
         if: steps.plan.outputs.changed-sources != '0'
         env:
           MUTANTS: ${{ runner.temp }}/mutants
-        run: nix develop .#mutation -c bash .github/mutation/write-generated-mutants.sh
+        run: nix develop .#mutation -c bash "$TOOLS/.github/mutation/write-generated-mutants.sh"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: steps.plan.outputs.changed-sources != '0'
         with:
           name: mutants
           path: ${{ runner.temp }}/mutants/
 
-  mutants:
+  baseline:
     needs: plan
+    if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+          ref: ${{ needs.plan.outputs.head }}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+          path: mutation-tools
+          sparse-checkout: |
+            .github/mutation
+            .github/actions
+      - uses: ./mutation-tools/.github/actions/dev-shell
+        timeout-minutes: 10
+        with:
+          build-cache: mutation
+          save-build-cache: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: mutants
+          path: ${{ runner.temp }}/mutants
+      - name: Find the test sets that fail without a mutant
+        timeout-minutes: 60
+        env:
+          MUTANTS: ${{ runner.temp }}/mutants
+          RESULTS: ${{ runner.temp }}/baseline
+          CARGO_INCREMENTAL: "1"
+          BUILD_SECONDS: 1500
+          TEST_SECONDS: 900
+        run: nix develop .#ci -c bash "$TOOLS/.github/mutation/baseline.sh"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mutant-baseline
+          path: ${{ runner.temp }}/baseline/
+
+  mutants:
+    needs: [plan, baseline]
     if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
     strategy:
       fail-fast: false
@@ -73,26 +141,38 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ needs.plan.outputs.head }}
-      - uses: ./.github/actions/dev-shell
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+          path: mutation-tools
+          sparse-checkout: |
+            .github/mutation
+            .github/actions
+      - uses: ./mutation-tools/.github/actions/dev-shell
         timeout-minutes: 10
         with:
           build-cache: mutation
-          save-build-cache: ${{ matrix.shard == 0 }}
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: mutants
           path: ${{ runner.temp }}/mutants
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: mutant-baseline
+          path: ${{ runner.temp }}/baseline
       - name: Test the mutants
         timeout-minutes: 105
         env:
           SHARD: ${{ matrix.shard }}
           MUTANTS: ${{ runner.temp }}/mutants
           RESULTS: ${{ runner.temp }}/results
+          BASELINE_FAILURES: ${{ runner.temp }}/baseline/baseline-failures
           CARGO_INCREMENTAL: "1"
           BUILD_SECONDS: 1500
           TEST_SECONDS: 900
           SLOW_SECONDS: 5100
-        run: nix develop .#ci -c bash .github/mutation/test-patches.sh
+        run: nix develop .#ci -c bash "$TOOLS/.github/mutation/test-patches.sh"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}
         with:
@@ -100,7 +180,7 @@ jobs:
           path: ${{ runner.temp }}/results/
 
   report:
-    needs: [plan, mutants]
+    needs: [plan, baseline, mutants]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -122,7 +202,26 @@ jobs:
         with:
           name: mutants
           path: mutants
+      - name: Compare the mutants' seconds with their estimates
+        if: needs.plan.outputs.shard-count != '' && needs.plan.outputs.shard-count != '0'
+        timeout-minutes: 5
+        env:
+          MUTANTS: mutants
+        run: bash .github/mutation/check-estimates.sh
+      - name: Record the backfill slice
+        if: (inputs.base || '') != ''
+        timeout-minutes: 5
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_TITLE: ${{ env.BACKFILL_ISSUE_TITLE }}
+          BASE: ${{ needs.plan.outputs.base }}
+          HEAD_COMMIT: ${{ needs.plan.outputs.head }}
+          SHARD_COUNT: ${{ needs.plan.outputs.shard-count }}
+          MUTANTS: mutants
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/mutation/report-backfill.sh
       - name: Report the surviving mutants
+        if: (inputs.base || '') == ''
         timeout-minutes: 5
         env:
           GH_TOKEN: ${{ github.token }}

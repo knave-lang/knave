@@ -334,3 +334,25 @@ gh run download "$run" --name callgrind-profiles --dir target/scratch/profiles
 | `unviable` | The code does not compile with the mutant | Rewrite the mutant so that it compiles |
 | `invalid` | A test set fails without the mutant, or `cargo test` refused it without a compile error | Fix the test set and dispatch the mutant again |
 | `unapplied` | The entry cannot become a change to its file | Fix the entry as its verdict says and dispatch it again |
+
+## Nightly mutants backfill
+
+**The `Nightly mutants` workflow tests the mutants of one range of `main` per run.** A scheduled run starts at the last tested commit that the `Nightly mutants` issue records. It moves that record when every shard finishes.
+
+**A backfill slice is a run with an explicit range.** It leaves the `Nightly mutants` issue alone. It adds one comment to the `Mutants backfill` issue, with these parts:
+
+- its range
+- its verdict counts
+- each mutant that no test caught
+
+**To test a slice, dispatch the workflow on `main` with the slice's first and last commits:**
+
+```sh
+gh workflow run mutation.yml --ref main -f base=<commit before the slice> -f head=<last commit of the slice>
+```
+
+**Dispatch one slice at a time, and dispatch the next after the run ends.** The workflow runs one range at a time, and a newer pending run replaces an older pending one.
+
+**Size each slice as about one day of commits on `main`.** A larger slice can hold more mutants than the shards finish.
+
+**If a slice's comment says some shards did not finish, dispatch the slice again.**

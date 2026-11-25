@@ -2,7 +2,7 @@
 set -euo pipefail
 
 readonly LIST=$RUNNER_TEMP/mutants.json
-readonly MODULES=.github/mutation
+readonly MODULES=$(dirname "${BASH_SOURCE[0]}")
 readonly SHARD_SECONDS=2700
 readonly MOST_SHARDS=48
 

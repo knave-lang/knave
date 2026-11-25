@@ -6,8 +6,8 @@ use super::local_borrow_calls::{LocalBorrowCalls, PassedLocal};
 use super::region_rules::RegionRules;
 use crate::core::BindingId;
 use crate::types::{
-    TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedMatch,
+    PassedCall, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
+    TypedLambda, TypedLeaf, TypedMatch,
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -125,9 +125,8 @@ impl<'r> BodyFlows<'r> {
         match &expr.kind {
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.local(*binding),
             TypedExprKind::Control(control) => self.control(control),
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, expr),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments, expr)
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.call(callee, arguments, expr)
             }
             TypedExprKind::Borrow(_, place) => self.borrowed(place),
             _ => self.children(expr),

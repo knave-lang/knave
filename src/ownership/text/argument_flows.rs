@@ -15,7 +15,7 @@ use super::transfer::Transfer;
 use super::type_path::TypePath;
 use super::value_parts::ValueParts;
 use super::walk_context::WalkContext;
-use crate::types::{GenericId, Type, TypedExpr, TypedExprKind};
+use crate::types::{GenericId, PassedCall, Type, TypedExpr};
 
 pub struct ArgumentFlows<'c, 'w, 'p> {
     context: &'c mut WalkContext<'w, 'p>,
@@ -85,10 +85,8 @@ impl<'c, 'w, 'p> ArgumentFlows<'c, 'w, 'p> {
     }
 
     fn passes_mutably(&self, index: usize) -> bool {
-        let arguments = match &self.call.kind {
-            TypedExprKind::Call(_, arguments) => arguments,
-            TypedExprKind::Assign(assignment) => &assignment.arguments,
-            _ => return false,
+        let Some(PassedCall { arguments, .. }) = PassedCall::of(self.call) else {
+            return false;
         };
         arguments
             .get(index)

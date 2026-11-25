@@ -3,7 +3,7 @@ use rustc_hash::FxHashSet;
 use super::aliases::LetAliases;
 use crate::core::BindingId;
 use crate::types::{
-    TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
+    PassedCall, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
     TypedProgram,
 };
 
@@ -35,21 +35,18 @@ impl<'h, 'e> HeldClosures<'h, 'e> {
             .collect()
     }
 
-    fn held_arguments(value: &TypedExpr, arguments: &'e [TypedArgument]) -> Vec<&'e TypedExpr> {
-        arguments
-            .iter()
-            .map(|argument| &argument.value)
-            .filter(|argument| value.ty.contains(&argument.ty))
-            .collect()
-    }
-
     fn held_values(&self, value: &'e TypedExpr) -> Vec<&'e TypedExpr> {
         match &value.kind {
             TypedExprKind::Variant(_, payloads, _) => payloads.iter().collect(),
-            TypedExprKind::Call(callee, arguments) if self.templates.is_template(callee) => {
-                Self::held_arguments(value, arguments)
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(value)
+                && self.templates.is_template(callee) =>
+            {
+                arguments
+                    .iter()
+                    .map(|argument| &argument.value)
+                    .filter(|argument| value.ty.contains(&argument.ty))
+                    .collect()
             }
-            TypedExprKind::Assign(assignment) => Self::held_arguments(value, &assignment.arguments),
             TypedExprKind::Control(control) => Self::branch_results(control),
             _ => Vec::new(),
         }

@@ -1,6 +1,8 @@
 use super::callee_definitions::{CalleeDefinition, CalleeDefinitions};
 use crate::core::{ParsedTemplate, Piece, RustTemplate};
-use crate::types::{TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr};
+use crate::types::{
+    PassedCall, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedStructExpr,
+};
 
 #[derive(Clone, Copy)]
 pub struct ShortForm<'p> {
@@ -19,11 +21,15 @@ impl<'p> ShortForm<'p> {
 
     fn admits_step(&self, parent: &TypedExpr, child: &TypedExpr) -> bool {
         match &parent.kind {
-            TypedExprKind::Call(callee, arguments) => {
-                self.admits_argument(callee, arguments, child)
-            }
-            TypedExprKind::Assign(assignment) => {
-                self.admits_argument(&assignment.template, &assignment.arguments, child)
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(parent) => {
+                let lent = arguments
+                    .iter()
+                    .take_while(|argument| !std::ptr::eq(&argument.value, child))
+                    .count();
+                arguments[..lent]
+                    .iter()
+                    .all(|argument| Self::is_literal(&argument.value))
+                    && self.admits_callee(callee, arguments, lent)
             }
             TypedExprKind::Struct(TypedStructExpr::New(_, fields)) => {
                 Self::only_literals_ahead(fields.iter().map(|(_, value)| value), child)
@@ -34,22 +40,6 @@ impl<'p> ShortForm<'p> {
             | TypedExprKind::Try { .. } => true,
             _ => false,
         }
-    }
-
-    fn admits_argument(
-        &self,
-        callee: &TypedExpr,
-        arguments: &[TypedArgument],
-        child: &TypedExpr,
-    ) -> bool {
-        let lent = arguments
-            .iter()
-            .take_while(|argument| !std::ptr::eq(&argument.value, child))
-            .count();
-        arguments[..lent]
-            .iter()
-            .all(|argument| Self::is_literal(&argument.value))
-            && self.admits_callee(callee, arguments, lent)
     }
 
     fn only_literals_ahead<'e>(

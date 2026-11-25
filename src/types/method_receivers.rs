@@ -1,7 +1,6 @@
+use super::passed_call::PassedCall;
 use super::templates::TemplateBorrows;
-use super::typed::{
-    TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedExpr, TypedExprKind, TypedLeaf,
-};
+use super::typed::{TypedBinder, TypedBlock, TypedBodyItem, TypedExpr, TypedExprKind, TypedLeaf};
 use crate::core::BindingId;
 
 pub(super) struct MethodReceivers<'t> {
@@ -48,23 +47,9 @@ impl<'t> MethodReceivers<'t> {
     }
 
     fn receives(&self, expr: &TypedExpr, names: &[BindingId]) -> bool {
-        match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => {
-                self.passes_receiver(callee, arguments, names)
-            }
-            TypedExprKind::Assign(assignment) => {
-                self.passes_receiver(&assignment.template, &assignment.arguments, names)
-            }
-            _ => false,
-        }
-    }
-
-    fn passes_receiver(
-        &self,
-        callee: &TypedExpr,
-        arguments: &[TypedArgument],
-        names: &[BindingId],
-    ) -> bool {
+        let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) else {
+            return false;
+        };
         arguments.iter().enumerate().any(|(position, argument)| {
             Self::is_one_of(&argument.value, names) && self.templates.receives(callee, position)
         })

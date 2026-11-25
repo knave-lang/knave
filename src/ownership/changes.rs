@@ -1,7 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use crate::core::{BindingId, ReferenceKind};
-use crate::types::{Borrow, Type, TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr};
+use crate::types::{
+    Borrow, PassedCall, Type, TypedExpr, TypedExprKind, TypedProgram, TypedStructExpr,
+};
 
 pub struct InPlaceChanges;
 
@@ -34,13 +36,14 @@ impl InPlaceChanges {
             Self::written_mut_types(&binder.ty, changed);
         }
         let arguments = match &expr.kind {
-            TypedExprKind::Call(_, arguments) | TypedExprKind::Recur(arguments) => arguments,
-            TypedExprKind::Assign(assignment) => &assignment.arguments,
-            _ => &Vec::new(),
+            TypedExprKind::Recur(arguments) => Some(arguments.as_slice()),
+            _ => PassedCall::of(expr).map(|call| call.arguments),
         };
-        for argument in arguments {
-            if matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow) {
-                Self::place(&argument.value, changed);
+        if let Some(arguments) = arguments {
+            for argument in arguments {
+                if matches!(argument.borrow, Borrow::Mutable | Borrow::Reborrow) {
+                    Self::place(&argument.value, changed);
+                }
             }
         }
         if let TypedExprKind::Borrow(ReferenceKind::Mutable, value) = &expr.kind {

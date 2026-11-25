@@ -2,8 +2,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::core::{BindingId, ReferenceKind};
 use crate::types::{
-    ChangedRoot, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr, TypedExprKind,
-    TypedLambda, TypedLeaf, TypedStructExpr,
+    ChangedRoot, PassedCall, TypedArgument, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
+    TypedExprKind, TypedLambda, TypedLeaf, TypedStructExpr,
 };
 
 #[derive(Default)]
@@ -52,11 +52,8 @@ impl ChangedValues {
 
     fn expr(&mut self, expr: &TypedExpr, enclosing: BindingId) {
         match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => {
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
                 self.call(callee, arguments, enclosing);
-            }
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments, enclosing);
             }
             TypedExprKind::Control(control) => self.control(control, enclosing),
             other => self.nested_expr(expr, other, enclosing),

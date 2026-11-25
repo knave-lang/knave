@@ -6,8 +6,8 @@ use super::whole_value_changes::WholeValueChanges;
 use crate::core::{BindingId, ReferenceKind};
 use crate::source::Span;
 use crate::types::{
-    CopyRules, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind, TypedLeaf,
-    TypedProgram, TypedStructExpr,
+    CopyRules, PassedCallMut, Type, TypedArgument, TypedControl, TypedExpr, TypedExprKind,
+    TypedLeaf, TypedProgram, TypedStructExpr,
 };
 
 #[derive(Default)]
@@ -99,11 +99,10 @@ impl CopiedMutReads {
 
 impl CopyOut<'_> {
     fn visit(&self, expr: &mut TypedExpr) {
+        if let Some(PassedCallMut { callee, arguments }) = PassedCallMut::of(&mut expr.kind) {
+            return self.call(callee, arguments);
+        }
         match &mut expr.kind {
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&mut assignment.template, &mut assignment.arguments);
-            }
             TypedExprKind::Recur(arguments) => self.recur(arguments),
             TypedExprKind::Borrow(ReferenceKind::Mutable, value)
             | TypedExprKind::Deref(value)

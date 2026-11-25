@@ -2,8 +2,8 @@ use rustc_hash::FxHashSet;
 
 use crate::core::BindingId;
 use crate::types::{
-    Borrow, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl, TypedExpr,
-    TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedProgram,
+    Borrow, PassedCall, TypedArgument, TypedBinder, TypedBlock, TypedBodyItem, TypedControl,
+    TypedExpr, TypedExprKind, TypedLambda, TypedLeaf, TypedMatch, TypedProgram,
 };
 
 pub(super) struct PassedLocal {
@@ -54,12 +54,8 @@ impl<'a> LocalBorrowCalls<'a> {
     }
 
     fn expr(&mut self, expr: &TypedExpr) {
-        match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments);
-            }
-            _ => {}
+        if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) {
+            self.call(callee, arguments);
         }
         match &expr.kind {
             TypedExprKind::Fn(lambda) => self.block(&lambda.body),
@@ -125,8 +121,9 @@ impl<'a> LocalBorrowCalls<'a> {
         match &expr.kind {
             TypedExprKind::Leaf(TypedLeaf::Literal(_) | TypedLeaf::Global(_)) => true,
             TypedExprKind::Leaf(TypedLeaf::Local(binding)) => self.outliving.contains(binding),
-            TypedExprKind::Call(_, arguments) => self.arguments_outlive_body(arguments),
-            TypedExprKind::Assign(assignment) => self.arguments_outlive_body(&assignment.arguments),
+            _ if let Some(PassedCall { arguments, .. }) = PassedCall::of(expr) => {
+                self.arguments_outlive_body(arguments)
+            }
             TypedExprKind::Control(control) => self.control_outlives_body(control),
             _ => false,
         }

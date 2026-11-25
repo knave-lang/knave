@@ -6,7 +6,7 @@ use super::text_value::TextValue;
 use super::transfer::Transfer;
 use super::type_path::TypePath;
 use super::walk_context::WalkContext;
-use crate::types::{Type, TypedExpr, TypedExprKind};
+use crate::types::{PassedCall, Type, TypedExpr};
 
 pub struct CompoundQueries<'c, 'w, 'p> {
     context: &'c mut WalkContext<'w, 'p>,
@@ -25,16 +25,9 @@ impl<'c, 'w, 'p> CompoundQueries<'c, 'w, 'p> {
         let Some((map, query)) = MapQueries::new(types).pair(parameters) else {
             return;
         };
-        let span = match &self.call.kind {
-            TypedExprKind::Call(_, arguments) => arguments
-                .get(query)
-                .map_or(self.call.span, |argument| argument.value.span),
-            TypedExprKind::Assign(assignment) => assignment
-                .arguments
-                .get(query)
-                .map_or(self.call.span, |argument| argument.value.span),
-            _ => self.call.span,
-        };
+        let span = PassedCall::of(self.call)
+            .and_then(|call| call.arguments.get(query))
+            .map_or(self.call.span, |argument| argument.value.span);
         let (Some(map), Some(query)) = (values.get(map), values.get(query)) else {
             return;
         };

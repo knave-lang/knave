@@ -5,12 +5,11 @@ use rustc_hash::FxHashSet;
 use super::admissible::Admissible;
 use super::checker::TypeChecker;
 use super::literal_fit::LiteralFit;
+use super::passed_call_mut::PassedCallMut;
 use super::problems::TypeProblems;
 use super::ty::{GenericId, Type, TypeVar};
 use super::type_text_writer::TypeTextWriter;
-use super::typed::{
-    ClosureType, LetValue, TypedArgument, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf,
-};
+use super::typed::{ClosureType, LetValue, TypedDefinition, TypedExpr, TypedExprKind, TypedLeaf};
 use super::unifier::LiteralKind;
 use crate::core::{BindingId, Literal, PrimitiveType};
 use crate::diagnostic::Diagnostic;
@@ -136,42 +135,25 @@ impl<'c> Finalizer<'c> {
         let enclosure = self.enclosure;
         let site = Enclosure::site_of(enclosure, expr.span);
         self.report_index_problems(expr);
-        let span = expr.span;
-        match &mut expr.kind {
-            TypedExprKind::Call(callee, arguments) => {
-                self.call(callee, arguments, (&mut expr.ty, site, span));
+        if let Some(PassedCallMut { callee, arguments }) = PassedCallMut::of(&mut expr.kind) {
+            if self.checker.unifier.holds_open_literal(&callee.ty) {
+                self.default_literals(&callee.ty, callee.span);
             }
-            TypedExprKind::Assign(assignment) => {
-                let form = (&mut expr.ty, site, span);
-                self.call(&mut assignment.template, &mut assignment.arguments, form);
+            self.enclosure = Some(Enclosure::Form(expr.span));
+            for argument in arguments {
+                self.child(&mut argument.value);
             }
-            _ => {
-                self.children(expr);
-                self.finalize_type(&mut expr.ty, site);
-            }
+            self.finalize_type(&mut expr.ty, site);
+            self.child(callee);
+        } else {
+            self.children(expr);
+            self.finalize_type(&mut expr.ty, site);
         }
         self.enclosure = enclosure;
         if let TypedExprKind::Leaf(TypedLeaf::Literal(Literal::Number(number))) = &expr.kind {
             self.check_range(number, &expr.ty.clone(), expr.span);
         }
         self.finalize_wrapped_function(expr);
-    }
-
-    fn call(
-        &mut self,
-        callee: &mut TypedExpr,
-        arguments: &mut [TypedArgument],
-        (result, site, form): (&mut Type, OpenSite, Span),
-    ) {
-        if self.checker.unifier.holds_open_literal(&callee.ty) {
-            self.default_literals(&callee.ty, callee.span);
-        }
-        self.enclosure = Some(Enclosure::Form(form));
-        for argument in arguments {
-            self.child(&mut argument.value);
-        }
-        self.finalize_type(result, site);
-        self.child(callee);
     }
 
     fn report_index_problems(&mut self, expr: &TypedExpr) {

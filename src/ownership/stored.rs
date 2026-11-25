@@ -11,8 +11,8 @@ use crate::core::{BindingId, FieldLabel};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::{
-    FieldOrder, Type, TypedArgument, TypedDefinition, TypedExpr, TypedExprKind, TypedLambda,
-    TypedLeaf, TypedProgram, TypedStructExpr,
+    FieldOrder, PassedCall, Type, TypedArgument, TypedDefinition, TypedExpr, TypedExprKind,
+    TypedLambda, TypedLeaf, TypedProgram, TypedStructExpr,
 };
 
 pub struct StoredClosures<'p> {
@@ -199,9 +199,8 @@ impl<'e> Store<'e> {
             TypedExprKind::Variant(variant, payloads, order) => {
                 Self::payloads(*variant, payloads, order, slots)
             }
-            TypedExprKind::Call(callee, arguments) => Self::arguments(callee, arguments, storing),
-            TypedExprKind::Assign(assignment) => {
-                Self::arguments(&assignment.template, &assignment.arguments, storing)
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                Self::arguments(callee, arguments, storing)
             }
             _ => Vec::new(),
         }

@@ -3,7 +3,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::function_borrow::FunctionBorrow;
 use crate::core::BindingId;
 use crate::types::{
-    Type, TypedArgument, TypedBinder, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
+    PassedCall, Type, TypedArgument, TypedBinder, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf,
     TypedProgram,
 };
 
@@ -79,9 +79,8 @@ impl<'a> LocalClosures<'a> {
 
     fn expr(&mut self, expr: &TypedExpr) {
         match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments);
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.call(callee, arguments)
             }
             _ => expr
                 .children()

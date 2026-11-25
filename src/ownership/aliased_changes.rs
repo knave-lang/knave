@@ -4,7 +4,7 @@ use super::problems::OwnershipProblems;
 use crate::core::{BindingId, ReferenceKind};
 use crate::diagnostic::{Diagnostic, Diagnostics};
 use crate::types::{
-    FieldPlace, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
+    FieldPlace, PassedCall, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
 };
 
 struct ChangedArgument<'e> {
@@ -42,12 +42,8 @@ impl<'a> AliasedChanges<'a> {
     }
 
     fn visit(&self, expr: &TypedExpr, diagnostics: &mut Diagnostics) {
-        match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments, diagnostics),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments, diagnostics);
-            }
-            _ => {}
+        if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) {
+            self.call(callee, arguments, diagnostics);
         }
         for child in expr.children() {
             self.visit(child, diagnostics);

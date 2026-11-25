@@ -1,6 +1,6 @@
 use super::region_rules::RegionRules;
 use super::stored_arguments::{Store, StoredArguments};
-use crate::types::{TypedArgument, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf};
+use crate::types::{PassedCall, TypedArgument, TypedExpr, TypedExprKind, TypedLambda, TypedLeaf};
 
 pub(super) struct StoreSite<'e> {
     pub target: &'e TypedExpr,
@@ -25,12 +25,8 @@ impl<'r, 'e> StoreSites<'r, 'e> {
     }
 
     fn expr(&mut self, expr: &'e TypedExpr) {
-        match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => self.call(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.call(&assignment.template, &assignment.arguments);
-            }
-            _ => {}
+        if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) {
+            self.call(callee, arguments);
         }
         for child in expr.children() {
             self.expr(child);

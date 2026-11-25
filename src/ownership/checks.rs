@@ -6,8 +6,8 @@ use super::problems::{MacroFieldRead, OwnershipProblems};
 use crate::core::BindingId;
 use crate::diagnostic::Diagnostic;
 use crate::types::{
-    Borrow, Pipelines, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf, TypedProgram,
-    TypedStructExpr,
+    Borrow, PassedCall, Pipelines, Type, TypedArgument, TypedExpr, TypedExprKind, TypedLeaf,
+    TypedProgram, TypedStructExpr,
 };
 
 pub struct OwnershipNeeds<'a> {
@@ -45,9 +45,8 @@ impl<'a> OwnershipNeeds<'a> {
 
     fn value(&mut self, expr: &TypedExpr, current: Option<&[Type]>) {
         match &expr.kind {
-            TypedExprKind::Call(callee, arguments) => self.check_arguments(callee, arguments),
-            TypedExprKind::Assign(assignment) => {
-                self.check_arguments(&assignment.template, &assignment.arguments);
+            _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
+                self.check_arguments(callee, arguments)
             }
             TypedExprKind::Recur(arguments) => self.check_recur(arguments, current),
             _ => {}

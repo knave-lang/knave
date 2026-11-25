@@ -54,14 +54,9 @@ impl<'w> BodyWalk<'w> {
 
     fn computed(&mut self, expr: &'w TypedExpr, at: PointId) -> Walked {
         match &expr.kind {
-            TypedExprKind::Assign(assignment) => {
-                let site = CallSite::new(&assignment.template, &assignment.arguments, self.rules());
-                CallWalk::new(self, site)
-                    .replacing(ReplacedLocal::of(assignment))
-                    .walk(at)
-            }
             _ if let Some(PassedCall { callee, arguments }) = PassedCall::of(expr) => {
-                self.call(CallSite::new(callee, arguments, self.rules()), at)
+                let site = CallSite::new(callee, arguments, self.rules());
+                self.call(site, ReplacedLocal::in_expr(expr), at)
             }
             TypedExprKind::Recur(arguments) => LoopWalk::new(self).recur(arguments, at),
             TypedExprKind::Control(control) => self.control(control, at),
@@ -83,10 +78,10 @@ impl<'w> BodyWalk<'w> {
         }
     }
 
-    fn call(&mut self, site: CallSite<'w>, at: PointId) -> Walked {
+    fn call(&mut self, site: CallSite<'w>, replaced: Option<ReplacedLocal>, at: PointId) -> Walked {
         match site.repeated_lambda() {
             Some(lambda) => LoopWalk::new(self).repeated(lambda, site.arguments(), at),
-            None => CallWalk::new(self, site).walk(at),
+            None => CallWalk::new(self, site).replacing(replaced).walk(at),
         }
     }
 

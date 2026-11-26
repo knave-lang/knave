@@ -95,14 +95,6 @@ impl TraitTable {
             .flat_map(move |rows| rows.candidates(target))
     }
 
-    pub fn links_argument(&self, binding: BindingId) -> bool {
-        self.get(binding).is_none_or(|rust_trait| {
-            let rows = rust_trait.rows().reached().implementors();
-            self.projections.declared_by(binding).is_empty()
-                && rows.iter().any(|row| row.argument.is_none())
-        })
-    }
-
     pub fn satisfies(
         &self,
         bound: &Bound,
@@ -277,6 +269,7 @@ impl<'t> TraitRows<'t> {
 mod tests {
     use crate::core::{BindingArena, BindingId, BindingInfo, BindingKind, ModuleId, PrimitiveType};
     use crate::types::selection::Selection;
+    use crate::types::trait_arguments::TraitArguments;
     use crate::types::{
         Bound, GenericId, Implementor, LoweredRows, RustTrait, Scheme, TraitTable, Type, TypeVar,
     };
@@ -406,8 +399,9 @@ mod tests {
         let mut fixture = TraitsFixture::new();
         let comparable = fixture.add("Comparable", &[PrimitiveType::I64]);
         let holds = fixture.add_seconds("Holds", &[PrimitiveType::U8]);
-        assert!(fixture.traits.links_argument(comparable));
-        assert!(!fixture.traits.links_argument(holds));
+        let arguments = TraitArguments::of(&fixture.traits);
+        assert!(arguments.links(comparable));
+        assert!(!arguments.links(holds));
     }
 
     #[test]

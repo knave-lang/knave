@@ -278,6 +278,7 @@ mod template_spelling;
 mod template_ties;
 mod templates;
 mod tied_positions;
+mod trait_arguments;
 mod trait_boxing;
 mod trait_declaration_collector;
 mod trait_declarations;

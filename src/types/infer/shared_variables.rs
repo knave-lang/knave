@@ -5,6 +5,7 @@ use crate::types::checker::TypeChecker;
 use crate::types::expectation::Expectation;
 use crate::types::group_depths::GroupDepths;
 use crate::types::shared_group::SharedGroup;
+use crate::types::trait_arguments::TraitArguments;
 use crate::types::unifier::Unifier;
 use crate::types::{Borrow, Type, TypeVar, TypedArgument, TypedExpr};
 
@@ -70,6 +71,7 @@ impl SharedVariables {
         traits: &crate::types::TraitTable,
     ) -> VariableLinks {
         let mut links = VariableLinks::default();
+        let arguments = TraitArguments::of(traits);
         for var in whole.iter().flatten() {
             for bound in unifier.bounds(*var) {
                 let argument = bound
@@ -77,7 +79,7 @@ impl SharedVariables {
                     .as_ref()
                     .map(|argument| unifier.shallow(argument));
                 if let Some(Type::Var(linked)) = argument
-                    && traits.links_argument(bound.binding)
+                    && arguments.links(bound.binding)
                 {
                     links.link(*var, linked);
                 }

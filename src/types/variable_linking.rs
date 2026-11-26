@@ -1,4 +1,5 @@
 use super::TraitTable;
+use super::trait_arguments::TraitArguments;
 use super::ty::{Type, TypeVar};
 use super::type_variables::TypeVariables;
 use super::unifier::Unifier;
@@ -45,10 +46,11 @@ impl<'a> VariableLinking<'a> {
     }
 
     fn linked_vars(&self, var: TypeVar, vars: &[TypeVar]) -> Vec<TypeVar> {
+        let arguments = TraitArguments::of(self.traits);
         self.unifier
             .bounds(var)
             .iter()
-            .filter(|bound| self.traits.links_argument(bound.binding))
+            .filter(|bound| arguments.links(bound.binding))
             .filter_map(|bound| {
                 let argument = bound
                     .argument

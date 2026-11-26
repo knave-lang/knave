@@ -52,11 +52,7 @@ impl<'a> TraitHelpVisibility<'a> {
     }
 
     fn declares_methods(&self, trait_binding: BindingId) -> bool {
-        self.declarations
-            .traits()
-            .methods
-            .values()
-            .any(|method| method.trait_binding == trait_binding)
+        (self.declarations.traits().methods).defines_any(trait_binding)
     }
 }
 

@@ -44,8 +44,7 @@ impl<'p> FieldTraitNames<'p> {
     }
 
     fn is_trait_method(&self, getter: &str) -> bool {
-        let mut methods = self.program.declarations.traits().methods.keys();
-        methods
-            .any(|method| NameMangler::value(self.program.bindings.get(*method).name()) == getter)
+        let mut methods = self.program.declarations.traits().methods.method_bindings();
+        methods.any(|method| NameMangler::value(self.program.bindings.get(method).name()) == getter)
     }
 }

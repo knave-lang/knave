@@ -1,0 +1,3 @@
+(defn main ()
+  (println ((rust "1"
+              (where ((u display)) (fn () int))))))

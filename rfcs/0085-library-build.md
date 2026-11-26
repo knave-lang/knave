@@ -1,6 +1,6 @@
 # RFC 0085: `knave build` builds a library project's library root
 
-**Status:** Accepted
+**Status:** Accepted. Its rule 11 also covers a `where` binder that no bound names, except in a `rust` template, which reports only a binder that a bound of a held binder names in its argument or that its text names, as `docs/language.md` states.
 **Date:** 2026-11-24
 
 ## Problem

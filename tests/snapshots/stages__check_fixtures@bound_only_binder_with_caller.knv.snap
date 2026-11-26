@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_with_caller.knv
+---
+error[L0407]: no parameter and no result holds `b`
+ --> check/bound_only_binder_with_caller.knv:1:6
+  |
+1 | (def compares-with-anything?
+  |      ^^^^^^^^^^^^^^^^^^^^^^^ no use of this template can fix `b`
+2 |   (rust "true"
+3 |     (where ((a (partial-eq b)) b)
+  |             ------------------ the `partial-eq` bound of `a` names `b`
+  |
+  = help: the signature must change: name `b` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation

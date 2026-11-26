@@ -1,0 +1,15 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_field_bound_fixes_its_type.knv
+---
+error[L0427]: the read of `:name` in this `has` bound names a type variable
+  --> check/bound_only_binder_field_bound_fixes_its_type.knv:11:1
+   |
+11 | (defn greet (person) (println "hello"))
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this read goes through the `has` bound
+   |
+   = note: the structs that reach this function read `:name` as `(ref str)`
+   = help: write the read with no type variable
+   = note: run `knave doc L0427` for an explanation

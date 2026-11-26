@@ -1,0 +1,18 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_two_binders.knv
+---
+error[L0407]: no parameter and no result holds `b` or `c`
+ --> check/bound_only_binder_two_binders.knv:1:6
+  |
+1 | (def compares-twice?
+  |      ^^^^^^^^^^^^^^^ no use of this template can fix `b` or `c`
+2 |   (rust "true"
+3 |     (where ((a (partial-eq b))
+  |             ------------------ the `partial-eq` bound of `a` names `b`
+4 |             (d (partial-eq c))
+  |             ------------------ the `partial-eq` bound of `d` names `c`
+  |
+  = help: the signature must change: name `b` and `c` in parameters or the result
+  = note: run `knave doc L0407` for an explanation

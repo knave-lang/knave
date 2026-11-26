@@ -1,0 +1,19 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_fixed_by_an_unheld_binder.knv
+---
+error[L0407]: no parameter and no result holds `c` or `item`
+  --> check/bound_only_binder_fixed_by_an_unheld_binder.knv:11:7
+   |
+ 6 |   (where ((c (container item))
+   |           -------------------- `c` takes the `container` bound here
+ 7 |           (d (partial-eq item))
+   |           --------------------- the `partial-eq` bound of `d` names `item`
+...
+11 | (defn same-as-an-item? (x) true)
+   |       ^^^^^^^^^^^^^^^^ no call of this function can fix `c` or `item`
+   |
+   = help: the signature must change: name `c` and `item` in parameters or the result, or remove them from the `where`
+   = note: run `knave doc L0407` for an explanation

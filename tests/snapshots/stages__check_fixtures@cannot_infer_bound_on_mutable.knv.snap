@@ -1,13 +1,17 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+assertion_line: 140
+expression: report
 input_file: tests/fixtures/check/cannot_infer_bound_on_mutable.knv
 ---
-error[L0407]: type annotations needed
- --> check/cannot_infer_bound_on_mutable.knv:9:17
+error[L0407]: no parameter and no result holds `b`
+ --> check/cannot_infer_bound_on_mutable.knv:1:6
   |
-9 |       (println (mut-compares? (mut v)))
-  |                 ^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
+1 | (def mut-compares?
+  |      ^^^^^^^^^^^^^ no use of this template can fix `b`
+2 |   (rust "true"
+3 |     (where ((a (partial-eq b)) b)
+  |             ------------------ the `partial-eq` bound of `a` names `b`
   |
-  = help: a bound of this function names a type that no argument or result holds, so its signature must change
+  = help: the signature must change: name `b` in a parameter or the result
   = note: run `knave doc L0407` for an explanation

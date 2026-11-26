@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_keeps_the_held_signature.knv
+---
+error[L0407]: no parameter and no result holds `t`
+  --> check/bound_only_binder_keeps_the_held_signature.knv:14:7
+   |
+11 |   (where ((s shape) (t shape))
+   |                     --------- `t` takes the `shape` bound here
+...
+14 | (defn total (x) (area x))
+   |       ^^^^^ no call of this function can fix `t`
+   |
+   = help: the signature must change: name `t` in a parameter or the result, or remove it from the `where`
+   = note: run `knave doc L0407` for an explanation

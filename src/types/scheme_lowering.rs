@@ -154,11 +154,13 @@ mod tests {
     #[test]
     fn a_type_without_where_lowers_to_a_monomorphic_scheme() {
         let mut fixture = Fixture::new();
-        let scheme = fixture
+        let definition = fixture.type_variable("count");
+        let lowered = fixture
             .checker
             .written_schemes()
-            .lower_scheme(&Fixture::integer())
+            .lower_signature(&Fixture::integer(), definition)
             .expect("a primitive lowers");
+        let scheme = lowered.reported_into(&mut fixture.checker.diagnostics);
         assert!(scheme.params.is_empty());
         assert!(scheme.lifetimes.is_empty());
     }
@@ -175,11 +177,12 @@ mod tests {
             ],
             Box::new(Fixture::named(variable, Vec::new())),
         ));
-        let scheme = fixture
+        let lowered = fixture
             .checker
             .written_schemes()
-            .lower_scheme(&written)
+            .lower_signature(&written, variable)
             .expect("the scheme lowers");
+        let scheme = lowered.reported_into(&mut fixture.checker.diagnostics);
         assert_eq!(scheme.lifetimes, vec![lifetime]);
         assert_eq!(scheme.params.len(), 1);
         assert_eq!(scheme.body, Type::Generic(scheme.params[0].id));
@@ -196,13 +199,14 @@ mod tests {
                 Fixture::lifetime_binder(lifetime),
                 Fixture::bounded(variable, &[display]),
             ],
-            Box::new(Fixture::integer()),
+            Box::new(Fixture::named(variable, Vec::new())),
         ));
-        let scheme = fixture
+        let lowered = fixture
             .checker
             .written_schemes()
-            .lower_scheme(&written)
+            .lower_signature(&written, variable)
             .expect("the scheme lowers");
+        let scheme = lowered.reported_into(&mut fixture.checker.diagnostics);
         assert_eq!(scheme.params[0].bounds, vec![Bound::plain(display)]);
     }
 

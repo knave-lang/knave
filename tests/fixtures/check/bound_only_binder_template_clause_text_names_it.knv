@@ -1,0 +1,8 @@
+(def size-of
+  (rust "0"
+    (where ((s sequence) u)
+      (fn ((ref s)) int))
+    (str "std::mem::size_of::<{u}>() as i64")))
+
+(defn main ()
+  (println (size-of "pear")))

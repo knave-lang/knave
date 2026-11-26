@@ -1,0 +1,6 @@
+(type count-nothing
+  (where (a) (fn () i64)))
+
+(defn count-nothing () 0)
+
+(defn main () (println (count-nothing)))

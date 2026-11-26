@@ -146,9 +146,8 @@ impl DeclarationsFixture {
 
     pub(super) fn enter_impl(&mut self, collected: CollectedImpl) {
         let mut synthetic = Default::default();
-        let mut impl_methods = Default::default();
         let traits = self.declarations.open_builder().traits();
-        traits.enter_impl(collected, &mut synthetic, &mut impl_methods);
+        traits.enter_impl(collected, &mut synthetic);
     }
 
     pub(super) fn traits(&self) -> &TraitDeclarations {

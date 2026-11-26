@@ -1,0 +1,20 @@
+---
+source: tests/stages.rs
+assertion_line: 154
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_function_unheld_holder.knv
+---
+error[L0407]: no parameter and no result holds `u` or `v`
+ --> check/bound_only_binder_function_unheld_holder.knv:5:7
+  |
+2 |   (where ((u (partial-eq v)) v)
+  |           ------------------
+  |           |
+  |           `u` takes the `partial-eq` bound here
+  |           the `partial-eq` bound of `u` names `v`
+...
+5 | (defn odd () 1)
+  |       ^^^ no call of this function can fix `u` or `v`
+  |
+  = help: the signature must change: name `u` and `v` in parameters or the result, or remove them from the `where`
+  = note: run `knave doc L0407` for an explanation

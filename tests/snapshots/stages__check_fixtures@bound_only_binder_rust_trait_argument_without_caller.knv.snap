@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_rust_trait_argument_without_caller.knv
+---
+error[L0407]: no parameter and no result holds `b`
+ --> check/bound_only_binder_rust_trait_argument_without_caller.knv:9:7
+  |
+7 |   (where ((a (add b)) b) (fn (a) a)))
+  |           ----------- the `add` bound of `a` names `b`
+8 |
+9 | (defn keep-addable (x) x)
+  |       ^^^^^^^^^^^^ no call of this function can fix `b`
+  |
+  = help: the signature must change: name `b` in a parameter or the result, or remove it from the `where`
+  = note: run `knave doc L0407` for an explanation

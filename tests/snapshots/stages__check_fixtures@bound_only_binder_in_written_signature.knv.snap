@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_in_written_signature.knv
+---
+error[L0407]: no parameter and no result holds `b`
+ --> check/bound_only_binder_in_written_signature.knv:5:7
+  |
+2 |   (where ((a (partial-eq b)) b)
+  |           ------------------ the `partial-eq` bound of `a` names `b`
+...
+5 | (defn same-as-anything? (x) true)
+  |       ^^^^^^^^^^^^^^^^^ no call of this function can fix `b`
+  |
+  = help: the signature must change: name `b` in a parameter or the result, or remove it from the `where`
+  = note: run `knave doc L0407` for an explanation

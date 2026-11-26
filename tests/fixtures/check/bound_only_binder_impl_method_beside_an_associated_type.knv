@@ -1,0 +1,16 @@
+(trait container
+  (type item)
+  (size (fn ((ref self)) int))
+
+  (weigh (fn (item) int)))
+
+(struct (stack a) (items (vec a)))
+
+(impl container (stack a)
+  (type item int)
+  (size (s) (len (field s items)))
+
+  (weigh (x) x))
+
+(defn main ()
+  (println (size (ref (new stack (items (vec 1 2)))))))

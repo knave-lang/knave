@@ -1,13 +1,17 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+assertion_line: 140
+expression: report
 input_file: tests/fixtures/check/cannot_infer_bound_on_callee.knv
 ---
-error[L0407]: type annotations needed
- --> check/cannot_infer_bound_on_callee.knv:7:13
+error[L0407]: no parameter and no result holds `c`
+ --> check/cannot_infer_bound_on_callee.knv:1:6
   |
-7 |   (println (both (str "text") 1)))
-  |             ^^^^ cannot infer a type that a bound of this function names
+1 | (def both
+  |      ^^^^ no use of this template can fix `c`
+2 |   (rust "true"
+3 |     (where ((a display) (b (partial-eq c)) c)
+  |                         ------------------ the `partial-eq` bound of `b` names `c`
   |
-  = help: a bound of this function names a type that no argument or result holds, so its signature must change
+  = help: the signature must change: name `c` in a parameter or the result
   = note: run `knave doc L0407` for an explanation

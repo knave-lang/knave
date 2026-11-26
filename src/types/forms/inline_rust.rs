@@ -24,7 +24,7 @@ impl<C: TemplateSchemes + SchemeInstantiation> ExpressionForm<C> for InlineRust<
         context: &mut C,
         _hint: Option<Expectation>,
     ) -> Result<TypedExpr, Diagnostic> {
-        let scheme = context.lower_template(&self.template.type_expr)?;
+        let scheme = context.lower_template(self.template)?;
         context.register_inline(&self.template.template, &scheme);
         Ok(TypedExpr {
             kind: TypedExprKind::Leaf(TypedLeaf::Rust(self.template.clone())),
@@ -77,7 +77,7 @@ mod tests {
     }
 
     impl TemplateSchemes for TemplateFixture {
-        fn lower_template(&mut self, _type_expr: &TypeExpr) -> Result<Scheme, Diagnostic> {
+        fn lower_template(&mut self, _template: &RustTemplate) -> Result<Scheme, Diagnostic> {
             Ok(Scheme::monomorphic(Type::Primitive(PrimitiveType::I64)))
         }
 

@@ -1,0 +1,6 @@
+(def size-of-v
+  (rust "std::mem::size_of::<{v}>() as i64"
+    (where ((u (partial-eq v)) v)
+      (fn () int))))
+
+(defn main () (println (size-of-v)))

@@ -1,0 +1,5 @@
+(trait picker
+  (pick
+    (where (a) (fn ((ref self) a) i64))))
+
+(defn main () (println "done"))

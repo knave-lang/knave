@@ -1,0 +1,6 @@
+(def size-of-target
+  (rust "std::mem::size_of::<{target}>() as i64"
+    (where (target) (fn () int))))
+
+(defn main ()
+  (println (size-of-target)))

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use super::shared_variables::SharedVariables;
-use crate::core::{BindingId, BindingKind, Expr, TypeExpr, VariantInfo};
+use crate::core::{BindingId, BindingKind, Expr, RustTemplate, TypeExpr, VariantInfo};
 use crate::diagnostic::Diagnostic;
 use crate::source::Span;
 use crate::types::assumed_collections::CollectionAssumption;
@@ -198,8 +198,9 @@ impl LiteralUnknowns for TypeChecker {
 }
 
 impl TemplateSchemes for TypeChecker {
-    fn lower_template(&mut self, type_expr: &TypeExpr) -> Result<Scheme, Diagnostic> {
-        self.written_schemes().lower_template(type_expr)
+    fn lower_template(&mut self, template: &RustTemplate) -> Result<Scheme, Diagnostic> {
+        let lowered = self.written_schemes().lower_inline_template(template)?;
+        Ok(lowered.reported_into(&mut self.diagnostics))
     }
 
     fn register_inline(&mut self, text: &Rc<str>, scheme: &Scheme) {

@@ -1,0 +1,14 @@
+(trait container
+  (type item)
+  (size (fn ((ref self)) int)))
+
+(type same-as-an-item?
+  (where ((c (container item))
+          (d (partial-eq item))
+          item)
+    (fn (d) bool)))
+
+(defn same-as-an-item? (x) true)
+
+(defn main ()
+  (println (same-as-an-item? 1)))

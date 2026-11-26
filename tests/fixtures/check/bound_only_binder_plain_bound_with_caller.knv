@@ -1,0 +1,6 @@
+(type shown-count
+  (where ((a display)) (fn () i64)))
+
+(defn shown-count () 0)
+
+(defn main () (println (shown-count)))

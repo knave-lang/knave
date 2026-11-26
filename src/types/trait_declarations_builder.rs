@@ -80,12 +80,7 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         }
     }
 
-    pub(super) fn enter_impl(
-        self,
-        collected: CollectedImpl,
-        synthetic: &mut FxHashSet<BindingId>,
-        impl_methods: &mut FxHashSet<BindingId>,
-    ) {
+    pub(super) fn enter_impl(self, collected: CollectedImpl, synthetic: &mut FxHashSet<BindingId>) {
         let traits = self.traits;
         if let Some(rows) = traits
             .table
@@ -93,9 +88,10 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         {
             rows.add(collected.implementor);
         }
+        let position = traits.impls.len();
         for method in &collected.definition.methods {
             synthetic.insert(method.binding);
-            impl_methods.insert(method.binding);
+            traits.impl_methods.insert(method.binding, position);
         }
         traits.impls.push(collected.definition);
     }

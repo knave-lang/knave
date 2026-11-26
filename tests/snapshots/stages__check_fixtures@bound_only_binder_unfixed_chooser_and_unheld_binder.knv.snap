@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_unfixed_chooser_and_unheld_binder.knv
+---
+error[L0246]: a `rust` with clauses chooses by its first type parameter, which no call fixes
+ --> check/bound_only_binder_unfixed_chooser_and_unheld_binder.knv:3:13
+  |
+3 |     (where ((u display) (v clone))
+  |             ^^^^^^^^^^^ neither an argument's type nor the result type names this parameter
+  |
+  = help: list first a parameter that an argument's type or the result type names
+  = note: run `knave doc L0246` for an explanation

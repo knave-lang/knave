@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 154
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_template_clause_text_names_it.knv
+---
+error[L0407]: no parameter and no result holds `u`
+ --> check/bound_only_binder_template_clause_text_names_it.knv:1:6
+  |
+1 | (def size-of
+  |      ^^^^^^^ no use of this template can fix `u`
+2 |   (rust "0"
+3 |     (where ((s sequence) u)
+  |                          - a clause's text names `u`
+  |
+  = help: the signature must change: name `u` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation

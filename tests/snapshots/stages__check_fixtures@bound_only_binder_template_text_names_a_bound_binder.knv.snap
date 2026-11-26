@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 154
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_template_text_names_a_bound_binder.knv
+---
+error[L0407]: no parameter and no result holds `v`
+ --> check/bound_only_binder_template_text_names_a_bound_binder.knv:1:6
+  |
+1 | (def size-of-v
+  |      ^^^^^^^^^ no use of this template can fix `v`
+2 |   (rust "std::mem::size_of::<{v}>() as i64"
+3 |     (where ((u (partial-eq v)) v)
+  |                                - the template's text names `v`
+  |
+  = help: the signature must change: name `v` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation

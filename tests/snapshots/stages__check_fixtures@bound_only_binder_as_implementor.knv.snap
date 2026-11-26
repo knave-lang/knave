@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_as_implementor.knv
+---
+error[L0407]: no parameter and no result holds `a`
+ --> check/bound_only_binder_as_implementor.knv:5:7
+  |
+2 |   (where ((a (partial-eq b)) b)
+  |           ------------------ `a` takes the `partial-eq` bound here
+...
+5 | (defn compared-from-anything? (x) true)
+  |       ^^^^^^^^^^^^^^^^^^^^^^^ no call of this function can fix `a`
+  |
+  = help: the signature must change: name `a` in a parameter or the result, or remove it from the `where`
+  = note: run `knave doc L0407` for an explanation

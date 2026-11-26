@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_bare_without_parameters.knv
+---
+error[L0407]: no parameter and no result holds `a`
+ --> check/bound_only_binder_bare_without_parameters.knv:4:7
+  |
+2 |   (where (a) (fn () i64)))
+  |           - `a` is declared here
+3 |
+4 | (defn count-nothing () 0)
+  |       ^^^^^^^^^^^^^ no call of this function can fix `a`
+  |
+  = help: the signature must change: name `a` in a parameter or the result, or remove it from the `where`
+  = note: run `knave doc L0407` for an explanation

@@ -1,7 +1,7 @@
 (def equal-to-another?
   (rust "false"
     (where ((a (partial-eq b)) b)
-      (fn (a) bool))))
+      (fn (a b) bool))))
 
 (def equal-to-third?
   (rust "false"

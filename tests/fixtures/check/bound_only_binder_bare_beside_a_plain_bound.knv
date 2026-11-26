@@ -1,0 +1,6 @@
+(type same-kind?
+  (where ((a partial-eq) b) (fn (a) bool)))
+
+(defn same-kind? (x) true)
+
+(defn main () (println (same-kind? 1)))

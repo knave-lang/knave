@@ -1,0 +1,8 @@
+(type compared-from-anything?
+  (where ((a (partial-eq b)) b)
+    (fn (b) bool)))
+
+(defn compared-from-anything? (x) true)
+
+(defn main ()
+  (println (compared-from-anything? 1)))

@@ -1,40 +1,41 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+assertion_line: 140
+expression: report
 input_file: tests/fixtures/check/cannot_infer_bound_on_nested_literal.knv
 ---
-error[L0407]: type annotations needed
-  --> check/cannot_infer_bound_on_nested_literal.knv:17:13
-   |
-17 |   (println (option-compares? (some 1)))
-   |             ^^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
-   |
-   = help: a bound of this function names a type that no argument or result holds, so its signature must change
-   = note: run `knave doc L0407` for an explanation
+error[L0407]: no parameter and no result holds `b`
+ --> check/cannot_infer_bound_on_nested_literal.knv:1:6
+  |
+1 | (def option-compares?
+  |      ^^^^^^^^^^^^^^^^ no use of this template can fix `b`
+2 |   (rust "true"
+3 |     (where ((a (partial-eq b)) b)
+  |             ------------------ the `partial-eq` bound of `a` names `b`
+  |
+  = help: the signature must change: name `b` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation
 
-error[L0407]: type annotations needed
-  --> check/cannot_infer_bound_on_nested_literal.knv:18:13
-   |
-18 |   (println (reference-compares? (ref 1)))
-   |             ^^^^^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
-   |
-   = help: a bound of this function names a type that no argument or result holds, so its signature must change
-   = note: run `knave doc L0407` for an explanation
+error[L0407]: no parameter and no result holds `b`
+ --> check/cannot_infer_bound_on_nested_literal.knv:6:6
+  |
+6 | (def reference-compares?
+  |      ^^^^^^^^^^^^^^^^^^^ no use of this template can fix `b`
+7 |   (rust "true"
+8 |     (where ((a (partial-eq b)) b)
+  |             ------------------ the `partial-eq` bound of `a` names `b`
+  |
+  = help: the signature must change: name `b` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation
 
-error[L0407]: type annotations needed
-  --> check/cannot_infer_bound_on_nested_literal.knv:19:13
+error[L0407]: no parameter and no result holds `b`
+  --> check/cannot_infer_bound_on_nested_literal.knv:11:6
    |
-19 |   (println (bound-compares? (some 1)))
-   |             ^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
+11 | (def bound-compares?
+   |      ^^^^^^^^^^^^^^^ no use of this template can fix `b`
+12 |   (rust "true"
+13 |     (where ((a (partial-eq b)) b)
+   |             ------------------ the `partial-eq` bound of `a` names `b`
    |
-   = help: a bound of this function names a type that no argument or result holds, so its signature must change
-   = note: run `knave doc L0407` for an explanation
-
-error[L0407]: type annotations needed
-  --> check/cannot_infer_bound_on_nested_literal.knv:22:27
-   |
-22 |   (println (call-with-one option-compares?)))
-   |                           ^^^^^^^^^^^^^^^^ cannot infer a type that a bound of this function names
-   |
-   = help: a bound of this function names a type that no argument or result holds, so its signature must change
+   = help: the signature must change: name `b` in a parameter or the result
    = note: run `knave doc L0407` for an explanation

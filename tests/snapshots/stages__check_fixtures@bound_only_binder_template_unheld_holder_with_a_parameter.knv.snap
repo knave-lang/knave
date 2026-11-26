@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+assertion_line: 154
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_template_unheld_holder_with_a_parameter.knv
+---
+(type odd (where ((u (partial-eq v)) v) (fn (int) int)))
+(type main (fn () unit))

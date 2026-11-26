@@ -1,0 +1,17 @@
+(trait shape
+  (area (fn ((ref self)) int)))
+
+(defstruct sq
+  :side int)
+
+(impl shape sq
+  (area (s) (* (:side s) (:side s))))
+
+(type total
+  (where ((s shape) (t shape))
+    (fn ((ref s)) int)))
+
+(defn total (x) (area x))
+
+(defn main ()
+  (println (total (ref (->sq 3)))))

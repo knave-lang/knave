@@ -1,0 +1,8 @@
+(def measure
+  (rust "measure({0})"
+    (where ((unused clone) (s sequence))
+      (fn ((ref s)) usize))
+    (str "count({0})")))
+
+(defn main ()
+  (println (measure "pear")))

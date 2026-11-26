@@ -5,6 +5,6 @@ input_file: tests/fixtures/run/infer_bound_names.knv
 ---
 (where ((a (partial-eq b)) b) (fn (a b) bool))
 (where ((a (partial-eq b)) b) (fn (a b) bool))
-(where ((a (partial-eq b)) b) (fn (a) bool))
+(where ((a (partial-eq b)) b) (fn (a b) bool))
 (fn (int int) bool)
 true

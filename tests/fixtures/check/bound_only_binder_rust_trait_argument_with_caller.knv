@@ -1,0 +1,12 @@
+(deftrait add
+  (rust "std::ops::Add")
+  (associated (output left) "Output")
+  (where () (with i64 i64) (output i64)))
+
+(type keep-addable
+  (where ((a (add b)) b) (fn (a) a)))
+
+(defn keep-addable (x) x)
+
+(defn main ()
+  (println (keep-addable 1)))

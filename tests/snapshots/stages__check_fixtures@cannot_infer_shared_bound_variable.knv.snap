@@ -1,13 +1,20 @@
 ---
 source: tests/stages.rs
-expression: reports.report(path)
+assertion_line: 140
+expression: report
 input_file: tests/fixtures/check/cannot_infer_shared_bound_variable.knv
 ---
-error[L0407]: type annotations needed
-  --> check/cannot_infer_shared_bound_variable.knv:12:13
-   |
-12 |   (println (probe one 2)))
-   |             ^^^^^ cannot infer a type that a bound of this function names
-   |
-   = help: a bound of this function names a type that no argument or result holds, so its signature must change
-   = note: run `knave doc L0407` for an explanation
+error[L0407]: no parameter and no result holds `b` or `c`
+ --> check/cannot_infer_shared_bound_variable.knv:3:6
+  |
+3 | (def probe
+  |      ^^^^^ no use of this template can fix `b` or `c`
+4 |   (rust "true"
+5 |     (where ((a (matched (pair b c)))
+  |             ------------------------
+  |             |
+  |             the `matched` bound of `a` names `b`
+  |             the `matched` bound of `a` names `c`
+  |
+  = help: the signature must change: name `b` and `c` in parameters or the result
+  = note: run `knave doc L0407` for an explanation

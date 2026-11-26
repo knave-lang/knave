@@ -1,0 +1,7 @@
+(def measure
+  (rust "0"
+    (where ((u display) (v clone))
+      (fn () int))
+    (str "1")))
+
+(defn main () (println (measure)))

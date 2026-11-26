@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_template_text_names_it.knv
+---
+error[L0407]: no parameter and no result holds `target`
+ --> check/bound_only_binder_template_text_names_it.knv:1:6
+  |
+1 | (def size-of-target
+  |      ^^^^^^^^^^^^^^ no use of this template can fix `target`
+2 |   (rust "std::mem::size_of::<{target}>() as i64"
+3 |     (where (target) (fn () int))))
+  |             ------ the template's text names `target`
+  |
+  = help: the signature must change: name `target` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation

@@ -1,0 +1,15 @@
+(defstruct user
+  :name str)
+
+(defstruct pet
+  :name str)
+
+(type greet
+  (where ((a (has :name r)) r)
+    (fn ((ref a)) unit)))
+
+(defn greet (person) (println "hello"))
+
+(defn main ()
+  (greet (ref (->user "ana")))
+  (greet (ref (->pet "rex"))))

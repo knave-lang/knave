@@ -23,6 +23,7 @@ use super::declared_traits::DeclaredTraits;
 use super::declared_types::DeclaredTypes;
 use super::deferred_decisions::DeferredDecisions;
 use super::definition_outcomes::DefinitionOutcomes;
+use super::definition_signatures::DefinitionSignatures;
 use super::derivable_traits::DerivableTraits;
 use super::derive_blockers::DeriveBlockers;
 use super::derive_rules::DeriveRules;
@@ -72,7 +73,6 @@ use super::prelude_types::PreludeTypes;
 use super::problems::{MismatchContext, TypeProblems};
 use super::reached_traits::{ReachedDeclaration, ReachedTraits};
 use super::reopened_parameters::ReopenedParameters;
-use super::result_borrow_source::ResultBorrowSource;
 use super::round_facts::RoundFacts;
 use super::round_failure::RoundFailure;
 use super::shared_call::SharedCall;
@@ -152,7 +152,6 @@ pub struct TypeChecker {
     copy_trait: Option<BindingId>,
     pub(super) structural_uses: super::structural_uses::StructuralUses,
     pub(super) reported_path_clashes: FxHashSet<super::structural_uses::StructuralUse>,
-    impl_methods: FxHashSet<BindingId>,
     pub(super) synthetic_bindings: FxHashSet<BindingId>,
     pub(super) pinned: FxHashMap<BindingId, Type>,
     pub(super) literal_defaults: LiteralDefaults,
@@ -208,7 +207,6 @@ impl TypeChecker {
             copy_trait: None,
             structural_uses: super::structural_uses::StructuralUses::default(),
             reported_path_clashes: FxHashSet::default(),
-            impl_methods: FxHashSet::default(),
             synthetic_bindings: FxHashSet::default(),
             pinned: FxHashMap::default(),
             literal_defaults: LiteralDefaults::default(),
@@ -795,10 +793,8 @@ impl TypeChecker {
         TraitDeclarationCollector::new(self.written_types())
     }
 
-    pub(super) fn written_schemes(&mut self) -> super::scheme_lowering::SchemeLowering<'_> {
-        let (lowering, facts) = self.written_type_parts();
-        let variables = super::written_type_variables::WrittenTypeVariables::new(facts.bindings);
-        super::scheme_lowering::SchemeLowering::new(lowering, variables)
+    pub(super) fn written_schemes(&mut self) -> DefinitionSignatures<'_> {
+        DefinitionSignatures::new(self.written_type_parts())
     }
 
     pub(super) fn instantiation(&mut self) -> Instantiation<'_> {
@@ -967,13 +963,9 @@ impl TypeChecker {
         let ExprKind::Leaf(Leaf::Rust(template)) = member.value.kind() else {
             return false;
         };
-        let scheme = self.written_schemes().lower_scheme(&template.type_expr);
-        let traits = self.declarations.traits();
-        let scheme = scheme.and_then(|scheme| {
-            ResultBorrowSource::declared(&template.type_expr, member.binding, traits)
-                .map(|()| scheme)
-        });
-        let scheme = scheme.unwrap_or_else(|diagnostic| {
+        let lowered = (self.written_schemes()).lower_declared_template(template, member.binding);
+        let lowered = lowered.map(|lowered| lowered.reported_into(&mut self.diagnostics));
+        let scheme = lowered.unwrap_or_else(|diagnostic| {
             self.diagnostics.push(diagnostic);
             self.generic_declarations().failed_scheme()
         });
@@ -1040,9 +1032,15 @@ impl TypeChecker {
 
     fn prepare_member(&mut self, member: &Definition) -> Option<(BindingId, Scheme)> {
         if let Some((signature, _)) = self.signatures.get(&member.binding).cloned() {
-            return match self.written_schemes().lower_scheme(&signature) {
+            let lowered = (self.written_schemes()).lower_signature(&signature, member.binding);
+            return match lowered.map(|lowered| lowered.reported_into(&mut self.diagnostics)) {
                 Ok(scheme) => {
-                    if self.impl_methods.contains(&member.binding) {
+                    if self
+                        .declarations
+                        .traits()
+                        .impl_methods
+                        .contains_key(&member.binding)
+                    {
                         self.implied_bounds.mark_impl_generics(&scheme.params);
                     }
                     self.component.insert(member.binding, scheme.body.clone());
@@ -1050,8 +1048,7 @@ impl TypeChecker {
                 }
                 Err(diagnostic) => {
                     self.diagnostics.push(diagnostic);
-                    let fresh = self.unifier.fresh();
-                    self.component.insert(member.binding, fresh);
+                    self.component.insert(member.binding, self.unifier.fresh());
                     None
                 }
             };
@@ -1316,11 +1313,10 @@ impl TypeChecker {
             ImplementationVerdict::Accepted(problems) => {
                 self.diagnostics.extend(problems);
                 let collected = self.implementation_collector().collect(item, lowered);
-                self.declarations.builder().traits().enter_impl(
-                    collected,
-                    &mut self.synthetic_bindings,
-                    &mut self.impl_methods,
-                );
+                self.declarations
+                    .builder()
+                    .traits()
+                    .enter_impl(collected, &mut self.synthetic_bindings);
             }
         }
     }

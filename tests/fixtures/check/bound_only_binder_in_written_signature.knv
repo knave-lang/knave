@@ -1,0 +1,8 @@
+(type same-as-anything?
+  (where ((a (partial-eq b)) b)
+    (fn (a) bool)))
+
+(defn same-as-anything? (x) true)
+
+(defn main ()
+  (println (same-as-anything? 1)))

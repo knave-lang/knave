@@ -1,0 +1,4 @@
+(def one
+  (rust "1" (where (a) (fn () int))))
+
+(defn main () (println "done"))

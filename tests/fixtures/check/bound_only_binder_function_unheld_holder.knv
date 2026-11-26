@@ -1,0 +1,7 @@
+(type odd
+  (where ((u (partial-eq v)) v)
+    (fn () int)))
+
+(defn odd () 1)
+
+(defn main () (println (odd)))

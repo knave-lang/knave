@@ -1,0 +1,8 @@
+(def compares-with-anything?
+  (rust "true"
+    (where ((a (partial-eq b)) b)
+      (fn (a) bool))))
+
+(defn probe (x) (compares-with-anything? x))
+
+(defn main () (println (probe 1)))

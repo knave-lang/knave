@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_fixing_bound_holder.knv
+---
+error[L0407]: no parameter and no result holds `c`
+ --> check/bound_only_binder_fixing_bound_holder.knv:9:7
+  |
+6 |   (where ((c (container item)) item)
+  |           -------------------- `c` takes the `container` bound here
+...
+9 | (defn holds-an-item? (item) true)
+  |       ^^^^^^^^^^^^^^ no call of this function can fix `c`
+  |
+  = help: the signature must change: name `c` in a parameter or the result, or remove it from the `where`
+  = note: run `knave doc L0407` for an explanation

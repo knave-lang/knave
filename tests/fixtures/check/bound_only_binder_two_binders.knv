@@ -1,0 +1,9 @@
+(def compares-twice?
+  (rust "true"
+    (where ((a (partial-eq b))
+            (d (partial-eq c))
+            b c)
+      (fn (a d) bool))))
+
+(defn main ()
+  (println (compares-twice? 1 2)))

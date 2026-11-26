@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_impl_method_beside_an_associated_type.knv
+---
+(derive stack clone partial-eq eq hash show)
+(type main (fn () unit))

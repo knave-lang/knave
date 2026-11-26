@@ -1,0 +1,6 @@
+(def odd
+  (rust "{0}"
+    (where ((u (partial-eq v)) v)
+      (fn (int) int))))
+
+(defn main () (println (odd 7)))

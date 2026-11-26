@@ -99,7 +99,7 @@ help: a function with a similar name exists
 
 **Wrap the labeled value in `the`.** The help of `L0407` is a fix that writes the value's open type around the value, with `_` for each unresolved part. If the label's text is not a value the user wrote, such as a binder or a form inside a macro's expansion, the help names `the` and a `type` signature in words. A value that an annotated `local` or a `the` already holds labels that form, with the same help.
 
-**Say so when no annotation can help.** A variable that only a bound holds reports `L0407` at the function that brought the bound, and its help says that the function's signature must change.
+**Say so when no annotation can help.** Variables of a `where` that nothing holds report one `L0407` at the definition, with the primary label on the definition's name, a secondary label for each variable on the binder of the `where` whose bound names it, or on its own binder, and a help that says to name the variable in a parameter or the result, or, in a function's `where`, to remove it. A `rust` template's report says that no use of the template can fix the variable. A call of that definition reports nothing more.
 
 ## Tests
 

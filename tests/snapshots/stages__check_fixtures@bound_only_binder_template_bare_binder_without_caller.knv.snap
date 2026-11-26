@@ -1,0 +1,8 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_template_bare_binder_without_caller.knv
+---
+(type one (where (a) (fn () int)))
+(type main (fn () unit))

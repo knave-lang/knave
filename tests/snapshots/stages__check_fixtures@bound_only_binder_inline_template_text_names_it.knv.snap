@@ -1,0 +1,17 @@
+---
+source: tests/stages.rs
+assertion_line: 154
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_inline_template_text_names_it.knv
+---
+error[L0407]: no parameter and no result holds `t`
+ --> check/bound_only_binder_inline_template_text_names_it.knv:3:15
+  |
+3 |               (where (t) (fn () int))))))
+  |               ^^^^^^^^-^^^^^^^^^^^^^^
+  |               |       |
+  |               |       the template's text names `t`
+  |               no use of this template can fix `t`
+  |
+  = help: the signature must change: name `t` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation

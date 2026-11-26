@@ -1,0 +1,6 @@
+(type any-kind?
+  (where (a b) (fn (a) bool)))
+
+(defn any-kind? (x) true)
+
+(defn main () (println (any-kind? 1)))

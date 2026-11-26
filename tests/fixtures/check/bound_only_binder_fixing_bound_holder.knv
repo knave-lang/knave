@@ -1,0 +1,12 @@
+(trait container
+  (type item)
+  (size (fn ((ref self)) int)))
+
+(type holds-an-item?
+  (where ((c (container item)) item)
+    (fn (item) bool)))
+
+(defn holds-an-item? (item) true)
+
+(defn main ()
+  (println (holds-an-item? 1)))

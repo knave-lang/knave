@@ -1,0 +1,14 @@
+---
+source: tests/stages.rs
+assertion_line: 140
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_trait_method_takes_no_where.knv
+---
+error[L0210]: malformed `trait`
+ --> check/bound_only_binder_trait_method_takes_no_where.knv:3:5
+  |
+3 |     (where (a) (fn ((ref self) a) i64))))
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this does not fit the shape of `trait`
+  |
+  = help: write it as `(trait name (method type) ...)`
+  = note: run `knave doc L0210` for an explanation

@@ -7,7 +7,7 @@ use super::obligation_solver::ObligationSolver;
 use super::solver_event::SolverEvent;
 use super::solver_sources::SolverSources;
 use super::solver_state::SolverState;
-use super::ty::{Bound, GenericId, GenericParam, Type, TypeVar};
+use super::ty::{Bound, GenericId, GenericParam, Type};
 use super::unifier::{Obligation, ObligationSite, Unifier};
 use crate::core::PrimitiveType;
 use crate::source::{SourceId, Span};
@@ -60,7 +60,6 @@ impl ObligationSolverFixture {
                 SolverEvent::MissingTrait { .. } => "missing trait",
                 SolverEvent::StructuralUse { .. } => "structural use",
                 SolverEvent::UnprovenBound { .. } => "unproven bound",
-                SolverEvent::OpenObligation { .. } => "open obligation",
             })
             .collect()
     }
@@ -69,11 +68,7 @@ impl ObligationSolverFixture {
         Obligation {
             bound,
             implementor,
-            site: ObligationSite {
-                span: Self::span(),
-                bound_site: None,
-            },
-            inside_operand: false,
+            site: ObligationSite { span: Self::span() },
         }
     }
 
@@ -135,38 +130,9 @@ impl ObligationSolverFixture {
         self.unifier.take_obligations().len()
     }
 
-    pub(super) fn set_inside_operand(&mut self, inside_operand: bool) {
-        self.unifier.set_inside_operand(inside_operand);
-    }
-
-    pub(super) fn inside_operand(&self) -> bool {
-        self.unifier.inside_operand()
-    }
-
-    pub(super) fn open_vars(events: &[SolverEvent]) -> Vec<TypeVar> {
-        events
-            .iter()
-            .flat_map(|event| match event {
-                SolverEvent::OpenObligation { open_vars, .. } => open_vars.clone(),
-                _ => Vec::new(),
-            })
-            .collect()
-    }
-
     pub(super) fn structural_argument(events: &[SolverEvent]) -> Option<Type> {
         events.iter().find_map(|event| match event {
             SolverEvent::StructuralUse { bound, .. } => bound.argument.clone(),
-            _ => None,
-        })
-    }
-
-    pub(super) fn bound_site() -> Span {
-        Span::new(SourceId::new(0), 4..9)
-    }
-
-    pub(super) fn problem_span(events: &[SolverEvent]) -> Option<Span> {
-        events.iter().find_map(|event| match event {
-            SolverEvent::OpenObligation { problem, .. } => Some(problem.primary().span()),
             _ => None,
         })
     }

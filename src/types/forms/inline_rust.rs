@@ -28,7 +28,7 @@ impl<C: TemplateSchemes + SchemeInstantiation> ExpressionForm<C> for InlineRust<
         context.register_inline(&self.template.template, &scheme);
         Ok(TypedExpr {
             kind: TypedExprKind::Leaf(TypedLeaf::Rust(self.template.clone())),
-            ty: context.instantiate(&scheme, self.span),
+            ty: context.instantiate(&scheme),
             span: self.span,
         })
     }
@@ -41,7 +41,6 @@ mod tests {
     use super::InlineRust;
     use crate::core::{PrimitiveType, RustTemplate, TypeExpr, TypeExprKind};
     use crate::diagnostic::Diagnostic;
-    use crate::source::Span;
     use crate::types::forms::form_fixtures::FormFixtures;
     use crate::types::forms::{ExpressionForm, SchemeInstantiation, TemplateSchemes};
     use crate::types::ty::{Scheme, Type};
@@ -87,7 +86,7 @@ mod tests {
     }
 
     impl SchemeInstantiation for TemplateFixture {
-        fn instantiate(&mut self, _scheme: &Scheme, _span: Span) -> Type {
+        fn instantiate(&mut self, _scheme: &Scheme) -> Type {
             Self::instantiated()
         }
     }

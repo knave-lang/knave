@@ -11,5 +11,5 @@ pub(in crate::types) trait GlobalReferences {
         name: &str,
         span: Span,
     ) -> Option<Diagnostic>;
-    fn global_type(&mut self, binding: BindingId, span: Span) -> Type;
+    fn global_type(&mut self, binding: BindingId) -> Type;
 }

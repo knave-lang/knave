@@ -1,5 +1,4 @@
 use std::cell::Cell;
-use std::num::NonZeroU32;
 use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
@@ -53,14 +52,12 @@ pub enum UnifyError {
 #[derive(Clone, Copy)]
 pub struct ObligationSite {
     pub span: Span,
-    pub bound_site: Option<Span>,
 }
 
 pub struct Obligation {
     pub bound: Bound,
     pub implementor: Type,
     pub site: ObligationSite,
-    pub inside_operand: bool,
 }
 
 pub struct DeferredEquality {
@@ -75,21 +72,15 @@ struct VarState {
     shortcut: Cell<Option<TypeVar>>,
     literal: Option<LiteralKind>,
     bounds: Vec<Bound>,
-    bound_site: Option<BoundSiteId>,
 }
-
-#[derive(Clone, Copy)]
-struct BoundSiteId(NonZeroU32);
 
 #[derive(Default)]
 pub struct Unifier {
     vars: Vec<VarState>,
-    bound_sites: Vec<Span>,
     obligations: Vec<Obligation>,
     generic_bounds: FxHashMap<GenericId, Vec<Bound>>,
     projections: Rc<ProjectionTable>,
     deferred: Vec<DeferredEquality>,
-    inside_operand: bool,
 }
 
 impl Unifier {
@@ -150,30 +141,8 @@ impl Unifier {
         &self.vars[var.index()].bounds
     }
 
-    pub fn set_bounds(&mut self, var: TypeVar, bounds: Vec<Bound>, site: Span) {
-        let bound_site = (!bounds.is_empty()).then(|| self.intern_bound_site(site));
-        let state = &mut self.vars[var.index()];
-        state.bound_site = bound_site;
-        state.bounds = bounds;
-    }
-
-    fn intern_bound_site(&mut self, site: Span) -> BoundSiteId {
-        if self.bound_sites.last() != Some(&site) {
-            self.bound_sites.push(site);
-        }
-        let count = u32::try_from(self.bound_sites.len()).expect("fewer sites than variables");
-        BoundSiteId(NonZeroU32::new(count).expect("the last site exists"))
-    }
-
-    fn bound_site(&self, var: TypeVar) -> Option<Span> {
-        let BoundSiteId(id) = self.vars[var.index()].bound_site?;
-        self.bound_sites.get(id.get() as usize - 1).copied()
-    }
-
-    fn add_bound_from(&mut self, var: TypeVar, bound: Bound, site: Option<BoundSiteId>) {
-        self.add_bound(var, bound);
-        let bound_site = &mut self.vars[var.index()].bound_site;
-        *bound_site = bound_site.or(site);
+    pub fn set_bounds(&mut self, var: TypeVar, bounds: Vec<Bound>) {
+        self.vars[var.index()].bounds = bounds;
     }
 
     pub fn add_bound(&mut self, var: TypeVar, bound: Bound) {
@@ -186,14 +155,6 @@ impl Unifier {
 
     pub fn bind(&mut self, var: TypeVar, value: Type) {
         self.vars[var.index()].binding = Some(value);
-    }
-
-    pub fn inside_operand(&self) -> bool {
-        self.inside_operand
-    }
-
-    pub fn set_inside_operand(&mut self, inside_operand: bool) {
-        self.inside_operand = inside_operand;
     }
 
     pub fn defer(&mut self, obligation: Obligation) {
@@ -410,7 +371,6 @@ impl Unifier {
             shortcut: Cell::new(None),
             literal,
             bounds,
-            bound_site: None,
         });
         Type::Var(var)
     }
@@ -422,10 +382,9 @@ impl Unifier {
             self.vars[into.index()].literal,
         );
         self.vars[into.index()].literal = literal;
-        let bound_site = self.vars[from.index()].bound_site;
         moved_bounds
             .into_iter()
-            .for_each(|bound| self.add_bound_from(into, bound, bound_site));
+            .for_each(|bound| self.add_bound(into, bound));
         self.bind(from, Type::Var(into));
     }
 
@@ -440,11 +399,7 @@ impl Unifier {
             self.obligations.push(Obligation {
                 bound,
                 implementor: value.clone(),
-                site: ObligationSite {
-                    span,
-                    bound_site: self.bound_site(var),
-                },
-                inside_operand: self.inside_operand,
+                site: ObligationSite { span },
             });
         }
         self.bind(var, value);
@@ -457,64 +412,5 @@ impl Unifier {
             Type::Generic(_) => Ok(()),
             _ => Err(UnifyError::NotNumeric),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::core::{BindingArena, BindingInfo, BindingKind};
-    use crate::source::SourceId;
-
-    struct SiteFixture {
-        unifier: Unifier,
-        bound: Bound,
-    }
-
-    impl SiteFixture {
-        fn new() -> Self {
-            let mut bindings = BindingArena::default();
-            let binding = bindings.add(BindingInfo::new(
-                "trait".into(),
-                BindingKind::TypeVariable,
-                None,
-            ));
-            Self {
-                unifier: Unifier::default(),
-                bound: Bound::plain(binding),
-            }
-        }
-
-        fn span(&self, start: usize) -> Span {
-            Span::new(SourceId::new(0), start..start + 1)
-        }
-
-        fn bounded_var(&mut self, site: Span) -> TypeVar {
-            let Type::Var(var) = self.unifier.fresh() else {
-                unreachable!("a fresh type is a variable");
-            };
-            self.unifier.set_bounds(var, vec![self.bound.clone()], site);
-            var
-        }
-    }
-
-    #[test]
-    fn variables_of_one_call_share_one_bound_site() {
-        let mut fixture = SiteFixture::new();
-        let call = fixture.span(0);
-        fixture.bounded_var(call);
-        let second = fixture.bounded_var(call);
-        assert_eq!(fixture.unifier.bound_sites, vec![call]);
-        assert_eq!(fixture.unifier.bound_site(second), Some(call));
-    }
-
-    #[test]
-    fn another_call_keeps_its_own_bound_site() {
-        let mut fixture = SiteFixture::new();
-        let (first_call, later_call) = (fixture.span(0), fixture.span(4));
-        let first = fixture.bounded_var(first_call);
-        let later = fixture.bounded_var(later_call);
-        assert_eq!(fixture.unifier.bound_site(first), Some(first_call));
-        assert_eq!(fixture.unifier.bound_site(later), Some(later_call));
     }
 }

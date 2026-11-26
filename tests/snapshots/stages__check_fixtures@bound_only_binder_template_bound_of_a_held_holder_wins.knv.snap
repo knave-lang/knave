@@ -1,0 +1,16 @@
+---
+source: tests/stages.rs
+expression: report
+input_file: tests/fixtures/check/bound_only_binder_template_bound_of_a_held_holder_wins.knv
+---
+error[L0407]: no parameter and no result holds `v`
+ --> check/bound_only_binder_template_bound_of_a_held_holder_wins.knv:1:6
+  |
+1 | (def compares-either?
+  |      ^^^^^^^^^^^^^^^^ no use of this template can fix `v`
+...
+4 |             (h (partial-eq v))
+  |             ------------------ the `partial-eq` bound of `h` names `v`
+  |
+  = help: the signature must change: name `v` in a parameter or the result
+  = note: run `knave doc L0407` for an explanation

@@ -1,0 +1,9 @@
+(def compares-either?
+  (rust "true"
+    (where ((u (partial-eq v))
+            (h (partial-eq v))
+            v)
+      (fn (h) bool))))
+
+(defn main ()
+  (println (compares-either? 1)))

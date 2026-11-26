@@ -1637,7 +1637,7 @@ impl<'a> ExpressionEmitter<'a> {
         }
         let trait_methods = self.program.declarations.traits().methods();
         if let TypedExprKind::Leaf(TypedLeaf::Global(binding)) = &callee.kind
-            && trait_methods.contains_key(binding)
+            && trait_methods.get(binding).is_some()
         {
             return self.trait_method_call(*binding, arguments);
         }

@@ -291,6 +291,7 @@ mod trait_help_fixture;
 mod trait_help_visibility;
 mod trait_inclusions;
 mod trait_method_info;
+mod trait_methods;
 mod trait_reach;
 mod trait_rows_reach;
 mod traits;

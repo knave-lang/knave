@@ -27,7 +27,7 @@ impl<'t> ResultBorrowSource<'t> {
         binding: BindingId,
         traits: &TraitDeclarations,
     ) -> Result<(), Diagnostic> {
-        if traits.methods().contains_key(&binding) {
+        if traits.methods().get(&binding).is_some() {
             return Ok(());
         }
         Self::of(written).map_or(Ok(()), |source| source.check())

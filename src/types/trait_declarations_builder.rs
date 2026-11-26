@@ -34,7 +34,12 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         for method in &collected.definition.methods {
             synthetic.extend(std::iter::once(method.binding).chain(method.default));
             let info = collected.definition.method_info(method);
-            traits.methods.insert(method.binding, info);
+            traits.methods.record_method(method.binding, info);
+            if let Some(default) = method.default {
+                traits
+                    .methods
+                    .record_default(default, collected.definition.binding);
+            }
         }
         traits.definitions.push(collected.definition);
     }
@@ -71,7 +76,7 @@ impl<'a> TraitDeclarationsBuilder<'a> {
         traits.rust_paths.record(collected.declaration);
         for (method, info) in collected.methods {
             synthetic.insert(method);
-            traits.methods.insert(method, info);
+            traits.methods.record_method(method, info);
         }
     }
 

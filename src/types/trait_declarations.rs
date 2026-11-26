@@ -1,20 +1,17 @@
-use rustc_hash::FxHashMap;
-
 use super::rust_trait_paths::RustTraitPaths;
 use super::structural_trait::StructuralTrait;
-use super::trait_method_info::TraitMethodInfo;
+use super::trait_methods::TraitMethods;
 use super::traits::TraitTable;
 use super::ty::{GenericParam, Scheme};
 use super::typed_trait::TypedTrait;
 use super::typed_trait_impl::TypedTraitImpl;
-use crate::core::BindingId;
 
 #[derive(Default)]
 pub struct TraitDeclarations {
     pub(super) table: TraitTable,
     pub(super) definitions: Vec<TypedTrait>,
     pub(super) impls: Vec<TypedTraitImpl>,
-    pub(super) methods: FxHashMap<BindingId, TraitMethodInfo>,
+    pub(super) methods: TraitMethods,
     pub(super) rust_paths: RustTraitPaths,
     pub(super) structural: Vec<StructuralTrait>,
 }
@@ -46,7 +43,7 @@ impl TraitDeclarations {
         &self.impls
     }
 
-    pub fn methods(&self) -> &FxHashMap<BindingId, TraitMethodInfo> {
+    pub fn methods(&self) -> &TraitMethods {
         &self.methods
     }
 

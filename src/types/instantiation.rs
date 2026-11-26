@@ -4,7 +4,6 @@ use super::generic_registry::GenericRegistry;
 use super::implied_bounds::ImpliedBounds;
 use super::ty::{GenericId, Scheme, Type};
 use super::unifier::Unifier;
-use crate::source::Span;
 
 pub(super) struct Instantiation<'a> {
     generics: &'a GenericRegistry,
@@ -25,7 +24,7 @@ impl<'a> Instantiation<'a> {
         }
     }
 
-    pub(super) fn instantiate(&mut self, scheme: &Scheme, span: Span) -> Type {
+    pub(super) fn instantiate(&mut self, scheme: &Scheme) -> Type {
         let fresh: Vec<Type> = scheme
             .params
             .iter()
@@ -45,7 +44,7 @@ impl<'a> Instantiation<'a> {
                     .chain(self.implied.of(param.id))
                     .map(|bound| bound.substituted(&replacements))
                     .collect();
-                self.unifier.set_bounds(*var, bounds, span);
+                self.unifier.set_bounds(*var, bounds);
             }
         }
         if scheme.lifetimes.is_empty() {
@@ -70,7 +69,6 @@ impl<'a> Instantiation<'a> {
 mod tests {
     use super::Instantiation;
     use crate::core::BindingId;
-    use crate::source::{SourceId, Span};
     use crate::types::generic_registry::GenericRegistry;
     use crate::types::implied_bounds::ImpliedBounds;
     use crate::types::ty::{Bound, GenericParam, Scheme, Type, TypeVar};
@@ -104,9 +102,8 @@ mod tests {
                 params: vec![self.param.clone()],
                 body: Type::Generic(self.param.id),
             };
-            let span = Span::new(SourceId::new(0), 0..0);
             let instance = Instantiation::new(&self.registry, &self.implied, &mut self.unifier)
-                .instantiate(&scheme, span);
+                .instantiate(&scheme);
             let Type::Var(var) = instance else {
                 unreachable!("the scheme's body is its generic")
             };

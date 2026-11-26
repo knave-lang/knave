@@ -46,7 +46,7 @@ impl VariableReference {
         }
         Ok(self.typed(
             TypedLeaf::Global(self.binding),
-            context.global_type(self.binding, self.span),
+            context.global_type(self.binding),
         ))
     }
 
@@ -197,7 +197,7 @@ mod tests {
             self.selfless.then(Self::selfless_problem)
         }
 
-        fn global_type(&mut self, _binding: BindingId, _span: Span) -> Type {
+        fn global_type(&mut self, _binding: BindingId) -> Type {
             Self::global_type()
         }
     }

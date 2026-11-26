@@ -831,9 +831,6 @@ impl TypeChecker {
                     bound,
                     span,
                 } => self.report_unproven_bound(generic, bound, span),
-                SolverEvent::OpenObligation { open_vars, problem } => {
-                    self.open_annotations.defer(open_vars, problem)
-                }
             }
         }
     }
@@ -848,14 +845,6 @@ impl TypeChecker {
             generics: self.generics.params(),
         };
         ObligationSolver::new(state, sources, pass)
-    }
-
-    pub(super) fn within_operand<T>(&mut self, work: impl FnOnce(&mut Self) -> T) -> T {
-        let outer = self.unifier.inside_operand();
-        self.unifier.set_inside_operand(true);
-        let result = work(self);
-        self.unifier.set_inside_operand(outer);
-        result
     }
 
     pub(super) fn defaults_literal_parameters(&self) -> bool {

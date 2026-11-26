@@ -45,7 +45,7 @@ impl TypeChecker {
         value: TypedExpr,
     ) -> Result<TypedExpr, Diagnostic> {
         let span = value.span;
-        let ty = self.global_type(view, span);
+        let ty = self.global_type(view);
         let Type::Function(_, parameters, result) = &ty else {
             unreachable!("the string view is a function")
         };

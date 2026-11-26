@@ -1,5 +1,4 @@
-use super::ty::{Bound, GenericId, Type, TypeVar};
-use crate::diagnostic::Diagnostic;
+use super::ty::{Bound, GenericId, Type};
 use crate::source::Span;
 
 pub(super) enum SolverEvent {
@@ -18,9 +17,5 @@ pub(super) enum SolverEvent {
         generic: GenericId,
         bound: Bound,
         span: Span,
-    },
-    OpenObligation {
-        open_vars: Vec<TypeVar>,
-        problem: Diagnostic,
     },
 }

@@ -117,7 +117,7 @@ impl VariantSites for TypeChecker {
 
 impl OperandTyping for TypeChecker {
     fn type_operand(&mut self, operand: &Expr) -> Result<TypedExpr, Diagnostic> {
-        self.within_operand(|checker| checker.infer(operand))
+        self.infer(operand)
     }
 }
 
@@ -211,8 +211,8 @@ impl TemplateSchemes for TypeChecker {
 }
 
 impl SchemeInstantiation for TypeChecker {
-    fn instantiate(&mut self, scheme: &Scheme, span: Span) -> Type {
-        self.instantiation().instantiate(scheme, span)
+    fn instantiate(&mut self, scheme: &Scheme) -> Type {
+        self.instantiation().instantiate(scheme)
     }
 }
 
@@ -260,8 +260,8 @@ impl GlobalReferences for TypeChecker {
         ))
     }
 
-    fn global_type(&mut self, binding: BindingId, span: Span) -> Type {
-        TypeChecker::global_type(self, binding, span)
+    fn global_type(&mut self, binding: BindingId) -> Type {
+        TypeChecker::global_type(self, binding)
     }
 }
 

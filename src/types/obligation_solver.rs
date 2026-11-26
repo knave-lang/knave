@@ -5,13 +5,11 @@ use super::generic_bound_tables::GenericBoundTables;
 use super::implied_bounds::ImpliedBounds;
 use super::literal_settlement::LiteralSettlement;
 use super::obligation_pass::ObligationPass;
-use super::problems::TypeProblems;
 use super::selection::{Requirement, Selection};
 use super::solver_event::SolverEvent;
 use super::solver_sources::SolverSources;
 use super::solver_state::SolverState;
 use super::ty::{Bound, GenericId, Type};
-use super::type_variables::TypeVariables;
 use super::unifier::{Obligation, Unifier};
 use crate::source::Span;
 
@@ -40,10 +38,7 @@ impl<'a> ObligationSolver<'a> {
 
     pub(super) fn discharge_all(mut self, obligations: Vec<Obligation>) -> Vec<SolverEvent> {
         for obligation in obligations {
-            let outer = self.unifier.inside_operand();
-            self.unifier.set_inside_operand(obligation.inside_operand);
             self.discharge(obligation);
-            self.unifier.set_inside_operand(outer);
         }
         self.events
     }
@@ -60,7 +55,6 @@ impl<'a> ObligationSolver<'a> {
                 bound,
                 implementor,
                 site: obligation.site,
-                inside_operand: self.unifier.inside_operand(),
             }),
         }
     }
@@ -141,7 +135,6 @@ impl<'a> ObligationSolver<'a> {
                 bound: requirement.bound,
                 implementor: requirement.implementor,
                 site,
-                inside_operand: self.unifier.inside_operand(),
             };
             self.discharge(required);
         }
@@ -160,23 +153,8 @@ impl<'a> ObligationSolver<'a> {
     fn leave_unresolved(&mut self, obligation: Obligation) {
         match self.pass {
             ObligationPass::Deferring => self.unifier.defer(obligation),
-            ObligationPass::Final if obligation.inside_operand => {}
-            ObligationPass::Final => self.report_open_obligation(&obligation),
+            ObligationPass::Final => {}
         }
-    }
-
-    fn report_open_obligation(&mut self, obligation: &Obligation) {
-        let variables = TypeVariables::new(self.unifier);
-        let mut open_vars = variables.free_in(&obligation.implementor);
-        if let Some(argument) = &obligation.bound.argument {
-            open_vars.extend(variables.free_in(argument));
-        }
-        let site = obligation.site;
-        let label_span = site.bound_site.unwrap_or(site.span);
-        self.events.push(SolverEvent::OpenObligation {
-            open_vars,
-            problem: TypeProblems::cannot_infer_bound(label_span),
-        });
     }
 
     fn generic_bound_check(&mut self) -> GenericBoundCheck<'_> {
@@ -274,59 +252,5 @@ mod tests {
         let events = fixture.discharge(vec![obligation], ObligationPass::Deferring);
         assert!(events.is_empty());
         assert_eq!(fixture.deferred_count(), 1);
-    }
-
-    #[test]
-    fn an_undecided_obligation_reports_its_open_variables_in_the_final_pass() {
-        let mut fixture = Fixture::new();
-        let element = fixture.var();
-        let open = fixture.vec_of(element);
-        let obligation = fixture.obligation(fixture.trait_bound("display"), open);
-        let events = fixture.discharge(vec![obligation], ObligationPass::Final);
-        assert_eq!(Fixture::kinds(&events), ["open obligation"]);
-        assert_eq!(Fixture::open_vars(&events).len(), 1);
-    }
-
-    #[test]
-    fn an_undecided_obligation_inside_an_operand_stays_silent() {
-        let mut fixture = Fixture::new();
-        let element = fixture.var();
-        let open = fixture.vec_of(element);
-        let mut obligation = fixture.obligation(fixture.trait_bound("display"), open);
-        obligation.inside_operand = true;
-        let events = fixture.discharge(vec![obligation], ObligationPass::Final);
-        assert!(events.is_empty());
-    }
-
-    #[test]
-    fn the_operand_mark_is_restored_after_each_obligation() {
-        let mut fixture = Fixture::new();
-        fixture.set_inside_operand(false);
-        let mut obligation = fixture.obligation(fixture.trait_bound("display"), Fixture::int());
-        obligation.inside_operand = true;
-        fixture.discharge(vec![obligation], ObligationPass::Final);
-        assert!(!fixture.inside_operand());
-    }
-
-    #[test]
-    fn an_open_bound_argument_counts_among_the_open_variables() {
-        let mut fixture = Fixture::new();
-        let element = fixture.var();
-        let argument = fixture.var();
-        let bound = fixture.trait_bound_with("partial-eq", argument);
-        let obligation = fixture.obligation(bound, fixture.vec_of(element));
-        let events = fixture.discharge(vec![obligation], ObligationPass::Final);
-        assert_eq!(Fixture::open_vars(&events).len(), 2);
-    }
-
-    #[test]
-    fn an_open_obligation_points_at_the_written_bound() {
-        let mut fixture = Fixture::new();
-        let element = fixture.var();
-        let open = fixture.vec_of(element);
-        let mut obligation = fixture.obligation(fixture.trait_bound("display"), open);
-        obligation.site.bound_site = Some(Fixture::bound_site());
-        let events = fixture.discharge(vec![obligation], ObligationPass::Final);
-        assert_eq!(Fixture::problem_span(&events), Some(Fixture::bound_site()));
     }
 }

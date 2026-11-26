@@ -870,12 +870,12 @@ impl TypeChecker {
         inferred.map(|(kind, ty)| TypedExpr { kind, ty, span })
     }
 
-    pub(super) fn global_type(&mut self, binding: BindingId, span: Span) -> Type {
+    pub(super) fn global_type(&mut self, binding: BindingId) -> Type {
         if let Some(current) = self.component.get(&binding) {
             return current.clone();
         }
         match self.schemes.get(&binding).cloned() {
-            Some(scheme) => self.instantiation().instantiate(&scheme, span),
+            Some(scheme) => self.instantiation().instantiate(&scheme),
             None => {
                 assert!(
                     !self.outcomes.is_unreached(binding),
@@ -2487,8 +2487,7 @@ mod tests {
                 BindingKind::Global(ModuleId::new(0)),
                 None,
             ));
-            let span = Span::new(SourceId::new(0), 0..0);
-            self.checker.global_type(binding, span)
+            self.checker.global_type(binding)
         }
 
         fn type_of_an_unreached_prelude_definition(&mut self) -> Type {
@@ -2499,8 +2498,7 @@ mod tests {
             ));
             self.checker.outcomes =
                 DefinitionOutcomes::new(Rc::new(FxHashSet::from_iter([binding])));
-            let span = Span::new(SourceId::new(0), 0..0);
-            self.checker.global_type(binding, span)
+            self.checker.global_type(binding)
         }
 
         fn rejects_a_compile_time_only_global(&mut self) -> bool {
